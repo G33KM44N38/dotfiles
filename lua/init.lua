@@ -1,0 +1,5 @@
+require('plugin')
+require('telescope')
+require('keymap')
+require('rc_treesitter')
+require('rc_cmp')
