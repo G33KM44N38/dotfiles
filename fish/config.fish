@@ -8,6 +8,7 @@ alias kl "cd ~/myproject/freelance/application/KaelGame/"
 alias traingo "cd ~/train/go/"
 alias work "cd ~/stackdev/src/"
 alias stack "cd ~/stackdev/"
+alias Tmux "_MenuTmux"
 
 # git command
 alias gs "git status"

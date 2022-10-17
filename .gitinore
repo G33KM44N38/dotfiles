@@ -22,3 +22,4 @@ nvim/after/plugin/stdheader.vim
 nvim/sessions
 yarn
 iterm2
+ .idea/

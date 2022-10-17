@@ -1,22 +1,21 @@
-
 local packer = require 'packer'
 
-packer.init{
-{
-  display = {
-    non_interactive = false, -- If true, disable display windows for all operations
-    open_fn  = nil, -- An optional function to open a window for packer's display
-    open_cmd = '65vnew \\[packer\\]', -- An optional command to open a window for packer's display
-    working_sym = '⟳', -- The symbol for a plugin being installed/updated
-    error_sym = '✗', -- The symbol for a plugin with an error in installation/updating
-    done_sym = '✓', -- The symbol for a plugin which has completed installation/updating
-    removed_sym = '-', -- The symbol for an unused plugin which was removed
-    moved_sym = '→', -- The symbol for a plugin which was moved (e.g. from opt to start)
-    header_sym = '━', -- The symbol for the header line in packer's display
-    show_all_info = true, -- Should packer show all update details automatically?
-    prompt_border = 'double', -- Border style of prompt popups.
-    }
-  }
+packer.init {
+	{
+		display = {
+			non_interactive = false, -- If true, disable display windows for all operations
+			open_fn         = nil, -- An optional function to open a window for packer's display
+			open_cmd        = '65vnew \\[packer\\]', -- An optional command to open a window for packer's display
+			working_sym     = '⟳', -- The symbol for a plugin being installed/updated
+			error_sym       = '✗', -- The symbol for a plugin with an error in installation/updating
+			done_sym        = '✓', -- The symbol for a plugin which has completed installation/updating
+			removed_sym     = '-', -- The symbol for an unused plugin which was removed
+			moved_sym       = '→', -- The symbol for a plugin which was moved (e.g. from opt to start)
+			header_sym      = '━', -- The symbol for the header line in packer's display
+			show_all_info   = true, -- Should packer show all update details automatically?
+			prompt_border   = 'double', -- Border style of prompt popups.
+		}
+	}
 }
 
 local use = packer.use
@@ -24,9 +23,9 @@ local use = packer.use
 packer.reset()
 packer.startup(function()
 	use { "RRethy/vim-illuminate" }
-	use {"jose-elias-alvarez/null-ls.nvim", requires = { "nvim-lua/plenary.nvim" },}
-	use { 'nvim-treesitter/nvim-treesitter', run = ":TSUpdate"}
-	use { 'anuvyklack/hydra.nvim', requires = 'anuvyklack/keymap-layer.nvim'}
+	use { "jose-elias-alvarez/null-ls.nvim", requires = { "nvim-lua/plenary.nvim" }, }
+	use { 'nvim-treesitter/nvim-treesitter', run = ":TSUpdate" }
+	use { 'anuvyklack/hydra.nvim', requires = 'anuvyklack/keymap-layer.nvim' }
 	use { 'lukas-reineke/indent-blankline.nvim' }
 	use { 'epilande/vim-react-snippets' }
 	use { 'windwp/nvim-autopairs' }
@@ -35,7 +34,7 @@ packer.startup(function()
 	use { 'hoob3rt/lualine.nvim' }
 	use { 'kyazdani42/nvim-web-devicons' }
 	use { 'akinsho/bufferline.nvim' }
-	use { 'akinsho/toggleterm.nvim', tag = 'v2.*', config = function() require("toggleterm").setup()end }
+	use { 'akinsho/toggleterm.nvim', tag = 'v2.*', config = function() require("toggleterm").setup() end }
 	use { 'ray-x/go.nvim' }
 	use { 'ray-x/guihua.lua' }
 	use { 'glepnir/lspsaga.nvim' }
@@ -83,7 +82,7 @@ packer.startup(function()
 	use 'tpope/vim-fugitive'
 	use 'tpope/vim-surround'
 	use 'williamboman/nvim-lsp-installer'
-	use {'wbthomason/packer.nvim', opt = false}
+	use { 'wbthomason/packer.nvim', opt = false }
 	use 'folke/trouble.nvim'
 	-- use { 'mhinz/vim-startify' }
 	use { 'theHamsta/nvim-dap-virtual-text' }

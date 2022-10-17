@@ -36,10 +36,10 @@ keymap("n", "<leader>g2", ":diffget //3<CR> ", opts)
 
 -- mapping find replace word undercursor in all buffer
 keymap("n", "<Leader>sed", ":bufdo %s/<<C-r><C-w>>//g<Left><Left> | update", opts)
-keymap("n", "<Leader>se",  ":s/<<C-r><C-w>>//g<Left><Left>", opts)
+keymap("n", "<Leader>se", ":s/<<C-r><C-w>>//g<Left><Left>", opts)
 
 -- open term
-keymap("n", "<leader>tt", ":ToggleTerm size=20<CR>", opts)
+keymap("n", "<leader>tt", ":ToggleTerm size=20<CR>fish", opts)
 
 -- mark
 keymap("n", "<leader><leader>1", ":mark a <CR>", opts)
@@ -56,7 +56,6 @@ keymap("n", "<leader>bf", ":lua require('telescope.builtin').find_files()<CR>", 
 keymap("n", "<leader>dot", ":lua require('rc_telescope').search_dotfiles()<CR>", opts)
 keymap("n", "<leader>conf", ":lua require('rc_telescope').config()<CR>", opts)
 keymap("n", "?", ":lua require('telescope.builtin').current_buffer_fuzzy_find()<CR>", opts)
-
 keymap("n", "<leader>br", ":lua require('telescope.builtin').live_grep()<CR>", opts)
 keymap("n", "<leader>bq", ":lua require('telescope.builtin').quickfix()<CR>", opts)
 keymap("n", "<leader>bg", ":lua require('telescope.builtin').git_files()<CR>", opts)
@@ -70,9 +69,9 @@ keymap("n", "<leader>reset", ":LspRestart<CR>", opts)
 keymap("n", "<leader>cheat", ":Cheat<CR>", opts)
 
 -- vimspector mapping
-keymap("n", "<F2>",  ":call vimspector#StepOver()<CR>", opts)
-keymap("n", "<F3>",  ":call vimspector#StepInto()<CR>", opts)
-keymap("n", "<F4>",  ":call vimspector#StepOut()<CR>", opts)
+keymap("n", "<F2>", ":call vimspector#StepOver()<CR>", opts)
+keymap("n", "<F3>", ":call vimspector#StepInto()<CR>", opts)
+keymap("n", "<F4>", ":call vimspector#StepOut()<CR>", opts)
 keymap("n", "<F12>", ":call vimspector#Restart()<CR>", opts)
 
 -- mapping Lex

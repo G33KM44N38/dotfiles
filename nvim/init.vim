@@ -28,7 +28,7 @@ syntax enable
 " colorscheme waxcoin
 " colorscheme alduin
 " colorscheme sonokai
-colorscheme sierra
+ colorscheme sierra
 " colorscheme orbital
 " colorscheme Molokai
 set backspace=indent,eol,start
@@ -55,6 +55,7 @@ call plug#begin()
 Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'
 Plug 'joaohkfaria/vim-jest-snippets'
+Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
 call plug#end()
 
 " Airline_Vim
@@ -83,15 +84,15 @@ let g:cpp_attributes_highlight = 1
 let g:cpp_member_highlight = 1
 
 " configure treesitter
-"lua << EOF
-"require'nvim-treesitter.configs'.setup {
-" ensure_installed = "all", -- one of "all", "maintained" (parsers with maintainers), or a list of languages
-" highlight = {
-"   enable = true,              -- false will disable the whole extension
-"   disable = { "rust" },  -- list of language that will be disabled
-" },
-"}
-"EOF
+lua << EOF
+require'nvim-treesitter.configs'.setup {
+ ensure_installed = "all", -- one of "all", "maintained" (parsers with maintainers), or a list of languages
+ highlight = {
+   enable = true,              -- false will disable the whole extension
+   disable = { "rust" },  -- list of language that will be disabled
+ },
+}
+EOF
 
 "set completeopt=noinsert,menuone,noselect
 let g:completion_matching_strategy_list = ['exact', 'substring', 'fuzzy', 'all']
