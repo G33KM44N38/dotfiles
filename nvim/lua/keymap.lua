@@ -50,8 +50,8 @@ keymap("n", "<leader>2", "'b", opts)
 keymap("n", "<leader>3", "'c", opts)
 
 -- mapping Open Buffer fzf telescope
-keymap("n", "<leader>b", ":lua require'telescope.builtin'.buffers()<CR>", opts)
-keymap("n", "<leader>t", ":! ctags <CR> :lua require('telescope.builtin').tags()<CR>", opts)
+keymap("n", "<leader>bb", ":lua require'telescope.builtin'.buffers()<CR>", opts)
+keymap("n", "<leader>t", ":! ctags <CR> :lua require('telescope.builtin').tags()<CR>",opts)
 keymap("n", "<leader>bf", ":lua require('telescope.builtin').find_files()<CR>", opts)
 keymap("n", "<leader>dot", ":lua require('rc_telescope').search_dotfiles()<CR>", opts)
 keymap("n", "<leader>conf", ":lua require('rc_telescope').config()<CR>", opts)
@@ -68,11 +68,19 @@ keymap("n", "<leader>old", ":lua require('telescope.builtin').oldfiles()<CR>", o
 keymap("n", "<leader>reset", ":LspRestart<CR>", opts)
 keymap("n", "<leader>cheat", ":Cheat<CR>", opts)
 
--- vimspector mapping
-keymap("n", "<F2>", ":call vimspector#StepOver()<CR>", opts)
-keymap("n", "<F3>", ":call vimspector#StepInto()<CR>", opts)
-keymap("n", "<F4>", ":call vimspector#StepOut()<CR>", opts)
-keymap("n", "<F12>", ":call vimspector#Restart()<CR>", opts)
+-- nvim-dap mapping debugging
+keymap("n", "<F5>", ":lua require'dap'.continue()<CR>", opts)
+keymap("n", "<F2>", ":lua require'dap'.step_over()<CR>", opts)
+keymap("n", "<F3>", ":lua require'dap'.step_into()<CR>", opts)
+keymap("n", "<F4>", ":lua require'dap'.step_out()<CR>", opts)
+keymap("n", "<leader>b", ":lua require'dap'.toggle_breakpoint()<CR>", opts)
+keymap("n", "<leader>B", ":lua require'dap'.set_breakpoint(vim.fn.input('Breakpoint condition: '))<CR>", opts)
+keymap("n", "<leader>ds", ":lua require'dap-go'.debug_test()<CR>", opts)
+keymap("n", "<leader>du", ":lua require'dapui'.toggle()<CR>", opts)
+
+require("nvim-dap-virtual-text").setup()
+require('dap-go').setup()
+require("dapui").setup()
 
 -- mapping Lex
 keymap("n", "<leader>rr", ":Ex<CR>", opts)

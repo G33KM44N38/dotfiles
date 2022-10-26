@@ -234,6 +234,11 @@ _G.packer_plugins = {
     path = "/home/kylian/.local/share/nvim/site/pack/packer/start/nvim-cursorline",
     url = "https://github.com/yamatsum/nvim-cursorline"
   },
+  ["nvim-dap"] = {
+    loaded = true,
+    path = "/home/kylian/.local/share/nvim/site/pack/packer/start/nvim-dap",
+    url = "https://github.com/mfussenegger/nvim-dap"
+  },
   ["nvim-dap-virtual-text"] = {
     loaded = true,
     path = "/home/kylian/.local/share/nvim/site/pack/packer/start/nvim-dap-virtual-text",

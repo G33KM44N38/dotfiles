@@ -43,7 +43,7 @@ packer.startup(function()
 	use 'RishabhRD/popfix'
 	use 'RishabhRD/nvim-cheat.sh'
 	use 'folke/lsp-colors.nvim'
-	use 'kevinhwang91/rnvimr'
+	-- use 'kevinhwang91/rnvimr'
 	use 'L3MON4D3/LuaSnip'
 	use 'SirVer/ultisnips'
 	-- use 'cdelledonne/vim-cmake'
@@ -69,7 +69,7 @@ packer.startup(function()
 	use 'nvim-treesitter/playground'
 	use 'onsails/lspkind-nvim'
 	use 'preservim/tagbar'
-	use 'puremourning/vimspector'
+	-- use 'puremourning/vimspector'
 	use 'quangnguyen30192/cmp-nvim-ultisnips'
 	use 'rafi/awesome-vim-colorschemes'
 	use 'ray-x/lsp_signature.nvim'
@@ -84,7 +84,9 @@ packer.startup(function()
 	use 'williamboman/nvim-lsp-installer'
 	use { 'wbthomason/packer.nvim', opt = false }
 	use 'folke/trouble.nvim'
-	-- use { 'mhinz/vim-startify' }
 	use { 'theHamsta/nvim-dap-virtual-text' }
 	use { 'mfussenegger/nvim-dap' }
+	use { "rcarriga/nvim-dap-ui", requires = { "mfussenegger/nvim-dap" } }
+	use { 'mfussenegger/nvim-dap' }
+	use 'leoluz/nvim-dap-go'
 end)

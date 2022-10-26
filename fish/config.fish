@@ -7,6 +7,7 @@ alias mc "cd ~/myproject/freelance/site/minata/minata-client/"
 alias kl "cd ~/myproject/freelance/application/KaelGame/"
 alias traingo "cd ~/train/go/"
 alias work "cd ~/stackdev/src/"
+alias bia "cd ~/stackdev/src/api/bon-d-intervention/"
 alias stack "cd ~/stackdev/"
 alias Tmux "_MenuTmux"
 
@@ -32,4 +33,4 @@ source ~/.profile
 
 set -U FZF_COMPLETE 2
 #set the default shell
-export SHELL=/usr/local/bin/fish
+export SHELL=~/shell/bin/fish
