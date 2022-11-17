@@ -32,5 +32,9 @@ end
 source ~/.profile
 
 set -U FZF_COMPLETE 2
+set -x GOPATH $HOME/
+set PATH $PATH:/usr/local/go/bin
+set PATH $HOME/bin:$PATH
+set PATH $HOME/.local/bin:$PATH
 #set the default shell
-export SHELL=~/shell/bin/fish
+# export SHELL=~/shell/bin/fish

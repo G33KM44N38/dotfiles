@@ -24,13 +24,13 @@ set rnu
 set mouse=a
 set nu
 set autoread
-syntax enable
+" syntax enable
 " colorscheme waxcoin
-" colorscheme alduin
+colorscheme alduin
 " colorscheme sonokai
- colorscheme sierra
+" colorscheme sierra
 " colorscheme orbital
-" colorscheme Molokai
+" colorscheme Monokai
 set backspace=indent,eol,start
 set termguicolors
 lua require('init')
