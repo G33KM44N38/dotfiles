@@ -10,9 +10,7 @@ imap  kj <Esc>
 imap  KJ <Esc>
 imap  <Space><Space> <Esc>
 
-
 set nocompatible              " required
-set encoding=utf-8
 set fillchars+=stl:\ ,stlnc:\
 set foldmethod=indent
 set foldlevel=99
@@ -35,6 +33,9 @@ set backspace=indent,eol,start
 set termguicolors
 lua require('init')
 
+" tansparent background
+hi Normal guibg=NONE ctermbg=NONE
+
 " au BufRead *.css, *.js, *.html, *.json :set tabstop=4
 autocmd Filetype css setlocal ts=3 sw=3 expandtab
 autocmd Filetype javascript setlocal ts=3 sw=3 expandtab
@@ -56,6 +57,7 @@ Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'
 Plug 'joaohkfaria/vim-jest-snippets'
 Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
+Plug 'ryanoasis/vim-devicons'
 call plug#end()
 
 " Airline_Vim

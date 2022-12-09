@@ -1,0 +1,55 @@
+snippet genSuite "generate test suite"
+package $1
+
+import (
+    "testing"
+    "github.com/stretchr/testify/suite"
+	"github.com/stretchr/testify/assert"
+)
+
+type $2TestSuite struct {
+    suite.Suite
+}
+
+func (suite *$2TestSuite) SetupAllSuite() {
+}
+
+func (suite *$2TestSuite) SetupTest() {
+	${5:text}
+}
+
+func (suite *$2TestSuite) Test$3() {
+    $0
+}
+
+func Test$2TestSuite(t *testing.T) {
+    suite.Run(t, new($2TestSuite))
+}
+endsnippet
+
+snippet tests "snippet for test in test suite"
+
+func (suite *$1TestSuite) Test$1(){
+	$0
+}
+endsnippet
+
+# =====================================
+
+snippet ts "generate a test for the suite"
+func (suite *$1) Test$2(){
+	$0
+}
+endsnippet
+
+# =====================================
+
+snippet tss "generate a test for the suite with setup"
+func (suite *$1) setupTest$2(){
+	$0
+}
+
+func (suite *$1) Test$2(){
+	suite.setupTest$2()
+}
+endsnippet

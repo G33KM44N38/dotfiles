@@ -42,8 +42,6 @@ function vim.lsp.util.open_floating_preview(contents, syntax, opts, ...)
     return orig_util_open_floating_preview(contents, syntax, opts, ...)
 end
 
-local augroup = vim.api.nvim_create_augroup("LspFormatting", {})
-
 local opts = { noremap = true, silent = true, nowait = true }
 
 vim.api.nvim_set_keymap("n", "<space>e", "<cmd>lua vim.diagnostic.open_float()<CR>", opts)

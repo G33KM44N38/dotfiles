@@ -239,6 +239,16 @@ _G.packer_plugins = {
     path = "/home/kylian/.local/share/nvim/site/pack/packer/start/nvim-dap",
     url = "https://github.com/mfussenegger/nvim-dap"
   },
+  ["nvim-dap-go"] = {
+    loaded = true,
+    path = "/home/kylian/.local/share/nvim/site/pack/packer/start/nvim-dap-go",
+    url = "https://github.com/leoluz/nvim-dap-go"
+  },
+  ["nvim-dap-ui"] = {
+    loaded = true,
+    path = "/home/kylian/.local/share/nvim/site/pack/packer/start/nvim-dap-ui",
+    url = "https://github.com/rcarriga/nvim-dap-ui"
+  },
   ["nvim-dap-virtual-text"] = {
     loaded = true,
     path = "/home/kylian/.local/share/nvim/site/pack/packer/start/nvim-dap-virtual-text",
@@ -294,11 +304,6 @@ _G.packer_plugins = {
     path = "/home/kylian/.local/share/nvim/site/pack/packer/start/popfix",
     url = "https://github.com/RishabhRD/popfix"
   },
-  rnvimr = {
-    loaded = true,
-    path = "/home/kylian/.local/share/nvim/site/pack/packer/start/rnvimr",
-    url = "https://github.com/kevinhwang91/rnvimr"
-  },
   ["shade.nvim"] = {
     loaded = true,
     path = "/home/kylian/.local/share/nvim/site/pack/packer/start/shade.nvim",
@@ -315,7 +320,7 @@ _G.packer_plugins = {
     url = "https://github.com/nvim-telescope/telescope.nvim"
   },
   ["toggleterm.nvim"] = {
-    config = { "\27LJ\2\n8\0\0\3\0\3\0\0066\0\0\0'\2\1\0B\0\2\0029\0\2\0B\0\1\1K\0\1\0\nsetup\15toggleterm\frequire\0" },
+    config = { "\27LJ\2\0028\0\0\2\0\3\0\0066\0\0\0'\1\1\0B\0\2\0029\0\2\0B\0\1\1K\0\1\0\nsetup\15toggleterm\frequire\0" },
     loaded = true,
     path = "/home/kylian/.local/share/nvim/site/pack/packer/start/toggleterm.nvim",
     url = "https://github.com/akinsho/toggleterm.nvim"
@@ -375,11 +380,6 @@ _G.packer_plugins = {
     path = "/home/kylian/.local/share/nvim/site/pack/packer/start/vim-terminal",
     url = "https://github.com/tc50cal/vim-terminal"
   },
-  vimspector = {
-    loaded = true,
-    path = "/home/kylian/.local/share/nvim/site/pack/packer/start/vimspector",
-    url = "https://github.com/puremourning/vimspector"
-  },
   ["vista.vim"] = {
     loaded = true,
     path = "/home/kylian/.local/share/nvim/site/pack/packer/start/vista.vim",
@@ -390,7 +390,7 @@ _G.packer_plugins = {
 time([[Defining packer_plugins]], false)
 -- Config for: toggleterm.nvim
 time([[Config for toggleterm.nvim]], true)
-try_loadstring("\27LJ\2\n8\0\0\3\0\3\0\0066\0\0\0'\2\1\0B\0\2\0029\0\2\0B\0\1\1K\0\1\0\nsetup\15toggleterm\frequire\0", "config", "toggleterm.nvim")
+try_loadstring("\27LJ\2\0028\0\0\2\0\3\0\0066\0\0\0'\1\1\0B\0\2\0029\0\2\0B\0\1\1K\0\1\0\nsetup\15toggleterm\frequire\0", "config", "toggleterm.nvim")
 time([[Config for toggleterm.nvim]], false)
 
 _G._packer.inside_compile = false

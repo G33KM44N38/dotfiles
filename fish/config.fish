@@ -9,7 +9,8 @@ alias traingo "cd ~/train/go/"
 alias work "cd ~/stackdev/src/"
 alias bia "cd ~/stackdev/src/api/bon-d-intervention/"
 alias stack "cd ~/stackdev/"
-alias Tmux "_MenuTmux"
+alias g "cd ~/goinfre/"
+#alias Tmux "_MenuTmux"
 
 # git command
 alias gs "git status"
@@ -29,8 +30,6 @@ if type -q exa
 	alias llt "ll --tree"
 end
 
-source ~/.profile
-
 set -U FZF_COMPLETE 2
 set -x GOPATH $HOME/
 set PATH $PATH:/usr/local/go/bin
@@ -38,3 +37,7 @@ set PATH $HOME/bin:$PATH
 set PATH $HOME/.local/bin:$PATH
 #set the default shell
 # export SHELL=~/shell/bin/fish
+
+# Generated for envman. Do not edit.
+test -s "$HOME/.config/envman/load.fish"; and source "$HOME/.config/envman/load.fish"
+
