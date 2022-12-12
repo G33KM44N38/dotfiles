@@ -87,7 +87,6 @@ end}
 	use { 'wbthomason/packer.nvim', opt = false }
 	use 'folke/trouble.nvim'
 	use { 'theHamsta/nvim-dap-virtual-text' }
-	use { 'mfussenegger/nvim-dap' }
 	use { "rcarriga/nvim-dap-ui", requires = { "mfussenegger/nvim-dap" } }
 	use { 'mfussenegger/nvim-dap' }
 	use 'leoluz/nvim-dap-go'

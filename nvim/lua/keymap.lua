@@ -50,6 +50,7 @@ keymap("n", "<leader>2", "'b", opts)
 keymap("n", "<leader>3", "'c", opts)
 
 -- mapping Open Buffer fzf telescope
+keymap("n", "<leader>bd", ":lua require('close_buffer_telescope').close_buffer()<CR>", opts)
 keymap("n", "<leader>bb", ":lua require'telescope.builtin'.buffers()<CR>", opts)
 keymap("n", "<leader>t", ":! ctags <CR> :lua require('telescope.builtin').tags()<CR>",opts)
 keymap("n", "<leader>bf", ":lua require('telescope.builtin').find_files()<CR>", opts)
