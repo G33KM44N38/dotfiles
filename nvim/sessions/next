@@ -1,0 +1,139 @@
+let SessionLoad = 1
+let s:so_save = &g:so | let s:siso_save = &g:siso | setg so=0 siso=0 | setl so=-1 siso=-1
+let v:this_session=expand("<sfile>:p")
+silent only
+silent tabonly
+cd ~/Next/server
+if expand('%') == '' && !&modified && line('$') <= 1 && getline(1) == ''
+  let s:wipebuf = bufnr('%')
+endif
+let s:shortmess_save = &shortmess
+if &shortmess =~ 'A'
+  set shortmess=aoOA
+else
+  set shortmess=aoO
+endif
+badd +55 index.js
+badd +8 package.json
+badd +17 ~/Next/client/first/src/App.css
+badd +57 ~/Next/client/first/src/App.js
+badd +13 ~/Next/client/first/src/reportWebVitals.js
+badd +16 ~/Next/client/first/src/pages/AddTecho.js
+badd +23 ~/Next/client/first/src/components/TechnoItem.js
+badd +17 ~/Next/client/first/src/pages/techoList.js
+badd +8 ~/Next/client/first/src/pages/Home.js
+badd +25 ~/Next/client/first/src/components/Menu.js
+badd +16 ~/Next/client/first/src/css/admin.css
+badd +35 ~/Next/client/first/src/pages/admin.js
+badd +5 ~/Next/client/first/src/css/app.css
+badd +23 ~/Next/client/first/src/css/add-techno.css
+argglobal
+%argdel
+$argadd index.js
+edit ~/Next/client/first/src/pages/admin.js
+let s:save_splitbelow = &splitbelow
+let s:save_splitright = &splitright
+set splitbelow splitright
+wincmd _ | wincmd |
+vsplit
+1wincmd h
+wincmd w
+let &splitbelow = s:save_splitbelow
+let &splitright = s:save_splitright
+wincmd t
+let s:save_winminheight = &winminheight
+let s:save_winminwidth = &winminwidth
+set winminheight=0
+set winheight=1
+set winminwidth=0
+set winwidth=1
+exe 'vert 1resize ' . ((&columns * 111 + 121) / 243)
+exe 'vert 2resize ' . ((&columns * 131 + 121) / 243)
+argglobal
+balt ~/Next/client/first/src/components/Menu.js
+setlocal fdm=indent
+setlocal fde=0
+setlocal fmr={{{,}}}
+setlocal fdi=#
+setlocal fdl=99
+setlocal fml=1
+setlocal fdn=20
+setlocal fen
+5
+normal! zo
+10
+normal! zo
+14
+normal! zo
+25
+normal! zo
+33
+normal! zo
+let s:l = 34 - ((33 * winheight(0) + 27) / 55)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 34
+normal! 010|
+lcd ~/Next/server
+wincmd w
+argglobal
+if bufexists(fnamemodify("~/Next/server/index.js", ":p")) | buffer ~/Next/server/index.js | else | edit ~/Next/server/index.js | endif
+if &buftype ==# 'terminal'
+  silent file ~/Next/server/index.js
+endif
+balt ~/Next/client/first/src/reportWebVitals.js
+setlocal fdm=indent
+setlocal fde=0
+setlocal fmr={{{,}}}
+setlocal fdi=#
+setlocal fdl=99
+setlocal fml=1
+setlocal fdn=20
+setlocal fen
+19
+normal! zo
+25
+normal! zo
+34
+normal! zo
+35
+normal! zo
+44
+normal! zo
+47
+normal! zo
+55
+normal! zo
+59
+normal! zo
+60
+normal! zo
+let s:l = 55 - ((36 * winheight(0) + 27) / 55)
+if s:l < 1 | let s:l = 1 | endif
+keepjumps exe s:l
+normal! zt
+keepjumps 55
+normal! 018|
+lcd ~/Next/server
+wincmd w
+exe 'vert 1resize ' . ((&columns * 111 + 121) / 243)
+exe 'vert 2resize ' . ((&columns * 131 + 121) / 243)
+tabnext 1
+if exists('s:wipebuf') && len(win_findbuf(s:wipebuf)) == 0 && getbufvar(s:wipebuf, '&buftype') isnot# 'terminal'
+  silent exe 'bwipe ' . s:wipebuf
+endif
+unlet! s:wipebuf
+set winheight=1 winwidth=20
+let &shortmess = s:shortmess_save
+let &winminheight = s:save_winminheight
+let &winminwidth = s:save_winminwidth
+let s:sx = expand("<sfile>:p:r")."x.vim"
+if filereadable(s:sx)
+  exe "source " . fnameescape(s:sx)
+endif
+let &g:so = s:so_save | let &g:siso = s:siso_save
+set hlsearch
+doautoall SessionLoadPost
+unlet SessionLoad
+" vim: set ft=vim :
