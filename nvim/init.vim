@@ -24,16 +24,19 @@ set rnu
 set mouse=a
 set nu
 set autoread
-syntax enable
+" syntax enable
 " colorscheme waxcoin
-" colorscheme alduin
+colorscheme alduin
 " colorscheme sonokai
-colorscheme sierra
+" colorscheme sierra
 " colorscheme orbital
- " colorscheme Molokai
+" colorscheme Monokai
 set backspace=indent,eol,start
 set termguicolors
 lua require('init')
+
+" tansparent background
+hi Normal guibg=NONE ctermbg=NONE
 
 " au BufRead *.css, *.js, *.html, *.json :set tabstop=4
 autocmd Filetype css setlocal ts=3 sw=3 expandtab
@@ -55,6 +58,8 @@ call plug#begin()
 Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'
 Plug 'joaohkfaria/vim-jest-snippets'
+Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
+Plug 'ryanoasis/vim-devicons'
 call plug#end()
 
 " Airline_Vim

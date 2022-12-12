@@ -41,7 +41,6 @@ keymap("n", "<Leader>se", ":s/<<C-r><C-w>>//g<Left><Left>", opts)
 -- open term
 keymap("n", "<leader>tt", ":ToggleTerm size=20 cmd='fish'<CR>", opts)
 keymap("n", "<leader>tv", ":ToggleTerm size=20 direction=vertical<CR>", opts)
-
 -- mark
 keymap("n", "<leader><leader>1", ":mark a <CR>", opts)
 keymap("n", "<leader><leader>2", ":mark b <CR>", opts)
@@ -58,7 +57,6 @@ keymap("n", "<leader>bf", ":lua require('telescope.builtin').find_files()<CR>", 
 keymap("n", "<leader>dot", ":lua require('rc_telescope').search_dotfiles()<CR>", opts)
 keymap("n", "<leader>conf", ":lua require('rc_telescope').config()<CR>", opts)
 keymap("n", "?", ":lua require('telescope.builtin').current_buffer_fuzzy_find()<CR>", opts)
-
 keymap("n", "<leader>br", ":lua require('telescope.builtin').live_grep()<CR>", opts)
 keymap("n", "<leader>bq", ":lua require('telescope.builtin').quickfix()<CR>", opts)
 keymap("n", "<leader>bg", ":lua require('telescope.builtin').git_files()<CR>", opts)
