@@ -14,6 +14,8 @@ alias work "cd ~/stackdev/src/"
 alias bia "cd ~/stackdev/src/api/bon-d-intervention/; vi ."
 alias stack "cd ~/stackdev/"
 alias g "cd ~/goinfre/"
+alias lzd "lazydocker"
+alias lg "lazygit"
 #alias Tmux "_MenuTmux"
 
 # git command
