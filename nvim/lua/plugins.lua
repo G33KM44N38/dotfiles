@@ -34,9 +34,9 @@ packer.startup(function()
 	use { 'hoob3rt/lualine.nvim' }
 	use { 'kyazdani42/nvim-web-devicons' }
 	use { 'akinsho/bufferline.nvim' }
-use {"akinsho/toggleterm.nvim", tag = '*', config = function()
-  require("toggleterm").setup()
-end}
+	use {"akinsho/toggleterm.nvim", tag = '*', config = function()
+	  require("toggleterm").setup()
+	end}
 	use { 'ray-x/go.nvim' }
 	use { 'ray-x/guihua.lua' }
 	use { 'glepnir/lspsaga.nvim' }
