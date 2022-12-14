@@ -41,6 +41,7 @@ keymap("n", "<Leader>se", ":s/<<C-r><C-w>>//g<Left><Left>", opts)
 -- open term
 keymap("n", "<leader>tt", ":ToggleTerm direction=float fish<CR>", opts)
 keymap("n", "<leader>tv", ":ToggleTerm direction=vertical size=100 fish<CR>", opts)
+keymap("n", "<leader>th", ":ToggleTerm direction=horizontal size=100 fish<CR>", opts)
 
 -- mark
 keymap("n", "<leader><leader>1", ":mark a <CR>", opts)
