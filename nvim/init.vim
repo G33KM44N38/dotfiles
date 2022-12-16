@@ -6,7 +6,7 @@ nnoremap  <Space>f :Files<CR>
 nnoremap  <Space>w :Rg<CR>
 nnoremap  <Space>pv :wincmd v<bar> :Ex <bar> :vertical resize 30<CR>
 nnoremap  <Space>"t :vert terminal<CR>
-nnoremap <silent> <leader>lg :LazyGit<CR>
+nnoremap <Space>lg :LazyGit<CR>
 imap  kj <Esc>
 imap  KJ <Esc>
 
