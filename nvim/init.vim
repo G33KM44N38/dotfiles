@@ -8,7 +8,6 @@ nnoremap  <Space>pv :wincmd v<bar> :Ex <bar> :vertical resize 30<CR>
 nnoremap  <Space>"t :vert terminal<CR>
 imap  kj <Esc>
 imap  KJ <Esc>
-imap  <Space><Space> <Esc>
 
 set nocompatible              " required
 set fillchars+=stl:\ ,stlnc:\
@@ -59,6 +58,7 @@ Plug 'junegunn/fzf.vim'
 Plug 'joaohkfaria/vim-jest-snippets'
 Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
 Plug 'ryanoasis/vim-devicons'
+Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
 call plug#end()
 
 " Airline_Vim

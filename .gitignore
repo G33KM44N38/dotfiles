@@ -23,3 +23,5 @@ nvim/sessions
 yarn
 iterm2
 go/
+wget-log
+lazygit
