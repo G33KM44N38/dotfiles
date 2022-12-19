@@ -54,7 +54,7 @@ keymap("n", "<leader>3", "'c", opts)
 -- mapping Open Buffer fzf telescope
 keymap("n", "<leader>bd", ":lua require('close_buffer_telescope').close_buffer()<CR>", opts)
 keymap("n", "<leader>bb", ":lua require'telescope.builtin'.buffers()<CR>", opts)
-keymap("n", "<leader>t", ":! ctags <CR> :lua require('telescope.builtin').tags()<CR>", opts)
+keymap("n", "<leader>t", ":! ctags <CR> :lua require('telescope.builtin').tags()<CR>",opts)
 keymap("n", "<leader>bf", ":lua require('telescope.builtin').find_files()<CR>", opts)
 keymap("n", "<leader>dot", ":lua require('rc_telescope').search_dotfiles()<CR>", opts)
 keymap("n", "<leader>conf", ":lua require('rc_telescope').config()<CR>", opts)
@@ -87,6 +87,7 @@ keymap("n", "<leader>du", ":lua require'dapui'.toggle()<CR>", opts)
 require("nvim-dap-virtual-text").setup()
 require('dap-go').setup()
 require("dapui").setup()
+
 -- mapping Lex
 keymap("n", "<leader>rr", ":Ex<CR>", opts)
 
