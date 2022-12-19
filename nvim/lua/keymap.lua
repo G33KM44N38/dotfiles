@@ -71,8 +71,8 @@ keymap("n", "<leader>old", ":lua require('telescope.builtin').oldfiles()<CR>", o
 keymap("n", "<leader>reset", ":LspRestart<CR>", opts)
 keymap("n", "<leader>cheat", ":Cheat<CR>", opts)
 
-local augroup = vim.api.nvim_create_augroup("LspFormatting", {})
-keymap("n", "<space>lf", ":lua vim.lsp.buf.formatting()<CR>", opts)
+local autogroup = vim.api.nvim_create_augroup("LspFormatting", {})
+keymap("n", "<space>lf", ":lua vim.lsp.buf.format()<CR>", opts)
 
 -- nvim-dap mapping debugging
 keymap("n", "<F5>", ":lua require'dap'.continue()<CR>", opts)
