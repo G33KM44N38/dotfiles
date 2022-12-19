@@ -14,10 +14,6 @@ type $2TestSuite struct {
 func (suite *$2TestSuite) SetupAllSuite() {
 }
 
-func (suite *$2TestSuite) SetupTest() {
-	${5:text}
-}
-
 func (suite *$2TestSuite) Test$3() {
     $0
 }
@@ -51,5 +47,16 @@ func (suite *$1) setupTest$2(){
 
 func (suite *$1) Test$2(){
 	suite.setupTest$2()
+}
+endsnippet
+
+# =====================================
+snippet Sase "Make an assert equal for testing suite"
+assert.Equal(suite.T(), $1, $2, $3)
+endsnippet
+
+snippet ifer "if err != nil"
+if err != nil {
+	$0
 }
 endsnippet

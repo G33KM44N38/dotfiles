@@ -26,6 +26,14 @@ keymap("n", "<leader>m", ":make<CR>", opts)
 -- commante line
 keymap("n", "<leader><leader>c", ":Commentary <CR>", opts)
 
+-- paste without overwrite
+vim.keymap.set("x", "<leader>p", "\"_dP")
+
+-- paste to the clipboard
+vim.keymap.set("n", "<leader>y", "\"+y")
+vim.keymap.set("v", "<leader>y", "\"+y")
+vim.keymap.set("n", "<leader>Y", "\"+y")
+
 -- mapping fugitif
 keymap("n", "<leader>gs", ":G<CR>", opts)
 keymap("n", "<leader>gc", ":Git commit<CR>", opts)
@@ -40,7 +48,7 @@ keymap("n", "<Leader>se", ":s/<<C-r><C-w>>//g<Left><Left>", opts)
 
 -- open term
 keymap("n", "<leader>tt", ":ToggleTerm size=20 cmd='fish'<CR>", opts)
-keymap("n", "<leader>tv", ":ToggleTerm size=20 direction=vertical<CR>", opts)
+keymap("n", "<leader>tv", ":ToggleTerm size=100 direction=vertical<CR>", opts)
 -- mark
 keymap("n", "<leader><leader>1", ":mark a <CR>", opts)
 keymap("n", "<leader><leader>2", ":mark b <CR>", opts)
