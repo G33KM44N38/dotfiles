@@ -39,8 +39,10 @@ keymap("n", "<Leader>sed", ":bufdo %s/<<C-r><C-w>>//g<Left><Left> | update", opt
 keymap("n", "<Leader>se", ":s/<<C-r><C-w>>//g<Left><Left>", opts)
 
 -- open term
-keymap("n", "<leader>tt", ":ToggleTerm size=20 cmd='fish'<CR>", opts)
-keymap("n", "<leader>tv", ":ToggleTerm size=20 direction=vertical<CR>", opts)
+keymap("n", "<leader>tt", ":ToggleTerm direction=float fish<CR>", opts)
+keymap("n", "<leader>tv", ":ToggleTerm direction=vertical size=100 fish<CR>", opts)
+keymap("n", "<leader>th", ":ToggleTerm direction=horizontal size=100 fish<CR>", opts)
+
 -- mark
 keymap("n", "<leader><leader>1", ":mark a <CR>", opts)
 keymap("n", "<leader><leader>2", ":mark b <CR>", opts)
@@ -68,6 +70,9 @@ keymap("n", "<leader>man", ":lua require('telescope.builtin').man_pcages()<CR>",
 keymap("n", "<leader>old", ":lua require('telescope.builtin').oldfiles()<CR>", opts)
 keymap("n", "<leader>reset", ":LspRestart<CR>", opts)
 keymap("n", "<leader>cheat", ":Cheat<CR>", opts)
+
+local augroup = vim.api.nvim_create_augroup("LspFormatting", {})
+keymap("n", "<space>lf", ":lua vim.lsp.buf.formatting()<CR>", opts)
 
 -- nvim-dap mapping debugging
 keymap("n", "<F5>", ":lua require'dap'.continue()<CR>", opts)
