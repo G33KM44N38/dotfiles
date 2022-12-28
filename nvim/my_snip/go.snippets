@@ -11,13 +11,6 @@ type $2TestSuite struct {
     suite.Suite
 }
 
-func (suite *$2TestSuite) SetupAllSuite() {
-}
-
-func (suite *$2TestSuite) SetupTest() {
-	${5:text}
-}
-
 func (suite *$2TestSuite) Test$3() {
     $0
 }
@@ -56,7 +49,8 @@ endsnippet
 
 # =====================================
 snippet ifer "make a if err"
-	if err != nil {
-		$0
-	}
+if err != nil {
+	$0
+}
+
 endsnippet

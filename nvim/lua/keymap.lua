@@ -91,6 +91,9 @@ require("dapui").setup()
 -- mapping Lex
 keymap("n", "<leader>rr", ":Ex<CR>", opts)
 
+-- Code action menu
+keymap("n", "<leader>Q", ":CodeActionMenu<CR>", opts)
+
 -- Visual Block --
 -- Move text up and down
 keymap("x", "J", ":move '>+1<CR>gv-gv", opts)
