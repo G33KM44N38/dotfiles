@@ -47,7 +47,7 @@ keymap("n", "<Leader>sed", ":bufdo %s/<<C-r><C-w>>//g<Left><Left> | update", opt
 keymap("n", "<Leader>se", ":s/<<C-r><C-w>>//g<Left><Left>", opts)
 
 -- open term
-keymap("n", "<leader>tt", ":ToggleTerm size=20 cmd='fish'<CR>", opts)
+keymap("n", "<leader>tt", ":ToggleTerm size=20 direction=float cmd='fish'<CR>", opts)
 keymap("n", "<leader>tv", ":ToggleTerm size=100 direction=vertical<CR>", opts)
 -- mark
 keymap("n", "<leader><leader>1", ":mark a <CR>", opts)
@@ -92,6 +92,9 @@ require('dap-go').setup()
 require("dapui").setup()
 -- mapping Lex
 keymap("n", "<leader>rr", ":Ex<CR>", opts)
+
+-- Code action menu
+keymap("n", "<leader>Q", ":CodeActionMenu<CR>", opts)
 
 -- Visual Block --
 -- Move text up and down

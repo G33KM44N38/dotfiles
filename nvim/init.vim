@@ -4,7 +4,7 @@ set autoindent
 set nowrap
 nnoremap  <Space>f :Files<CR>
 nnoremap  <Space>w :Rg<CR>
-nnoremap  <Space>pv :wincmd v<bar> :Ex <bar> :vertical resize 30<CR>
+nnoremap  <Space>pv :NERDTree<CR>
 nnoremap  <Space>"t :vert terminal<CR>
 imap  kj <Esc>
 imap  KJ <Esc>
@@ -60,6 +60,9 @@ Plug 'junegunn/fzf.vim'
 Plug 'joaohkfaria/vim-jest-snippets'
 Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
 Plug 'ryanoasis/vim-devicons'
+Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
+Plug 'kdheepak/lazygit.nvim'
+Plug 'preservim/nerdtree'
 call plug#end()
 
 " Airline_Vim
