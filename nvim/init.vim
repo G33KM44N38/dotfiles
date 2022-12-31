@@ -78,6 +78,12 @@ Plug 'ryanoasis/vim-devicons'
 Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
 Plug 'kdheepak/lazygit.nvim'
 Plug 'preservim/nerdtree'
+Plug 'pangloss/vim-javascript'
+Plug 'leafgarland/typescript-vim'
+Plug 'peitalin/vim-jsx-typescript'
+Plug 'styled-components/vim-styled-components', { 'branch': 'main' }
+Plug 'jparise/vim-graphql'
+Plug 'mlaursen/vim-react-snippets'
 call plug#end()
 
 " Airline_Vim

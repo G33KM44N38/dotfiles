@@ -43,3 +43,6 @@ end
 set -U FZF_COMPLETE 2
 #set the default shell
 export SHELL=/usr/local/bin/fish
+source ~/.config/fish/path.fish
+
+
