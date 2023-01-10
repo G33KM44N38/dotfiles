@@ -1,6 +1,11 @@
+# git commanalias vi "nvim"
 alias vi "nvim"
 alias pj "cd ~/myproject/"
 alias conf "cd ~/.config/ ; vi ."
+alias stackMina "cd ~/myproject/freelance/site/minata/stackdev/"
+alias mapi "cd ~/myproject/freelance/site/minata/stackdev/src/api/"
+alias mfr "cd ~/myproject/freelance/site/minata/stackdev/src/front/"
+alias kl "cd ~/myproject/freelance/application/KaelGame/"
 alias mina "cd ~/myproject/freelance/site/minata/"
 alias ms "cd ~/myproject/freelance/site/minata/minata-server/"
 alias mc "cd ~/myproject/freelance/site/minata/minata-client/"
@@ -10,9 +15,8 @@ alias work "cd ~/stackdev/src/"
 alias bia "cd ~/stackdev/src/api/bon-d-intervention/; vi ."
 alias stack "cd ~/stackdev/"
 alias g "cd ~/goinfre/"
-alias lg "lazygit"
 alias lzd "lazydocker"
-#alias Tmux "_MenuTmux"
+alias lg "lazygit"
 
 # git command
 alias gs "git status"
@@ -48,4 +52,3 @@ eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
 # Generated for envman. Do not edit.
 test -s "$HOME/.config/envman/load.fish"; and source "$HOME/.config/envman/load.fish"
-

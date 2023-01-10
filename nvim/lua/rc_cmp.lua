@@ -106,7 +106,7 @@ cmp.setup.cmdline("/", {
     	['<CR>'] = cmp.mapping.confirm({ select = true }),
     	['<Up>'] = cmp.mapping(cmp.mapping.select_prev_item(), { 'i', 'c' }),
    	['<Down>'] = cmp.mapping(cmp.mapping.select_next_item(), { 'i', 'c' }),
-    	['<Tab>'] = cmp.mapping(cmp.mapping.select_next_item(), { 'i', 'c' }),
+    	-- ['<Tab>'] = cmp.mapping(cmp.mapping.select_next_item(), { 'i', 'c' }),
     	['<C-k>'] = cmp.mapping(cmp.mapping.select_prev_item(), { 'i', 'c' }),
    	['<C-j>'] = cmp.mapping(cmp.mapping.select_next_item(), { 'i', 'c' }),
   },
@@ -119,7 +119,7 @@ cmp.setup.cmdline(":", {
     mapping = {
     	['<CR>'] = cmp.mapping.confirm({ select = true }),
     	['<Up>'] = cmp.mapping(cmp.mapping.select_prev_item(), { 'i', 'c' }),
-    	['<Tab>'] = cmp.mapping(cmp.mapping.select_next_item(), { 'i', 'c' }),
+    	-- ['<Tab>'] = cmp.mapping(cmp.mapping.select_next_item(), { 'i', 'c' }),
 	['<Down>'] = cmp.mapping(cmp.mapping.select_next_item(), { 'i', 'c' }),
     	['<C-k>'] = cmp.mapping(cmp.mapping.select_prev_item(), { 'i', 'c' }),
    	['<C-j>'] = cmp.mapping(cmp.mapping.select_next_item(), { 'i', 'c' }),

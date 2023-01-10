@@ -60,9 +60,11 @@ let g:lazygit_use_neovim_remote = 1 " fallback to 0 if neovim-remote is not inst
 let g:lazygit_use_custom_config_file_path = 0 " config file path is evaluated if this value is 1
 let g:lazygit_config_file_path = '' " custom config file path
 
+" Debugger
+" lua require('dap-go').setup()
+
 " NERDTree
 nnoremap <leader>n :NERDTreeFocus<CR>
-nnoremap <C-n> :NERDTree<CR>
 nnoremap <C-t> :NERDTreeToggle<CR>
 nnoremap <C-f> :NERDTreeFind<CR>
 " Exit Vim if NERDTree is the only window remaining in the only tab.
@@ -77,7 +79,11 @@ Plug 'ryanoasis/vim-devicons'
 Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
 Plug 'kdheepak/lazygit.nvim'
 Plug 'preservim/nerdtree'
+Plug 'ThePrimeagen/harpoon'
 call plug#end()
+
+" delve debugger
+let g:delve_backend = "native"
 
 " Airline_Vim
 let g:airline_powerline_fonts = 1

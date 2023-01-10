@@ -25,3 +25,4 @@ iterm2
 go/
 wget-log
 lazygit
+dlv/.dbg_history
