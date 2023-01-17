@@ -50,8 +50,10 @@ keymap("n", "<Leader>sed", ":bufdo %s/<<C-r><C-w>>//g<Left><Left> | update", opt
 keymap("n", "<Leader>se", ":s/<<C-r><C-w>>//g<Left><Left>", opts)
 
 -- open term
-keymap("n", "<leader>tt", ":ToggleTerm size=20 direction=float cmd='fish'<CR>", opts)
-keymap("n", "<leader>tv", ":ToggleTerm size=100 direction=vertical<CR>", opts)
+keymap("n", "<leader>tt", ":ToggleTerm direction=float fish<CR>", opts)
+keymap("n", "<leader>tv", ":ToggleTerm direction=vertical size=100 fish<CR>", opts)
+keymap("n", "<leader>th", ":ToggleTerm direction=horizontal size=100 fish<CR>", opts)
+
 -- mark
 keymap("n", "<leader><leader>1", ":mark a <CR>", opts)
 keymap("n", "<leader><leader>2", ":mark b <CR>", opts)
@@ -63,7 +65,7 @@ keymap("n", "<leader>3", "'c", opts)
 -- mapping Open Buffer fzf telescope
 keymap("n", "<leader>bd", ":lua require('close_buffer_telescope').close_buffer()<CR>", opts)
 keymap("n", "<leader>bb", ":lua require'telescope.builtin'.buffers()<CR>", opts)
-keymap("n", "<leader>t", ":! ctags <CR> :lua require('telescope.builtin').tags()<CR>", opts)
+keymap("n", "<leader>t", ":! ctags <CR> :lua require('telescope.builtin').tags()<CR>",opts)
 keymap("n", "<leader>bf", ":lua require('telescope.builtin').find_files()<CR>", opts)
 keymap("n", "<leader>dot", ":lua require('rc_telescope').search_dotfiles()<CR>", opts)
 keymap("n", "<leader>conf", ":lua require('rc_telescope').config()<CR>", opts)
@@ -80,6 +82,9 @@ keymap("n", "<leader>old", ":lua require('telescope.builtin').oldfiles()<CR>", o
 keymap("n", "<leader>reset", ":LspRestart<CR>", opts)
 keymap("n", "<leader>cheat", ":Cheat<CR>", opts)
 
+local autogroup = vim.api.nvim_create_augroup("LspFormatting", {})
+keymap("n", "<space>lf", ":lua vim.lsp.buf.format()<CR>", opts)
+
 -- nvim-dap mapping debugging
 keymap("n", "<F5>", ":lua require'dap'.continue()<CR>", opts)
 keymap("n", "<F2>", ":lua require'dap'.step_over()<CR>", opts)
@@ -93,6 +98,7 @@ keymap("n", "<leader>du", ":lua require'dapui'.toggle()<CR>", opts)
 require("nvim-dap-virtual-text").setup()
 require('dap-go').setup()
 require("dapui").setup()
+
 -- mapping Lex
 keymap("n", "<leader>rr", ":Ex<CR>", opts)
 

@@ -1,3 +1,4 @@
+# git commanalias vi "nvim"
 alias vi "nvim"
 alias pj "cd ~/myproject/"
 alias conf "cd ~/.config/ ; vi ."
@@ -16,7 +17,6 @@ alias stack "cd ~/stackdev/"
 alias g "cd ~/goinfre/"
 alias lzd "lazydocker"
 alias lg "lazygit"
-#alias Tmux "_MenuTmux"
 
 # git command
 alias gs "git status"
@@ -36,11 +36,14 @@ if type -q exa
 	alias llt "ll --tree"
 end
 
-if status is-interactive
-    # Commands to run in interactive sessions can go here
-end
-
 set -U FZF_COMPLETE 2
+set -x GOPATH $HOME/
+set PATH $PATH:/usr/local/go/bin
+#set PATH $PATH:$GOPATH/bin/
+#set PATH $HOME/bin:$PATH
+#set PATH $HOME/.local/bin:$PATH
+set EDITOR 'nvim'
+set VISUAL 'nvim'
 #set the default shell
 export SHELL=/usr/local/bin/fish
 source ~/.config/fish/path.fish

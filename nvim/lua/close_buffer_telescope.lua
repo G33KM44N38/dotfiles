@@ -69,4 +69,3 @@ M.close_buffer = function()
 	bufferView:find()
 end
 return M
-

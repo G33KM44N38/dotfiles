@@ -26,3 +26,6 @@ go/
 configstore
 fish/conf.d
 tmux/plugins
+wget-log
+lazygit
+dlv/.dbg_history

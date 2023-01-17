@@ -6,13 +6,11 @@ nnoremap  <Space>f :Files<CR>
 nnoremap  <Space>w :Rg<CR>
 nnoremap  <Space>pv :NERDTree<CR>
 nnoremap  <Space>"t :vert terminal<CR>
+nnoremap <Space>lg :LazyGit<CR>
 imap  kj <Esc>
 imap  KJ <Esc>
-imap  <Space><Space> <Esc>
-
 
 set nocompatible              " required
-set encoding=utf-8
 set fillchars+=stl:\ ,stlnc:\
 set foldmethod=indent
 set foldlevel=99
@@ -42,6 +40,7 @@ hi Normal guibg=NONE ctermbg=NONE
 autocmd Filetype css setlocal ts=3 sw=3 expandtab
 autocmd Filetype javascript setlocal ts=3 sw=3 expandtab
 autocmd BufWritePre *.go :silent! lua require('go.format').gofmt()
+autocmd BufWritePre (InsertLeave?) <buffer> lua vim.lsp.buf.formatting_sync(nil,500)
 
 "open vim in vertical
 let g:ft_man_open_mode = 'vert'
@@ -61,9 +60,11 @@ let g:lazygit_use_neovim_remote = 1 " fallback to 0 if neovim-remote is not inst
 let g:lazygit_use_custom_config_file_path = 0 " config file path is evaluated if this value is 1
 let g:lazygit_config_file_path = '' " custom config file path
 
+" Debugger
+" lua require('dap-go').setup()
+
 " NERDTree
 nnoremap <leader>n :NERDTreeFocus<CR>
-nnoremap <C-n> :NERDTree<CR>
 nnoremap <C-t> :NERDTreeToggle<CR>
 nnoremap <C-f> :NERDTreeFind<CR>
 " Exit Vim if NERDTree is the only window remaining in the only tab.
@@ -84,7 +85,11 @@ Plug 'peitalin/vim-jsx-typescript'
 Plug 'styled-components/vim-styled-components', { 'branch': 'main' }
 Plug 'jparise/vim-graphql'
 Plug 'mlaursen/vim-react-snippets'
+Plug 'ThePrimeagen/harpoon'
 call plug#end()
+
+" delve debugger
+let g:delve_backend = "native"
 
 " Airline_Vim
 let g:airline_powerline_fonts = 1
@@ -114,11 +119,11 @@ let g:cpp_member_highlight = 1
 " configure treesitter
 lua << EOF
 require'nvim-treesitter.configs'.setup {
-  ensure_installed = "all", -- one of "all", "maintained" (parsers with maintainers), or a list of languages
-  highlight = {
-    enable = true,              -- false will disable the whole extension
-    disable = { "rust" },  -- list of language that will be disabled
-  },
+ ensure_installed = "all", -- one of "all", "maintained" (parsers with maintainers), or a list of languages
+ highlight = {
+   enable = true,              -- false will disable the whole extension
+   disable = { "rust" },  -- list of language that will be disabled
+ },
 }
 EOF
 
