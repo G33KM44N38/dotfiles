@@ -34,6 +34,9 @@ vim.keymap.set("n", "<leader>y", "\"+y")
 vim.keymap.set("v", "<leader>y", "\"+y")
 vim.keymap.set("n", "<leader>Y", "\"+y")
 
+-- copilot
+keymap("n", "<leader>co", ":Copilot panel<CR>", opts)
+
 -- mapping fugitif
 keymap("n", "<leader>gs", ":G<CR>", opts)
 keymap("n", "<leader>gc", ":Git commit<CR>", opts)

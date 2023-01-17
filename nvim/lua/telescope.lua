@@ -56,11 +56,11 @@ telescope.setup {
         buffer_previewer_maker = require("telescope.previewers").buffer_previewer_maker,
         mappings = {
             i = {
-                ["<Tab>"] = "move_selection_next",
+                -- ["<Tab>"] = "move_selection_next",
                 ["<S-Tab>"] = "move_selection_previous",
             },
             n = {
-                ["<Tab>"] = "move_selection_next",
+                -- ["<Tab>"] = "move_selection_next",
                 ["<S-Tab>"] = "move_selection_previous",
             },
         },
