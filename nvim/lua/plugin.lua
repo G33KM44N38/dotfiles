@@ -41,7 +41,23 @@ packer.startup(function()
 	use { 'akinsho/toggleterm.nvim', tag = 'v2.*', config = function() require("toggleterm").setup() end }
 	use { 'ray-x/go.nvim' }
 	use { 'ray-x/guihua.lua' }
-	use { 'glepnir/lspsaga.nvim' }
+	use({
+		"glepnir/lspsaga.nvim",
+		branch = "main",
+		config = function()
+			require('lspsaga').setup({})
+		end,
+	})
+	use {
+		'glepnir/dashboard-nvim',
+		event = 'VimEnter',
+		config = function()
+			require('dashboard').setup {
+				-- config
+			}
+		end,
+		requires = { 'nvim-tree/nvim-web-devicons' }
+	}
 	use { 'yamatsum/nvim-cursorline' }
 	use 'airblade/vim-gitgutter'
 	use 'RishabhRD/popfix'
@@ -91,4 +107,6 @@ packer.startup(function()
 	use { "rcarriga/nvim-dap-ui", requires = { "mfussenegger/nvim-dap" } }
 	use 'leoluz/nvim-dap-go'
 	use 'theprimeagen/harpoon'
+	use { "waxdred/Term_ChatGPT" }
+	use { "voldikss/vim-floaterm" }
 end)

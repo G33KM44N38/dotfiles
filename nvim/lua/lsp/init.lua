@@ -21,6 +21,8 @@ local servers = {
     "sumneko_lua",
     "gopls",
     "tsserver",
+    "pyright",
+    "bashls"
 }
 
 local signs = {

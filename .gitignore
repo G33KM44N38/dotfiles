@@ -26,3 +26,6 @@ go/
 wget-log
 lazygit
 dlv/.dbg_history
+dlv/
+chatGpt/
+nvim/plugin/packer_compiled.lua
