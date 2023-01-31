@@ -22,6 +22,10 @@ local use = packer.use
 
 packer.reset()
 packer.startup(function()
+	use({
+		'weilbith/nvim-code-action-menu',
+		cmd = 'CodeActionMenu',
+	})
 	use { "RRethy/vim-illuminate" }
 	use { "jose-elias-alvarez/null-ls.nvim", requires = { "nvim-lua/plenary.nvim" }, }
 	use { 'nvim-treesitter/nvim-treesitter', run = ":TSUpdate" }
@@ -34,9 +38,12 @@ packer.startup(function()
 	use { 'hoob3rt/lualine.nvim' }
 	use { 'kyazdani42/nvim-web-devicons' }
 	use { 'akinsho/bufferline.nvim' }
-	use {"akinsho/toggleterm.nvim", tag = '*', config = function()
-	  require("toggleterm").setup()
-	end}
+	use { "akinsho/toggleterm.nvim", tag = '*', config = function()
+		require("toggleterm").setup()
+	end }
+	use { "mbbill/undotree" }
+
+	use { "theprimeagen/harpoon" }
 	use { 'ray-x/go.nvim' }
 	use { 'ray-x/guihua.lua' }
 	use { 'glepnir/lspsaga.nvim' }

@@ -45,10 +45,7 @@ set PATH $PATH:/usr/local/go/bin
 set EDITOR 'nvim'
 set VISUAL 'nvim'
 #set the default shell
-# export SHELL=~/shell/bin/fish
+export SHELL=/usr/local/bin/fish
+source ~/.config/fish/path.fish
 
-# brew
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
-# Generated for envman. Do not edit.
-test -s "$HOME/.config/envman/load.fish"; and source "$HOME/.config/envman/load.fish"

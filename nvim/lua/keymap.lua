@@ -26,6 +26,17 @@ keymap("n", "<leader>m", ":make<CR>", opts)
 -- commante line
 keymap("n", "<leader><leader>c", ":Commentary <CR>", opts)
 
+-- paste without overwrite
+vim.keymap.set("x", "<leader>p", "\"_dP")
+
+-- paste to the clipboard
+vim.keymap.set("n", "<leader>y", "\"+y")
+vim.keymap.set("v", "<leader>y", "\"+y")
+vim.keymap.set("n", "<leader>Y", "\"+y")
+
+-- copilot
+keymap("n", "<leader>co", ":Copilot panel<CR>", opts)
+
 -- mapping fugitif
 keymap("n", "<leader>gs", ":G<CR>", opts)
 keymap("n", "<leader>gc", ":Git commit<CR>", opts)
