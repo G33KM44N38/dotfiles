@@ -54,7 +54,7 @@ keymap("n", "<leader>3", "'c", opts)
 -- mapping Open Buffer fzf telescope
 keymap("n", "<leader>bd", ":lua require('close_buffer_telescope').close_buffer()<CR>", opts)
 keymap("n", "<leader>bb", ":lua require'telescope.builtin'.buffers()<CR>", opts)
-keymap("n", "<leader>t", ":! ctags <CR> :lua require('telescope.builtin').tags()<CR>",opts)
+keymap("n", "<leader>t", ":! ctags <CR> :lua require('telescope.builtin').tags()<CR>", opts)
 keymap("n", "<leader>bf", ":lua require('telescope.builtin').find_files()<CR>", opts)
 keymap("n", "<leader>dot", ":lua require('rc_telescope').search_dotfiles()<CR>", opts)
 keymap("n", "<leader>conf", ":lua require('rc_telescope').config()<CR>", opts)
@@ -81,8 +81,19 @@ keymap("n", "<F3>", ":lua require'dap'.step_into()<CR>", opts)
 keymap("n", "<F4>", ":lua require'dap'.step_out()<CR>", opts)
 keymap("n", "<leader>b", ":lua require'dap'.toggle_breakpoint()<CR>", opts)
 keymap("n", "<leader>B", ":lua require'dap'.set_breakpoint(vim.fn.input('Breakpoint condition: '))<CR>", opts)
-keymap("n", "<leader>ds", ":lua require'dap-go'.debug_test()<CR>", opts)
+-- keymap("n", "<leader>ds", ":lua require'dap-go'.debug_test()<CR>", opts)
 keymap("n", "<leader>du", ":lua require'dapui'.toggle()<CR>", opts)
+
+-- LSPSAGA
+vim.keymap.set("n", "K", "<cmd>Lspsaga hover_doc<CR>", opts)
+vim.keymap.set("n", "gD", "<cmd>Lspsaga lsp_finder<CR>", opts)
+vim.keymap.set("i", "<C-k>", "<cmd>Lspsaga signature_help<CR>", opts)
+vim.keymap.set("n", "<C-j>", "<cmd>Lspsaga diagnostic_jump_next<CR>", opts)
+vim.keymap.set("n", "gr", "<cmd>Lspsaga rename<CR>", opts)
+vim.keymap.set("n", "<leader>ca", "<cmd>Lspsaga code_action<CR>", opts)
+vim.keymap.set("n", "K", "<cmd>Lspsaga hover_doc<CR>", opts)
+vim.keymap.set("n", "gd", "<cmd>Lspsaga peek_definition<CR>", opts)
+vim.keymap.set("n", "<leader>o", "<cmd>Lspsaga outline<CR>", { silent = true })
 
 require("nvim-dap-virtual-text").setup()
 require('dap-go').setup()
@@ -98,3 +109,46 @@ keymap("n", "<leader>Q", ":CodeActionMenu<CR>", opts)
 -- Move text up and down
 keymap("x", "J", ":move '>+1<CR>gv-gv", opts)
 keymap("x", "K", ":move '<-2<CR>gv-gv", opts)
+
+
+-- gitsigns
+require('gitsigns').setup {
+	on_attach = function(bufnr)
+		local gs = package.loaded.gitsigns
+
+		local function map(mode, l, r, opts)
+			opts = opts or {}
+			opts.buffer = bufnr
+			vim.keymap.set(mode, l, r, opts)
+		end
+
+		-- Navigation
+		map('n', ']c', function()
+			if vim.wo.diff then return ']c' end
+			vim.schedule(function() gs.next_hunk() end)
+			return '<Ignore>'
+		end, { expr = true })
+
+		map('n', '[c', function()
+			if vim.wo.diff then return '[c' end
+			vim.schedule(function() gs.prev_hunk() end)
+			return '<Ignore>'
+		end, { expr = true })
+
+		-- Actions
+		map({ 'n', 'v' }, '<leader>hs', ':Gitsigns stage_hunk<CR>')
+		map({ 'n', 'v' }, '<leader>hr', ':Gitsigns reset_hunk<CR>')
+		map('n', '<leader>hS', gs.stage_buffer)
+		map('n', '<leader>hu', gs.undo_stage_hunk)
+		map('n', '<leader>hR', gs.reset_buffer)
+		map('n', '<leader>hp', gs.preview_hunk)
+		map('n', '<leader>hb', function() gs.blame_line { full = true } end)
+		map('n', '<leader>tb', gs.toggle_current_line_blame)
+		map('n', '<leader>hd', gs.diffthis)
+		map('n', '<leader>hD', function() gs.diffthis('~') end)
+		map('n', '<leader>td', gs.toggle_deleted)
+
+		-- Text object
+		map({ 'o', 'x' }, 'ih', ':<C-U>Gitsigns select_hunk<CR>')
+	end
+}

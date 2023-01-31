@@ -67,6 +67,7 @@ let g:lazygit_config_file_path = '' " custom config file path
 nnoremap <leader>n :NERDTreeFocus<CR>
 nnoremap <C-t> :NERDTreeToggle<CR>
 nnoremap <C-f> :NERDTreeFind<CR>
+
 " Exit Vim if NERDTree is the only window remaining in the only tab.
 autocmd BufEnter * if tabpagenr('$') == 1 && winnr('$') == 1 && exists('b:NERDTree') && b:NERDTree.isTabTree() | quit | endif
 
@@ -80,6 +81,7 @@ Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
 Plug 'kdheepak/lazygit.nvim'
 Plug 'preservim/nerdtree'
 Plug 'ThePrimeagen/harpoon'
+Plug 'ThePrimeagen/vim-be-good'
 call plug#end()
 
 " delve debugger

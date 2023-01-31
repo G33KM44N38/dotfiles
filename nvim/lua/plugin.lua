@@ -109,4 +109,11 @@ packer.startup(function()
 	use 'theprimeagen/harpoon'
 	use { "waxdred/Term_ChatGPT" }
 	use { "voldikss/vim-floaterm" }
+	use {
+		'lewis6991/gitsigns.nvim',
+		config = function()
+			require('gitsigns').setup()
+		end
+	}
+
 end)
