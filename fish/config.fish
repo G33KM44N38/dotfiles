@@ -37,8 +37,9 @@ if type -q exa
 end
 
 set -U FZF_COMPLETE 2
-set -x GOPATH $HOME/
-set PATH $PATH:/usr/local/go/bin
+set -x GOPATH ~/go
+set -x GOBIN $GOPATH/bin/
+set -x PATH $PATH:$GOPATH:$GOBIN
 #set PATH $PATH:$GOPATH/bin/
 #set PATH $HOME/bin:$PATH
 #set PATH $HOME/.local/bin:$PATH
@@ -47,5 +48,3 @@ set VISUAL 'nvim'
 #set the default shell
 export SHELL=/usr/local/bin/fish
 source ~/.config/fish/path.fish
-
-

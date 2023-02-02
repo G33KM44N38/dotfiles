@@ -22,10 +22,6 @@ local use = packer.use
 
 packer.reset()
 packer.startup(function()
-	use({
-		'weilbith/nvim-code-action-menu',
-		cmd = 'CodeActionMenu',
-	})
 	use { "RRethy/vim-illuminate" }
 	use { "jose-elias-alvarez/null-ls.nvim", requires = { "nvim-lua/plenary.nvim" }, }
 	use { 'nvim-treesitter/nvim-treesitter', run = ":TSUpdate" }

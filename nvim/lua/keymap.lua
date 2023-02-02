@@ -17,9 +17,6 @@ keymap("n", "<leader>w", ":w<CR> :wa<CR>", opts)
 keymap("n", "<S-TAB>", "<C-W><C-W>", opts)
 keymap("n", "<TAB>", ":bn<CR>", opts)
 
--- add new line
-keymap("n", "<leader>o", "o<Esc>", opts)
-
 -- make
 keymap("n", "<leader>m", ":make<CR>", opts)
 
@@ -65,7 +62,7 @@ keymap("n", "<leader>3", "'c", opts)
 -- mapping Open Buffer fzf telescope
 keymap("n", "<leader>bd", ":lua require('close_buffer_telescope').close_buffer()<CR>", opts)
 keymap("n", "<leader>bb", ":lua require'telescope.builtin'.buffers()<CR>", opts)
-keymap("n", "<leader>t", ":! ctags <CR> :lua require('telescope.builtin').tags()<CR>", opts)
+-- keymap("n", "<leader>t", ":! ctags <CR> :lua require('telescope.builtin').tags()<CR>", opts)
 keymap("n", "<leader>bf", ":lua require('telescope.builtin').find_files()<CR>", opts)
 keymap("n", "<leader>dot", ":lua require('rc_telescope').search_dotfiles()<CR>", opts)
 keymap("n", "<leader>conf", ":lua require('rc_telescope').config()<CR>", opts)
@@ -76,13 +73,13 @@ keymap("n", "<leader>bg", ":lua require('telescope.builtin').git_files()<CR>", o
 keymap("n", "<leader>xx", ":lua require('telescope.builtin').diagnostics()<CR>", opts)
 keymap("n", "<leader>gt", ":lua require('telescope.builtin').git_status()<CR>", opts)
 
-keymap("n", "<leader>short", ":lua require('telescope.builtin').keymaps()<CR>", opts)
+keymap("n", "<leader>km", ":lua require('telescope.builtin').keymaps()<CR>", opts)
 keymap("n", "<leader>man", ":lua require('telescope.builtin').man_pcages()<CR>", opts)
 keymap("n", "<leader>old", ":lua require('telescope.builtin').oldfiles()<CR>", opts)
 keymap("n", "<leader>reset", ":LspRestart<CR>", opts)
 keymap("n", "<leader>cheat", ":Cheat<CR>", opts)
 
-local autogroup = vim.api.nvim_create_augroup("LspFormatting", {})
+-- local autogroup = vim.api.nvim_create_augroup("LspFormatting", {})
 keymap("n", "<space>lf", ":lua vim.lsp.buf.format()<CR>", opts)
 
 -- nvim-dap mapping debugging
@@ -95,7 +92,7 @@ keymap("n", "<leader>B", ":lua require'dap'.set_breakpoint(vim.fn.input('Breakpo
 -- keymap("n", "<leader>ds", ":lua require'dap-go'.debug_test()<CR>", opts)
 keymap("n", "<leader>du", ":lua require'dapui'.toggle()<CR>", opts)
 
--- LSPSAGA
+-- lspsaga
 vim.keymap.set("n", "K", "<cmd>Lspsaga hover_doc<CR>", opts)
 vim.keymap.set("n", "gD", "<cmd>Lspsaga lsp_finder<CR>", opts)
 vim.keymap.set("i", "<C-k>", "<cmd>Lspsaga signature_help<CR>", opts)
@@ -113,8 +110,6 @@ require("dapui").setup()
 -- mapping Lex
 keymap("n", "<leader>rr", ":Ex<CR>", opts)
 
--- Code action menu
-keymap("n", "<leader>Q", ":CodeActionMenu<CR>", opts)
 
 -- Visual Block --
 -- Move text up and down
@@ -127,7 +122,7 @@ require('gitsigns').setup {
 	on_attach = function(bufnr)
 		local gs = package.loaded.gitsigns
 
-		local function map(mode, l, r, opts)
+		local function map(mode, l, r, n)
 			opts = opts or {}
 			opts.buffer = bufnr
 			vim.keymap.set(mode, l, r, opts)
