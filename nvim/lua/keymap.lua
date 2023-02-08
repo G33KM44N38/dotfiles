@@ -89,7 +89,7 @@ keymap("n", "<F3>", ":lua require'dap'.step_into()<CR>", opts)
 keymap("n", "<F4>", ":lua require'dap'.step_out()<CR>", opts)
 keymap("n", "<leader>b", ":lua require'dap'.toggle_breakpoint()<CR>", opts)
 keymap("n", "<leader>B", ":lua require'dap'.set_breakpoint(vim.fn.input('Breakpoint condition: '))<CR>", opts)
--- keymap("n", "<leader>ds", ":lua require'dap-go'.debug_test()<CR>", opts)
+keymap("n", "<leader>ds", ":lua require'dap-go'.debug_test()<CR>", opts)
 keymap("n", "<leader>du", ":lua require'dapui'.toggle()<CR>", opts)
 
 -- lspsaga
