@@ -103,7 +103,6 @@ packer.startup(function()
 	use { "rcarriga/nvim-dap-ui", requires = { "mfussenegger/nvim-dap" } }
 	use 'leoluz/nvim-dap-go'
 	use 'theprimeagen/harpoon'
-	use { "waxdred/Term_ChatGPT" }
 	use { "voldikss/vim-floaterm" }
 	use {
 		'lewis6991/gitsigns.nvim',

@@ -40,6 +40,7 @@ set -U FZF_COMPLETE 2
 set -x GOPATH ~/go
 set -x GOBIN $GOPATH/bin/
 set -x PATH $PATH:$GOPATH:$GOBIN
+set -x OPENAI_API_KEY "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"
 #set PATH $PATH:$GOPATH/bin/
 #set PATH $HOME/bin:$PATH
 #set PATH $HOME/.local/bin:$PATH
