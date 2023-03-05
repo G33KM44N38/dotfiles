@@ -22,6 +22,10 @@ local use = packer.use
 
 packer.reset()
 packer.startup(function()
+	use {
+		'ldelossa/gh.nvim',
+		requires = { { 'ldelossa/litee.nvim' } }
+	}
 	use { "RRethy/vim-illuminate" }
 	use { "jose-elias-alvarez/null-ls.nvim", requires = { "nvim-lua/plenary.nvim" }, }
 	use { 'nvim-treesitter/nvim-treesitter', run = ":TSUpdate" }
@@ -44,26 +48,13 @@ packer.startup(function()
 			require('lspsaga').setup({})
 		end,
 	})
-	use {
-		'glepnir/dashboard-nvim',
-		event = 'VimEnter',
-		config = function()
-			require('dashboard').setup {
-				-- config
-			}
-		end,
-		requires = { 'nvim-tree/nvim-web-devicons' }
-	}
 	use { 'yamatsum/nvim-cursorline' }
 	use 'airblade/vim-gitgutter'
 	use 'RishabhRD/popfix'
 	use 'RishabhRD/nvim-cheat.sh'
 	use 'folke/lsp-colors.nvim'
-	-- use 'kevinhwang91/rnvimr'
 	use 'L3MON4D3/LuaSnip'
 	use 'SirVer/ultisnips'
-	-- use 'cdelledonne/vim-cmake'
-	-- use 'chrisbra/Colorizer'
 	use 'cdelledonne/vim-cmake'
 	use 'christianchiarulli/nvcode-color-schemes.vim'
 	use 'dcampos/cmp-snippy'
@@ -91,7 +82,6 @@ packer.startup(function()
 	use 'ryanoasis/vim-devicons'
 	use 'saadparwaiz1/cmp_luasnip'
 	use 'shaunsingh/nord.nvim'
-	use 'sunjon/shade.nvim'
 	use 'tc50cal/vim-terminal'
 	use 'tpope/vim-commentary'
 	use 'tpope/vim-fugitive'
