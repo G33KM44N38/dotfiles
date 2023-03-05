@@ -72,6 +72,8 @@ nnoremap <C-f> :NERDTreeFind<CR>
 autocmd BufEnter * if tabpagenr('$') == 1 && winnr('$') == 1 && exists('b:NERDTree') && b:NERDTree.isTabTree() | quit | endif
 
 call plug#begin()
+Plug 'preservim/vimux'
+Plug 'vim-test/vim-test'
 Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'
 Plug 'joaohkfaria/vim-jest-snippets'
@@ -128,6 +130,9 @@ require'nvim-treesitter.configs'.setup {
  },
 }
 EOF
+
+" vim-test
+let test#strategy = "vimux"
 
 "set completeopt=noinsert,menuone,noselect
 let g:completion_matching_strategy_list = ['exact', 'substring', 'fuzzy', 'all']
