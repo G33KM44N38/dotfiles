@@ -74,6 +74,7 @@ autocmd BufEnter * if tabpagenr('$') == 1 && winnr('$') == 1 && exists('b:NERDTr
 call plug#begin()
 Plug 'preservim/vimux'
 Plug 'vim-test/vim-test'
+Plug 'christoomey/vim-tmux-navigator'
 Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'
 Plug 'joaohkfaria/vim-jest-snippets'
