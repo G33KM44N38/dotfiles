@@ -107,9 +107,6 @@ require("nvim-dap-virtual-text").setup()
 require('dap-go').setup()
 require("dapui").setup()
 
--- mapping Lex
-keymap("n", "<leader>rr", ":Ex<CR>", opts)
-
 -- vim-test
 vim.keymap.set("n", "<leader>t", ":TestNearest -v<CR>", { silent = true })
 vim.keymap.set("n", "<leader>T", ":TestFile<CR>", { silent = true })
