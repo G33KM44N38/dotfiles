@@ -3,7 +3,7 @@
 set autoindent
 set nowrap
 nnoremap  <Space>f :Files<CR>
-nnoremap  <Space>w :Rg<CR>
+" nnoremap  <Space>w :Rg<CR>
 nnoremap  <Space>pv :NERDTree<CR>
 nnoremap  <Space>"t :vert terminal<CR>
 nnoremap <Space>lg :LazyGit<CR>
