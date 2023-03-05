@@ -64,6 +64,7 @@ packer.startup(function()
 	use 'SirVer/ultisnips'
 	-- use 'cdelledonne/vim-cmake'
 	-- use 'chrisbra/Colorizer'
+	use 'cdelledonne/vim-cmake'
 	use 'christianchiarulli/nvcode-color-schemes.vim'
 	use 'dcampos/cmp-snippy'
 	use 'dcampos/nvim-snippy'

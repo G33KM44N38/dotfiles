@@ -18,7 +18,7 @@ keymap("n", "<S-TAB>", "<C-W><C-W>", opts)
 keymap("n", "<TAB>", ":bn<CR>", opts)
 
 -- make
-keymap("n", "<leader>m", ":make<CR>", opts)
+keymap("n", "<leader>m", ":make ", opts)
 
 -- commante line
 keymap("n", "<leader><leader>c", ":Commentary <CR>", opts)
