@@ -93,9 +93,6 @@ Plug 'ThePrimeagen/harpoon'
 Plug 'ThePrimeagen/vim-be-good'
 call plug#end()
 
-" delve debugger
-let g:delve_backend = "native"
-
 " Airline_Vim
 let g:airline_powerline_fonts = 1
 if !exists('g:airline_symbols')
