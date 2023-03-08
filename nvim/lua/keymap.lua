@@ -60,7 +60,7 @@ keymap("n", "<leader>2", "'b", opts)
 keymap("n", "<leader>3", "'c", opts)
 
 -- mapping Open Buffer fzf telescope
-keymap("n", "<leader>bd", ":lua require('close_buffer_telescope').close_buffer()<CR>", opts)
+keymap("n", "<leader>bd", ":bd<CR>", opts)
 keymap("n", "<leader>bb", ":lua require'telescope.builtin'.buffers()<CR>", opts)
 -- keymap("n", "<leader>t", ":! ctags <CR> :lua require('telescope.builtin').tags()<CR>", opts)
 keymap("n", "<leader>bf", ":lua require('telescope.builtin').find_files()<CR>", opts)
@@ -100,7 +100,7 @@ vim.keymap.set("n", "<C-j>", "<cmd>Lspsaga diagnostic_jump_next<CR>", opts)
 vim.keymap.set("n", "gr", "<cmd>Lspsaga rename<CR>", opts)
 vim.keymap.set("n", "<leader>ca", "<cmd>Lspsaga code_action<CR>", opts)
 vim.keymap.set("n", "K", "<cmd>Lspsaga hover_doc<CR>", opts)
-vim.keymap.set("n", "gd", "<cmd>Lspsaga peek_definition<CR>", opts)
+vim.keymap.set("n", "gd", "<cmd>Lspsaga goto_definition<CR>", opts)
 vim.keymap.set("n", "<leader>o", "<cmd>Lspsaga outline<CR>", { silent = true })
 
 require("nvim-dap-virtual-text").setup()
