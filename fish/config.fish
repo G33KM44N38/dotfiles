@@ -49,3 +49,4 @@ set VISUAL 'nvim'
 #set the default shell
 export SHELL=/usr/local/bin/fish
 source ~/.config/fish/path.fish
+set -Ua fish_user_paths $HOME/.cargo/bin
