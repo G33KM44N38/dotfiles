@@ -52,16 +52,17 @@ keymap("n", "<leader>tv", ":ToggleTerm direction=vertical size=100 fish<CR>", op
 keymap("n", "<leader>th", ":ToggleTerm direction=horizontal size=100 fish<CR>", opts)
 
 -- mark
-keymap("n", "<leader><leader>1", ":mark a <CR>", opts)
-keymap("n", "<leader><leader>2", ":mark b <CR>", opts)
-keymap("n", "<leader><leader>3", ":mark c <CR>", opts)
-keymap("n", "<leader>1", "'a", opts)
-keymap("n", "<leader>2", "'b", opts)
-keymap("n", "<leader>3", "'c", opts)
+keymap("n", "<leader><leader>1", ":mark A <CR>", opts)
+keymap("n", "<leader><leader>2", ":mark B <CR>", opts)
+keymap("n", "<leader><leader>3", ":mark C <CR>", opts)
+keymap("n", "<leader>1", "'A", opts)
+keymap("n", "<leader>2", "'B", opts)
+keymap("n", "<leader>3", "'C", opts)
 
 -- mapping Open Buffer fzf telescope
 keymap("n", "<leader>bd", ":bd<CR>", opts)
 keymap("n", "<leader>bb", ":lua require'telescope.builtin'.buffers()<CR>", opts)
+
 -- keymap("n", "<leader>t", ":! ctags <CR> :lua require('telescope.builtin').tags()<CR>", opts)
 keymap("n", "<leader>bf", ":lua require('telescope.builtin').find_files()<CR>", opts)
 keymap("n", "<leader>dot", ":lua require('rc_telescope').search_dotfiles()<CR>", opts)
