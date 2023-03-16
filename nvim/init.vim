@@ -25,6 +25,7 @@ set autoread
 " syntax enable
 " colorscheme waxcoin
 colorscheme alduin
+" colorscheme papercolor
 " colorscheme sonokai
 " colorscheme sierra
 " colorscheme orbital
@@ -40,6 +41,7 @@ hi Normal guibg=NONE ctermbg=NONE
 autocmd Filetype css setlocal ts=3 sw=3 expandtab
 autocmd Filetype javascript setlocal ts=3 sw=3 expandtab
 autocmd BufWritePre *.go :silent! lua require('go.format').gofmt()
+autocmd BufWritePost * lua vim.lsp.buf.format()
 autocmd BufWritePre (InsertLeave?) <buffer> lua vim.lsp.buf.formatting_sync(nil,500)
 
 "open vim in vertical
