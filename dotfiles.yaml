@@ -1,0 +1,21 @@
+- name: Bootstrap development environment
+  hosts: localhost
+  tasks:
+    - name: Install packages
+      become: yes
+      vars:
+        debian_based:
+          - git
+          - tmux
+          - neovim
+        fedora_based:
+          - git
+          - tmux
+          - neovim
+        macos_based:
+          - git
+          - tmux
+          - neovim
+      package:
+        name: "{{ debian_based if ansible_os_family == 'Debian' or ansible_os_family == 'Ubuntu' else fedora_based if ansible_os_family == 'Fedora' else macos_based }}"
+        state: present
