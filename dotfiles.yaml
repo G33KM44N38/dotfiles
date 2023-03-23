@@ -7,7 +7,6 @@
         packages:
           - git
           - tmux
-          - neovim
           - fish
           - curl
         state: latest
@@ -15,11 +14,18 @@
     - name: clearing
       shell: >
         rm -rf ~/dotfiles
+
     - name: Install packages
       become: yes
       package:
         name: "{{ packages }}"
         state: present
+
+    - name: installing neovim last version
+      shell: >
+        wget https://github.com/neovim/neovim/releases/download/stable/nvim-linux64.deb
+        sudo dpkg -i nvim-linux64.deb
+        rm -rf nvim-linux64.deb
 
     - name: Create ~/.config directory if it doesn't exist
       file:
@@ -58,3 +64,8 @@
       state: absent
 
       when: "'neovim' in packages"
+    - name: Installling fzf
+      shell: >
+        git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+        ~/.fzf/install
+      when: "'git' in packages"
