@@ -3,9 +3,7 @@
 set autoindent
 set nowrap
 nnoremap  <Space>f :Files<CR>
-" nnoremap  <Space>w :Rg<CR>
 nnoremap  <Space>pv :NERDTree<CR>
-nnoremap  <Space>"t :vert terminal<CR>
 nnoremap <Space>lg :LazyGit<CR>
 imap  kj <Esc>
 imap  KJ <Esc>
@@ -32,19 +30,6 @@ colorscheme alduin
 " colorscheme Monokai
 set backspace=indent,eol,start
 set termguicolors
-
-local ensure_packer = function()
-  local fn = vim.fn
-  local install_path = fn.stdpath('data')..'/site/pack/packer/start/packer.nvim'
-  if fn.empty(fn.glob(install_path)) > 0 then
-    fn.system({'git', 'clone', '--depth', '1', 'https://github.com/wbthomason/packer.nvim', install_path})
-    vim.cmd [[packadd packer.nvim]]
-    return true
-  end
-  return false
-end
-
-local packer_bootstrap = ensure_packer()
 
 lua require('init')
 
