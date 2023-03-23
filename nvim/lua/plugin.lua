@@ -1,4 +1,9 @@
-local packer = require 'packer'
+-- Use a protected call to avoid errors if packer is not installed
+local status, packer = pcall(require, "packer")
+if not status then
+  return
+end
+
 
 local ensure_packer = function()
   local fn = vim.fn
