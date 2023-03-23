@@ -1,21 +1,60 @@
-- name: Bootstrap development environment
+---
+- name: My dev setup
   hosts: localhost
   tasks:
+    - name: Set package list
+      set_fact:
+        packages:
+          - git
+          - tmux
+          - neovim
+          - fish
+          - curl
+        state: latest
+
+    - name: clearing
+      shell: >
+        rm -rf ~/dotfiles
     - name: Install packages
       become: yes
-      vars:
-        debian_based:
-          - git
-          - tmux
-          - neovim
-        fedora_based:
-          - git
-          - tmux
-          - neovim
-        macos_based:
-          - git
-          - tmux
-          - neovim
       package:
-        name: "{{ debian_based if ansible_os_family == 'Debian' or ansible_os_family == 'Ubuntu' else fedora_based if ansible_os_family == 'Fedora' else macos_based }}"
+        name: "{{ packages }}"
         state: present
+
+    - name: Create ~/.config directory if it doesn't exist
+      file:
+        path: ~/.config
+        state: directory
+      become: yes
+
+    - name: Clone dotfiles repo
+      ansible.builtin.git:
+        repo: https://github.com/G33KM44N38/dotfiles.git
+        dest: ~/dotfiles
+        clone: yes
+      become: yes
+      register: git_clone
+
+    - name: Copy dotfiles to .config
+      ansible.builtin.copy:
+        src: ~/dotfiles/
+        dest: ~/.config/
+        remote_src: yes
+      become: yes
+      when: git_clone.changed or ansible.stat(path='~/dotfiles', follow=True).existsa
+
+    - name: Install vim-plug for nVim
+      shell: >
+        curl -fLo ~/.vim/autoload/plug.vim --create-dirs \
+        https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+      become: yes
+      when: "'neovim' in packages"
+
+    - name: Install packer for neovim
+      shell: >
+        git clone --depth 1 https://github.com/wbthomason/packer.nvim \
+        ~/.local/share/nvim/site/pack/packer/start/packer.nvim
+        nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync'
+      state: absent
+
+      when: "'neovim' in packages"
