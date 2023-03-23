@@ -47,7 +47,7 @@
         dest: ~/.config/
         remote_src: yes
       become: yes
-      when: git_clone.changed or ansible.stat(path='~/dotfiles', follow=True).existsa
+      when: git_clone.changed or ansible.stat(path='~/dotfiles', follow=True).exists
 
     - name: Install vim-plug for nVim
       shell: >
@@ -62,10 +62,11 @@
         ~/.local/share/nvim/site/pack/packer/start/packer.nvim
         nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync'
       state: absent
-
       when: "'neovim' in packages"
+
     - name: Installling fzf
       shell: >
         git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
         ~/.fzf/install
       when: "'git' in packages"
+
