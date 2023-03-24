@@ -1,19 +1,19 @@
 -- Use a protected call to avoid errors if packer is not installed
 local status, packer = pcall(require, "packer")
 if not status then
-  return
+	return
 end
 
 
 local ensure_packer = function()
-  local fn = vim.fn
-  local install_path = fn.stdpath('data')..'/site/pack/packer/start/packer.nvim'
-  if fn.empty(fn.glob(install_path)) > 0 then
-    fn.system({'git', 'clone', '--depth', '1', 'https://github.com/wbthomason/packer.nvim', install_path})
-    vim.cmd [[packadd packer.nvim]]
-    return true
-  end
-  return false
+	local fn = vim.fn
+	local install_path = fn.stdpath('data')..'/site/pack/packer/start/packer.nvim'
+	if fn.empty(fn.glob(install_path)) > 0 then
+		fn.system({'git', 'clone', '--depth', '1', 'https://github.com/wbthomason/packer.nvim', install_path})
+		vim.cmd [[packadd packer.nvim]]
+		return true
+	end
+	return false
 end
 
 local packer_bootstrap = ensure_packer()
@@ -45,15 +45,15 @@ return require('packer').startup(function(use)
 	use 'vim-test/vim-test'
 	use 'christoomey/vim-tmux-navigator'
 	use {
-	'junegunn/fzf',
-	run = function() vim.fn['fzf#install']() end
+		'junegunn/fzf',
+		run = function() vim.fn['fzf#install']() end
 	}
 	use 'junegunn/fzf.vim'
 	use 'joaohkfaria/vim-jest-snippets'
 	use 'ryanoasis/vim-devicons'
 	use {
-	'fatih/vim-go',
-	run = ':GoUpdateBinaries'
+		'fatih/vim-go',
+		run = ':GoUpdateBinaries'
 	}
 	use 'kdheepak/lazygit.nvim'
 	use 'preservim/nerdtree'
@@ -61,8 +61,8 @@ return require('packer').startup(function(use)
 	use 'leafgarland/typescript-vim'
 	use 'peitalin/vim-jsx-typescript'
 	use {
-	'styled-components/vim-styled-components',
-	branch = 'main'
+		'styled-components/vim-styled-components',
+		branch = 'main'
 	}
 	use 'jparise/vim-graphql'
 	use 'mlaursen/vim-react-snippets'
@@ -148,14 +148,14 @@ return require('packer').startup(function(use)
 	use {
 		'nvim-treesitter/nvim-treesitter',
 		run = function()
-		    local ts_update = require('nvim-treesitter.install').update({ with_sync = true })
-		    ts_update()
+			local ts_update = require('nvim-treesitter.install').update({ with_sync = true })
+			ts_update()
 		end,
 	}
 	-- Automatically set up your configuration after cloning packer.nvim
 	-- Put this at the end after all plugins
 	if packer_bootstrap then
-	  require('packer').sync()
+		require('packer').sync()
 	end
 
 end)
