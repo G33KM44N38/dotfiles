@@ -37,10 +37,8 @@ packer.init {
 	}
 }
 
-local use = packer.use
+return require('packer').startup(function(use)
 
-packer.reset()
-packer.startup(function()
 	use {
 		'ldelossa/gh.nvim',
 		requires = { { 'ldelossa/litee.nvim' } }
@@ -121,5 +119,11 @@ packer.startup(function()
 			require('gitsigns').setup()
 		end
 	}
+
+	-- Automatically set up your configuration after cloning packer.nvim
+	-- Put this at the end after all plugins
+	if packer_bootstrap then
+	  require('packer').sync()
+	end
 
 end)
