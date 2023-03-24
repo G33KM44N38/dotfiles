@@ -154,13 +154,3 @@ if (has("termguicolors"))
     set termguicolors
     hi LineNr ctermbg=NONE guibg=NONE
 endif
-let g:vimspector_enable_mappings = 'HUMAN'
-let g:UltiSnipsJumpForwardTrigger="<c-b>"
-let g:UltiSnipsSnippetDirectories=["UltiSnips", "my_snip"]
-let g:vista_icon_indent = ["╰─▸ ", "├─▸ "]
-let g:vista_default_executive = 'ctags'
-let g:vista_executive_for = {
-  \ 'cpp': 'vim_lsp',
-  \ 'php': 'vim_lsp',
-  \ }
-let g:vista_fzf_preview = ['right:50%']
