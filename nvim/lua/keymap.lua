@@ -88,7 +88,6 @@ vim.keymap.set("n", "K", "<cmd>Lspsaga hover_doc<CR>", opts)
 vim.keymap.set("n", "gd", "<cmd>Lspsaga goto_definition<CR>", opts)
 
 require("nvim-dap-virtual-text").setup()
-require('dap-go').setup()
 require("dapui").setup()
 
 -- vim-test
