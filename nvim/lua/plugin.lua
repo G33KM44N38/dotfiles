@@ -38,14 +38,42 @@ packer.init {
 }
 
 return require('packer').startup(function(use)
-
+	use 'wbthomason/packer.nvim'
+	use 'prabirshrestha/vim-lsp'
+	use 'kshenoy/vim-signature'
+	use 'preservim/vimux'
+	use 'vim-test/vim-test'
+	use 'christoomey/vim-tmux-navigator'
+	use {
+	'junegunn/fzf',
+	run = function() vim.fn['fzf#install']() end
+	}
+	use 'junegunn/fzf.vim'
+	use 'joaohkfaria/vim-jest-snippets'
+	use 'ryanoasis/vim-devicons'
+	use {
+	'fatih/vim-go',
+	run = ':GoUpdateBinaries'
+	}
+	use 'kdheepak/lazygit.nvim'
+	use 'preservim/nerdtree'
+	use 'pangloss/vim-javascript'
+	use 'leafgarland/typescript-vim'
+	use 'peitalin/vim-jsx-typescript'
+	use {
+	'styled-components/vim-styled-components',
+	branch = 'main'
+	}
+	use 'jparise/vim-graphql'
+	use 'mlaursen/vim-react-snippets'
+	use 'ThePrimeagen/harpoon'
+	use 'ThePrimeagen/vim-be-good'
 	use {
 		'ldelossa/gh.nvim',
 		requires = { { 'ldelossa/litee.nvim' } }
 	}
 	use { "RRethy/vim-illuminate" }
 	use { "jose-elias-alvarez/null-ls.nvim", requires = { "nvim-lua/plenary.nvim" }, }
-	use { 'nvim-treesitter/nvim-treesitter', run = ":TSUpdate" }
 	use { 'anuvyklack/hydra.nvim', requires = 'anuvyklack/keymap-layer.nvim' }
 	use { 'lukas-reineke/indent-blankline.nvim' }
 	use { 'epilande/vim-react-snippets' }
@@ -104,13 +132,11 @@ return require('packer').startup(function(use)
 	use 'tpope/vim-fugitive'
 	use 'tpope/vim-surround'
 	use 'williamboman/nvim-lsp-installer'
-	use { 'wbthomason/packer.nvim', opt = false }
 	use 'folke/trouble.nvim'
 	use { 'theHamsta/nvim-dap-virtual-text' }
 	use { 'mfussenegger/nvim-dap' }
 	use { "rcarriga/nvim-dap-ui", requires = { "mfussenegger/nvim-dap" } }
 	use 'leoluz/nvim-dap-go'
-	use 'theprimeagen/harpoon'
 	use { "voldikss/vim-floaterm" }
 	use{ "LunarVim/Colorschemes" }
 	use {
@@ -119,7 +145,13 @@ return require('packer').startup(function(use)
 			require('gitsigns').setup()
 		end
 	}
-
+	use {
+		'nvim-treesitter/nvim-treesitter',
+		run = function()
+		    local ts_update = require('nvim-treesitter.install').update({ with_sync = true })
+		    ts_update()
+		end,
+	}
 	-- Automatically set up your configuration after cloning packer.nvim
 	-- Put this at the end after all plugins
 	if packer_bootstrap then
