@@ -1,6 +1,7 @@
 " G33KM44N38 configs
 
 
+set rtp
 set autoindent
 set nowrap
 nnoremap  <Space>f :Files<CR>
