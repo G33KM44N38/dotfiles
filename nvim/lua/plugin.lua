@@ -112,7 +112,7 @@ return require('packer').startup(function(use)
 	use 'leoluz/nvim-dap-go'
 	use 'theprimeagen/harpoon'
 	use { "voldikss/vim-floaterm" }
-	user{ "LunarVim/Colorschemes" }
+	use{ "LunarVim/Colorschemes" }
 	use {
 		'lewis6991/gitsigns.nvim',
 		config = function()
