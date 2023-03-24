@@ -1,5 +1,7 @@
 " G33KM44N38 configs
 
+lua require('init')
+
 set autoindent
 set nowrap
 nnoremap  <Space>f :Files<CR>
@@ -31,7 +33,6 @@ colorscheme alduin
 set backspace=indent,eol,start
 set termguicolors
 
-lua require('init')
 
 " tansparent background
 hi Normal guibg=NONE ctermbg=NONE
