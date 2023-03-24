@@ -81,6 +81,7 @@ if empty(glob(data_dir . '/autoload/plug.vim'))
 endif
 
 call plug#begin()
+Plug 'prabirshrestha/vim-lsp'
 Plug 'kshenoy/vim-signature'
 Plug 'preservim/vimux'
 Plug 'vim-test/vim-test'
