@@ -124,7 +124,6 @@ return require('packer').startup(function(use)
 	use 'quangnguyen30192/cmp-nvim-ultisnips'
 	use 'rafi/awesome-vim-colorschemes'
 	use 'ray-x/lsp_signature.nvim'
-	use 'ryanoasis/vim-devicons'
 	use 'saadparwaiz1/cmp_luasnip'
 	use 'shaunsingh/nord.nvim'
 	use 'tc50cal/vim-terminal'

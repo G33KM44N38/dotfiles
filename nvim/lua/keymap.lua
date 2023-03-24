@@ -137,15 +137,6 @@ vim.cmd('highlight ErrorMsg NONE')
 	-- Highlight struct/class member variables (affects both C and C++ files)
 	vim.g.cpp_member_highlight = 1
 
-	-- configure treesitter
-	require'nvim-treesitter.configs'.setup {
-		ensure_installed = "all", -- one of "all", "maintained" (parsers with maintainers), or a list of languages
-		highlight = {
-			enable = true, -- false will disable the whole extension
-			disable = { "rust" }, -- list of language that will be disabled
-		},
-	}
-
 	-- vim-test
 	vim.cmd('let test#strategy = "vimux"')
 
