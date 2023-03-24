@@ -65,7 +65,6 @@ return require('packer').startup(function(use)
 		branch = 'main'
 	}
 	use 'jparise/vim-graphql'
-	use 'mlaursen/vim-react-snippets'
 	use 'ThePrimeagen/harpoon'
 	use 'ThePrimeagen/vim-be-good'
 	use {
