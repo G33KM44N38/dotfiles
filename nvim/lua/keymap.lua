@@ -55,7 +55,6 @@ vim.opt.autoread = true
 vim.opt.backspace = { 'indent', 'eol', 'start' }
 
 
--- Set the color scheme to Alduin
 vim.cmd('colorscheme alduin')
 
 -- Transparent background
@@ -65,14 +64,11 @@ vim.cmd('hi Normal guibg=NONE ctermbg=NONE')
 vim.cmd('autocmd Filetype css setlocal ts=3 sw=3 expandtab')
 vim.cmd('autocmd Filetype javascript setlocal ts=3 sw=3 expandtab')
 
--- Run gofmt before writing a go file
-vim.cmd('autocmd BufWritePre *.go :silent! lua require("go.format").gofmt()')
-
 -- Run LSP format on buffer write post
-vim.cmd('autocmd BufWritePost * lua vim.lsp.buf.format()')
+-- vim.cmd('autocmd BufWritePost * lua vim.lsp.buf.format()')
 
 -- Run LSP formatting sync on InsertLeave event
-vim.cmd('autocmd BufWritePre (InsertLeave?) <buffer> lua vim.lsp.buf.formatting_sync(nil,500)')
+-- vim.cmd('autocmd BufWritePre (InsertLeave?) <buffer> lua vim.lsp.buf.formatting_sync(nil,500)')
 
 vim.g.ft_man_open_mode = 'vert'
 vim.g.cmake_link_compile_commands = 1
@@ -186,7 +182,7 @@ vim.cmd('highlight ErrorMsg NONE')
 	-- open term
 	keymap("n", "<leader>tt", ":ToggleTerm direction=float fish<CR>", opts)
 	keymap("n", "<leader>tv", ":ToggleTerm direction=vertical size=100 fish<CR>", opts)
-	keymap("n", "<leader>th", ":ToggleTerm direction=horizontal size=100 fish<CR>", opts)
+	keymap("n", "<leader>th", ":ToggleTerm direction=horizontal size=10 fish<CR>", opts)
 
 	-- mapping Open Buffer fzf telescope
 	keymap("n", "<leader>bd", ":bd<CR>", opts)

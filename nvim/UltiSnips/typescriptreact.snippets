@@ -1,4 +1,16 @@
-snippet test "description"
-	test de merde tu connais
+snippet rfcce "react functional component export"
+
+interface $1Props {
+}
+
+export const ${1:NameOfComponent} FC<$1Props> = () => {
+}
 endsnippet
-	
+
+snippet conl "console.log()" b
+console.log(${1:value})
+endsnippet
+
+snippet cont "console.tab(array)" i
+console.table(${1:array})
+endsnippet
