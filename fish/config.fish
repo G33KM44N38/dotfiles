@@ -36,16 +36,16 @@ if type -q exa
 	alias llt "ll --tree"
 end
 
+bind \cp 'tmux_navigate' 2>/dev/null
+
 set -U FZF_COMPLETE 2
 set -x GOPATH ~/go
 set -x GOBIN $GOPATH/bin/
 set -x PATH $PATH:$GOPATH:$GOBIN
-set -x OPENAI_API_KEY "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"
-#set PATH $PATH:$GOPATH/bin/
-#set PATH $HOME/bin:$PATH
-#set PATH $HOME/.local/bin:$PATH
+set -U fish_user_paths ~/bin $fish_user_paths
 set EDITOR 'nvim'
 set VISUAL 'nvim'
+
 #set the default shell
 export SHELL=/usr/local/bin/fish
 source ~/.config/fish/path.fish
