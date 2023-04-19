@@ -1,6 +1,8 @@
 local success, plugin = pcall(require, 'plugin')
 
 if success then
+  require('option')
+  require('keymap')
   require('autopair_rc')
   require('autotag_rc')
   require('base')
@@ -8,7 +10,6 @@ if success then
   require('colorizer_rc')
   require('go_rc')
   require('hydra_rc')
-  require('keymap')
   require('lsp')
   require('lspsaga_rc')
   require('rc_cmp')
@@ -18,7 +19,6 @@ if success then
   require('virtual_type_rc')
   require('cursor_line_rc')
   require('ultisnip_rc')
-  require('option')
 else
   print('Erreur lors du chargement du plugin:', plugin)
 end

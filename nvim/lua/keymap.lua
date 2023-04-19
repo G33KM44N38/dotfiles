@@ -4,18 +4,21 @@ vim.cmd("set termguicolors")
 
 local opts = { noremap = true, silent = true }
 
+vim.g.mapleader = " "
+vim.g.maplocalleader = " "
+
 -- Shorten function name
 local keymap = vim.api.nvim_set_keymap
 
-vim.api.nvim_set_keymap('n', '<Space>f', ':Files<CR>', { noremap = true })
-vim.api.nvim_set_keymap('n', '<Space>lg', ':LazyGit<CR>', { noremap = true })
+vim.api.nvim_set_keymap('n', '<leader>f', ':Files<CR>', { noremap = true })
+vim.api.nvim_set_keymap('n', '<leader>lg', ':LazyGit<CR>', { noremap = true })
 vim.api.nvim_set_keymap('i', 'kj', '<Esc>', {})
 vim.api.nvim_set_keymap('i', 'KJ', '<Esc>', {})
 
 
 function setup_mappings()
 	-- NERDTree mappings
-	vim.api.nvim_set_keymap('n', '<Space>pv', ':NERDTree<CR>', { noremap = true })
+	vim.api.nvim_set_keymap('n', '<leader>pv', ':NERDTree<CR>', { noremap = true })
 	vim.api.nvim_set_keymap('n', '<leader>n', ':NERDTreeFocus<CR>', { noremap = true })
 	vim.api.nvim_set_keymap('n', '<C-t>', ':NERDTreeToggle<CR>', { noremap = true })
 	vim.api.nvim_set_keymap('n', '<C-f>', ':NERDTreeFind<CR>', { noremap = true })
@@ -34,12 +37,6 @@ if vim.fn.empty(vim.fn.glob(data_dir .. '/autoload/plug.vim')) > 0 then
 	vim.cmd([[ autocmd VimEnter * PlugInstall --sync | source $MYVIMRC ]])
 end
 
-require'lspconfig'
-
-	--Remap space as leader key
-	keymap("", "<Space>", "<Nop>", opts)
-	vim.g.mapleader = " "
-	vim.g.maplocalleader = " "
 
 	-- running macro
 	keymap("n", "<leader>q", "@q", opts)
@@ -47,7 +44,7 @@ require'lspconfig'
 	keymap("n", "<leader>w", ":w<CR> :wa<CR>", opts)
 
 	-- mapping change viewport
-	keymap("n", "<S-TAB>", "<C-W><C-W>", opts)
+	keymap("n", "<S-TAB>", ":bp<CR>", opts)
 	keymap("n", "<TAB>", ":bn<CR>", opts)
 
 	-- make
