@@ -44,13 +44,12 @@ set -U fish_user_paths ~/bin $fish_user_paths
 set EDITOR 'nvim'
 set VISUAL 'nvim'
 
-# key-bind for tmux-sessionizer
-bind \ct tmux_navigate
-
 #set the default shell
-export SHELL=/usr/local/bin/fish
+# export SHELL=/usr/local/bin/fish
 source ~/.config/fish/path.fish
 set -Ua fish_user_paths $HOME/.cargo/bin
+
+set -ga PATH $PATH /home/kylian/.local/bin
 
 # load tmux source
 tmux source-file ~/.config/tmux/tmux.conf
