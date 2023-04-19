@@ -38,3 +38,4 @@ github-copilot/hosts.json
 github-copilot
 github-copilot
 nvim/plugin/packer_compiled.lua
+fish/fish_variables
