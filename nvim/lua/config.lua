@@ -18,6 +18,7 @@ if success then
   require('virtual_type_rc')
   require('cursor_line_rc')
   require('ultisnip_rc')
+  require('option')
 else
   print('Erreur lors du chargement du plugin:', plugin)
 end
