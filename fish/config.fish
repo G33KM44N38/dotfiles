@@ -44,6 +44,9 @@ set -U fish_user_paths ~/bin $fish_user_paths
 set EDITOR 'nvim'
 set VISUAL 'nvim'
 
+# key-bind for tmux-sessionizer
+bind \ct tmux_navigate
+
 #set the default shell
 export SHELL=/usr/local/bin/fish
 source ~/.config/fish/path.fish
