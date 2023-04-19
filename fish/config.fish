@@ -48,3 +48,6 @@ set VISUAL 'nvim'
 export SHELL=/usr/local/bin/fish
 source ~/.config/fish/path.fish
 set -Ua fish_user_paths $HOME/.cargo/bin
+
+# load tmux source
+tmux source-file ~/.config/tmux/tmux.conf
