@@ -36,8 +36,6 @@ if type -q exa
 	alias llt "ll --tree"
 end
 
-bind \cp 'tmux_navigate' 2>/dev/null
-
 set -U FZF_COMPLETE 2
 set -x GOPATH ~/go
 set -x GOBIN $GOPATH/bin/
