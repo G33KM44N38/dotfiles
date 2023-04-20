@@ -11,123 +11,128 @@ if not vim.loop.fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
-require('packer').startup(function(use)
-	use 'wbthomason/packer.nvim'
-	use 'prabirshrestha/vim-lsp'
-	use 'kshenoy/vim-signature'
-	use 'preservim/vimux'
-	use 'vim-test/vim-test'
-	use 'christoomey/vim-tmux-navigator'
-	use {
+require('lazy').setup({
+	'prabirshrestha/vim-lsp',
+	'kshenoy/vim-signature',
+	'preservim/vimux',
+	'vim-test/vim-test',
+	'christoomey/vim-tmux-navigator',
+	{
 		'junegunn/fzf',
-		run = function() vim.fn['fzf#install']() end
-	}
-	use 'junegunn/fzf.vim'
-	use 'joaohkfaria/vim-jest-snippets'
-	use 'ryanoasis/vim-devicons'
-	use {
+		build = function() vim.fn['fzf#install']() end
+	},
+	'junegunn/fzf.vim',
+	'joaohkfaria/vim-jest-snippets',
+	'ryanoasis/vim-devicons',
+	{
 		'fatih/vim-go',
-		run = ':GoUpdateBinaries'
-	}
-	use 'kdheepak/lazygit.nvim'
-	use 'preservim/nerdtree'
-	use 'pangloss/vim-javascript'
-	use 'leafgarland/typescript-vim'
-	use 'peitalin/vim-jsx-typescript'
-	use {
+		build = ':GoUpdateBinaries'
+	},
+	'kdheepak/lazygit.nvim',
+	'preservim/nerdtree',
+	'pangloss/vim-javascript',
+	'leafgarland/typescript-vim',
+	'peitalin/vim-jsx-typescript',
+	{
 		'styled-components/vim-styled-components',
 		branch = 'main'
-	}
-	use 'jparise/vim-graphql'
-	use 'ThePrimeagen/harpoon'
-	use 'ThePrimeagen/vim-be-good'
-	use {
+	},
+	'jparise/vim-graphql',
+	'ThePrimeagen/harpoon',
+	'ThePrimeagen/vim-be-good',
+	{
 		'ldelossa/gh.nvim',
-		requires = { { 'ldelossa/litee.nvim' } }
-	}
-	use { "RRethy/vim-illuminate" }
-	use { "jose-elias-alvarez/null-ls.nvim", requires = { "nvim-lua/plenary.nvim" }, }
-	use { 'anuvyklack/hydra.nvim', requires = 'anuvyklack/keymap-layer.nvim' }
-	use { 'lukas-reineke/indent-blankline.nvim' }
-	use { 'epilande/vim-react-snippets' }
-	use { 'windwp/nvim-autopairs' }
-	use { 'windwp/nvim-ts-autotag' }
-	use { 'norcalli/nvim-colorizer.lua' }
-	use { 'hoob3rt/lualine.nvim' }
-	use { 'kyazdani42/nvim-web-devicons' }
-	use { 'akinsho/bufferline.nvim' }
-	use { 'akinsho/toggleterm.nvim', tag = 'v2.*', config = function() require("toggleterm").setup() end }
-	use { 'ray-x/go.nvim' }
-	use { 'ray-x/guihua.lua' }
-	use({
+		dependencies = { 
+			{ 'ldelossa/litee.nvim' }
+		}
+	},
+	{ "RRethy/vim-illuminate" },
+	{ "jose-elias-alvarez/null-ls.nvim",
+		dependencies = { "nvim-lua/plenary.nvim" },
+	},
+	{ 'anuvyklack/hydra.nvim',
+		dependencies = 'anuvyklack/keymap-layer.nvim'
+	},
+	{ 'lukas-reineke/indent-blankline.nvim' },
+	{ 'epilande/vim-react-snippets' },
+	{ 'windwp/nvim-autopairs' },
+	{ 'windwp/nvim-ts-autotag' },
+	{ 'norcalli/nvim-colorizer.lua' },
+	{ 'hoob3rt/lualine.nvim' },
+	{ 'kyazdani42/nvim-web-devicons' },
+	{ 'akinsho/bufferline.nvim' },
+	{ 'akinsho/toggleterm.nvim',
+		tag = 'v2.*',
+		config = function() require("toggleterm").setup() end
+	},
+	{ 'ray-x/go.nvim' },
+	{ 'ray-x/guihua.lua' },
+	{
 		"glepnir/lspsaga.nvim",
 		branch = "main",
 		config = function()
 			require('lspsaga').setup({})
 		end,
-	})
-	use { 'yamatsum/nvim-cursorline' }
-	use 'airblade/vim-gitgutter'
-	use 'RishabhRD/popfix'
-	use 'RishabhRD/nvim-cheat.sh'
-	use 'folke/lsp-colors.nvim'
-	use 'L3MON4D3/LuaSnip'
-	use 'SirVer/ultisnips'
-	use 'cdelledonne/vim-cmake'
-	use 'christianchiarulli/nvcode-color-schemes.vim'
-	use 'dcampos/cmp-snippy'
-	use 'dcampos/nvim-snippy'
-	use 'f3fora/cmp-spell'
-	use 'honza/vim-snippets'
-	use 'hrsh7th/cmp-buffer'
-	use 'hrsh7th/cmp-cmdline'
-	use 'hrsh7th/cmp-nvim-lsp'
-	use 'hrsh7th/cmp-nvim-lsp-document-symbol'
-	use 'hrsh7th/cmp-nvim-lsp-signature-help'
-	use 'hrsh7th/cmp-omni'
-	use 'hrsh7th/cmp-path'
-	use 'hrsh7th/nvim-cmp'
-	use 'liuchengxu/vista.vim'
-	use 'neovim/nvim-lspconfig'
-	use 'nvim-lua/plenary.nvim'
-	use 'nvim-telescope/telescope.nvim'
-	use 'nvim-treesitter/playground'
-	use 'onsails/lspkind-nvim'
-	use 'preservim/tagbar'
-	use 'quangnguyen30192/cmp-nvim-ultisnips'
-	use 'rafi/awesome-vim-colorschemes'
-	use 'ray-x/lsp_signature.nvim'
-	use 'saadparwaiz1/cmp_luasnip'
-	use 'shaunsingh/nord.nvim'
-	use 'tc50cal/vim-terminal'
-	use 'tpope/vim-commentary'
-	use 'tpope/vim-fugitive'
-	use 'tpope/vim-surround'
-	use 'williamboman/nvim-lsp-installer'
-	use 'folke/trouble.nvim'
-	use { 'theHamsta/nvim-dap-virtual-text' }
-	use { 'mfussenegger/nvim-dap' }
-	use { "rcarriga/nvim-dap-ui", requires = { "mfussenegger/nvim-dap" } }
-	use 'leoluz/nvim-dap-go'
-	use { "voldikss/vim-floaterm" }
-	use{ "LunarVim/Colorschemes" }
-	use {
+	},
+	{ 'yamatsum/nvim-cursorline' },
+	'airblade/vim-gitgutter',
+	'RishabhRD/popfix',
+	'RishabhRD/nvim-cheat.sh',
+	'folke/lsp-colors.nvim',
+	'L3MON4D3/LuaSnip',
+	'SirVer/ultisnips',
+	'cdelledonne/vim-cmake',
+	'christianchiarulli/nvcode-color-schemes.vim',
+	'dcampos/cmp-snippy',
+	'dcampos/nvim-snippy',
+	'f3fora/cmp-spell',
+	'honza/vim-snippets',
+	'hrsh7th/cmp-buffer',
+	'hrsh7th/cmp-cmdline',
+	'hrsh7th/cmp-nvim-lsp',
+	'hrsh7th/cmp-nvim-lsp-document-symbol',
+	'hrsh7th/cmp-nvim-lsp-signature-help',
+	'hrsh7th/cmp-omni',
+	'hrsh7th/cmp-path',
+	'hrsh7th/nvim-cmp',
+	'liuchengxu/vista.vim',
+	'neovim/nvim-lspconfig',
+	'nvim-lua/plenary.nvim',
+	'nvim-telescope/telescope.nvim',
+	'nvim-treesitter/playground',
+	'onsails/lspkind-nvim',
+	'preservim/tagbar',
+	'quangnguyen30192/cmp-nvim-ultisnips',
+	'rafi/awesome-vim-colorschemes',
+	'ray-x/lsp_signature.nvim',
+	'saadparwaiz1/cmp_luasnip',
+	'shaunsingh/nord.nvim',
+	'tc50cal/vim-terminal',
+	'tpope/vim-commentary',
+	'tpope/vim-fugitive',
+	'tpope/vim-surround',
+	'williamboman/nvim-lsp-installer',
+	'folke/trouble.nvim',
+	{ 'theHamsta/nvim-dap-virtual-text' },
+	{ 'mfussenegger/nvim-dap' },
+	{ "rcarriga/nvim-dap-ui",
+		dependencies = { "mfussenegger/nvim-dap" }
+	},
+	'leoluz/nvim-dap-go',
+	{ "voldikss/vim-floaterm" },
+	{ "LunarVim/Colorschemes" },
+	{
 		'lewis6991/gitsigns.nvim',
 		config = function()
 			require('gitsigns').setup()
 		end
-	}
-	use {
+	},
+	{
 		'nvim-treesitter/nvim-treesitter',
-		run = function()
+		build = function()
 			local ts_update = require('nvim-treesitter.install').update({ with_sync = true })
 			ts_update()
 		end,
-	}
-	-- Automatically set up your configuration after cloning packer.nvim
-	-- Put this at the end after all plugins
-	if packer_bootstrap then
-		require('packer').sync()
-	end
+	},
 
-end)
+})
