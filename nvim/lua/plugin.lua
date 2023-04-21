@@ -12,6 +12,15 @@ end
 vim.opt.rtp:prepend(lazypath)
 
 require('lazy').setup({
+	{
+	    "williamboman/mason.nvim",
+	    build = ":MasonUpdate" -- :MasonUpdate updates registry contents
+	},
+	"kabouzeid/nvim-lspinstall",
+		event = "VimEnter",
+			config = function()
+				require("plugins.lspinstall")
+	end,
 	'prabirshrestha/vim-lsp',
 	'kshenoy/vim-signature',
 	'preservim/vimux',

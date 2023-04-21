@@ -51,5 +51,11 @@ set -Ua fish_user_paths $HOME/.cargo/bin
 
 set -ga PATH $PATH /home/kylian/.local/bin
 
+bind \cp tmux_navigate
+
+# set -gx NVM_DIR "$HOME/.nvm"
+# source (bass -c 'source "$NVM_DIR/nvm.sh"') 2>/dev/null
+
+
 # load tmux source
 tmux source-file ~/.config/tmux/tmux.conf

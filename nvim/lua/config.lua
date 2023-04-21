@@ -1,6 +1,7 @@
 local success, plugin = pcall(require, 'plugin')
 
 if success then
+  require('lspconfig')
   require('option')
   require('keymap')
   require('autopair_rc')
@@ -19,6 +20,7 @@ if success then
   require('virtual_type_rc')
   require('cursor_line_rc')
   require('ultisnip_rc')
+  require('mason').setup()
 else
   print('Erreur lors du chargement du plugin:', plugin)
 end
