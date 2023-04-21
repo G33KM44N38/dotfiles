@@ -28,6 +28,7 @@ nvim/Colors
 nvim/after/plugin/stdheader.vim
 nvim/sessions
 nvim/plugin/packer_compiled.lua
+nvim/node_modules/
 
 yarn
 iterm2
@@ -44,3 +45,5 @@ github-copilot/hosts.json
 github-copilot/hosts.json
 github-copilot
 github-copilot
+nvim/node_modules
+nvim/lazy-lock.json
