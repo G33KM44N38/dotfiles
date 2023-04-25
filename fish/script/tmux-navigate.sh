@@ -8,6 +8,7 @@ else
     ~/myproject/freelance/site/minata/stackdev/src/ \
     ~/goinfre/ \
     ~/.config/ \
+    ~/ \
     -mindepth 1 -maxdepth 2 -type d | fzf)
 fi
 
