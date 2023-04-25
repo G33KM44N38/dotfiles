@@ -11,10 +11,11 @@ if not vim.loop.fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
-require('lazy').setup({
+local plugins = {
 	{
 	    "williamboman/mason.nvim",
-	    build = ":MasonUpdate" -- :MasonUpdate updates registry contents
+	    build = ":MasonUpdate", -- :MasonUpdate updates registry contents
+	    lazy=false
 	},
 	"kabouzeid/nvim-lspinstall",
 		event = "VimEnter",
@@ -25,7 +26,6 @@ require('lazy').setup({
 	'kshenoy/vim-signature',
 	'preservim/vimux',
 	'vim-test/vim-test',
-	'christoomey/vim-tmux-navigator',
 	{
 		'junegunn/fzf',
 		build = function() vim.fn['fzf#install']() end
@@ -71,7 +71,7 @@ require('lazy').setup({
 	{ 'kyazdani42/nvim-web-devicons' },
 	{ 'akinsho/bufferline.nvim' },
 	{ 'akinsho/toggleterm.nvim',
-		tag = 'v2.*',
+		version = "*",
 		config = function() require("toggleterm").setup() end
 	},
 	{ 'ray-x/go.nvim' },
@@ -144,4 +144,9 @@ require('lazy').setup({
 		end,
 	},
 
-})
+}
+
+local opts = {}
+
+
+require("lazy").setup(plugins, opts)

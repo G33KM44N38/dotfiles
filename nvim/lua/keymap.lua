@@ -80,13 +80,13 @@ end
 	keymap("n", "<leader>bb", ":lua require'telescope.builtin'.buffers()<CR>", opts)
 
 	-- keymap("n", "<leader>t", ":! ctags <CR> :lua require('telescope.builtin').tags()<CR>", opts)
-	keymap("n", "bf", ":lua require('telescope.builtin').find_files()<CR>", opts)
+	keymap("n", "<leader>bf", ":lua require('telescope.builtin').find_files()<CR>", opts)
 	keymap("n", "<leader>dot", ":lua require('rc_telescope').search_dotfiles()<CR>", opts)
 	keymap("n", "<leader>conf", ":lua require('rc_telescope').config()<CR>", opts)
 	keymap("n", "?", ":lua require('telescope.builtin').current_buffer_fuzzy_find()<CR>", opts)
-	keymap("n", "br", ":lua require('telescope.builtin').live_grep()<CR>", opts)
+	keymap("n", "<leader>br", ":lua require('telescope.builtin').live_grep()<CR>", opts)
 	keymap("n", "<leader>bq", ":lua require('telescope.builtin').quickfix()<CR>", opts)
-	keymap("n", "gf", ":lua require('telescope.builtin').git_files()<CR>", opts)
+	keymap("n", "<leader>gf", ":lua require('telescope.builtin').git_files()<CR>", opts)
 	keymap("n", "<leader>xx", ":lua require('telescope.builtin').diagnostics()<CR>", opts)
 
 	keymap("n", "<leader>km", ":lua require('telescope.builtin').keymaps()<CR>", opts)
