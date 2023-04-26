@@ -16,7 +16,7 @@ vim.api.nvim_set_keymap('i', 'kj', '<Esc>', {})
 vim.api.nvim_set_keymap('i', 'KJ', '<Esc>', {})
 
 
-function setup_mappings()
+local function setup_mappings()
 	-- NERDTree mappings
 	vim.api.nvim_set_keymap('n', '<leader>pv', ':NERDTree<CR>', { noremap = true })
 	vim.api.nvim_set_keymap('n', '<leader>n', ':NERDTreeFocus<CR>', { noremap = true })
@@ -123,6 +123,20 @@ require('dap-go').setup()
 	-- Move text up and down
 	keymap("x", "J", ":move '>+1<CR>gv-gv", opts)
 	keymap("x", "K", ":move '<-2<CR>gv-gv", opts)
+
+
+-- Switch to the window to the left
+vim.api.nvim_set_keymap("n", "<C-h>", "<C-w>h", { noremap = true })
+
+-- Switch to the window to the right
+vim.api.nvim_set_keymap("n", "<C-l>", "<C-w>l", { noremap = true })
+
+-- Switch to the window above
+vim.api.nvim_set_keymap("n", "<C-k>", "<C-w>k", { noremap = true })
+
+-- Switch to the window below
+vim.api.nvim_set_keymap("n", "<C-j>", "<C-w>j", { noremap = true })
+
 
 local success, plugin = pcall(require, 'harpoon')
 
