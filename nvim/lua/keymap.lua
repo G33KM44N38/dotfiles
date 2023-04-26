@@ -31,13 +31,6 @@ setup_mappings()
 
 require('dap-go').setup()
 
-local data_dir = vim.fn.has('nvim') == 1 and vim.fn.stdpath('data') .. '/site' or '~/.vim'
-if vim.fn.empty(vim.fn.glob(data_dir .. '/autoload/plug.vim')) > 0 then
-	vim.fn.execute('!curl -fLo ' .. data_dir .. '/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim')
-	vim.cmd([[ autocmd VimEnter * PlugInstall --sync | source $MYVIMRC ]])
-end
-
-
 	-- running macro
 	keymap("n", "<leader>q", "@q", opts)
 	-- Save
@@ -130,3 +123,25 @@ end
 	-- Move text up and down
 	keymap("x", "J", ":move '>+1<CR>gv-gv", opts)
 	keymap("x", "K", ":move '<-2<CR>gv-gv", opts)
+
+local success, plugin = pcall(require, 'harpoon')
+
+if success then
+  local success1, mark = pcall(require, "harpoon.mark")
+  local success2, ui = pcall(require, "harpoon.ui")
+
+  if success1 and success2 then
+    vim.keymap.set("n", "<leader>a", mark.add_file)
+    vim.keymap.set("n", "<C-e>", ui.toggle_quick_menu)
+    vim.keymap.set("n", "<C-u>",function() ui.nav_file(1) end)
+    vim.keymap.set("n", "<C-y>",function() ui.nav_file(2) end)
+    vim.keymap.set("n", "<C-n>",function() ui.nav_file(3) end)
+    vim.keymap.set("n", "<C-m>",function() ui.nav_file(4) end)
+    vim.api.nvim_set_keymap("n", "<C-P>", ":lua require('harpoon.tmux').sendCommand(0, 'tmux_navigate; tmux kill-window')<CR>", {noremap = true, silent = true})
+  else
+    print("Error loading Harpoon mark or UI module")
+  end
+else
+  print('Erreur lors du chargement du plugin:', plugin)
+end
+
