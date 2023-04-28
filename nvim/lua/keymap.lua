@@ -10,7 +10,7 @@ vim.g.maplocalleader = " "
 -- Shorten function name
 local keymap = vim.api.nvim_set_keymap
 
-vim.keymap.set("n", "<leader>f", "<cmd>silent !tmux neww tmux_navigate<CR>")
+vim.keymap.set("n", "<C-f>", "<cmd>silent !tmux neww tmux_navigate<CR>")
 vim.api.nvim_set_keymap('n', '<leader>lg', ':LazyGit<CR>', { noremap = true })
 vim.api.nvim_set_keymap('i', 'kj', '<Esc>', {})
 vim.api.nvim_set_keymap('i', 'KJ', '<Esc>', {})
@@ -21,7 +21,7 @@ local function setup_mappings()
 	vim.api.nvim_set_keymap('n', '<leader>pv', ':NERDTree<CR>', { noremap = true })
 	vim.api.nvim_set_keymap('n', '<leader>n', ':NERDTreeFocus<CR>', { noremap = true })
 	vim.api.nvim_set_keymap('n', '<C-t>', ':NERDTreeToggle<CR>', { noremap = true })
-	vim.api.nvim_set_keymap('n', '<C-f>', ':NERDTreeFind<CR>', { noremap = true })
+	vim.api.nvim_set_keymap('n', '<leader>f', ':NERDTreeFind<CR>', { noremap = true })
 
 	-- Exit Vim if NERDTree is the only window remaining in the only tab.
 	vim.cmd(
