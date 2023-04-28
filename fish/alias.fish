@@ -17,6 +17,7 @@ alias stack "cd ~/stackdev/"
 alias g "cd ~/goinfre/"
 alias lzd "lazydocker"
 alias lg "lazygit"
+alias llt "exa --tree"
 
 # git command
 alias gs "git status"
