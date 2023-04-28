@@ -32,3 +32,12 @@ end
 if not set -q TMUX_CONF
     set -g -x TMUX_CONF ~/.config/tmux/tmux.conf
 end
+
+# Add ~/.local/bin to PATH if it's not already there
+if not contains ~/bin $PATH
+    set -ga PATH $PATH ~/bin
+end
+
+set -e fish_tmux_autostarted
+set -e fish_tmux_auto_start
+set -e _fish_tmux_fixed_config
