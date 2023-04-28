@@ -5,5 +5,3 @@ set VISUAL 'nvim'
 
 source ~/.config/fish/path.fish
 source ~/.config/fish/alias.fish
-
-tmux source-file ~/.config/tmux/tmux.conf
