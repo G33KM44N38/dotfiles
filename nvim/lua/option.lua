@@ -37,8 +37,10 @@ vim.opt.autoread = true
 -- Set the backspace behavior
 vim.opt.backspace = { 'indent', 'eol', 'start' }
 
+-- set the syntax on
+vim.cmd("autocmd FileType go syntax enable")
 
-vim.cmd('colorscheme alduin')
+vim.cmd('colorscheme solarized8_high')
 
 -- Transparent background
 vim.cmd('hi Normal guibg=NONE ctermbg=NONE')
@@ -61,11 +63,11 @@ vim.g.netrw_banner = 0
 vim.g.netrw_winsize = 20
 
 -- lazygit
-vim.g.lazygit_floating_window_winblend = 0 -- transparency of floating window
-vim.g.lazygit_floating_window_scaling_factor = 0.9 -- scaling factor for floating window
-vim.g.lazygit_floating_window_corner_chars = {'╭', '╮', '╰', '╯'} -- customize lazygit popup window corner characters
-vim.g.lazygit_floating_window_use_plenary = 0 -- use plenary.nvim to manage floating window if available
-vim.g.lazygit_use_neovim_remote = 1 -- fallback to 0 if neovim-remote is not installed
+vim.g.lazygit_floating_window_winblend = 0                          -- transparency of floating window
+vim.g.lazygit_floating_window_scaling_factor = 0.9                  -- scaling factor for floating window
+vim.g.lazygit_floating_window_corner_chars = { '╭', '╮', '╰', '╯' } -- customize lazygit popup window corner characters
+vim.g.lazygit_floating_window_use_plenary = 0                       -- use plenary.nvim to manage floating window if available
+vim.g.lazygit_use_neovim_remote = 1                                 -- fallback to 0 if neovim-remote is not installed
 vim.g.lazygit_use_custom_config_file_path = 0
 vim.g.lazygit_config_file_path = ''
 
@@ -86,22 +88,22 @@ vim.cmd('highlight Error NONE')
 vim.cmd('highlight ErrorMsg NONE')
 
 -- Disable function highlighting (affects both C and C++ files)
-	vim.g.cpp_function_highlight = 1
+vim.g.cpp_function_highlight = 1
 
-	-- Enable highlighting of C++11 attributes
-	vim.g.cpp_attributes_highlight = 1
+-- Enable highlighting of C++11 attributes
+vim.g.cpp_attributes_highlight = 1
 
-	-- Highlight struct/class member variables (affects both C and C++ files)
-	vim.g.cpp_member_highlight = 1
+-- Highlight struct/class member variables (affects both C and C++ files)
+vim.g.cpp_member_highlight = 1
 
-	-- vim-test
-	vim.cmd('let test#strategy = "vimux"')
+-- vim-test
+vim.cmd('let test#strategy = "vimux"')
 
-	-- set completeopt=noinsert,menuone,noselect
-	vim.g.completion_matching_strategy_list = {'exact', 'substring', 'fuzzy', 'all'}
+-- set completeopt=noinsert,menuone,noselect
+vim.g.completion_matching_strategy_list = { 'exact', 'substring', 'fuzzy', 'all' }
 
-	-- configure nvcode-color-schemes
-	vim.g.nvcode_termcolors = 256
+-- configure nvcode-color-schemes
+vim.g.nvcode_termcolors = 256
 
 
 vim.api.nvim_set_option('autoindent', true)
