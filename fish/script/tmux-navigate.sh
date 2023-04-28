@@ -5,11 +5,11 @@ if [[ $# -eq 1 ]]; then
 else
     selected=$(find \
     ~/myproject/freelance/site/minata/ \
-    ~/myproject/freelance/site/minata/stackdev/src/ \
+    ~/myproject/freelance/site/minata/stackdev/src/* \
     ~/goinfre/ \
     ~/.config/ \
     ~/ \
-    -mindepth 1 -maxdepth 2 -type d | fzf)
+    -mindepth 1 -maxdepth 1 -type d | fzf)
 fi
 
 if [[ -z $selected ]]; then
