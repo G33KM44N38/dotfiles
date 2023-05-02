@@ -59,9 +59,9 @@ local plugins = {
 	{ "jose-elias-alvarez/null-ls.nvim",
 		dependencies = { "nvim-lua/plenary.nvim" },
 	},
-	{ 'anuvyklack/hydra.nvim',
-		dependencies = 'anuvyklack/keymap-layer.nvim'
-	},
+	-- { 'anuvyklack/hydra.nvim',
+	-- 	dependencies = 'anuvyklack/keymap-layer.nvim'
+	-- },
 	{ 'lukas-reineke/indent-blankline.nvim' },
 	{ 'epilande/vim-react-snippets' },
 	{ 'windwp/nvim-autopairs' },

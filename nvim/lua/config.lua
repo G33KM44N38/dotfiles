@@ -10,7 +10,7 @@ if success then
   require('buffer_line_rc')
   require('colorizer_rc')
   require('go_rc')
-  require('hydra_rc')
+  -- require('hydra_rc')
   require('lsp')
   require('lspsaga_rc')
   require('rc_cmp')
