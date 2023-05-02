@@ -11,7 +11,8 @@ vim.g.maplocalleader = " "
 local keymap = vim.api.nvim_set_keymap
 
 vim.keymap.set("n", "<C-f>", "<cmd>silent !tmux neww tmux_navigate<CR>")
-vim.api.nvim_set_keymap('n', '<leader>lg', ':LazyGit<CR>', { noremap = true })
+vim.api.nvim_set_keymap('n', '<leader>lg', '<cmd>silent !tmux neww lg<CR>', { noremap = true })
+vim.api.nvim_set_keymap('n', '<leader>lzd', '<cmd>silent !tmux neww lzd<CR>', { noremap = true })
 vim.api.nvim_set_keymap('i', 'kj', '<Esc>', {})
 vim.api.nvim_set_keymap('i', 'KJ', '<Esc>', {})
 
