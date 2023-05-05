@@ -16,12 +16,11 @@ local servers = {
 	"html",
 	"emmet_ls",
 	"jsonls",
-	"yamlls",
 	"dockerls",
 	"gopls",
 	"tsserver",
 	"pyright",
-	"bashls"
+	"bashls",
 }
 
 local signs = {

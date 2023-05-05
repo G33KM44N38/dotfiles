@@ -20,7 +20,15 @@ if success then
   require('virtual_type_rc')
   require('cursor_line_rc')
   require('ultisnip_rc')
-  require('mason').setup()
+  require("mason").setup({
+    ui = {
+        icons = {
+            package_installed = "✓",
+            package_pending = "➜",
+            package_uninstalled = "✗"
+        }
+    }
+})
 else
   print('Erreur lors du chargement du plugin:', plugin)
 end

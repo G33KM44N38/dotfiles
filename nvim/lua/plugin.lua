@@ -1,26 +1,26 @@
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not vim.loop.fs_stat(lazypath) then
-  vim.fn.system({
-    "git",
-    "clone",
-    "--filter=blob:none",
-    "https://github.com/folke/lazy.nvim.git",
-    "--branch=stable", -- latest stable release
-    lazypath,
-  })
+	vim.fn.system({
+		"git",
+		"clone",
+		"--filter=blob:none",
+		"https://github.com/folke/lazy.nvim.git",
+		"--branch=stable", -- latest stable release
+		lazypath,
+	})
 end
 vim.opt.rtp:prepend(lazypath)
 
 local plugins = {
 	{
-	    "williamboman/mason.nvim",
-	    build = ":MasonUpdate", -- :MasonUpdate updates registry contents
-	    lazy=false
+		"williamboman/mason.nvim",
+		build = ":MasonUpdate", -- :MasonUpdate updates registry contents
+		lazy = false
 	},
 	"kabouzeid/nvim-lspinstall",
-		event = "VimEnter",
-			config = function()
-				require("plugins.lspinstall")
+	event = "VimEnter",
+	config = function()
+		require("plugins.lspinstall")
 	end,
 	'prabirshrestha/vim-lsp',
 	'kshenoy/vim-signature',
@@ -39,9 +39,9 @@ local plugins = {
 	},
 	'kdheepak/lazygit.nvim',
 	'preservim/nerdtree',
-	'pangloss/vim-javascript',
-	'leafgarland/typescript-vim',
-	'peitalin/vim-jsx-typescript',
+	-- 'pangloss/vim-javascript',
+	-- 'leafgarland/typescript-vim',
+	-- 'peitalin/vim-jsx-typescript',
 	{
 		'styled-components/vim-styled-components',
 		branch = 'main'
@@ -51,26 +51,28 @@ local plugins = {
 	'ThePrimeagen/vim-be-good',
 	{
 		'ldelossa/gh.nvim',
-		dependencies = { 
+		dependencies = {
 			{ 'ldelossa/litee.nvim' }
 		}
 	},
 	{ "RRethy/vim-illuminate" },
-	{ "jose-elias-alvarez/null-ls.nvim",
+	{
+		"jose-elias-alvarez/null-ls.nvim",
 		dependencies = { "nvim-lua/plenary.nvim" },
 	},
 	-- { 'anuvyklack/hydra.nvim',
 	-- 	dependencies = 'anuvyklack/keymap-layer.nvim'
 	-- },
 	{ 'lukas-reineke/indent-blankline.nvim' },
-	{ 'epilande/vim-react-snippets' },
+	-- { 'epilande/vim-react-snippets' },
 	{ 'windwp/nvim-autopairs' },
 	{ 'windwp/nvim-ts-autotag' },
 	{ 'norcalli/nvim-colorizer.lua' },
 	{ 'hoob3rt/lualine.nvim' },
 	{ 'kyazdani42/nvim-web-devicons' },
 	{ 'akinsho/bufferline.nvim' },
-	{ 'akinsho/toggleterm.nvim',
+	{
+		'akinsho/toggleterm.nvim',
 		version = "*",
 		config = function() require("toggleterm").setup() end
 	},
@@ -118,13 +120,15 @@ local plugins = {
 	'shaunsingh/nord.nvim',
 	'tc50cal/vim-terminal',
 	'tpope/vim-commentary',
+	'tarekbecker/vim-yaml-formatter',
 	'tpope/vim-fugitive',
 	'tpope/vim-surround',
 	'williamboman/nvim-lsp-installer',
 	'folke/trouble.nvim',
 	{ 'theHamsta/nvim-dap-virtual-text' },
 	{ 'mfussenegger/nvim-dap' },
-	{ "rcarriga/nvim-dap-ui",
+	{
+		"rcarriga/nvim-dap-ui",
 		dependencies = { "mfussenegger/nvim-dap" }
 	},
 	'leoluz/nvim-dap-go',
