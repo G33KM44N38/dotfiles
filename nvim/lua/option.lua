@@ -4,6 +4,8 @@ vim.opt.compatible = false
 -- Set fill characters for statusline
 vim.opt.fillchars:append({ stl = ' ', stlnc = ' ' })
 
+vim.cmd("autocmd Filetype javascript setlocal ts=3 sw=3 expandtab")
+
 -- Set fold method to 'indent'
 vim.opt.foldmethod = 'indent'
 
