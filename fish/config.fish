@@ -6,3 +6,4 @@ set VISUAL 'nvim'
 source ~/.config/fish/path.fish
 source ~/.config/fish/alias.fish
 source ~/.config/fish/keymap.fish
+source ~/.config/fish/function.fish
