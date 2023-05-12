@@ -4,6 +4,7 @@ if [[ $# -eq 1 ]]; then
     selected=$1
 else
     selected=$(find \
+    ~/myproject/freelance/site/ \
     ~/myproject/freelance/site/minata/ \
     ~/myproject/freelance/site/minata/stackdev/src/* \
     ~/goinfre/ \
