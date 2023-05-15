@@ -21,6 +21,7 @@ local servers = {
 	"tsserver",
 	"pyright",
 	"bashls",
+	-- "yamlls",
 }
 
 local signs = {

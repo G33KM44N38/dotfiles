@@ -106,5 +106,5 @@ vim.g.completion_matching_strategy_list = { 'exact', 'substring', 'fuzzy', 'all'
 vim.g.nvcode_termcolors = 256
 
 
-vim.api.nvim_set_option('autoindent', true)
+vim.api.nvim_set_option('autoindent', false)
 vim.api.nvim_set_option('wrap', false)
