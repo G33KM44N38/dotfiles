@@ -7,6 +7,7 @@ else
     ~/myproject/freelance/site/ \
     ~/myproject/freelance/site/minata/ \
     ~/myproject/freelance/site/minata/stackdev/src/* \
+    ~/myproject/freelance/site/ \
     ~/goinfre/ \
     ~/.config/ \
     ~/ \
