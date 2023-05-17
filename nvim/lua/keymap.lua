@@ -21,7 +21,7 @@ local function setup_mappings()
 	-- NERDTree mappings
 	vim.api.nvim_set_keymap('n', '<leader>pv', ':NERDTree<CR>', { noremap = true })
 	vim.api.nvim_set_keymap('n', '<leader>n', ':NERDTreeFocus<CR>', { noremap = true })
-	vim.api.nvim_set_keymap('n', '<C-t>', ':NERDTreeToggle<CR>', { noremap = true })
+	vim.api.nvim_set_keymap('n', '<C-p>', ':NERDTreeToggle<CR>', { noremap = true })
 	vim.api.nvim_set_keymap('n', '<leader>f', ':NERDTreeFind<CR>', { noremap = true })
 
 	-- Exit Vim if NERDTree is the only window remaining in the only tab.
@@ -153,11 +153,11 @@ if success then
 
 	if success1 and success2 then
 		vim.keymap.set("n", "<leader>a", mark.add_file)
-		vim.keymap.set("n", "<C-e>", ui.toggle_quick_menu)
-		vim.keymap.set("n", "<C-t>", function() ui.nav_file(1) end)
-		vim.keymap.set("n", "<C-y>", function() ui.nav_file(2) end)
-		vim.keymap.set("n", "<C-n>", function() ui.nav_file(3) end)
-		vim.keymap.set("n", "<C-m>", function() ui.nav_file(4) end)
+		vim.keymap.set("n", "<A-e>", ui.toggle_quick_menu)
+		vim.keymap.set("n", "<A-j>", function() ui.nav_file(1) end)
+		vim.keymap.set("n", "<A-u>", function() ui.nav_file(2) end)
+		vim.keymap.set("n", "<A-k>", function() ui.nav_file(3) end)
+		vim.keymap.set("n", "<A-i>", function() ui.nav_file(4) end)
 	else
 		print("Error loading Harpoon mark or UI module")
 	end
