@@ -9,8 +9,6 @@ if success then
   require('base')
   require('buffer_line_rc')
   require('colorizer_rc')
-  require('go_rc')
-  -- require('hydra_rc')
   require('lsp')
   require('lspsaga_rc')
   require('rc_cmp')
@@ -20,6 +18,7 @@ if success then
   require('virtual_type_rc')
   require('cursor_line_rc')
   require('ultisnip_rc')
+  require("rc_treesitter")
   require("mason").setup({
     ui = {
         icons = {

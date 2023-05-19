@@ -23,7 +23,7 @@ local plugins = {
 			-- LSP Support
 			{ 'neovim/nvim-lspconfig' }, -- Required
 			{
-			       -- Optional
+				-- Optional
 				'williamboman/mason.nvim',
 				build = function()
 					pcall(vim.cmd, 'MasonUpdate')
@@ -44,7 +44,7 @@ local plugins = {
 		require("plugins.lspinstall")
 	end,
 	'prabirshrestha/vim-lsp',
-	'kshenoy/vim-signature',
+	-- 'kshenoy/vim-signature',
 	'preservim/vimux',
 	'vim-test/vim-test',
 	{

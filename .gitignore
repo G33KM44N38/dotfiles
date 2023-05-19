@@ -46,3 +46,5 @@ github-copilot/hosts.json
 github-copilot
 github-copilot
 nvim/node_modules
+tmux/plugins/nord-tmux
+tmux/plugins/tpm

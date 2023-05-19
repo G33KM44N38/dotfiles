@@ -42,7 +42,8 @@ vim.opt.backspace = { 'indent', 'eol', 'start' }
 -- set the syntax on
 vim.cmd("autocmd FileType go syntax enable")
 
-vim.cmd('colorscheme solarized8_high')
+-- vim.cmd('colorscheme solarized8_high')
+vim.cmd('colorscheme alduin')
 
 -- Transparent background
 vim.cmd('hi Normal guibg=NONE ctermbg=NONE')
