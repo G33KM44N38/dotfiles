@@ -53,7 +53,7 @@ vim.cmd('autocmd Filetype css setlocal ts=3 sw=3 expandtab')
 vim.cmd('autocmd Filetype javascript setlocal ts=3 sw=3 expandtab')
 
 -- Run LSP format on buffer write post
--- vim.cmd('silent! autocmd BufWritePost * lua vim.lsp.buf.format()')
+vim.cmd('silent! autocmd BufWritePost * lua vim.lsp.buf.format()')
 
 -- Run LSP formatting sync on InsertLeave event
 -- vim.cmd('autocmd BufWritePre (InsertLeave?) <buffer> lua vim.lsp.buf.formatting_sync(nil,500)')
