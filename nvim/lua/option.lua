@@ -47,7 +47,7 @@ vim.cmd('colorscheme alduin')
 vim.cmd('hi Normal guibg=NONE ctermbg=NONE')
 
 -- Set tabstops for filetypes
-vim.cmd("autocmd Filetype * setlocal ts=3 sw=3 expandtab")
+vim.cmd("autocmd Filetype * setlocal ts=5 sw=5 expandtab")
 
 -- Run LSP format on buffer write post
 vim.cmd('silent! autocmd BufWritePost * lua vim.lsp.buf.format()')
