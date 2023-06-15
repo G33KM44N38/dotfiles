@@ -22,6 +22,7 @@ local servers = {
    "pyright",
    "bashls",
    "lemminx",
+	"rust_analyzer",
    -- "yamlls",
 }
 

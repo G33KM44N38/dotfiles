@@ -47,7 +47,7 @@ vim.cmd('colorscheme alduin')
 vim.cmd('hi Normal guibg=NONE ctermbg=NONE')
 
 -- Set tabstops for filetypes
-vim.cmd("autocmd Filetype * setlocal ts=5 sw=5 expandtab")
+vim.cmd("autocmd Filetype * setlocal ts=5 sw=5")
 
 -- Run LSP format on buffer write post
 vim.cmd('silent! autocmd BufWritePost * lua vim.lsp.buf.format()')
@@ -74,7 +74,7 @@ vim.g.lazygit_config_file_path = ''
 -- Airline_Vim
 vim.g.airline_powerline_fonts = 1
 if not vim.g.airline_symbols then
-	vim.g.airline_symbols = {}
+     vim.g.airline_symbols = {}
 end
 
 -- Custom indentPlugin Show
