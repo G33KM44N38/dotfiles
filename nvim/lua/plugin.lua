@@ -147,12 +147,10 @@ local plugins = {
 	'williamboman/nvim-lsp-installer',
 	'folke/trouble.nvim',
 	{ 'theHamsta/nvim-dap-virtual-text' },
-	{ 'mfussenegger/nvim-dap' },
 	{
 		"rcarriga/nvim-dap-ui",
 		dependencies = { "mfussenegger/nvim-dap" }
 	},
-	'leoluz/nvim-dap-go',
 	{ "voldikss/vim-floaterm" },
 	{ "LunarVim/Colorschemes" },
 	{
@@ -172,6 +170,5 @@ local plugins = {
 }
 
 local opts = {}
-
 
 require("lazy").setup(plugins, opts)

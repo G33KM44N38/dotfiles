@@ -31,8 +31,6 @@ end
 
 setup_mappings()
 
-require('dap-go').setup()
-
 -- running macro
 keymap("n", "<leader>q", "@q", opts)
 
