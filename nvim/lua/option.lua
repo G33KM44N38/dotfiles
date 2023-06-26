@@ -50,10 +50,10 @@ vim.cmd('hi Normal guibg=NONE ctermbg=NONE')
 vim.cmd("autocmd Filetype * setlocal ts=5 sw=5")
 
 -- Run LSP format on buffer write post
-vim.cmd('silent! autocmd BufWritePost * lua vim.lsp.buf.format()')
+-- vim.cmd('silent! autocmd BufWritePost * lua vim.lsp.buf.format()')
 
 -- Run LSP formatting sync on InsertLeave event
--- vim.cmd('autocmd BufWritePre (InsertLeave?) <buffer> lua vim.lsp.buf.formatting_sync(nil,500)')
+vim.cmd('autocmd BufWritePre (InsertLeave?) <buffer> lua vim.lsp.buf.formatting_sync(nil,500)')
 
 vim.g.ft_man_open_mode = 'vert'
 vim.g.cmake_link_compile_commands = 1
@@ -74,7 +74,7 @@ vim.g.lazygit_config_file_path = ''
 -- Airline_Vim
 vim.g.airline_powerline_fonts = 1
 if not vim.g.airline_symbols then
-     vim.g.airline_symbols = {}
+	vim.g.airline_symbols = {}
 end
 
 -- Custom indentPlugin Show

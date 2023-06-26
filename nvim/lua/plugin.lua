@@ -146,7 +146,9 @@ local plugins = {
 	'tpope/vim-surround',
 	'williamboman/nvim-lsp-installer',
 	'folke/trouble.nvim',
-	{ 'theHamsta/nvim-dap-virtual-text' },
+	'folke/neodev.nvim',
+	'leoluz/nvim-dap-go',
+	-- { 'theHamsta/nvim-dap-virtual-text' },
 	{
 		"rcarriga/nvim-dap-ui",
 		dependencies = { "mfussenegger/nvim-dap" }
