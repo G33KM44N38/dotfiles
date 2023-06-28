@@ -48,3 +48,4 @@ github-copilot
 nvim/node_modules
 tmux/plugins/nord-tmux
 tmux/plugins/tpm
+nvim/plugin/packer_compiled.lua
