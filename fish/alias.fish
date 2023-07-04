@@ -1,7 +1,7 @@
 # git commanalias vi "nvim"
 alias vi "nvim"
 alias pj "cd ~/myproject/"
-alias conf "cd ~/.config/ ; vi ."
+alias cf "cd ~/.config/"
 alias stackMina "cd ~/myproject/freelance/site/minata/stackdev/"
 alias mapi "cd ~/myproject/freelance/site/minata/stackdev/src/api/"
 alias mfr "cd ~/myproject/freelance/site/minata/stackdev/src/front/"
