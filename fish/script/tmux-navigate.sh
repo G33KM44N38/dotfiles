@@ -6,7 +6,7 @@ else
     selected=$(find \
     ~/myproject/freelance/site/ \
     ~/myproject/freelance/site/minata/ \
-    ~/myproject/freelance/site/minata/src/* \
+    ~/myproject/freelance/site/minata/src/*/ \
     ~/myproject/freelance/site/ \
     ~/goinfre/ \
     ~/.config/ \
