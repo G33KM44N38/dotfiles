@@ -49,3 +49,5 @@ nvim/node_modules
 tmux/plugins/nord-tmux
 tmux/plugins/tpm
 nvim/plugin/packer_compiled.lua
+fish/fish_variables
+fish/functions/fzf_key_bindings.fish
