@@ -28,7 +28,7 @@ keymap("n", "<S-TAB>", ":bp<CR>", opts)
 keymap("n", "<TAB>", ":bn<CR>", opts)
 
 -- make
-keymap("n", "<leader>m", ":make ", opts)
+keymap("n", "<leader>m", ":make ", noSilent)
 
 -- commente line
 keymap("n", "<leader><leader>c", ":Commentary <CR>", opts)
