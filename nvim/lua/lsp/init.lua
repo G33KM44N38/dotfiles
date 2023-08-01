@@ -23,6 +23,7 @@ local servers = {
    "bashls",
    "lemminx",
 	"rust_analyzer",
+	"tailwind",
    -- "yamlls",
 }
 

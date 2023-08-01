@@ -70,7 +70,9 @@ keymap("n", "?", ":lua require('telescope.builtin').current_buffer_fuzzy_find()<
 keymap("n", "<C-s>", ":lua require('telescope.builtin').live_grep()<CR>", opts)
 keymap("n", "<leader>bq", ":lua require('telescope.builtin').quickfix()<CR>", opts)
 keymap("n", "<leader>gf", ":lua require('telescope.builtin').git_files()<CR>", opts)
-keymap("n", "<leader>xx", ":lua require('telescope.builtin').diagnostics()<CR>", opts)
+keymap("n", "<leader>x",
+	":lua require('telescope.builtin').diagnostics(require('telescope.themes').get_dropdown({}))<CR>", opts)
+
 
 keymap("n", "<leader>ke", ":lua require('telescope.builtin').keymaps()<CR>", opts)
 keymap("n", "<leader>reset", ":LspRestart<CR>", opts)

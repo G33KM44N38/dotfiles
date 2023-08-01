@@ -20,7 +20,7 @@ vim.opt.clipboard = 'unnamed'
 vim.opt.showmatch = true
 
 -- Add FZF to the runtime path
-vim.opt.rtp:append('/usr/local/opt/fzf')
+-- vim.opt.rtp:append('/usr/local/opt/fzf')
 
 -- Show relative line numbers
 vim.opt.rnu = true
@@ -47,13 +47,10 @@ vim.cmd('colorscheme alduin')
 vim.cmd('hi Normal guibg=NONE ctermbg=NONE')
 
 -- Set tabstops for filetypes
-vim.cmd("autocmd Filetype * setlocal ts=5 sw=5")
+vim.cmd("autocmd Filetype * setlocal ts=3 sw=3")
 
 -- Run LSP format on buffer write post
 vim.cmd('silent! autocmd BufWritePost * lua vim.lsp.buf.format()')
-
--- Run LSP formatting sync on InsertLeave event
--- vim.cmd('autocmd BufWritePre (InsertLeave?) <buffer> lua vim.lsp.buf.formatting_sync(nil,500)')
 
 vim.g.ft_man_open_mode = 'vert'
 vim.g.cmake_link_compile_commands = 1
@@ -63,11 +60,11 @@ vim.g.netrw_banner = 0
 vim.g.netrw_winsize = 20
 
 -- lazygit
-vim.g.lazygit_floating_window_winblend = 0                          -- transparency of floating window
-vim.g.lazygit_floating_window_scaling_factor = 0.9                  -- scaling factor for floating window
+vim.g.lazygit_floating_window_winblend = 0 -- transparency of floating window
+vim.g.lazygit_floating_window_scaling_factor = 0.9 -- scaling factor for floating window
 vim.g.lazygit_floating_window_corner_chars = { '╭', '╮', '╰', '╯' } -- customize lazygit popup window corner characters
-vim.g.lazygit_floating_window_use_plenary = 0                       -- use plenary.nvim to manage floating window if available
-vim.g.lazygit_use_neovim_remote = 1                                 -- fallback to 0 if neovim-remote is not installed
+vim.g.lazygit_floating_window_use_plenary = 0 -- use plenary.nvim to manage floating window if available
+vim.g.lazygit_use_neovim_remote = 1 -- fallback to 0 if neovim-remote is not installed
 vim.g.lazygit_use_custom_config_file_path = 0
 vim.g.lazygit_config_file_path = ''
 
@@ -110,3 +107,4 @@ vim.api.nvim_set_option('autoindent', false)
 vim.api.nvim_set_option('wrap', false)
 vim.api.nvim_set_option('autoindent', false)
 vim.api.nvim_set_option('wrap', false)
+require('nvim-ts-autotag').setup()
