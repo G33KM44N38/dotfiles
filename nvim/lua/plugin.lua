@@ -12,20 +12,36 @@ end
 vim.opt.rtp:prepend(lazypath)
 
 local plugins = {
-	event = "VimEnter",
-	config = function()
-		require("plugins.lspinstall")
-	end,
 	{
 		"zbirenbaum/copilot-cmp",
 		config = function()
 			require("copilot_cmp").setup()
 		end
 	},
+	"kabouzeid/nvim-lspinstall",
 	"onsails/lspkind.nvim",
 	"zbirenbaum/copilot.lua",
-	'williamboman/mason.nvim',
-	"kabouzeid/nvim-lspinstall",
+	{
+		'VonHeikemen/lsp-zero.nvim',
+		branch = 'v2.x',
+		dependencies = {
+			-- LSP Support
+			{ 'neovim/nvim-lspconfig' }, -- Required
+			{
+				-- Optional
+				'williamboman/mason.nvim',
+				build = function()
+					pcall(vim.cmd, 'MasonUpdate')
+				end,
+			},
+			{ 'williamboman/mason-lspconfig.nvim' }, -- Optional
+
+			-- Autocompletion
+			{ 'hrsh7th/nvim-cmp' }, -- Required
+			{ 'hrsh7th/cmp-nvim-lsp' }, -- Required
+			{ 'L3MON4D3/LuaSnip' }, -- Required
+		}
+	},
 	'nvim-lua/plenary.nvim',
 	-- 'prabirshrestha/vim-lsp',
 	'preservim/vimux',
@@ -50,8 +66,6 @@ local plugins = {
 		version = "*",
 		config = function() require("toggleterm").setup() end
 	},
-	{ 'ray-x/go.nvim' },
-	{ 'ray-x/guihua.lua' },
 	{
 		"glepnir/lspsaga.nvim",
 		branch = "main",
@@ -72,7 +86,7 @@ local plugins = {
 	'hrsh7th/cmp-omni',
 	'hrsh7th/cmp-path',
 	'hrsh7th/nvim-cmp',
-	'neovim/nvim-lspconfig',
+	-- 'neovim/nvim-lspconfig',
 	'nvim-telescope/telescope.nvim',
 	'preservim/tagbar',
 	'quangnguyen30192/cmp-nvim-ultisnips',
@@ -112,7 +126,6 @@ local plugins = {
 			})
 		end
 	}
-
 }
 
 local opts = {}
