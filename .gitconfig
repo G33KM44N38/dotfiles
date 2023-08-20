@@ -1,0 +1,9 @@
+[user]
+	name = G33KM44N38
+	email = mayanga.kylian@gmail.com
+[http]
+	postBuffer = 524288000
+[core]
+	editor = nvim
+[pull]
+	rebase = false
