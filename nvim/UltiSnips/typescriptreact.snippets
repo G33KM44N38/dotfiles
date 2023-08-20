@@ -19,3 +19,32 @@ endsnippet
 snippet stw "styleReactNative" i
 style={tw$0}
 endsnippet
+
+snippet rnf "react native component"
+const $1:React.FC =()=>{
+	return(
+			$0
+	)
+}
+endsnippet
+
+snippet rnfe "react native component export"
+export const $1:React.FC =()=>{
+	return(
+			$0
+	)
+}
+endsnippet
+
+
+snippet st "style react native component"
+	style={{$0}}
+endsnippet
+
+snippet uses "usestate component"
+	const [$1, set$1] = useState($0)
+endsnippet
+
+snippet cn "className=`$`"
+	className="$0"
+endsnippet

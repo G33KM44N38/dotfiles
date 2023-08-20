@@ -37,6 +37,14 @@ endsnippet
 
 # =====================================
 
+snippet ut "generate Unit test"
+func  Test$1(t *testing.T){
+	$0
+}
+endsnippet
+
+# =====================================
+
 snippet tss "generate a test for the suite with setup"
 func (suite *$1) setupTest$2(){
 	$0
@@ -71,3 +79,60 @@ snippet uni "panic unimplemted"
 panic("unimplemented")
 endsnippet
 
+
+# =====================================
+snippet sf "func struct"
+func (${1:structFrom}) ${2:Name}(${3:parmeter}){
+	$0
+}
+endsnippet
+
+# =====================================
+
+snippet sfr "func on struct with return"
+func (${1: structFrom}) ${2:Name}(${3:parmeter}) (${4:returnValue}){
+	$0
+}
+endsnippet
+
+# =====================================
+
+snippet vs "Declare several variable"
+var (
+	$0
+)
+endsnippet
+
+# =====================================
+
+snippet rn "return nil"
+return nil
+endsnippet
+
+# =====================================
+
+snippet re "return err"
+return err
+endsnippet
+
+
+# =====================================
+
+snippet r "return {element}"
+return $0
+endsnippet
+
+
+
+# =====================================
+snippet rqn "require.Nil(t, err)"
+require.Nil(t, err)
+endsnippet
+
+# =====================================
+snippet ern "err!=nil"
+err !=nil{}
+	$0
+}
+require.Nil(t, err)
+endsnippet
