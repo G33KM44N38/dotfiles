@@ -95,19 +95,21 @@ keymap("n", "<leader>dt", ":lua require'dapui'.toggle()<CR>", opts)
 
 -- lspsaga
 keymap("n", "gD", "<cmd>Lspsaga finder<CR>", opts)
-keymap("n", "<C-l>", "<cmd>Lspsaga diagnostic_jump_prev<CR>", opts)
-keymap("n", "<C-j>", "<cmd>Lspsaga diagnostic_jump_next<CR>", opts)
+keymap("n", "<C-j>", "<cmd>Lspsaga diagnostic_jump_prev<CR>", opts)
+keymap("n", "<C-l>", "<cmd>Lspsaga diagnostic_jump_next<CR>", opts)
 keymap("n", "gr", "<cmd>Lspsaga rename<CR>", opts)
 keymap("n", "<leader>ca", "<cmd>Lspsaga code_action<CR>", opts)
 keymap("n", "K", "<cmd>Lspsaga hover_doc<CR>", opts)
 keymap("n", "gd", "<cmd>Lspsaga goto_definition<CR>", opts)
+keymap("n", "gsd", "<C-w>v<C-w>l<cmd>Lspsaga goto_definition<CR>", opts)
 keymap("n", "gp", "<cmd>Lspsaga peek_definition<CR>", opts)
 
 -- vim-test
-keymap("n", "<leader>t", ":TestNearest -v<CR>", opts)
+keymap("n", "<leader>t", ":TestNearest<CR>", opts)
 keymap("n", "<leader>T", ":TestFile<CR>", opts)
 keymap("n", "<leader>a", ":TestSuite<CR>", opts)
 keymap("n", "<leader>l", ":TestLast<CR>", opts)
+keymap("n", "<leader>tv", ":TestNearest -v<CR>", opts)
 
 -- Move text up and down
 keymap("x", "J", ":move '>+1<CR>gv-gv", opts)

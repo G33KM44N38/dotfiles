@@ -103,6 +103,7 @@ vim.g.completion_matching_strategy_list = { 'exact', 'substring', 'fuzzy', 'all'
 vim.g.nvcode_termcolors = 256
 
 
+vim.cmd("set nowrap")
 vim.api.nvim_set_option('autoindent', false)
 vim.api.nvim_set_option('wrap', false)
 vim.api.nvim_set_option('autoindent', false)
