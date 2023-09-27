@@ -51,3 +51,4 @@ tmux/plugins/tpm
 nvim/plugin/packer_compiled.lua
 fish/fish_variables
 fish/functions/fzf_key_bindings.fish
+stripe
