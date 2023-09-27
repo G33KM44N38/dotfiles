@@ -17,6 +17,8 @@ keymap('n', '<leader>ld', '<cmd>silent !tmux neww lazydocker<CR>', opts)
 keymap('i', 'kj', '<Esc>', opts)
 keymap('i', 'KJ', '<Esc>', opts)
 
+keymap("n", "<C-z>", "<nop>", opts)
+
 -- running macro
 keymap("n", "<leader>q", "@q", opts)
 
@@ -63,7 +65,6 @@ keymap("n", "<leader>bd", ":bd<CR>", opts)
 
 -- mapping Open Buffer fzf telescope
 keymap("n", "<leader>bb", ":lua require'telescope.builtin'.buffers()<CR>", opts)
-
 keymap("n", "<leader>s", ":lua require('telescope.builtin').find_files()<CR>", opts)
 keymap("n", "<leader>dot", ":lua require('rc_telescope').search_dotfiles()<CR>", opts)
 keymap("n", "?", ":lua require('telescope.builtin').current_buffer_fuzzy_find()<CR>", opts)
