@@ -68,9 +68,9 @@ local on_attach = function(client, bufnr)
    vim.api.nvim_buf_set_keymap(bufnr, "n", "<space>lc", "<cmd>lua vim.lsp.buf.code_action()<CR>", opts)
    -- vim.api.nvim_buf_set_keymap(bufnr, "n", "gr", "<cmd>lua vim.lsp.buf.references()<CR>", opts)
    vim.api.nvim_buf_set_keymap(bufnr, "n", "<space>lf", "<cmd>lua vim.lsp.buf.format()<CR>", opts)
-   vim.api.nvim_buf_set_keymap(bufnr, "n", "<space>o", ":Lspsaga outline<CR>", opts)
+   -- vim.api.nvim_buf_set_keymap(bufnr, "n", "<space>o", ":Lspsaga outline<CR>", opts)
 
-   require("illuminate").on_attach(client)
+   -- require("illuminate").on_attach(client)
 end
 
 
