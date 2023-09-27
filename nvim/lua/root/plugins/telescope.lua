@@ -30,7 +30,7 @@ return {
 					"--smart-case",
 					"--hidden",
 				},
-				prompt_prefix = "     ",
+				prompt_prefix = "",
 				selection_caret = "  ",
 				entry_prefix = "  ",
 				initial_mode = "insert",
@@ -39,7 +39,7 @@ return {
 				layout_strategy = "horizontal",
 				layout_config = {
 					horizontal = {
-						prompt_position = "top",
+						prompt_position = "bottom",
 						preview_width = 0.55,
 						results_width = 0.8,
 					},
@@ -55,8 +55,8 @@ return {
 				generic_sorter = require("telescope.sorters").get_generic_fuzzy_sorter,
 				path_display = { "absolute" },
 				winblend = 0,
-				border = {},
-				borderchars = { "" },
+				-- border = {},
+				-- borderchars = { "" },
 				color_devicons = true,
 				use_less = true,
 				set_env = { ["COLORTERM"] = "truecolor" },
@@ -66,12 +66,12 @@ return {
 				buffer_previewer_maker = require("telescope.previewers").buffer_previewer_maker,
 				mappings = {
 					i = {
-						["<Tab>"] = "move_selection_next",
-						["<S-Tab>"] = "move_selection_previous",
+						["<C-j>"] = "move_selection_next",
+						["C-j"] = "move_selection_previous",
 					},
 					n = {
-						["<Tab>"] = "move_selection_next",
-						["<S-Tab>"] = "move_selection_previous",
+						["<C-j>"] = "move_selection_next",
+						["C-j"] = "move_selection_previous",
 					},
 				},
 			},
