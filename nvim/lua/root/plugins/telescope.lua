@@ -30,12 +30,12 @@ return {
 					"--smart-case",
 					"--hidden",
 				},
-				prompt_prefix = "",
+				prompt_prefix = "  ",
 				selection_caret = "  ",
 				entry_prefix = "  ",
 				initial_mode = "insert",
 				selection_strategy = "reset",
-				sorting_strategy = "ascending",
+				sorting_strategy = "descending",
 				layout_strategy = "horizontal",
 				layout_config = {
 					horizontal = {
@@ -67,11 +67,11 @@ return {
 				mappings = {
 					i = {
 						["<C-j>"] = "move_selection_next",
-						["C-j"] = "move_selection_previous",
+						["C-k"] = "move_selection_previous",
 					},
 					n = {
 						["<C-j>"] = "move_selection_next",
-						["C-j"] = "move_selection_previous",
+						["C-k"] = "move_selection_previous",
 					},
 				},
 			},
