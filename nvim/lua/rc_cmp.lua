@@ -41,7 +41,6 @@ local icons = {
 
 cmp.setup {
 	experimental = {
-		native_menu = false,
 		ghost_text = false,
 	},
 	confirmation = {
@@ -116,16 +115,16 @@ cmp.setup {
 		),
 	},
 	sources = {
-		{ name = 'copilot' },
-		{ name = 'tailwindcss-colorizer-cmp' },
+		{ name = "nvim_lsp_signature_help" },
 		{ name = 'ultisnips' },
 		{ name = "nvim_lsp" },
 		{ name = "nvim_lua" },
-		{ name = "vsnip" },
 		{ name = "path" },
 		{ name = "buffer" },
-		{ name = "nvim_lsp_signature_help" },
 		{ name = 'nvim_lspEmmets_document_symbol' },
+		{ name = 'tailwindcss-colorizer-cmp' },
+		-- { name = "vsnip" },
+		-- { name = 'copilot' },
 	},
 	preselect = cmp.PreselectMode.None,
 }
