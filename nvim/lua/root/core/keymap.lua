@@ -1,3 +1,12 @@
+-- Enable termguicolors
+vim.o.termguicolors = true
+vim.cmd("set termguicolors")
+
+local opts = { noremap = true, silent = true }
+local noSilent = { noremap = true }
+
+vim.g.mapleader = " "
+vim.g.maplocalleader = " "
 -- Shorten function name
 local keymap = vim.api.nvim_set_keymap
 
@@ -126,23 +135,3 @@ local function setup_mappings()
 end
 
 setup_mappings()
-
-local success, plugin = pcall(require, 'harpoon')
-
-if success then
-	local success1, mark = pcall(require, "harpoon.mark")
-	local success2, ui = pcall(require, "harpoon.ui")
-
-	if success1 and success2 then
-		vim.keymap.set("n", "<leader>a", mark.add_file)
-		vim.keymap.set("n", "<C-e>", ui.toggle_quick_menu)
-		vim.keymap.set("n", "<C-k>", function() ui.nav_file(1) end)
-		vim.keymap.set("n", "<C-m>", function() ui.nav_file(2) end)
-		vim.keymap.set("n", "<C-h>", function() ui.nav_file(3) end)
-		vim.keymap.set("n", "<C-n>", function() ui.nav_file(4) end)
-	else
-		print("Error loading Harpoon mark or UI module")
-	end
-else
-	print('Erreur lors du chargement du plugin:', plugin)
-end
