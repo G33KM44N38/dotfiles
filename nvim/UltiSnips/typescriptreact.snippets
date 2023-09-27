@@ -3,7 +3,37 @@ snippet rfcce "react functional component export"
 interface $1Props {
 }
 
-export const ${1:NameOfComponent} FC<$1Props> = () => {
+export const ${1:NameOfComponent}: FC<$1Props> = (props) => {
+	return (
+		<div>
+			$0
+		</div>
+	)
+}
+endsnippet
+
+snippet rfcp "react functional component"
+
+interface $1Props {
+}
+
+const ${1:NameOfComponent}: FC<$1Props> = (props) => {
+	return (
+		<div>
+			$0
+		</div>
+	)
+}
+endsnippet
+
+snippet rfc "react functional component"
+
+const ${1:NameOfComponent}: FC = (props) => {
+	return (
+		<div>
+			$0
+		</div>
+	)
 }
 endsnippet
 
