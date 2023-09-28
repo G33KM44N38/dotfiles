@@ -17,7 +17,6 @@ require("lazy").setup({
 	{import = "root.plugins.lsp"},
 },{
 	install = {
-		-- colorscheme = {"nightfly"},
 	},
 	checker = {
 		enabled = true,

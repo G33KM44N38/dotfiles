@@ -41,19 +41,12 @@ vim.opt.backspace = { 'indent', 'eol', 'start' }
 -- set the syntax on
 vim.cmd("autocmd FileType go syntax enable")
 
--- colorscheme
--- vim.cmd('set background=dark')
--- vim.cmd('colorscheme solarized8_high')
--- vim.cmd('colorscheme gruvbox')
--- vim.cmd('colorscheme alduin')
--- vim.cmd('colorscheme iceberg')
--- vim.cmd('colorscheme gotham')
 
 -- Transparent background
 -- vim.cmd('hi Normal guibg=NONE ctermbg=NONE')
 
 -- Set tabstops for filetypes
-vim.cmd("autocmd Filetype * setlocal ts=2 sw=2")
+vim.cmd("autocmd Filetype * setlocal ts=5 sw=5")
 
 -- Run LSP format on buffer write post
 -- vim.cmd('silent! autocmd BufWritePost * lua vim.lsp.buf.format()')
