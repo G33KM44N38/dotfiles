@@ -61,24 +61,20 @@ return {
 		})
 
 
-		-- Use cmdline & path source for ':' (if you enabled `native_menu`, this won't work anymore).
-		cmp.setup.cmdline(':', {
-			mapping = cmp.mapping.preset.cmdline({
-				["<Up>"] = cmp.mapping.select_prev_item(), -- previous suggestion
-				["<Down>"] = cmp.mapping.select_next_item(), -- next suggestion
-				["<C-e>"] = cmp.mapping.abort(), -- close completion window
-				["<CR>"] = cmp.mapping.confirm({ select = false }),
-			}),
-			sources = cmp.config.sources({
-				{ name = 'path' }
-			}, {
-				{
-					name = 'cmdline',
-					option = {
-						ignore_cmds = { 'Man', '!' }
-					}
-				}
-			})
+
+		cmp.setup.cmdline(":", {
+			mapping = {
+				['<CR>'] = cmp.mapping.confirm({ select = true }),
+				['<Up>'] = cmp.mapping(cmp.mapping.select_prev_item(), { 'i', 'c' }),
+				['<Tab>'] = cmp.mapping(cmp.mapping.select_next_item(), { 'i', 'c' }),
+				['<Down>'] = cmp.mapping(cmp.mapping.select_next_item(), { 'i', 'c' }),
+				['<C-k>'] = cmp.mapping(cmp.mapping.select_prev_item(), { 'i', 'c' }),
+				['<C-j>'] = cmp.mapping(cmp.mapping.select_next_item(), { 'i', 'c' }),
+			},
+			sources = {
+				{ name = "path" },
+				{ name = "cmdline" },
+			},
 		})
 	end,
 }
