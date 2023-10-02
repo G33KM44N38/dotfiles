@@ -10,6 +10,7 @@ vim.g.maplocalleader = " "
 -- Shorten function name
 local keymap = vim.api.nvim_set_keymap
 
+keymap("n", "<leader>dl", "<cmd>silent !tmux split -v ~/.config/scripts/docker_container_log.sh<CR>", opts)
 keymap("n", "<C-f>", "<cmd>silent !tmux neww tmux_navigate<CR>", opts)
 keymap('n', '<leader>lg', '<cmd>silent !tmux neww lazygit<CR>', opts)
 keymap('n', '<leader>ld', '<cmd>silent !tmux neww lazydocker<CR>', opts)
