@@ -126,7 +126,7 @@ keymap("n", "N", "Nzzzv", opts)
 local function setup_mappings()
 	-- NERDTree mappings
 	keymap('n', '<leader>n', ':NERDTreeFocus<CR>', opts)
-	keymap('n', '<C-p>', ':NERDTreeToggle<CR>', opts)
+	keymap('n', '<C-d>', ':NERDTreeToggle<CR>', opts)
 	keymap('n', '<leader>f', ':NERDTreeFind<CR>', opts)
 
 	-- Exit Vim if NERDTree is the only window remaining in the only tab.
