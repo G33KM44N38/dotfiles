@@ -19,7 +19,7 @@ keymap('i', 'KJ', '<Esc>', opts)
 keymap("n", "<C-z>", "<nop>", opts)
 
 -- running macro
-keymap("n", "<leader>q", "@q", opts)
+-- keymap("n", "<leader>q", "@q", opts)
 
 -- Save all buffers
 keymap("n", "<leader>w", ":w<CR> :wa<CR>", opts)
