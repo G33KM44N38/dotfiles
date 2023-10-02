@@ -11,31 +11,32 @@ return {
 		local mason_lspconfig = require("mason-lspconfig")
 
 		mason.setup({
-				ui = {
-				 icons = {
+			ui = {
+				icons = {
 					package_installed = "✓",
 					package_pending = "➜",
 					package_uninstalled = "✗"
-			  }
-		  }
+				}
+			}
 		})
 
-    mason_lspconfig.setup({
-      -- list of servers for mason to install
-      ensure_installed = {
-        "tsserver",
-        "html",
-        "cssls",
-        "tailwindcss",
-        "svelte",
-        "lua_ls",
-        "emmet_ls",
-        "pyright",
-        "gopls"
-      },
-      -- auto-install configured servers (with lspconfig)
-      automatic_installation = true, -- not the same as ensure_installed
-    })
-
+		mason_lspconfig.setup({
+			-- list of servers for mason to install
+			ensure_installed = {
+				"tsserver",
+				"html",
+				"cssls",
+				"tailwindcss",
+				"lua_ls",
+				"emmet_ls",
+				"pyright",
+				"jsonls",
+				"gopls",
+				"dockerls",
+				"docker_compose_language_service",
+			},
+			-- auto-install configured servers (with lspconfig)
+			automatic_installation = true, -- not the same as ensure_installed
+		})
 	end,
 }
