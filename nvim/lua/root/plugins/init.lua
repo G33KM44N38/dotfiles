@@ -21,7 +21,7 @@ return {
 	{ 'windwp/nvim-autopairs' },
 	{
 		'windwp/nvim-ts-autotag',
-		ft = { "jsx", "tsx" },
+		-- ft = { "jsx", "tsx" },
 	},
 	{ 'akinsho/bufferline.nvim' },
 	{
