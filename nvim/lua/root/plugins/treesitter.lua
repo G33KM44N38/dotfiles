@@ -19,7 +19,8 @@ return {
 			"yaml",
 			"json",
 			"markdown",
-			"markdown_inline"
+			"markdown_inline",
+			"c"
 		})
 
 		-- Configure nvim-treesitter with the desired settings
