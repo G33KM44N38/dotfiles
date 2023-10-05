@@ -122,6 +122,10 @@ keymap("n", "<C-u>", "<C-u>zz", opts)
 keymap("n", "n", "nzzzv", opts)
 keymap("n", "N", "Nzzzv", opts)
 
+-- git worktrees
+keymap("n", "<leader>n", ":lua require('telescope').extensions.git_worktree.git_worktrees()<CR>", opts)
+keymap("n", "<leader>N", ":lua require('telescope').extensions.git_worktree.create_git_worktree()<CR>", opts)
+
 local function setup_mappings()
 	-- NERDTree mappings
 	keymap('n', '<leader>n', ':NERDTreeFocus<CR>', opts)
