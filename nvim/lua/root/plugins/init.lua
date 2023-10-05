@@ -15,7 +15,6 @@ return {
 		'fatih/vim-go',
 		build = ':GoUpdateBinaries'
 	},
-	'preservim/nerdtree',
 	'ThePrimeagen/harpoon',
 	'ThePrimeagen/vim-be-good',
 	{ 'windwp/nvim-autopairs' },

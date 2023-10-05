@@ -128,7 +128,7 @@ keymap("n", "<leader>N", ":lua require('telescope').extensions.git_worktree.crea
 
 local function setup_mappings()
 	-- NERDTree mappings
-	keymap('n', '<leader>n', ':NERDTreeFocus<CR>', opts)
+	-- keymap('n', '<leader>f', ':NERDTreeFocus<CR>', opts)
 	keymap('n', '<C-d>', ':NERDTreeToggle<CR>', opts)
 	keymap('n', '<leader>f', ':NERDTreeFind<CR>', opts)
 
