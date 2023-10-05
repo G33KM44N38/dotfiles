@@ -74,11 +74,8 @@ keymap("n", "<leader>bq", ":lua require('telescope.builtin').quickfix()<CR>", op
 keymap("n", "<leader>gf", ":lua require('telescope.builtin').git_files()<CR>", opts)
 keymap("n", "<leader>x",
 	":lua require('telescope.builtin').diagnostics(require('telescope.themes').get_dropdown({}))<CR>", opts)
-
-
 keymap("n", "<leader>ke", ":lua require('telescope.builtin').keymaps()<CR>", opts)
-keymap("n", "<leader>reset", ":LspRestart<CR>", opts)
-keymap("n", "<leader>cheat", ":Cheat<CR>", opts)
+
 
 keymap("n", "<space>lf", ":lua vim.lsp.buf.format()<CR>", opts)
 
