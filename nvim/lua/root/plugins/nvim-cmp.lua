@@ -2,7 +2,9 @@ return {
 	"hrsh7th/nvim-cmp",
 	event = "InsertEnter",
 	dependencies = {
+		"zbirenbaum/copilot-cmp",
 		"hrsh7th/cmp-cmdline",
+		"petertriho/cmp-git",
 		"hrsh7th/cmp-buffer",   -- source for text in buffer
 		"hrsh7th/cmp-path",     -- source for file system paths
 		"L3MON4D3/LuaSnip",     -- snippet engine
@@ -20,7 +22,8 @@ return {
 
 		cmp.setup({
 			completion = {
-				completeopt = "menu,menuone,preview",
+				-- completeopt = "menu,menuone,preview",
+				completeopt = "menu,preview",
 			},
 			snippet = { -- configure how nvim-cmp interacts with snippet engine
 				expand = function(args)
@@ -48,6 +51,7 @@ return {
 			}),
 			-- sources for autocompletion
 			sources = cmp.config.sources({
+				{ name = "copilot" },
 				{ name = "ultisnips" },
 				{ name = "nvim_lsp" },
 				{ name = "luasnip" }, -- snippets
@@ -79,7 +83,6 @@ return {
 					s = cmp.mapping.confirm({ select = true }),
 					c = cmp.mapping.confirm({ behavior = cmp.ConfirmBehavior.Replace, select = true }),
 				})),
-				['<Down>'] = cmp.mapping(cmp.mapping.select_next_item(), { 'i', 'c' }),
 				['<C-k>'] = cmp.mapping(cmp.mapping.select_prev_item(), { 'i', 'c' }),
 				['<C-j>'] = cmp.mapping(cmp.mapping.select_next_item(), { 'i', 'c' }),
 			},
