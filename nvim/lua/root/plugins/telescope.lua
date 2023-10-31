@@ -16,7 +16,7 @@ return {
 
 		telescope.setup {
 			picker = {
-				hidden = false,
+				hidden = true,
 			},
 			defaults = {
 				vimgrep_arguments = {
@@ -67,11 +67,11 @@ return {
 				mappings = {
 					i = {
 						["<C-j>"] = "move_selection_next",
-						["C-k"] = "move_selection_previous",
+						["<C-k>"] = "move_selection_previous",
 					},
 					n = {
 						["<C-j>"] = "move_selection_next",
-						["C-k"] = "move_selection_previous",
+						["<C-k>"] = "move_selection_previous",
 					},
 				},
 			},

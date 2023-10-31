@@ -2,6 +2,7 @@ return {
 	"hrsh7th/nvim-cmp",
 	event = "InsertEnter",
 	dependencies = {
+		'quangnguyen30192/cmp-nvim-ultisnips',
 		"zbirenbaum/copilot-cmp",
 		"hrsh7th/cmp-cmdline",
 		"petertriho/cmp-git",
@@ -17,12 +18,10 @@ return {
 		local luasnip = require("luasnip")
 		local lspkind = require("lspkind")
 
-		-- loads vscode style snippets from installed plugins (e.g. friendly-snippets)
 		require("luasnip.loaders.from_vscode").lazy_load()
 
 		cmp.setup({
 			completion = {
-				-- completeopt = "menu,menuone,preview",
 				completeopt = "menu,preview",
 			},
 			snippet = { -- configure how nvim-cmp interacts with snippet engine
@@ -51,12 +50,12 @@ return {
 			}),
 			-- sources for autocompletion
 			sources = cmp.config.sources({
-				{ name = "copilot" },
 				{ name = "ultisnips" },
 				{ name = "nvim_lsp" },
 				{ name = "luasnip" }, -- snippets
 				{ name = "buffer" }, -- text within current buffer
 				{ name = "path" }, -- file system paths
+				{ name = "copilot" },
 			}),
 			-- configure lspkind for vs-code like pictograms in completion menu
 			formatting = {
@@ -90,8 +89,6 @@ return {
 				{ name = 'buffer' }
 			}
 		})
-
-
 
 		cmp.setup.cmdline(":", {
 			mapping = {

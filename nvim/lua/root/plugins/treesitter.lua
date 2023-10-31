@@ -20,7 +20,9 @@ return {
 			"json",
 			"markdown",
 			"markdown_inline",
-			"c"
+			"cmake",
+			"c",
+			"bash"
 		})
 
 		-- Configure nvim-treesitter with the desired settings
@@ -36,7 +38,7 @@ return {
 			indent = {
 				enable = true,
 				disable = {
-					"yaml"
+					-- "yaml"
 				}
 			},
 			context_commentstring = {

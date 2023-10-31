@@ -93,6 +93,7 @@ keymap("n", "<leader>ds", ":lua require'dap-go'.debug_test()<CR>", opts)
 keymap("n", "<leader>dt", ":lua require'dapui'.toggle()<CR>", opts)
 
 -- lspsaga
+keymap("n", "<leader>q", "<cmd>Lspsaga show_buf_diagnostics<CR>", opts)
 keymap("n", "gD", "<cmd>Lspsaga finder<CR>", opts)
 keymap("n", "<C-j>", "<cmd>Lspsaga diagnostic_jump_prev<CR>", opts)
 keymap("n", "<C-l>", "<cmd>Lspsaga diagnostic_jump_next<CR>", opts)
@@ -113,10 +114,6 @@ keymap("n", "<leader>tv", ":TestNearest -v<CR>", opts)
 -- Move text up and down
 keymap("x", "J", ":move '>+1<CR>gv-gv", opts)
 keymap("x", "K", ":move '<-2<CR>gv-gv", opts)
-
--- half page jumping, and keep the cursor in front
-keymap("n", "<C-d>", "<C-d>zz", opts)
-keymap("n", "<C-u>", "<C-u>zz", opts)
 
 -- allow search term to be in the middle
 keymap("n", "n", "nzzzv", opts)

@@ -25,6 +25,7 @@ vim.opt.showmatch = true
 
 -- Show relative line numbers
 vim.opt.rnu = true
+vim.opt.nu = true
 
 -- Enable the mouse in all modes
 vim.opt.mouse = 'a'
@@ -43,7 +44,7 @@ vim.cmd("autocmd FileType go syntax enable")
 
 
 -- Transparent background
--- vim.cmd('hi Normal guibg=NONE ctermbg=NONE')
+vim.cmd('hi Normal guibg=NONE ctermbg=NONE')
 
 -- Set tabstops for filetypes
 vim.cmd("autocmd Filetype * setlocal ts=5 sw=5")

@@ -79,6 +79,13 @@ return {
 			on_attach = on_attach,
 		})
 
+		-- configure bash server with plugin
+		lspconfig["bashls"].setup({
+			capabilities = capabilities,
+			on_attach = on_attach,
+			filetypes = { "sh" },
+		})
+
 		-- configure docker server with plugin
 		lspconfig["dockerls"].setup({
 			capabilities = capabilities,
