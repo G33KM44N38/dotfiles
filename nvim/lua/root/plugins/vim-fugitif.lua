@@ -1,13 +1,18 @@
-function InputArgs()
-	local message = vim.fn.input('🔧 FIX: ')
-	vim.fn.execute('G commit' .. (vim.fn.v:count() > 0 and '!' or '') .. ' -v -m "🔧 FIX: ' .. message .. ' 🔧"')
-end
-
 return {
-
 	'tpope/vim-fugitive',
 	config = function()
-		vim.cmd('command -bar -bang -nargs=* Gfix :G commit<bang> -v -m "🔧 FIX: call InputArgs() 🔧"')
+		function InputArgs()
+			local message = vim.fn.input('Enter your message: ')
+			if message ~= '' then
+				vim.cmd('echo "Message entered: "')
+				vim.cmd('echo "' .. message .. '"')
+				vim.cmd('G commit -v -m "🔧 FEATURE: ' .. message .. ' 🔧"')
+			else
+				vim.cmd('echo "No message entered."')
+			end
+		end
+
+		vim.cmd('command -bar -bang -nargs=* Gfix lua InputArgs()')
 		vim.cmd('command -bar -bang -nargs=* Gfeature :G commit<bang> -v -m "🚀 FEATURE: <args> 🚀"')
 	end
 }
