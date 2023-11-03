@@ -17,7 +17,6 @@ return {
 	'cdelledonne/vim-cmake',
 	'rafi/awesome-vim-colorschemes',
 	'tpope/vim-commentary',
-	'tpope/vim-fugitive',
 	'tpope/vim-surround',
 	'williamboman/nvim-lsp-installer',
 	'folke/neodev.nvim',
