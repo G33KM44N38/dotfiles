@@ -2,7 +2,7 @@ return {
 	'tpope/vim-fugitive',
 	config = function()
 		function InputArgs(format)
-			local message = vim.fn.input('Enter your message: ')
+			local message = vim.fn.input(format)
 			if message ~= '' then
 				vim.cmd('echo "Message entered: "')
 				vim.cmd('echo "' .. message .. '"')
