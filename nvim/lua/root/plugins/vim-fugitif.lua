@@ -13,7 +13,7 @@ return {
 		end
 
 
-		vim.cmd('command -bar -bang -nargs=* Gfix lua InputArgs("🔧 FEATURE: ")')
-		vim.cmd('command -bar -bang -nargs=* Gfeature :G commit<bang> -v -m "🚀 FEATURE: <args> 🚀"')
+		vim.cmd('command -bar -bang -nargs=* Gfix lua InputArgs("🔧 FIX: ")')
+		vim.cmd('command -bar -bang -nargs=* Gfeature lua InputArgs("🚀 FEATURE: ")')
 	end
 }
