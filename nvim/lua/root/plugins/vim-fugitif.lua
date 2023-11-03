@@ -8,7 +8,7 @@ return {
 				vim.cmd('echo "' .. message .. '"')
 				vim.cmd('G commit -v -m "' .. format .. message .. '"')
 			else
-				vim.cmd('echo "No message entered."')
+				vim.cmd('echo "No message entered. Action canceled"')
 			end
 		end
 
