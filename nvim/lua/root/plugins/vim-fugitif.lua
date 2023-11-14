@@ -15,5 +15,7 @@ return {
 
 		vim.cmd('command -bar -bang -nargs=* Gfix lua InputArgs("🔧 FIX: ")')
 		vim.cmd('command -bar -bang -nargs=* Gfeature lua InputArgs("🚀 FEATURE: ")')
+		vim.cmd('command -bar -bang -nargs=* GStyle lua InputArgs("🖌 APPEARANCE: ")')
+		vim.cmd('command -bar -bang -nargs=* GTest lua InputArgs("🧪 UNIT-TEST: ")')
 	end
 }

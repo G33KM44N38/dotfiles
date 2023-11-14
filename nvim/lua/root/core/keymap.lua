@@ -20,9 +20,6 @@ keymap('i', 'KJ', '<Esc>', opts)
 
 keymap("n", "<C-z>", "<nop>", opts)
 
--- running macro
--- keymap("n", "<leader>q", "@q", opts)
-
 -- Save all buffers
 keymap("n", "<leader>w", ":w<CR> :wa<CR>", opts)
 
@@ -125,8 +122,7 @@ keymap("n", "<leader>N", ":lua require('telescope').extensions.git_worktree.crea
 
 local function setup_mappings()
 	-- NERDTree mappings
-	-- keymap('n', '<leader>f', ':NERDTreeFocus<CR>', opts)
-	keymap('n', '<C-d>', ':NERDTreeToggle<CR>', opts)
+	-- keymap('n', '<leader>d', ':NERDTreeToggle<CR>', opts)
 	keymap('n', '<leader>f', ':NERDTreeFind<CR>', opts)
 
 	-- Exit Vim if NERDTree is the only window remaining in the only tab.

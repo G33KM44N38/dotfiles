@@ -1,5 +1,9 @@
 {
     "diagnostics.disable": [
         "unused-local"
+    ],
+    "diagnostics.globals": [
+        "vim",
+        "Util"
     ]
 }
