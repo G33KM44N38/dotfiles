@@ -33,7 +33,9 @@ return {
 			highlight = {
 				enable = true,
 				disable = { "" },
-				additional_vim_regex_highlighting = true,
+				filetype_exclude = { "tsx" },  -- exclude tsx from typescript highlighting
+				additional_vim_regex_highlighting = { "tsx" } -- but include it for other highlighting
+				-- additional_vim_regex_highlighting = true,
 			},
 			indent = {
 				enable = true,
