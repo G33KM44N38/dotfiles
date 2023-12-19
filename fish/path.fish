@@ -1,24 +1,19 @@
-# Add /usr/local/bin to PATH if it's not already there
-if not contains /usr/local/bin $PATH
-    set -x PATH $PATH /usr/local/bin
+# Consolidate similar blocks
+function add_to_path
+    if not contains $argv[1] $PATH
+        set -ga PATH $PATH $argv[1]
+    end
 end
 
-# Add $GOPATH/bin to PATH if it's not already there
-if not contains $GOPATH/bin $PATH
-    set -gx PATH $PATH $GOPATH/bin
-end
+# Add directories to PATH
+add_to_path /usr/local/bin
+add_to_path $GOPATH/bin
+add_to_path ~/go/bin
+add_to_path ~/.local/bin
+add_to_path ~/bin
+add_to_path ~/.bun/bin
 
-# Add ~/go/bin to PATH if it's not already there
-if not contains ~/go/bin $PATH
-    set -gx PATH ~/go/bin $PATH
-end
-
-# Add ~/.local/bin to PATH if it's not already there
-if not contains ~/.local/bin $PATH
-    set -ga PATH $PATH ~/.local/bin
-end
-
-# Add $HOME/.cargo/bin to fish_user_paths if it's not already there
+# Add $HOME/.cargo/bin to fish_user_paths
 if not contains $HOME/.cargo/bin $fish_user_paths
     set -Ua fish_user_paths $HOME/.cargo/bin
 end
@@ -33,18 +28,3 @@ if not set -q TMUX_CONF
     set -g -x TMUX_CONF ~/.config/tmux/tmux.conf
     set -g -x fish_tmux_config ~/.config/tmux/tmux.conf
 end
-
-# Add ~/.local/bin to PATH if it's not already there
-if not contains ~/bin $PATH
-    set -ga PATH $PATH ~/bin
-end
-
-# Add ~/.bun/bin to PATH if it's not already there
-if not contains ~/.bun/bin $PATH
-    set -ga PATH $PATH ~/.bun/bin
-end
-
-set -e fish_tmux_autostarted
-set -e fish_tmux_auto_start
-set -e _fish_tmux_fixed_config
-set -Ux fish_tmux_config $HOME/.config/tmux.conf
