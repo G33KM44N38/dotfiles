@@ -4,13 +4,12 @@ if [[ $# -eq 1 ]]; then
     selected=$1
 else
     selected=$(find \
-    ~/myproject/freelance/site/ \
-    ~/myproject/freelance/site/minata/ \
-    ~/myproject/freelance/site/minata/src/*/ \
-    ~/myproject/freelance/site/* \
+    ~/coding/ \
+    ~/coding/* \
+    ~/coding/work/minata/ \
+    ~/coding/work/minata/src/* \
     ~/goinfre/ \
     ~/.config/ \
-    ~/ \
     -mindepth 1 -maxdepth 1 -type d | fzf)
 fi
 
