@@ -26,16 +26,13 @@ return {
 				"tsserver",
 				"html",
 				"cssls",
-				"tailwindcss",
 				"lua_ls",
-				"emmet_ls",
-				"pyright",
 				"jsonls",
-				"gopls",
 				"dockerls",
 				"docker_compose_language_service",
 				"clangd",
-				"bashls"
+				"bashls",
+				"yamlls"
 			},
 			-- auto-install configured servers (with lspconfig)
 			automatic_installation = true, -- not the same as ensure_installed
