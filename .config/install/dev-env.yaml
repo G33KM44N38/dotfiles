@@ -3,6 +3,15 @@
   hosts: localhost
   tasks:
 
+
+   - name: clone dotfiles
+     tags:
+      - dotfiles
+     ansible.builtin.git:
+       repo: https://github.com/G33KM44N38/dotfiles
+       dest: ~/.dotfiles
+       update: yes
+
    - name: Install stow
      homebrew:
        name: stow
@@ -10,7 +19,7 @@
        update_homebrew: yes
 
    - name: run stow
-     command: stow .
+     command: stow ~/.dotfiles
 
    - name: Install exa
      homebrew:
