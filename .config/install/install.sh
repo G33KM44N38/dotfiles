@@ -22,19 +22,11 @@ fi
 echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> /Users/kylianmayanga/.zprofile
 eval "$(/opt/homebrew/bin/brew shellenv)"
 
-# Install Python
-echo "Installing Python..."
-brew install python
-handle_error $? "Python installation failed"
-
 # Install Ansible
 echo "Installing Ansible..."
 brew install ansible
 handle_error $? "Ansible installation failed"
 
-# Clone dotfiles
-#echo "Cloning dotfiles..."
-#git clone https://github.com/G33KM44N38/dotfiles ~/.dotfiles || handle_error $? "Dotfiles cloning failed"
 
 # Run the Ansible playbook
 echo "Running the Ansible playbook..."

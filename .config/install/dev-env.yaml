@@ -11,6 +11,15 @@
        dest: ~/.dotfiles
        update: yes
 
+   - name: Install zsh
+     homebrew:
+       name: zsh
+       state: present
+       update_homebrew: yes
+
+   - name: setup zsh
+     command: sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+
    - name: Install stow
      homebrew:
        name: stow
@@ -68,11 +77,19 @@
        state: present
        update_homebrew: yes
 
+   - name: setup skhd
+     ignore_errors: yes
+     command: skhd --start-service
+
    - name: Install yabai
      homebrew:
        name: yabai
        state: present
        update_homebrew: yes
+
+   - name: setup yabai
+     ignore_errors: yes
+     command: yabai --start-service
 
    - name: Install fzf
      tags:

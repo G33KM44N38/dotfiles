@@ -17,10 +17,11 @@ check_error() {
 chsh -s /bin/bash
 check_error $? "Changing default shell to bash"
 
-# Uninstall Oh My Zsh
-log "Uninstalling Oh My Zsh..."
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/uninstall.sh)"
-check_error $? "Oh My Zsh uninstallation"
+# Run the Ansible playbook
+echo "Running the Ansible playbook..."
+ansible-playbook ~/.dotfiles/.config/uninstall/dev-env.yaml --ask-become-pass
+handle_error $? "Ansible playbook execution failed"
+
 
 # Uninstall Homebrew
 log "Uninstalling Homebrew..."
