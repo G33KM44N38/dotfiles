@@ -1,0 +1,90 @@
+---
+- name: My dev setup
+  hosts: localhost
+  tasks:
+
+   - name: Install stow
+     homebrew:
+       name: stow
+       state: present
+       update_homebrew: yes
+
+   - name: Install exa
+     homebrew:
+       name: exa
+       state: present
+       update_homebrew: yes
+
+   - name: Install nvim
+     homebrew:
+       name: nvim
+       state: present
+       update_homebrew: yes
+
+   - name: Install lazydocker
+     homebrew:
+       name: lazydocker
+       state: present
+       update_homebrew: yes
+
+   - name: Install lazygit
+     homebrew:
+       name: lazygit
+       state: present
+       update_homebrew: yes
+
+   - name: Install ripgrep
+     homebrew:
+       name: ripgrep
+       state: present
+       update_homebrew: yes
+
+   - name: Install tmux
+     homebrew:
+       name: tmux
+       state: present
+       update_homebrew: yes
+
+   - name: Install node
+     homebrew:
+       name: node
+       state: present
+       update_homebrew: yes
+
+   - name: Install skhd
+     homebrew:
+       name: skhd
+       state: present
+       update_homebrew: yes
+
+   - name: Start skhd
+     command: skhd --start-service
+
+   - name: Install yabai
+     homebrew:
+       name: yabai
+       state: present
+       update_homebrew: yes
+
+   - name: Start yabai
+     command: yabai --start-service
+
+   - name: Install fish
+     homebrew:
+       name: fish
+       state: present
+       update_homebrew: yes
+
+   - name: Change the default shell to Fish
+     become: yes
+     command: chsh -s /usr/local/bin/fish
+
+   - name: Install fzf
+     homebrew:
+       name: fzf
+       state: present
+       update_homebrew: yes
+
+   - name: Install keybinding
+     become: yes
+     command: $(brew --prefix)/opt/fzf/install
