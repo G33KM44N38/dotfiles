@@ -33,8 +33,8 @@ brew install ansible
 handle_error $? "Ansible installation failed"
 
 # Clone dotfiles
-echo "Cloning dotfiles..."
-git clone https://github.com/G33KM44N38/dotfiles ~/.dotfiles || handle_error $? "Dotfiles cloning failed"
+#echo "Cloning dotfiles..."
+#git clone https://github.com/G33KM44N38/dotfiles ~/.dotfiles || handle_error $? "Dotfiles cloning failed"
 
 # Run the Ansible playbook
 echo "Running the Ansible playbook..."
