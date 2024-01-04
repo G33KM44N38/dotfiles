@@ -1,4 +1,4 @@
 ---
-     - name: Run yabai task
+     - name: Run zsh task
        ansible.builtin.import_tasks: darwin.yaml
 
