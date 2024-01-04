@@ -40,7 +40,7 @@ if ! [[ -d "$DOTFILES_DIR" ]]; then
     echo -e "${ARROW} ${CYAN}Cloning repository: ${YELLOW}github.com/G33KM44N38/dotfiles${NC}"
     git clone --quiet "https://github.com/G33KM44N38/dotfiles" "$DOTFILES_DIR" 2>&1 > /dev/null
 else
-    echo -e "${ARROW} ${CYAN}Updating repository: ${YELLOW}github.com/TechDufus/dotfiles${NC}"
+    echo -e "${ARROW} ${CYAN}Updating repository: ${YELLOW}github.com/G33KM44N38/dotfiles${NC}"
     git -C "$DOTFILES_DIR" pull --quiet > /dev/null
 fi
 
