@@ -11,7 +11,7 @@ handle_error() {
 }
 
 # Install Oh My Zsh
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" && exit
 handle_error $? "Oh My Zsh installation failed"
 
 # Check if Homebrew is installed
