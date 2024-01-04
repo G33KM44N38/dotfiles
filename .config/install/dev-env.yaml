@@ -19,7 +19,7 @@
        update_homebrew: yes
 
    - name: run stow
-     command: stow ~/.dotfiles
+     command: cd ~/.dotfiles && stow .
 
    - name: Install exa
      homebrew:
