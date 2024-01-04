@@ -19,7 +19,7 @@ check_error $? "Changing default shell to bash"
 
 # Run the Ansible playbook
 echo "Running the Ansible playbook..."
-ansible-playbook ~/.dotfiles/.config/uninstall/dev-env.yaml --ask-become-pass
+ansible-playbook ~/.dotfiles/.config/install/uninstall.yaml --ask-become-pass
 handle_error $? "Ansible playbook execution failed"
 
 
