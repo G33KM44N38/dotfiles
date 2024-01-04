@@ -2,7 +2,7 @@
 
 # Function to log messages
 log() {
-  echo "$(date) - $1" >> /var/log/custom_uninstall.log
+  echo "$(date) - $1" 
 }
 
 # Function to check for errors and log messages
