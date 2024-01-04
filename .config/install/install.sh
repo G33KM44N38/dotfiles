@@ -32,9 +32,14 @@ brew install ansible
 handle_error $? "Ansible installation failed"
 
 
+#Clone dotfils
+echo "Clone dotfiles"
+git clone https://github.com/G33KM44N38/dotfiles ~/.dotfiles
+
+
 # Run the Ansible playbook
 echo "Running the Ansible playbook..."
-ansible-playbook dev-env.yaml --ask-become-pass
+ansible-playbook ~/dotfiles/install/dev-env.yaml --ask-become-pass
 handle_error $? "Ansible playbook execution failed"
 
 # Check if Zsh is installed
