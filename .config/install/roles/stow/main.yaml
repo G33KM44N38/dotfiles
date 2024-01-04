@@ -1,0 +1,4 @@
+---
+     - name: Run Stow task
+       ansible.builtin.import_tasks: darwin.yaml
+
