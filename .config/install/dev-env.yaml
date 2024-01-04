@@ -69,17 +69,11 @@
        state: present
        update_homebrew: yes
 
-   - name: Start skhd
-     command: skhd --start-service
-
    - name: Install yabai
      homebrew:
        name: yabai
        state: present
        update_homebrew: yes
-
-   - name: Start yabai
-     command: yabai --start-service
 
    - name: Install fzf
      tags:
