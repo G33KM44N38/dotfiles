@@ -53,7 +53,7 @@ then
 fi
 
 # Add Homebrew to the PATH
-echo 'which brew' >> "$HOME/.zprofile"
+echo 'export PATH="/usr/local/bin:$PATH"' >> "$HOME/.bash_profile"
 
 # Install Ansible
 echo -e "${ARROW} ${CYAN}Installing Ansible..."
