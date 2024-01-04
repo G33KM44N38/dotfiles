@@ -1,95 +1,97 @@
 ---
-- name: My dev setup
+- name: DOTFILES config
   hosts: localhost
-  tasks:
+  connection: local
 
-   # - name: clone dotfiles
-   #   tags:
-   #    - dotfiles
-   #   ansible.builtin.git:
-   #     repo: https://github.com/G33KM44N38/dotfiles
-   #     dest: ~/.dotfiles
-   #     update: yes
-   #
+  tasks:
+   - name: clone dotfiles
+     tags:
+      - dotfiles
+     ansible.builtin.git:
+       repo: https://github.com/G33KM44N38/dotfiles
+       dest: ~/.dotfiles
+       update: yes
+   
+
    - name: Stow Role
      ansible.builtin.import_role:
           name: stow
 
 
-   # - name: Install exa
-   #   homebrew:
-   #     name: exa
-   #     state: present
-   #     update_homebrew: yes
-   #
-   # - name: Install nvim
-   #   homebrew:
-   #     name: nvim
-   #     state: present
-   #     update_homebrew: yes
-   #
-   # - name: Install lazydocker
-   #   homebrew:
-   #     name: lazydocker
-   #     state: present
-   #     update_homebrew: yes
-   #
-   # - name: Install lazygit
-   #   homebrew:
-   #     name: lazygit
-   #     state: present
-   #     update_homebrew: yes
-   #
-   # - name: Install ripgrep
-   #   homebrew:
-   #     name: ripgrep
-   #     state: present
-   #     update_homebrew: yes
-   #
-   # - name: Install tmux
-   #   homebrew:
-   #     name: tmux
-   #     state: present
-   #     update_homebrew: yes
-   #
-   # - name: Install node
-   #   homebrew:
-   #     name: node
-   #     state: present
-   #     update_homebrew: yes
-   #
-   # - name: Install skhd
-   #   homebrew:
-   #     name: skhd
-   #     state: present
-   #     update_homebrew: yes
-   #
-   # - name: setup skhd
-   #   ignore_errors: yes
-   #   command: skhd --start-service
-   #
-   # - name: Install yabai
-   #   homebrew:
-   #     name: yabai
-   #     state: present
-   #     update_homebrew: yes
-   #
-   # - name: setup yabai
-   #   ignore_errors: yes
-   #   command: yabai --start-service
-   #
-   # - name: Install fzf
-   #   tags:
-   #    - fzf
-   #   homebrew:
-   #     name: fzf
-   #     state: present
-   #     update_homebrew: yes
-   #
-   # - name: Install keybinding
-   #   tags:
-   #    - fzf
-   #   become: yes
-   #   command: echo "$(brew --prefix)/opt/fzf/install" | bash
-   #
-   #
+   - name: Install exa
+     homebrew:
+       name: exa
+       state: present
+       update_homebrew: yes
+   
+   - name: Install nvim
+     homebrew:
+       name: nvim
+       state: present
+       update_homebrew: yes
+   
+   - name: Install lazydocker
+     homebrew:
+       name: lazydocker
+       state: present
+       update_homebrew: yes
+   
+   - name: Install lazygit
+     homebrew:
+       name: lazygit
+       state: present
+       update_homebrew: yes
+   
+   - name: Install ripgrep
+     homebrew:
+       name: ripgrep
+       state: present
+       update_homebrew: yes
+   
+   - name: Install tmux
+     homebrew:
+       name: tmux
+       state: present
+       update_homebrew: yes
+   
+   - name: Install node
+     homebrew:
+       name: node
+       state: present
+       update_homebrew: yes
+   
+   - name: Install skhd
+     homebrew:
+       name: skhd
+       state: present
+       update_homebrew: yes
+   
+   - name: setup skhd
+     ignore_errors: yes
+     command: skhd --start-service
+   
+   - name: Install yabai
+     homebrew:
+       name: yabai
+       state: present
+       update_homebrew: yes
+   
+   - name: setup yabai
+     ignore_errors: yes
+     command: yabai --start-service
+   
+   - name: Install fzf
+     tags:
+      - fzf
+     homebrew:
+       name: fzf
+       state: present
+       update_homebrew: yes
+   
+   - name: Install keybinding
+     tags:
+      - fzf
+     become: yes
+     command: echo "$(brew --prefix)/opt/fzf/install" | bash
+   
+   
