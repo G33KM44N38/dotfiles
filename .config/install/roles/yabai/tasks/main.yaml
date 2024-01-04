@@ -1,0 +1,4 @@
+---
+     - name: Run yabai task
+       ansible.builtin.import_tasks: darwin.yaml
+

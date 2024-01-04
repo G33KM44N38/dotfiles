@@ -1,5 +1,6 @@
-   - name: NVIM | Install nvim
+---
+   - name: Install ripgrep
      homebrew:
-       name: nvim
+       name: ripgrep
        state: present
        update_homebrew: yes

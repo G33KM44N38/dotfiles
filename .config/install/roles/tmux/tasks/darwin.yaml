@@ -1,5 +1,6 @@
-   - name: NVIM | Install nvim
+---
+   - name: Install tmux
      homebrew:
-       name: nvim
+       name: tmux
        state: present
        update_homebrew: yes

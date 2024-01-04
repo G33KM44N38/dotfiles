@@ -1,5 +1,6 @@
-   - name: NVIM | Install nvim
+---
+   - name: Install node
      homebrew:
-       name: nvim
+       name: node
        state: present
        update_homebrew: yes

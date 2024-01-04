@@ -1,0 +1,4 @@
+---
+     - name: Run FZF
+       ansible.builtin.import_tasks: darwin.yaml
+

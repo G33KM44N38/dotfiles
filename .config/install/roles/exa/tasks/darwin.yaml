@@ -1,5 +1,6 @@
-   - name: NVIM | Install nvim
+   - name: EXA | Install exa
      homebrew:
-       name: nvim
+       name: exa
        state: present
        update_homebrew: yes
+   

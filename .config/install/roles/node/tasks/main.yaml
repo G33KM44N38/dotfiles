@@ -1,0 +1,4 @@
+---
+     - name: Run node task
+       ansible.builtin.import_tasks: darwin.yaml
+

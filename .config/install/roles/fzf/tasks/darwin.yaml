@@ -1,0 +1,9 @@
+- name: FZF | Install
+  homebrew:
+    name: fzf
+    state: present
+    update_homebrew: yes
+
+- name: FZF | set keybinding
+  become: yes
+  ansible.builtin.shell:  "git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf && yes | ~/.fzf/install"

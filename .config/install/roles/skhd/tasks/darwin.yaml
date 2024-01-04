@@ -1,0 +1,10 @@
+---
+   - name: Install skhd
+     homebrew:
+       name: skhd
+       state: present
+       update_homebrew: yes
+
+   - name: setup skhd
+     ignore_errors: yes
+     command: skhd --start-service

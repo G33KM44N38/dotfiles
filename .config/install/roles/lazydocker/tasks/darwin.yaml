@@ -1,5 +1,6 @@
-   - name: NVIM | Install nvim
+---
+   - name: Install lazydocker
      homebrew:
-       name: nvim
+       name: lazydocker
        state: present
        update_homebrew: yes

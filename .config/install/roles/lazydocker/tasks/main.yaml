@@ -1,0 +1,4 @@
+---
+     - name: Run lazydocker task
+       ansible.builtin.import_tasks: darwin.yaml
+
