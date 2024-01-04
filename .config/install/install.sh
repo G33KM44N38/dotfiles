@@ -5,13 +5,13 @@ handle_error() {
   local exit_code=$1
   local error_message=$2
   if [ $exit_code -ne 0 ]; then
-    echo "Error: $error_message"
+    echo "Error: $error_message" >&2
     exit 1
   fi
 }
 
 # Install Oh My Zsh
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" && exit
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 handle_error $? "Oh My Zsh installation failed"
 
 # Check if Homebrew is installed
@@ -38,7 +38,7 @@ handle_error $? "Ansible installation failed"
 
 # Clone dotfiles
 echo "Cloning dotfiles..."
-git clone https://github.com/G33KM44N38/dotfiles ~/.dotfiles
+git clone https://github.com/G33KM44N38/dotfiles ~/.dotfiles || handle_error $? "Dotfiles cloning failed"
 
 # Run the Ansible playbook
 echo "Running the Ansible playbook..."
