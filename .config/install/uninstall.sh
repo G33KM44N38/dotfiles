@@ -22,16 +22,6 @@ log "Uninstalling Oh My Zsh..."
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/uninstall.sh)"
 check_error $? "Oh My Zsh uninstallation"
 
-# Uninstall Ansible
-log "Uninstalling Ansible..."
-brew uninstall ansible
-check_error $? "Ansible uninstallation"
-
-# Uninstall Python
-log "Uninstalling Python..."
-brew uninstall python
-check_error $? "Python uninstallation"
-
 # Uninstall Homebrew
 log "Uninstalling Homebrew..."
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/uninstall.sh)"
