@@ -10,6 +10,13 @@ handle_error() {
   fi
 }
 
+# Check if Zsh is installed
+if ! command_exists zsh; then
+  echo "Zsh is not installed. Installing Zsh..."
+  brew install zsh
+  handle_error $? "Zsh installation failed"
+fi
+
 # Check if Homebrew is installed
 if ! command_exists brew; then
   echo "Homebrew is not installed. Installing Homebrew..."
@@ -31,24 +38,14 @@ echo "Installing Ansible..."
 brew install ansible
 handle_error $? "Ansible installation failed"
 
-
 #Clone dotfils
 echo "Clone dotfiles"
 git clone https://github.com/G33KM44N38/dotfiles ~/.dotfiles
-
 
 # Run the Ansible playbook
 echo "Running the Ansible playbook..."
 ansible-playbook ~/.dotfiles/.config/install/dev-env.yaml --ask-become-pass
 handle_error $? "Ansible playbook execution failed"
-
-# Check if Zsh is installed
-if ! command_exists zsh; then
-  echo "Zsh is not installed. Installing Zsh..."
-  brew install zsh
-  handle_error $? "Zsh installation failed"
-fi
-
 
 echo "Installation and playbook execution completed successfully"
 

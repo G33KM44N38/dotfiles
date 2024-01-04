@@ -3,7 +3,6 @@
   hosts: localhost
   tasks:
 
-
    - name: clone dotfiles
      tags:
       - dotfiles
