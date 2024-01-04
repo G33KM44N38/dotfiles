@@ -11,12 +11,6 @@
        dest: ~/.dotfiles
        update: yes
 
-   - name: Install zsh
-     homebrew:
-       name: zsh
-       state: present
-       update_homebrew: yes
-
    - name: setup zsh
      command: sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 
