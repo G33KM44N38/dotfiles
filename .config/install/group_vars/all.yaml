@@ -11,3 +11,4 @@ default_roles:
 - yabai
 - node
 - fzf
+- zsh

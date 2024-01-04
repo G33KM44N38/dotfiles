@@ -1,0 +1,4 @@
+- name: setup zsh
+  become: yes
+  ignore_errors: yes
+  command: chsh -s /bin/zsh
