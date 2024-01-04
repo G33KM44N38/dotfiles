@@ -39,7 +39,7 @@ git clone https://github.com/G33KM44N38/dotfiles ~/.dotfiles
 
 # Run the Ansible playbook
 echo "Running the Ansible playbook..."
-ansible-playbook ~/dotfiles/.config/install/dev-env.yaml --ask-become-pass
+ansible-playbook ~/.dotfiles/.config/install/dev-env.yaml --ask-become-pass
 handle_error $? "Ansible playbook execution failed"
 
 # Check if Zsh is installed
