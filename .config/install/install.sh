@@ -34,7 +34,7 @@ handle_error $? "Ansible installation failed"
 
 # Run the Ansible playbook
 echo "Running the Ansible playbook..."
-ansible-playbook dev-env.yaml
+ansible-playbook dev-env.yaml --ask-become-yes
 handle_error $? "Ansible playbook execution failed"
 
 # Check if Zsh is installed
