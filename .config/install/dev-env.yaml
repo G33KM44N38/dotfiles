@@ -9,6 +9,9 @@
        state: present
        update_homebrew: yes
 
+   - name: run stow
+     command: stow .
+
    - name: Install exa
      homebrew:
        name: exa
@@ -69,22 +72,18 @@
    - name: Start yabai
      command: yabai --start-service
 
-   - name: Install fish
-     homebrew:
-       name: fish
-       state: present
-       update_homebrew: yes
-
-   - name: Change the default shell to Fish
-     become: yes
-     command: chsh -s /usr/local/bin/fish
-
    - name: Install fzf
+     tags:
+      - fzf
      homebrew:
        name: fzf
        state: present
        update_homebrew: yes
 
    - name: Install keybinding
+     tags:
+      - fzf
      become: yes
-     command: $(brew --prefix)/opt/fzf/install
+     command: echo "$(brew --prefix)/opt/fzf/install" | bash
+
+
