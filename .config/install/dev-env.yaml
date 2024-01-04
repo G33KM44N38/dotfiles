@@ -11,7 +11,7 @@
        dest: ~/.dotfiles
        update: yes
 
-   - name: setup zsh
+   - name: setup oh-my-zsh
      command: sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 
    - name: Install stow
