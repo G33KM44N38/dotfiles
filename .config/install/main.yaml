@@ -38,11 +38,11 @@
        update: yes
    
 
-   - name: Stow Role
-     ansible.builtin.import_role:
-          name: stow
-
-
+   # - name: Stow Role
+   #   ansible.builtin.import_role:
+   #        name: stow
+   #
+   #
    - name: Install exa
      homebrew:
        name: exa

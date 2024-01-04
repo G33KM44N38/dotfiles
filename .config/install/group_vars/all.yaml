@@ -1,0 +1,4 @@
+default_roles:
+- neovim
+- shell
+- stow
