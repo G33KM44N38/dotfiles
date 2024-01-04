@@ -10,12 +10,7 @@ handle_error() {
   fi
 }
 
-# Check if Zsh is installed
-if ! command_exists zsh; then
-  echo "Zsh is not installed. Installing Zsh..."
-  brew install zsh
-  handle_error $? "Zsh installation failed"
-fi
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 
 # Check if Homebrew is installed
 if ! command_exists brew; then
