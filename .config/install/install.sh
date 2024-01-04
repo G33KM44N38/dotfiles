@@ -19,8 +19,7 @@ then
 fi
 
 # Add Homebrew to the PATH
-echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> /Users/kylianmayanga/.zprofile
-eval "$(/opt/homebrew/bin/brew shellenv)"
+echo 'which brew' >> /Users/kylianmayanga/.zprofile
 
 # Install Ansible
 echo "Installing Ansible..."
