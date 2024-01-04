@@ -1,0 +1,4 @@
+---
+     - name: Run NEOVIM
+       ansible.builtin.import_tasks: darwin.yaml
+

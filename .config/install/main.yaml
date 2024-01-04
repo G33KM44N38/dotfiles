@@ -37,21 +37,9 @@
        dest: ~/.dotfiles
        update: yes
    
-
-   # - name: Stow Role
-   #   ansible.builtin.import_role:
-   #        name: stow
-   #
-   #
    - name: Install exa
      homebrew:
        name: exa
-       state: present
-       update_homebrew: yes
-   
-   - name: Install nvim
-     homebrew:
-       name: nvim
        state: present
        update_homebrew: yes
    

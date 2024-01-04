@@ -1,0 +1,6 @@
+---
+     - name: NVIM | install
+       homebrew:
+          name: neovim
+          state: present
+          update_homebrew: yes
