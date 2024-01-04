@@ -13,11 +13,9 @@ handle_error() {
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 
 # Check if Homebrew is installed
-if ! command_exists brew; then
-  echo "Homebrew is not installed. Installing Homebrew..."
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  handle_error $? "Homebrew installation failed"
-fi
+echo "Homebrew is not installed. Installing Homebrew..."
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+handle_error $? "Homebrew installation failed"
 
 # Add Homebrew to the PATH
 echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> /Users/kylianmayanga/.zprofile
