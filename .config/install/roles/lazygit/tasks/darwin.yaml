@@ -1,0 +1,6 @@
+---
+   - name: Install lazygit
+     homebrew:
+       name: lazygit
+       state: present
+       update_homebrew: yes
