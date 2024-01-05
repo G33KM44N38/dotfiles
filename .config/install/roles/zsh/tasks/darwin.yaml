@@ -1,4 +1,6 @@
-- name: setup zsh
-  become: yes
-  ignore_errors: yes
-  command: chsh -s /bin/zsh
+  - name: change the default shell to zsh
+    expect:
+      command: "chsh -s /bin/zsh"
+      responses:
+        (?i)password: "{{ my_password }}"
+      creates: ".shell_is_zsh"
