@@ -1,10 +1,15 @@
 ---
+
 - name: DOTFILES config
   hosts: localhost
   connection: local
 
-  tasks:
+  vars_prompt:
+   - name: "my_password"
+     prompt: "Enter password"
+     private: yes
 
+  tasks:
    - name: Set roles
      ansible.builtin.set_fact:
        run_roles: "{{ ansible_run_tags != ['all'] and ansible_run_tags or default_roles | difference(exclude_roles | default([])) }}"
