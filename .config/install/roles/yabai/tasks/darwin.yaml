@@ -1,7 +1,7 @@
 ---
    - name: Install yabai
      homebrew:
-       name: yabai
+       name: koekeishiya/formulae/yabai
        state: present
        update_homebrew: yes
 
