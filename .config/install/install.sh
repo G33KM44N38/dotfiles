@@ -35,6 +35,8 @@ handle_error() {
   fi
 }
 
+zsh
+
 # Clone repository
 if ! [[ -d "$DOTFILES_DIR" ]]; then
     echo -e "${ARROW} ${CYAN}Cloning repository: ${YELLOW}github.com/G33KM44N38/dotfiles${NC}"
@@ -65,9 +67,4 @@ echo -e "${ARROW} ${CYAN}Running the Ansible playbook..."
 ansible-playbook "$DOTFILES_DIR/.config/install/main.yaml" --ask-become-pass
 handle_error $? "Ansible playbook execution failed"
 
-if ! [[ -f "$IS_FIRST_RUN" ]]; then
-    echo -e "${CHECK_MARK} ${GREEN}First run complete!${NC}"
-    echo -e "${ARROW} ${CYAN}Please reboot your computer to complete the setup.${NC}"
-    touch "$IS_FIRST_RUN"
-fi
 echo -e "${ARROW} ${CYAN}Installation and playbook execution completed successfully"
