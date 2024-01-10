@@ -22,6 +22,8 @@ else
     ~/coding/work/minata/src/* \
     ~/goinfre/ \
     ~/.dotfiles/ \
+    ~/.dotfiles/* \
+    ~/.dotfiles/.config/ \
     -mindepth 1 -maxdepth 1 -type d | fzf) || error_exit "No directory selected."
 fi
 
