@@ -35,7 +35,8 @@ return {
 				"yamlls",
 				"lua_ls",
 				"eslint",
-				"bashls"
+				"bashls",
+				"gopls"
 			},
 			-- auto-install configured servers (with lspconfig)
 			automatic_installation = true, -- not the same as ensure_installed

@@ -2,7 +2,7 @@ return {
 	"stevearc/conform.nvim",
 	dependencies = { "mason.nvim" },
 	lazy = true,
-	event = { "BufReadPre", "BufNewFile" },
+	event = { "BufReadPre", "BufNewFile", "InsertLeave" },
 	config = function()
 		local conform = require("conform")
 		conform.setup({
@@ -27,7 +27,7 @@ return {
 				timeout_ms = 1000,
 			},
 		})
-		vim.keymap.set({ "n", "v" }, "<leader>mp", function()
+		vim.keymap.set({ "n", "v" }, "<leader>lf", function()
 			conform.format({
 				lsp_fallback = true,
 				async = false,

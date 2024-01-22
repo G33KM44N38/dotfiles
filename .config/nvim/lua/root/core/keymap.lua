@@ -74,7 +74,7 @@ keymap("n", "<leader>x",
 keymap("n", "<leader>ke", ":lua require('telescope.builtin').keymaps()<CR>", opts)
 
 
-keymap("n", "<space>lf", ":lua vim.lsp.buf.format()<CR>", opts)
+-- keymap("n", "<space>lf", ":lua vim.lsp.buf.format()<CR>", opts)
 
 -- allow my cursor stay at the same place, when using `J`
 keymap("n", "J", "mzJ`z", opts)

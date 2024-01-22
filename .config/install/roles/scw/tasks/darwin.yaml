@@ -1,0 +1,6 @@
+---
+   - name: Install scw
+     homebrew:
+       name: scw
+       state: present
+       update_homebrew: yes
