@@ -58,9 +58,15 @@ echo -e "${ARROW} ${CYAN}Installing Ansible..."
 brew install ansible
 handle_error $? "Ansible installation failed"
 
-# Run the Ansible playbook
-echo -e "${ARROW} ${CYAN}Running the Ansible playbook..."
-ansible-playbook "$DOTFILES_DIR/.config/install/main.yaml" --ask-become-pass
-handle_error $? "Ansible playbook execution failed"
+# Check if Ansible is installed
+if ! command -v ansible &> /dev/null
+then
+    echo -e "${ARROW} ${CYAN}Installing Ansible..."
+    brew install ansible
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Error: Ansible installation failed${NC}" >&2
+        exit 1
+    fi
+fi
 
 echo -e "${ARROW} ${CYAN}Installation and playbook execution completed successfully"
