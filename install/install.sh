@@ -35,8 +35,6 @@ handle_error() {
   fi
 }
 
-zsh
-
 # Clone repository
 if ! [[ -d "$DOTFILES_DIR" ]]; then
     echo -e "${ARROW} ${CYAN}Cloning repository: ${YELLOW}github.com/G33KM44N38/dotfiles${NC}"
