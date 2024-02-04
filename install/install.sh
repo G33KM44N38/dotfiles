@@ -23,8 +23,6 @@ RIGHT_ANGLE="${GREEN}\xE2\x88\x9F${NC}"
 # Path
 DOTFILES_DIR="$HOME/.dotfiles"
 
-set -e
-
 # Function to handle errors
 handle_error() {
   local exit_code=$1
