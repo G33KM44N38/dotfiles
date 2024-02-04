@@ -1,1 +1,129 @@
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/G33KM44N38/dotfiles/main/install/install.sh)"
+#!/bin/bash
+
+# color codes
+RESTORE='\033[0m'
+NC='\033[0m'
+BLACK='\033[00;30m'
+RED='\033[00;31m'
+GREEN='\033[00;32m'
+YELLOW='\033[00;33m'
+BLUE='\033[00;34m'
+PURPLE='\033[00;35m'
+CYAN='\033[00;36m'
+SEA="\\033[38;5;49m"
+LIGHTGRAY='\033[00;37m'
+LBLACK='\033[01;30m'
+LRED='\033[01;31m'
+LGREEN='\033[01;32m'
+LYELLOW='\033[01;33m'
+LBLUE='\033[01;34m'
+LPURPLE='\033[01;35m'
+LCYAN='\033[01;36m'
+WHITE='\033[01;37m'
+OVERWRITE='\e[1A\e[K'
+
+#emoji codes
+CHECK_MARK="${GREEN}\xE2\x9C\x94${NC}"
+X_MARK="${RED}\xE2\x9C\x96${NC}"
+PIN="${RED}\xF0\x9F\x93\x8C${NC}"
+CLOCK="${GREEN}\xE2\x8C\x9B${NC}"
+ARROW="${SEA}\xE2\x96\xB6${NC}"
+BOOK="${RED}\xF0\x9F\x93\x8B${NC}"
+HOT="${ORANGE}\xF0\x9F\x94\xA5${NC}"
+WARNING="${RED}\xF0\x9F\x9A\xA8${NC}"
+RIGHT_ANGLE="${GREEN}\xE2\x88\x9F${NC}"
+
+# _header colorize the given argument with spacing
+function _task {
+    # if _task is called while a task was set, complete the previous
+    if [[ $TASK != "" ]]; then
+        printf "${OVERWRITE}${LGREEN} [✓]  ${LGREEN}${TASK}\n"
+    fi
+    # set new task title and print
+    TASK=$1
+    printf "${LBLACK} [ ]  ${TASK} \n${LRED}"
+}
+
+# _cmd performs commands with error checking
+function _cmd {
+    #create log if it doesn't exist
+    if ! [[ -f $DOTFILES_LOG ]]; then
+        touch $DOTFILES_LOG
+    fi
+    # empty conduro.log
+    > $DOTFILES_LOG
+    # hide stdout, on error we print and exit
+    if eval "$1" 1> /dev/null 2> $DOTFILES_LOG; then
+        return 0 # success
+    fi
+    # read error from log and add spacing
+    printf "${OVERWRITE}${LRED} [X]  ${TASK}${LRED}\n"
+    while read line; do
+        printf "      ${line}\n"
+    done < $DOTFILES_LOG
+    printf "\n"
+    # remove log file
+    rm $DOTFILES_LOG
+    # exit installation
+    exit 1
+}
+
+function _clear_task {
+    TASK=""
+}
+
+function _task_done {
+    printf "${OVERWRITE}${LGREEN} [✓]  ${LGREEN}${TASK}\n"
+    _clear_task
+}
+
+set -e
+
+# Paths
+CONFIG_DIR="$HOME/.dotfiles"
+VAULT_SECRET="$HOME/.ansible-vault/vault.secret"
+SSH_DIR="$HOME/.ssh"
+IS_FIRST_RUN="$HOME/.dotfiles_run"
+DOTFILES_DIR="$HOME/.dotfiles"
+
+# Check if Homebrew is installed
+if ! command -v brew &> /dev/null
+then
+    _task -e "${ARROW} ${CYAN}Homebrew is not installed. Installing Homebrew..."
+	_cmd "/bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+fi
+
+# Add Homebrew to the PATH
+_task 'export PATH="/usr/local/bin:$PATH"' >> "$HOME/.bash_profile"
+
+# Check if Ansible is installed
+if ! command -v ansible &> /dev/null
+then
+    _task -e "${ARROW} ${CYAN}Installing Ansible..."
+	    _cmd "brew install ansible"
+fi
+
+
+# Clone repository
+if ! [[ -d "$DOTFILES_DIR" ]]; then
+    _task "Cloning repository"
+        _cmd "git clone --quiet https://github.com/G33KM44N38/dotfiles $DOTFILES_DIR"
+else
+    _task "Updating repository"
+        _cmd "git -C $DOTFILES_DIR pull --quiet"
+fi
+
+_task "Running playbook"; _task_done
+if [[ -f $VAULT_SECRET ]]; then
+    ansible-playbook --vault-password-file $VAULT_SECRET "$DOTFILES_DIR/install/main.yml" "$@"
+else
+    ansible-playbook "$DOTFILES_DIR/main.yml" "$@"
+fi
+
+if ! [[ -f "$IS_FIRST_RUN" ]]; then
+    echo -e "${CHECK_MARK} ${GREEN}First run complete!${NC}"
+    echo -e "${ARROW} ${CYAN}Please reboot your computer to complete the setup.${NC}"
+    touch "$IS_FIRST_RUN"
+fi
+
+# vi:ft=sh:
