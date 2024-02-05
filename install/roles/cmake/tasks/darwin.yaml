@@ -1,0 +1,5 @@
+- name: CMAKE | Install cmake
+  homebrew:
+    name: cmake
+    state: present
+    update_homebrew: yes

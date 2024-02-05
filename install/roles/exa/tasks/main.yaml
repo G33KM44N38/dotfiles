@@ -1,4 +1,0 @@
----
-     - name: Run EXA
-       ansible.builtin.import_tasks: darwin.yaml
-

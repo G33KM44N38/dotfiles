@@ -1,14 +1,13 @@
 default_roles:
-- nvim
-- stow
-- dotfiles
-- exa
-- lazygit
-- lazydocker
-- ripgrep
-- tmux
-- skhd
-- yabai
-- node
-- fzf
-- zsh
+  - zsh
+  - nvim
+  - stow
+  - lazygit
+  - lazydocker
+  - ripgrep
+  - tmux
+  - skhd
+  - yabai
+  - node
+  - fzf
+  - cmake

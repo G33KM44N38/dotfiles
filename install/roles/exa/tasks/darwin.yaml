@@ -1,6 +1,0 @@
-   - name: EXA | Install exa
-     homebrew:
-       name: exa
-       state: present
-       update_homebrew: yes
-   

@@ -1,7 +1,0 @@
----
-   - name: DOTFILES | clone
-     ignore_errors: yes
-     ansible.builtin.git:
-       repo: https://github.com/G33KM44N38/dotfiles
-       dest: ~/.dotfiles
-       update: yes

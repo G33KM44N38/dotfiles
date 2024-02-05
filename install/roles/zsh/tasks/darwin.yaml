@@ -1,6 +1,5 @@
-  - name: change the default shell to zsh
-    expect:
-      command: "chsh -s /bin/zsh"
-      responses:
-        (?i)password: "{{ my_password }}"
-      creates: ".shell_is_zsh"
+- name: change user shell to zsh
+  become: yes
+  user:
+    name: "{{ ansible_env.USER }}"
+    shell: /bin/zsh
