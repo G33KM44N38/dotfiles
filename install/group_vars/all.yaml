@@ -1,5 +1,4 @@
 default_roles:
-  - zsh
   - nvim
   - stow
   - lazygit
