@@ -49,6 +49,9 @@ vim.cmd('hi Normal guibg=NONE ctermbg=NONE')
 -- Set tabstops for filetypes
 vim.cmd("autocmd Filetype * setlocal ts=5 sw=5")
 
+-- Set no swapfile
+vim.opt.swapfile = false
+
 -- Run LSP format on buffer write post
 -- vim.cmd('silent! autocmd BufWritePost * lua vim.lsp.buf.format()')
 
@@ -99,4 +102,3 @@ vim.api.nvim_set_option('autoindent', false)
 vim.api.nvim_set_option('wrap', false)
 vim.api.nvim_set_option('autoindent', false)
 vim.api.nvim_set_option('wrap', false)
-vim.api.nvim_set_option('noswapfile', true)
