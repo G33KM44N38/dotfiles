@@ -1,5 +1,0 @@
-- name: DOCKER | Install docker
-  homebrew:
-    name: docker
-    state: present
-    update_homebrew: yes

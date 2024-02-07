@@ -1,3 +1,0 @@
----
-- name: Run CMAKE
-  ansible.builtin.import_tasks: darwin.yaml
