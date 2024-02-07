@@ -1,0 +1,5 @@
+- name: GO | Install go
+  homebrew:
+    name: go
+    state: present
+    update_homebrew: yes
