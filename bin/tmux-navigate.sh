@@ -24,6 +24,7 @@ else
     ~/.dotfiles/ \
     ~/.dotfiles/* \
     ~/.dotfiles/.config/ \
+    ~/SecondBrain/ \
     -mindepth 1 -maxdepth 1 -type d | fzf) || error_exit "No directory selected."
 fi
 
