@@ -23,10 +23,6 @@ keymap("n", "<C-z>", "<nop>", opts)
 -- Save all buffers
 keymap("n", "<leader>w", ":w<CR> :wa<CR>", opts)
 
--- mapping change viewport
-keymap("n", "<S-TAB>", ":bp<CR>", opts)
-keymap("n", "<TAB>", ":bn<CR>", opts)
-
 -- make
 keymap("n", "<leader>m", ":make ", noSilent)
 
