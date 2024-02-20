@@ -151,29 +151,14 @@ return {
 			},
 		})
 
+		lspconfig["eslint"].setup({
+			capabilities = capabilities,
+			on_attach = on_attach,
+		})
 
-		-- select_lsp function to choose between eslint and tsserver
-		local function select_lsp()
-			local current_file = vim.fn.expand("%:p")
-			if require('lspconfig.util').root_pattern(".eslintrc.js", ".eslintrc.json", ".eslintrc")(current_file) then
-				return "eslint"
-			else
-				return "tsserver"
-			end
-		end
-
-		-- Set up LSP based on project configuration
-		local selected_lsp = select_lsp()
-		if selected_lsp == "eslint" then
-			require('lspconfig')["eslint"].setup({
-				capabilities = capabilities,
-				on_attach = on_attach,
-			})
-		else
-			require('lspconfig')["tsserver"].setup({
-				capabilities = capabilities,
-				on_attach = on_attach,
-			})
-		end
+		lspconfig["tsserver"].setup({
+			capabilities = capabilities,
+			on_attach = on_attach,
+		})
 	end,
 }
