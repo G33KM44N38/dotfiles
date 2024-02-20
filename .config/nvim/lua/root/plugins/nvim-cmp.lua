@@ -2,7 +2,7 @@ return {
 	"hrsh7th/nvim-cmp",
 	event = "InsertEnter",
 	dependencies = {
-		'quangnguyen30192/cmp-nvim-ultisnips',
+		"quangnguyen30192/cmp-nvim-ultisnips",
 		"zbirenbaum/copilot-cmp",
 		"hrsh7th/cmp-cmdline",
 		"petertriho/cmp-git",
@@ -17,6 +17,7 @@ return {
 		local cmp = require("cmp")
 		local luasnip = require("luasnip")
 		local lspkind = require("lspkind")
+		local cmp_ultisnips_mappings = require("cmp_nvim_ultisnips.mappings")
 
 		require("luasnip.loaders.from_vscode").lazy_load()
 
@@ -29,6 +30,7 @@ return {
 					luasnip.lsp_expand(args.body)
 				end,
 			},
+
 			mapping = cmp.mapping.preset.insert({
 				["<C-k>"] = cmp.mapping.select_prev_item(), -- previous suggestion
 				["<C-j>"] = cmp.mapping.select_next_item(), -- next suggestion
@@ -36,17 +38,18 @@ return {
 				["<C-f>"] = cmp.mapping.scroll_docs(4),
 				["<C-e>"] = cmp.mapping.abort(), -- close completion window
 				["<CR>"] = cmp.mapping.confirm({ select = true }),
-				['<Tab>'] = cmp.mapping(cmp.mapping({
-					i = function(fallback)
-						if cmp.visible() and cmp.get_active_entry() then
-							cmp.confirm({ behavior = cmp.ConfirmBehavior.Replace, select = true })
-						else
-							fallback()
-						end
+				["<Tab>"] = cmp.mapping(
+					function(fallback)
+						cmp_ultisnips_mappings.expand_or_jump_forwards(fallback)
 					end,
-					s = cmp.mapping.confirm({ select = true }),
-					c = cmp.mapping.confirm({ behavior = cmp.ConfirmBehavior.Replace, select = true }),
-				})),
+					{ "i", "s" }
+				),
+				["<S-Tab>"] = cmp.mapping(
+					function(fallback)
+						cmp_ultisnips_mappings.jump_backwards()
+					end,
+					{ "i", "s" }
+				),
 			}),
 			-- sources for autocompletion
 			sources = cmp.config.sources({
