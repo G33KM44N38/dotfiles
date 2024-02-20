@@ -67,12 +67,6 @@ return {
 			on_attach = on_attach,
 		})
 
-		-- configure typescript server with plugin
-		lspconfig["tsserver"].setup({
-			capabilities = capabilities,
-			on_attach = on_attach,
-		})
-
 		-- configure bash server with plugin
 		lspconfig["bashls"].setup({
 			capabilities = capabilities,
@@ -123,12 +117,6 @@ return {
 			on_attach = on_attach,
 		})
 
-		-- configure eslint_d server
-		lspconfig["eslint"].setup({
-			capabilities = capabilities,
-			on_attach = on_attach,
-		})
-
 		-- configure bashls server
 		lspconfig["bashls"].setup({
 			capabilities = capabilities,
@@ -162,5 +150,30 @@ return {
 				},
 			},
 		})
+
+
+		-- select_lsp function to choose between eslint and tsserver
+		local function select_lsp()
+			local current_file = vim.fn.expand("%:p")
+			if require('lspconfig.util').root_pattern(".eslintrc.js", ".eslintrc.json", ".eslintrc")(current_file) then
+				return "eslint"
+			else
+				return "tsserver"
+			end
+		end
+
+		-- Set up LSP based on project configuration
+		local selected_lsp = select_lsp()
+		if selected_lsp == "eslint" then
+			require('lspconfig')["eslint"].setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+			})
+		else
+			require('lspconfig')["tsserver"].setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+			})
+		end
 	end,
 }
