@@ -2,6 +2,8 @@ return {
 	"bluz71/vim-nightfly-guicolors",
 	priority = 1000,
 	config = function()
+		-- Lua initialization file
+		vim.g.nightflyVirtualTextColor = true
 		vim.cmd([[colorscheme nightfly]])
 		-- vim.cmd('colorscheme solarized8_high')
 		-- vim.cmd('colorscheme gruvbox')
