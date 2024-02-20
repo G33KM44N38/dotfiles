@@ -12,3 +12,5 @@ default_roles:
   - node
   - fzf
   - cmake
+  - stripe
+
