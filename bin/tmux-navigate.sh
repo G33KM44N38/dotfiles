@@ -36,12 +36,12 @@ fi
 selected_name=$(basename "$selected" | tr . _)
 tmux_running=$(pgrep tmux)
 
-# Check if tmux is running
+#Check if tmux is running
 if [[ -n $TMUX ]] || [[ -n $tmux_running ]]; then
     if ! tmux has-session -t=$selected_name 2> /dev/null; then
         tmux new-session -ds $selected_name -c $selected
     fi
     tmux switch-client -t $selected_name
 else
-    tmux new-session -s $selected_name -c $selected
+    tmux new-session -ds $selected_name -c $selected
 fi
