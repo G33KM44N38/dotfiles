@@ -29,3 +29,11 @@ yabai -m rule --add app="^System Settings$" manage=off
 yabai -m rule --add app="^System preferences$" manage=off
 yabai -m rule --add app="^Calculator$" manage=off
 yabai -m rule --add app="^Karabiner-Elements$" manage=off
+
+# Send apps to specific spaces
+yabai -m rule --add app=Arc space=1
+yabai -m rule --add app=iTerm space=2
+yabai -m rule --add app=Notion space=3
+yabai -m rule --add app=WhatsApp space=5
+yabai -m rule --add app=Messages space=5
+yabai -m rule --add app="^Docker Desktop$" space=9
