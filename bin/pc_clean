@@ -1,0 +1,20 @@
+#!/bin/bash
+
+sudo purge
+
+brew update && brew upgrade && brew cleanup
+
+for d in */; do cd $d; echo WORKING ON $d; git branch --merged master | grep -v "\* master" | xargs -n 1 git branch -d; cd ..; done
+
+find . -name "node_modules" -type d -mtime +120 | xargs rm -rf
+
+xcrun simctl delete unavailable
+
+rm -rf ~/Library/Developer/Xcode/Archives
+rm -rf ~/Library/Developer/Xcode/DerivedData
+rm -rf ~~/Library/Developer/Xcode/iOS Device Logs/
+
+docker volume prune
+
+
+# vi:ft=sh:
