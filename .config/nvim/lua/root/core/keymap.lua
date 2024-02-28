@@ -75,16 +75,6 @@ keymap("n", "<leader>ke", ":lua require('telescope.builtin').keymaps()<CR>", opt
 -- allow my cursor stay at the same place, when using `J`
 keymap("n", "J", "mzJ`z", opts)
 
--- nvim-dap mapping debugging
-keymap("n", "<F5>", ":lua require'dap'.continue()<CR>", opts)
-keymap("n", "<F2>", ":lua require'dap'.step_over()<CR>", opts)
-keymap("n", "<F3>", ":lua require'dap'.step_into()<CR>", opts)
-keymap("n", "<F4>", ":lua require'dap'.step_out()<CR>", opts)
-keymap("n", "<leader>db", ":lua require'dap'.toggle_breakpoint()<CR>", opts)
-keymap("n", "<leader>dB", ":lua require'dap'.set_breakpoint(vim.fn.input('Breakpoint condition: '))<CR>", opts)
-keymap("n", "<leader>ds", ":lua require'dap-go'.debug_test()<CR>", opts)
-keymap("n", "<leader>dt", ":lua require'dapui'.toggle()<CR>", opts)
-
 -- lspsaga
 keymap("n", "<leader>q", "<cmd>Lspsaga show_buf_diagnostics<CR>", opts)
 keymap("n", "gD", "<cmd>Lspsaga finder<CR>", opts)
