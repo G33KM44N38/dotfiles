@@ -20,4 +20,6 @@ return {
 	'tpope/vim-surround',
 	"voldikss/vim-floaterm",
 	'williamboman/nvim-lsp-installer',
+	'mbbill/undotree'
+
 }
