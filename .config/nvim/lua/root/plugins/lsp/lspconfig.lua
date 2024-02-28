@@ -151,12 +151,18 @@ return {
 			},
 		})
 
+
 		lspconfig["eslint"].setup({
 			capabilities = capabilities,
 			on_attach = on_attach,
 		})
 
 		lspconfig["tsserver"].setup({
+			capabilities = capabilities,
+			on_attach = on_attach,
+		})
+
+		lspconfig["tailwindcss"].setup({
 			capabilities = capabilities,
 			on_attach = on_attach,
 		})
