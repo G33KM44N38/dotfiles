@@ -34,5 +34,8 @@ return {
 			substitutions = {},
 		},
 	},
-	vim.api.nvim_set_keymap("n", "<leader>o", ":Obsidian", { noremap = true, silent = false })
+	vim.api.nvim_set_keymap("n", "<leader>o", ":Obsidian", { noremap = true, silent = false }),
+	vim.api.nvim_set_keymap("n", "<leader>ot", ":ObsidianTemplate<CR>", { noremap = true, silent = false }),
+	vim.api.nvim_set_keymap("n", "<leader>on", ":ObsidianNew<CR>", { noremap = true, silent = false }),
+	vim.api.nvim_set_keymap("n", "<leader>os", ":ObsidianSearch<CR>", { noremap = true, silent = false })
 }
