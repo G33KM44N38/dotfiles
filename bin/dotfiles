@@ -1,5 +1,17 @@
 #!/bin/bash
 
+# Required parameters:
+# @raycast.schemaVersion 1
+# @raycast.title dotfiles
+# @raycast.mode compact
+
+# Optional parameters:
+# @raycast.icon 🤖
+
+# Documentation:
+# @raycast.description dotfiles
+# @raycast.author me
+
 # color codes
 RESTORE='\033[0m'
 NC='\033[0m'

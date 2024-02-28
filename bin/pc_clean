@@ -1,5 +1,17 @@
 #!/bin/bash
 
+# Required parameters:
+# @raycast.schemaVersion 1
+# @raycast.title pc_clean
+# @raycast.mode compact
+
+# Optional parameters:
+# @raycast.icon 🤖
+
+# Documentation:
+# @raycast.description pc_clean
+# @raycast.author me
+
 sudo purge
 
 brew update && brew upgrade && brew cleanup
