@@ -3,7 +3,7 @@ return {
 	event = "InsertEnter",
 	dependencies = {
 		"quangnguyen30192/cmp-nvim-ultisnips",
-		"zbirenbaum/copilot-cmp",
+		-- "zbirenbaum/copilot-cmp",
 		"hrsh7th/cmp-cmdline",
 		"petertriho/cmp-git",
 		"hrsh7th/cmp-buffer",   -- source for text in buffer
@@ -53,7 +53,7 @@ return {
 			}),
 			-- sources for autocompletion
 			sources = cmp.config.sources({
-				{ name = "copilot" },
+				-- { name = "copilot" },
 				{ name = "ultisnips", group_index = 1 },
 				{ name = "nvim_lsp" },
 				{ name = "luasnip",   group_index = 1 }, -- snippets
