@@ -102,3 +102,5 @@ vim.api.nvim_set_option('autoindent', false)
 vim.api.nvim_set_option('wrap', false)
 vim.api.nvim_set_option('autoindent', false)
 vim.api.nvim_set_option('wrap', false)
+
+vim.cmd("set conceallevel=1")
