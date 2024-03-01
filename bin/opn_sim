@@ -2,7 +2,7 @@
 
 # Required parameters:
 # @raycast.schemaVersion 1
-# @raycast.title  open_sim
+# @raycast.title  sim
 # @raycast.mode compact
 
 # Optional parameters:
