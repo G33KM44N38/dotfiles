@@ -50,6 +50,7 @@ return {
 					end,
 					{ "i", "s" }
 				),
+				['<C-y>'] = cmp.config.disable, -- disable <C-y> for accepting suggestions
 			}),
 			-- sources for autocompletion
 			sources = cmp.config.sources({

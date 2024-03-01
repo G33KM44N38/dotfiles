@@ -4,7 +4,7 @@ return {
 		vim.g.copilot_no_tab_map = true
 	end,
 	config = function()
-		vim.keymap.set('i', '<C-y>', [[copilot#Accept("\<CR>")]], {
+		vim.keymap.set('i', '<C-y>', 'copilot#Accept("\\<CR>")', {
 			silent = true,
 			expr = true,
 			script = true,
@@ -12,13 +12,3 @@ return {
 		})
 	end,
 }
-
--- return {
--- 	"zbirenbaum/copilot.lua",
--- 	config = function()
--- 		require("copilot").setup({
--- 			suggestion = { enabled = false },
--- 			panel = { enabled = false },
--- 		})
--- 	end
--- }
