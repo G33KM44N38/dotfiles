@@ -22,11 +22,13 @@ find . -name "node_modules" -type d -mtime +120 | xargs rm -rf
 
 xcrun simctl delete unavailable
 
-rm -rf ~/Library/Developer/Xcode/Archives
-rm -rf ~/Library/Developer/Xcode/DerivedData
-rm -rf ~~/Library/Developer/Xcode/iOS Device Logs/
+# rm -rf ~/Library/Developer/Xcode/Archives
+# rm -rf ~/Library/Developer/Xcode/DerivedData
+# rm -rf ~~/Library/Developer/Xcode/iOS Device Logs/
+#
+# sudo rm -rf /Library/Developer/CommandLineTools
+# xcode-select --install
 
 docker volume prune
-
 
 # vi:ft=sh:
