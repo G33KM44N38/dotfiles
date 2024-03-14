@@ -43,7 +43,7 @@ keymap('n', '-', '<C-x>', opts)
 
 -- mapping fugitif
 keymap("n", "<leader>g", ":G<CR>", opts)
-keymap("n", "<leader>gc", ":Git commit -m ", noSilent)
+-- keymap("n", "<leader>gc", ":Git commit<CR>", noSilent)
 keymap("n", "<leader>gs", ":Git status<CR>", opts)
 keymap("n", "<leader>gP", ":Git push<CR>", opts)
 keymap("n", "<leader>gp", ":Git pull<CR>", opts)
@@ -86,13 +86,6 @@ keymap("n", "K", "<cmd>Lspsaga hover_doc<CR>", opts)
 keymap("n", "gd", "<cmd>Lspsaga goto_definition<CR>", opts)
 keymap("n", "gsd", "<C-w>v<C-w>l<cmd>Lspsaga goto_definition<CR>", opts)
 keymap("n", "gp", "<cmd>Lspsaga peek_definition<CR>", opts)
-
--- vim-test
-keymap("n", "<leader>t", ":TestNearest<CR>", opts)
-keymap("n", "<leader>T", ":TestFile<CR>", opts)
-keymap("n", "<leader>a", ":TestSuite<CR>", opts)
-keymap("n", "<leader>l", ":TestLast<CR>", opts)
-keymap("n", "<leader>tv", ":TestNearest -v<CR>", opts)
 
 -- Move text up and down
 keymap("x", "J", ":move '>+1<CR>gv-gv", opts)

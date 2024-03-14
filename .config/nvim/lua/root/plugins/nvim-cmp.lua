@@ -30,7 +30,7 @@ return {
 					luasnip.lsp_expand(args.body)
 				end,
 			},
-
+			preselect = cmp.PreselectMode.Item, -- set focus on the first line
 			mapping = cmp.mapping.preset.insert({
 				["<C-k>"] = cmp.mapping.select_prev_item(), -- previous suggestion
 				["<C-j>"] = cmp.mapping.select_next_item(), -- next suggestion
