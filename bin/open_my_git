@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Required parameters:
+# @raycast.schemaVersion 1
+# @raycast.title  my github profile
+# @raycast.mode compact
+
+# Optional parameters:
+# @raycast.icon 🤖
+
+# Documentation:
+# @raycast.description  open my github profile
+# @raycast.author me
+
+open https://github.com/G33KM44N38
+
+# vi:ft=sh:
