@@ -1,6 +1,5 @@
 default_roles:
   - nvim
-  - docker
   - go
   - stow
   - lazygit
@@ -13,4 +12,4 @@ default_roles:
   - fzf
   - cmake
   - stripe
-
+  - z
