@@ -43,6 +43,13 @@ return {
 			end
 		end
 
+		function QuitMenu()
+			vim.cmd('redraw')
+			vim.cmd('echo "Menu closed. Action canceled"')
+		end
+
+		vim.api.nvim_set_keymap('n', '<Esc>', ':lua QuitMenu()<CR>', { noremap = true, silent = true })
+
 		vim.cmd('command -bar -bang -nargs=* Gcommit lua InputArgs()')
 		vim.api.nvim_set_keymap('n', '<leader>gc', ':Gcommit<CR>', { noremap = true, silent = true })
 	end
