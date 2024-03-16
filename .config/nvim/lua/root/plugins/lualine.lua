@@ -58,18 +58,11 @@ return {
 			sections = {
 				lualine_a = { 'mode' },
 				lualine_b = { 'filename' },
-				lualine_c = { 'diagnostics' },
+				lualine_c = { "diagnostics" },
 				lualine_x = {
-					{ "fileformat" },
 					{ "filetype" },
 				},
-				lualine_y = {
-					{
-						require("noice").api.statusline.mode.get,
-						cond = require("noice").api.statusline.mode.has,
-						color = { fg = "#ff9e64" },
-					}
-				},
+				lualine_y = {},
 				lualine_z = { 'branch', },
 			},
 			extensions = { 'fugitive', 'fzf', 'quickfix' }
