@@ -43,4 +43,5 @@ yabai -m rule --add app=Discord space=5
 yabai -m rule --add app=Mail space=5
 yabai -m rule --add app=Messages space=5
 yabai -m rule --add app=Music space=8
+yabai -m rule --add app=Podcasts space=8
 yabai -m rule --add app="^Docker Desktop$" space=9
