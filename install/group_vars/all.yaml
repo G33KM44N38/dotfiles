@@ -13,3 +13,5 @@ default_roles:
   - cmake
   - stripe
   - z
+  - gh
+  - qmk
