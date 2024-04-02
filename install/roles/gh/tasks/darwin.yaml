@@ -1,0 +1,9 @@
+---
+- name: Install github cli
+  homebrew:
+    name: gh
+    state: present
+    update_homebrew: yes
+
+- name: Configure github cli
+  command: gh extension install github/gh-copilot
