@@ -1,0 +1,6 @@
+---
+- name: Install shorcat
+  homebrew:
+    name: shorcat
+    state: present
+    update_homebrew: yes
