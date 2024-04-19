@@ -1,5 +1,5 @@
 - name: CMAKE | Install cmake
   homebrew:
-    name: cmake
+    name: homebrew/cask/cmake
     state: present
     update_homebrew: yes

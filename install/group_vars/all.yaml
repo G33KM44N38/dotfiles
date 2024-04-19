@@ -10,8 +10,10 @@ default_roles:
   - yabai
   - node
   - fzf
-  - cmake
+  # - cmake
   - stripe
   - z
   - gh
   - qmk
+  - shortcat
+  - aldente

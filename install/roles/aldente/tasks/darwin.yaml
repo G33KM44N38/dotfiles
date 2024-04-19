@@ -1,0 +1,6 @@
+---
+- name: Install aldente
+  homebrew:
+    name: aldente
+    state: present
+    update_homebrew: yes
