@@ -1,0 +1,22 @@
+---
+- name: clone minata repo
+  ansible.builtin.git:
+     repo: https://github.com/minata-soft/stackdev
+     dest: ~/coding/work/minata
+
+- name: clone baba_coiffure repo
+  ansible.builtin.git:
+     repo: https://github.com/G33KM44N38/baba_coiffure
+     dest: ~/coding/work/baba_coiffure
+
+- name: clone crkdb zmk
+  ansible.builtin.git:
+     repo: https://github.com/G33KM44N38/crkdb-zmk
+     dest: ~/keyboard/
+
+- name: clone crkdb qmk
+  ansible.builtin.git:
+     repo: https://github.com/G33KM44N38/crkdb_split
+     dest: ~/keyboard/
+
+

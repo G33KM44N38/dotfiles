@@ -1,0 +1,5 @@
+---
+- name: Creates goinfre directory
+  ansible.builtin.file:
+    path: ~/goinfre
+    state: directory

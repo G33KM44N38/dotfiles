@@ -1,0 +1,6 @@
+---
+- name: Install z
+  homebrew:
+    name: zoxide
+    state: present
+    update_homebrew: yes
