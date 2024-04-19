@@ -1,6 +1,10 @@
 require("root.core.keymap")
+
+vim.opt.scrolloff = 10
 -- Required to be compatible with Neovim
 vim.opt.compatible = false
+
+vim.opt.signcolumn = 'yes'
 
 -- Set fill characters for statusline
 vim.opt.fillchars:append({ stl = ' ', stlnc = ' ' })
@@ -104,3 +108,12 @@ vim.api.nvim_set_option('autoindent', false)
 vim.api.nvim_set_option('wrap', false)
 
 vim.cmd("set conceallevel=1")
+
+
+vim.api.nvim_create_autocmd("TextYankPost", {
+	desc = "Highlight when yanking text",
+	group = vim.api.nvim_create_augroup("kickstart-highlight-yank", { clear = true }),
+	callback = function()
+		vim.highlight.on_yank()
+	end,
+})

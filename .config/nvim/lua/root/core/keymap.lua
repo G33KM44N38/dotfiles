@@ -58,15 +58,13 @@ keymap("n", "<leader>th", ":ToggleTerm direction=horizontal size=10 fish<CR>", o
 keymap("n", "<leader>bd", ":bd<CR>", opts)
 
 -- mapping Open Buffer fzf telescope
-keymap("n", "<leader>bb", ":lua require'telescope.builtin'.buffers()<CR>", opts)
-keymap("n", "<leader>s", ":lua require('telescope.builtin').find_files()<CR>", opts)
-keymap("n", "<leader>dot", ":lua require('rc_telescope').search_dotfiles()<CR>", opts)
-keymap("n", "?", ":lua require('telescope.builtin').current_buffer_fuzzy_find()<CR>", opts)
+keymap("n", "<leader>n", ":lua require('telescope').extensions.git_worktree.git_worktrees()<CR>", opts)
+keymap("n", "<leader>N", ":lua require('telescope').extensions.git_worktree.create_git_worktree()<CR>", opts)
+keymap("n", "gd", "<cmd>Telescope lsp_definitions<CR>", opts)
+keymap("n", 'gr', "<cmd>Telescope lsp_references<CR>", opts)
+keymap("n", "<leader>pf", ":lua require('telescope.builtin').find_files()<CR>", opts)
 keymap("n", "<C-s>", ":lua require('telescope.builtin').live_grep()<CR>", opts)
-keymap("n", "<leader>bq", ":lua require('telescope.builtin').quickfix()<CR>", opts)
-keymap("n", "<leader>gf", ":lua require('telescope.builtin').git_files()<CR>", opts)
-keymap("n", "<leader>x",
-	":lua require('telescope.builtin').diagnostics(require('telescope.themes').get_dropdown({}))<CR>", opts)
+keymap("n", "<C-p>", ":lua require('telescope.builtin').git_files()<CR>", opts)
 keymap("n", "<leader>ke", ":lua require('telescope.builtin').keymaps()<CR>", opts)
 
 
@@ -75,17 +73,24 @@ keymap("n", "<leader>ke", ":lua require('telescope.builtin').keymaps()<CR>", opt
 -- allow my cursor stay at the same place, when using `J`
 keymap("n", "J", "mzJ`z", opts)
 
+-- quickfix-list
+keymap("n", "<C-j>", "<cmd>cprev<CR>", opts)
+keymap("n", "<C-l>", "<cmd>cnext<CR>", opts)
+
 -- lspsaga
-keymap("n", "<leader>q", "<cmd>Lspsaga show_buf_diagnostics<CR>", opts)
-keymap("n", "gD", "<cmd>Lspsaga finder<CR>", opts)
-keymap("n", "<C-j>", "<cmd>Lspsaga diagnostic_jump_prev<CR>", opts)
-keymap("n", "<C-l>", "<cmd>Lspsaga diagnostic_jump_next<CR>", opts)
-keymap("n", "gr", "<cmd>Lspsaga rename<CR>", opts)
-keymap("n", "<leader>ca", "<cmd>Lspsaga code_action<CR>", opts)
+keymap("n", "<leader>gr", "<cmd>Lspsaga rename<CR>", opts)
 keymap("n", "K", "<cmd>Lspsaga hover_doc<CR>", opts)
-keymap("n", "gd", "<cmd>Lspsaga goto_definition<CR>", opts)
-keymap("n", "gsd", "<C-w>v<C-w>l<cmd>Lspsaga goto_definition<CR>", opts)
-keymap("n", "gp", "<cmd>Lspsaga peek_definition<CR>", opts)
+keymap("n", "gD", "<cmd>Lspsaga finder<CR>", opts)
+
+-- Diagnostic keymaps
+vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous [D]iagnostic message' })
+vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = 'Go to next [D]iagnostic message' })
+vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Show diagnostic [E]rror messages' })
+vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
+
+-- Trouble
+vim.keymap.set("n", "<leader>xw", function() require("trouble").toggle("workspace_diagnostics") end)
+vim.keymap.set("n", "<leader>xx", function() require("trouble").toggle() end)
 
 -- Move text up and down
 keymap("x", "J", ":move '>+1<CR>gv-gv", opts)
@@ -96,8 +101,6 @@ keymap("n", "n", "nzzzv", opts)
 keymap("n", "N", "Nzzzv", opts)
 
 -- git worktrees
-keymap("n", "<leader>n", ":lua require('telescope').extensions.git_worktree.git_worktrees()<CR>", opts)
-keymap("n", "<leader>N", ":lua require('telescope').extensions.git_worktree.create_git_worktree()<CR>", opts)
 
 local function setup_mappings()
 	-- NERDTree mappings

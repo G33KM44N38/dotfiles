@@ -171,5 +171,10 @@ return {
 			capabilities = capabilities,
 			on_attach = on_attach,
 		})
+
+		lspconfig["volar"].setup({
+			capabilities = capabilities,
+			on_attach = on_attach,
+		})
 	end,
 }

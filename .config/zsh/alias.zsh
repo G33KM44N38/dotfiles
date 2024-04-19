@@ -15,8 +15,14 @@ alias gs="git status"
 alias gp="git push"
 alias gaa="git add --all"
 alias graph="git log --all --decorate --oneline --graph"
+#create an alias, for github copilot
+alias ghs="gh copilot suggest"
+alias ghe="gh copilot explain"
 
 # Tmux
 alias tma="tmux a"
 alias tml="tmux ls"
+
+# GitSpeak
+alias gc="GitSpeak"
 
