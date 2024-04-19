@@ -11,9 +11,10 @@ default_roles:
   - node
   - fzf
   # - cmake
-  - stripe
+  # - stripe
   - z
-  - gh
-  - qmk
-  - shortcat
+  # - gh
+  # - qmk
+  # - shortcat
   - aldente
+  - scw
