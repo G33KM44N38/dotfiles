@@ -6,4 +6,4 @@
           update_homebrew: yes
 
      - name: STOW | init
-       command: cd ~/.dotfiles/ && stow
+       command: cd ~/.dotfiles/ && stow .
