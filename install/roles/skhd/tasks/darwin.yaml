@@ -8,3 +8,7 @@
    - name: setup skhd
      ignore_errors: yes
      command: skhd --start-service
+
+   - name: restart skhd
+     ignore_errors: yes
+     command: skhd --restart-service
