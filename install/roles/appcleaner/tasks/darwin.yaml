@@ -1,5 +1,5 @@
 ---
-- name: Install aldente
+- name: Install appcleaner
   community.general.homebrew_cask:
     name: appcleaner
     state: present
