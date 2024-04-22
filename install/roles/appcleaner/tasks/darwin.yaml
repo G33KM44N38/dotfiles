@@ -1,0 +1,6 @@
+---
+- name: Install aldente
+  community.general.homebrew_cask:
+    name: appcleaner
+    state: present
+    update_homebrew: yes
