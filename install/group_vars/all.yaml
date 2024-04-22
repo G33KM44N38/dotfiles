@@ -20,3 +20,4 @@ default_roles:
   - scw
   - dir
   - appcleaner
+  - raycast

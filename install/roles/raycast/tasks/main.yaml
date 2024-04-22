@@ -1,0 +1,3 @@
+---
+- name: Run raycast task
+  ansible.builtin.import_tasks: darwin.yaml

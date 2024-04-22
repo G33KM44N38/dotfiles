@@ -1,0 +1,6 @@
+---
+- name: Install raycast
+  community.general.homebrew_cask:
+    name: raycast
+    state: present
+    update_homebrew: yes
