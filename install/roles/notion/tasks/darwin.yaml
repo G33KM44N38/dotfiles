@@ -1,0 +1,6 @@
+---
+- name: Install notion
+  community.general.homebrew_cask:
+    name: notion
+    state: present
+    update_homebrew: yes
