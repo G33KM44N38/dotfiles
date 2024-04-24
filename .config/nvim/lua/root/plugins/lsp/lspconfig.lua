@@ -176,5 +176,15 @@ return {
 			capabilities = capabilities,
 			on_attach = on_attach,
 		})
+
+		lspconfig["solang"].setup({
+			capabilities = capabilities,
+			on_attach = on_attach,
+		})
+
+		lspconfig["solidity"].setup({
+			capabilities = capabilities,
+			on_attach = on_attach,
+		})
 	end,
 }
