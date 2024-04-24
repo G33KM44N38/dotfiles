@@ -1,0 +1,4 @@
+- name: Add Homebrew tap for fonts
+  community.general.homebrew_tap:
+    name: homebrew/cask-fonts
+    state: present

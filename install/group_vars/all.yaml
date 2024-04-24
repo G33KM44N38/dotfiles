@@ -21,3 +21,4 @@ default_roles:
   - dir
   - appcleaner
   - raycast
+  - nerd_font
