@@ -1,0 +1,6 @@
+---
+- name: Install arc
+  community.general.homebrew_cask:
+    name: arc
+    state: present
+    update_homebrew: yes
