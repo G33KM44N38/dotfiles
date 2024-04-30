@@ -12,15 +12,15 @@ return {
 		-- import cmp-nvim-lsp plugin
 		local cmp_nvim_lsp = require("cmp_nvim_lsp")
 
+
 		local keymap = vim.keymap -- for conciseness
 
 		local opts = { noremap = true, silent = true }
 		local on_attach = function(client, bufnr)
 			opts.buffer = bufnr
-
 			-- set keybinds
 			opts.desc = "Show LSP references"
-			-- keymap.set("n", "gD", "<cmd>Telescope lsp_references<CR>", opts) -- show definition, references
+			keymap("n", "gD", "<cmd>Lspsaga finder<CR>", opts)
 
 			opts.desc = "Go to declaration"
 			keymap.set("n", "gR", vim.lsp.buf.declaration, opts) -- go to declaration
@@ -32,7 +32,7 @@ return {
 			keymap.set("n", "gt", "<cmd>Telescope lsp_type_definitions<CR>", opts) -- show lsp type definitions
 
 			opts.desc = "See available code actions"
-			keymap.set({ "n", "v" }, "<leader>ca", vim.lsp.buf.code_action, opts) -- see available code actions, in visual mode will apply to selection
+			keymap.set({ "n", "v" }, ";a", vim.lsp.buf.code_action, opts) -- see available code actions, in visual mode will apply to selection
 
 			opts.desc = "Smart rename"
 			keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts) -- smart rename

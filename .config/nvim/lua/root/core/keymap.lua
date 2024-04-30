@@ -67,20 +67,15 @@ keymap("n", "<C-s>", ":lua require('telescope.builtin').live_grep()<CR>", opts)
 keymap("n", "<C-p>", ":lua require('telescope.builtin').git_files()<CR>", opts)
 keymap("n", "<leader>ke", ":lua require('telescope.builtin').keymaps()<CR>", opts)
 
-
--- keymap("n", "<space>lf", ":lua vim.lsp.buf.format()<CR>", opts)
-
 -- allow my cursor stay at the same place, when using `J`
 keymap("n", "J", "mzJ`z", opts)
 
 -- quickfix-list
-keymap("n", "<C-j>", "<cmd>cprev<CR>", opts)
-keymap("n", "<C-l>", "<cmd>cnext<CR>", opts)
+keymap("n", ";f", "<cmd>cprev<CR>", opts)
+keymap("n", ";j", "<cmd>cnext<CR>", opts)
 
 -- lspsaga
 keymap("n", "<leader>gr", "<cmd>Lspsaga rename<CR>", opts)
-keymap("n", "K", "<cmd>Lspsaga hover_doc<CR>", opts)
-keymap("n", "gD", "<cmd>Lspsaga finder<CR>", opts)
 
 -- Diagnostic keymaps
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous [D]iagnostic message' })
