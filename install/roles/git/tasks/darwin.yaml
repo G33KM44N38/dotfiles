@@ -1,35 +1,37 @@
 ---
 - name: clone minata repo
   ansible.builtin.git:
-     clone: true
-     repo: https://github.com/minata-soft/stackdev
-     dest: ~/coding/work/minata
-     update: false
+    version: develop
+    clone: true
+    repo: https://github.com/minata-soft/stackdev
+    dest: ~/coding/work/minata
+    update: false
 
 - name: clone baba_coiffure repo
   ansible.builtin.git:
-     clone: true
-     repo: https://github.com/G33KM44N38/baba_coiffure
-     dest: ~/coding/work/baba_coiffure
-     update: false
+    version: develop
+    clone: true
+    repo: https://github.com/G33KM44N38/baba_coiffure
+    dest: ~/coding/work/baba_coiffure
+    update: false
 
 - name: clone crkdb zmk
   ansible.builtin.git:
-     clone: true
-     repo: https://github.com/G33KM44N38/crkdb-zmk
-     dest: ~/keyboard/
-     update: false
+    clone: true
+    repo: https://github.com/G33KM44N38/crkdb-zmk
+    dest: ~/keyboard/
+    update: false
 
 - name: clone crkdb qmk
   ansible.builtin.git:
-     clone: true
-     repo: https://github.com/G33KM44N38/crkdb_split
-     dest: ~/keyboard/
-     update: false
+    clone: true
+    repo: https://github.com/G33KM44N38/crkdb_split
+    dest: ~/keyboard/
+    update: false
 
 - name: clone facefusion
   ansible.builtin.git:
-     clone: true
-     repo: https://github.com/G33KM44N38/facefusion
-     dest: ~/coding/perso/facefusion
-     update: false
+    clone: true
+    repo: https://github.com/G33KM44N38/facefusion
+    dest: ~/coding/perso/facefusion
+    update: false
