@@ -24,13 +24,17 @@ fi
 selected_name=$(basename "$selected" | tr . _)
 tmux_running=$(pgrep tmux)
 
-if [[ -z $TMUX ]] && [[ -z $tmux_running ]]; then
-    tmux new-session -s $selected_name -c $selected
-    exit 0
+if ! [[ -n $TMUX ]]; then
+	if tmux has-session -t=$selected_name 2> /dev/null; then
+		tmux a -t $selected_name
+	else
+	    tmux new-session -s $selected_name -c $selected
+	fi
+else
+	if tmux has-session -t=$selected_name 2> /dev/null; then
+		tmux switch-client -t $selected_name
+	else
+	    tmux new -s $selected_name -d -c $selected
+	    tmux switch-client -t $selected_name 
+	fi
 fi
-
-if ! tmux has-session -t=$selected_name 2> /dev/null; then
-    tmux new-session -ds $selected_name -c $selected
-fi
-
-tmux switch-client -t $selected_name
