@@ -1,4 +1,7 @@
 ---
-     - name: Run lazygit task
-       ansible.builtin.import_tasks: darwin.yaml
+- name: Run LAZYGIT task
+  ansible.builtin.import_tasks: darwin.yaml
 
+- name: Run LAZYGIT
+  ansible.builtin.import_tasks: ubuntu.yaml
+  when: ansible_system == 'Linux' and ansible_distribution == 'Ubuntu'

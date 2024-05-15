@@ -1,5 +1,5 @@
-   - name: NVIM | Install nvim
-     homebrew:
-       name: nvim
-       state: present
-       update_homebrew: yes
+- name: NVIM | Install nvim
+  homebrew:
+    name: nvim
+    state: present
+    update_homebrew: yes
