@@ -1,4 +1,4 @@
 - name: NVIM | Install nvim
   ansible.builtin.apt:
     name: neovim
-    state: present
+    allow_change_held_packages: true
