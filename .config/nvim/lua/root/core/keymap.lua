@@ -74,8 +74,8 @@ keymap("n", "J", "mzJ`z", opts)
 keymap("n", ";f", "<cmd>cprev<CR>", opts)
 keymap("n", ";j", "<cmd>cnext<CR>", opts)
 
--- lspsaga
-keymap("n", "<leader>gr", "<cmd>Lspsaga rename<CR>", opts)
+opts.desc = "See available code actions"
+vim.keymap.set({ "n", "v" }, "<leader>c", vim.lsp.buf.code_action, opts) -- see available code actions, in visual mode will apply to selection
 
 -- Diagnostic keymaps
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous [D]iagnostic message' })
