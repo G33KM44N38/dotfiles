@@ -1,0 +1,4 @@
+- name: NVIM | Install nvim
+  ansible.builtin.apt:
+    name: neovim
+    state: present

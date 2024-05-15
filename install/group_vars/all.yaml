@@ -6,20 +6,20 @@ default_roles:
   - lazydocker
   - ripgrep
   - tmux
-  - skhd
-  - yabai
+  # - skhd
+  # - yabai
   - node
   - fzf
   # - cmake
-  - stripe
-  - z
+  # - stripe
+  # - z
   # - gh
   # - qmk
   # - shortcat
   # aldente
-  - scw
+  # - scw
   - dir
-  - appcleaner
-  - raycast
+  # - appcleaner
+  # - raycast
   - nerd_font
-  - arc
+  # - arc
