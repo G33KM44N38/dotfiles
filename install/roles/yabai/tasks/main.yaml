@@ -1,4 +1,4 @@
 ---
-     - name: Run yabai task
-       ansible.builtin.import_tasks: darwin.yaml
-
+- name: Run yabai task
+  ansible.builtin.import_tasks: darwin.yaml
+  when: ansible_system == 'Darwin'
