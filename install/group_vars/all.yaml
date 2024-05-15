@@ -16,7 +16,7 @@ default_roles:
   # - gh
   # - qmk
   # - shortcat
-  - aldente
+  # aldente
   - scw
   - dir
   - appcleaner
