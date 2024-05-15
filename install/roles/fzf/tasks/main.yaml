@@ -1,4 +1,7 @@
 ---
-     - name: Run FZF
-       ansible.builtin.import_tasks: darwin.yaml
+- name: Run FZF
+  ansible.builtin.import_tasks: darwin.yaml
 
+- name: Run NEOVIM
+  ansible.builtin.import_tasks: ubuntu.yaml
+  when: ansible_system == 'Linux' and ansible_distribution == 'Ubuntu'
