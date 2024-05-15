@@ -52,10 +52,6 @@ keymap("n", "<leader>gCn", ":Git checkout -b ", noSilent)
 
 -- open term
 keymap("n", "<leader>tt", ":ToggleTerm direction=float fish<CR>", opts)
-keymap("n", "<leader>tv", ":ToggleTerm direction=vertical size=100 fish<CR>", opts)
-keymap("n", "<leader>th", ":ToggleTerm direction=horizontal size=10 fish<CR>", opts)
-
-keymap("n", "<leader>bd", ":bd<CR>", opts)
 
 -- mapping Open Buffer fzf telescope
 keymap("n", "<leader>n", ":lua require('telescope').extensions.git_worktree.git_worktrees()<CR>", opts)
