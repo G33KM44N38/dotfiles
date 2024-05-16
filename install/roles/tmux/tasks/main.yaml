@@ -1,4 +1,8 @@
 ---
-     - name: Run tmux task
-       ansible.builtin.import_tasks: darwin.yaml
+- name: TMUX | Run tmux task
+  ansible.builtin.import_tasks: darwin.yaml
+  when: ansible_system == 'Darwin'
 
+- name: TMUX | Run tmux task
+  ansible.builtin.import_tasks: ubuntu.yaml
+  when: ansible_system == 'Linux' and ansible_distribution == 'Ubuntu'
