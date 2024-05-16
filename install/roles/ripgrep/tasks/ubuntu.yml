@@ -1,0 +1,2 @@
+- name: RIPGREP | installation
+  command: sudo apt install ripgrep
