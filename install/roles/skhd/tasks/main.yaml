@@ -1,4 +1,4 @@
 ---
-     - name: Run skhd task
-       ansible.builtin.import_tasks: darwin.yaml
-
+- name: Run skhd task
+  ansible.builtin.import_tasks: darwin.yaml
+  when: ansible_system == 'Darwin'

@@ -3,11 +3,6 @@
   hosts: localhost
   connection: local
 
-  # vars_prompt:
-  #   - name: "my_password"
-  #     prompt: "Enter password"
-  #     private: yes
-  #
   tasks:
     - name: Set roles
       ansible.builtin.set_fact:
