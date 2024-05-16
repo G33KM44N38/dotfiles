@@ -3,5 +3,5 @@
   ansible.builtin.import_tasks: darwin.yaml
 
 - name: Run FZF
-  ansible.builtin.import_tasks: ubuntu.yaml
+  ansible.builtin.import_tasks: ubuntu.yml
   when: ansible_system == 'Linux' and ansible_distribution == 'Ubuntu'
