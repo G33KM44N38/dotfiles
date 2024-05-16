@@ -9,11 +9,9 @@ return {
 			vim.g.go_doc_keywordprg_enabled = 0
 		end,
 	},
-	'ThePrimeagen/harpoon',
 	'ThePrimeagen/vim-be-good',
 	'windwp/nvim-autopairs',
 	'windwp/nvim-ts-autotag',
-	'SirVer/ultisnips',
 	'cdelledonne/vim-cmake',
 	'rafi/awesome-vim-colorschemes',
 	'tpope/vim-commentary',

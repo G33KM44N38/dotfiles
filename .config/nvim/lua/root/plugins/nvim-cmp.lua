@@ -2,6 +2,7 @@ return {
 	"hrsh7th/nvim-cmp",
 	event = "InsertEnter",
 	dependencies = {
+		'SirVer/ultisnips',
 		"quangnguyen30192/cmp-nvim-ultisnips",
 		-- "zbirenbaum/copilot-cmp",
 		"hrsh7th/cmp-cmdline",
@@ -18,46 +19,47 @@ return {
 		local luasnip = require("luasnip")
 		local lspkind = require("lspkind")
 		local cmp_ultisnips_mappings = require("cmp_nvim_ultisnips.mappings")
-
 		require("luasnip.loaders.from_vscode").lazy_load()
 
+
 		cmp.setup({
+			preselect = cmp.PreselectMode.Item, -- set focus on the first line
 			completion = {
 				completeopt = "menu,preview",
 			},
 			snippet = { -- configure how nvim-cmp interacts with snippet engine
 				expand = function(args)
 					luasnip.lsp_expand(args.body)
+					vim.fn["UltiSnips#Anon"](args.body)
 				end,
 			},
-			preselect = cmp.PreselectMode.Item, -- set focus on the first line
 			mapping = cmp.mapping.preset.insert({
 				["<C-k>"] = cmp.mapping.select_prev_item(), -- previous suggestion
 				["<C-j>"] = cmp.mapping.select_next_item(), -- next suggestion
 				["<C-b>"] = cmp.mapping.scroll_docs(-4),
 				["<C-f>"] = cmp.mapping.scroll_docs(4),
 				["<C-e>"] = cmp.mapping.abort(), -- close completion window
-				["<CR>"] = cmp.mapping.confirm({ select = true }),
+				['<CR>'] = cmp.mapping.confirm({ select = true }),
 				["<Tab>"] = cmp.mapping(
 					function(fallback)
+						luasnip.jump(1)
 						cmp_ultisnips_mappings.expand_or_jump_forwards(fallback)
 					end,
-					{ "i", "s" }
+					{ "i", "s", "c" }
 				),
 				["<S-Tab>"] = cmp.mapping(
 					function(fallback)
-						cmp_ultisnips_mappings.jump_backwards()
+						luasnip.jump(-1)
+						cmp_ultisnips_mappings.jump_backwards(fallback)
 					end,
-					{ "i", "s" }
+					{ "i", "s", "c" }
 				),
-				['<C-y>'] = cmp.config.disable, -- disable <C-y> for accepting suggestions
 			}),
-			-- sources for autocompletion
 			sources = cmp.config.sources({
 				-- { name = "copilot" },
 				{ name = "ultisnips", group_index = 1 },
-				{ name = "nvim_lsp" },
 				{ name = "luasnip",   group_index = 1 }, -- snippets
+				{ name = "nvim_lsp" },
 				{ name = "buffer" },     -- text within current buffer
 				{ name = "path" },       -- file system paths
 			}),
@@ -74,7 +76,7 @@ return {
 		cmp.setup.cmdline({ '/', '?' }, {
 			mapping = {
 				['<CR>'] = cmp.mapping.confirm({ select = true }),
-				['<Up>'] = cmp.mapping(cmp.mapping.select_prev_item(), { 'i', 'c' }),
+				-- ['<Up>'] = cmp.mapping(cmp.mapping.select_prev_item(), { 'i', 'c' }),
 				['<Tab>'] = cmp.mapping(cmp.mapping({
 					i = function(fallback)
 						if cmp.visible() and cmp.get_active_entry() then
@@ -97,7 +99,7 @@ return {
 		cmp.setup.cmdline(":", {
 			mapping = {
 				['<CR>'] = cmp.mapping.confirm({ select = true }),
-				['<Up>'] = cmp.mapping(cmp.mapping.select_prev_item(), { 'i', 'c' }),
+				-- ['<Up>'] = cmp.mapping(cmp.mapping.select_prev_item(), { 'i', 'c' }),
 				['<Tab>'] = cmp.mapping(cmp.mapping({
 					i = function(fallback)
 						if cmp.visible() and cmp.get_active_entry() then
@@ -109,7 +111,7 @@ return {
 					s = cmp.mapping.confirm({ select = true }),
 					c = cmp.mapping.confirm({ behavior = cmp.ConfirmBehavior.Replace, select = true }),
 				})),
-				['<Down>'] = cmp.mapping(cmp.mapping.select_next_item(), { 'i', 'c' }),
+				-- ['<Down>'] = cmp.mapping(cmp.mapping.select_next_item(), { 'i', 'c' }),
 				['<C-k>'] = cmp.mapping(cmp.mapping.select_prev_item(), { 'i', 'c' }),
 				['<C-j>'] = cmp.mapping(cmp.mapping.select_next_item(), { 'i', 'c' }),
 			},
