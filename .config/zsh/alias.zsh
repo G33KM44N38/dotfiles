@@ -26,3 +26,4 @@ alias tml="tmux ls"
 # GitSpeak
 alias gc="GitSpeak"
 
+alias Gitspeak="Gitspeak -stage=true"
