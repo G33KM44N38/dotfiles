@@ -1,4 +1,5 @@
 - name: LAZYGIT | Install lazygit
+  become: yes
   ansible.builtin.shell: |
     apt install lazygit
   ignore_errors: yes
