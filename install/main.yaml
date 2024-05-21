@@ -1,7 +1,9 @@
+#play
 ---
 - name: DOTFILES config
   hosts: localhost
   connection: local
+  debugger: on_failed
 
   tasks:
     - name: Set roles
