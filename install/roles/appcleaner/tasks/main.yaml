@@ -2,3 +2,4 @@
 - name: Run alente task
   ansible.builtin.import_tasks: darwin.yaml
   when: ansible_system == 'Darwin'
+  ignore_errors: true

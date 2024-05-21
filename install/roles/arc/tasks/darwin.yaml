@@ -4,3 +4,4 @@
     name: arc
     state: present
     update_homebrew: yes
+  ignore_errors: true
