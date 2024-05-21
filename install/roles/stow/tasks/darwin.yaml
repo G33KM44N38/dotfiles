@@ -1,9 +1,10 @@
 ---
-     - name: STOW | install
-       homebrew:
-          name: stow
-          state: present
-          update_homebrew: yes
+- name: STOW | install
+  homebrew:
+    name: stow
+    state: present
+    update_homebrew: yes
 
-     - name: STOW | init
-       command: cd ~/.dotfiles/ && stow .
+- name: STOW | init
+  command: cd ~/.dotfiles/ && stow .
+  notify: Clone Dotfiles
