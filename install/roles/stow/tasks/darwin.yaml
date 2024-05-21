@@ -5,6 +5,10 @@
     state: present
     update_homebrew: yes
 
-- name: STOW | init
-  command: cd ~/.dotfiles/ && stow .
-  notify: Clone Dotfiles
+  handlers:
+    - name: Clone Dotfiles
+      ansible.builtin.git:
+        clone: true
+        repo: https://github.com/G33KM44N38/dotfiles
+        dest: ~/.dotfiles
+        update: false
