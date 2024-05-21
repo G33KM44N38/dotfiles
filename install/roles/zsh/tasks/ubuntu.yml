@@ -1,4 +1,5 @@
 - name: ZSH | Install zsh
+  become: yes
   ansible.builtin.apt:
     name: zsh
     allow_change_held_packages: true
