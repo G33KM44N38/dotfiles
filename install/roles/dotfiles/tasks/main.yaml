@@ -1,4 +1,4 @@
-- name: clone facefusion
+- name: DOTFILES | clone
   ansible.builtin.git:
     clone: true
     repo: https://github.com/G33KM44N38/dotfiles
