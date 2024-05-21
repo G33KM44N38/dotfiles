@@ -1,13 +1,12 @@
 ---
+- name: Clone Dotfiles
+  ansible.builtin.git:
+    clone: true
+    repo: https://github.com/G33KM44N38/dotfiles
+    dest: ~/.dotfiles
+    update: false
 - name: STOW | install
   homebrew:
     name: stow
     state: present
     update_homebrew: yes
-  handlers:
-    - name: Clone Dotfiles
-      ansible.builtin.git:
-        clone: true
-        repo: https://github.com/G33KM44N38/dotfiles
-        dest: ~/.dotfiles
-        update: false
