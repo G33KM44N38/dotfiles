@@ -2,3 +2,6 @@
 - name: ZSH | Run tmux task
   ansible.builtin.import_tasks: ubuntu.yml
   when: ansible_system == 'Linux' and ansible_distribution == 'Ubuntu'
+
+- name: ZSH | Set zsh as default
+  ansible.builtin.shell: rm -rf ~/.zshrc
