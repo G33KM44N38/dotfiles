@@ -1,13 +1,12 @@
 ---
-- name: Run z task
+- name: MINATA - Close
   ansible.builtin.git:
     version: develop
     repo: https://github.com/minata-soft/stackdev
     update: false
     dest: ~/coding/work/minata
 
----
-- name: Run z task
+- name: BABACOIFURE - Clone
   ansible.builtin.git:
     version: develop
     repo: https://github.com/G33KM44N38/baba_coiffure
