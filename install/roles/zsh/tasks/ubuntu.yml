@@ -1,8 +1,6 @@
 - name: ZSH | Install zsh
   become: yes
-  ansible.builtin.apt:
-    name: zsh
-    allow_change_held_packages: true
+  ansible.builtin.shell: sudo apt install zsh
 
 - name: ZSH | Install oh-my-zsh
   ansible.builtin.shell: sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
