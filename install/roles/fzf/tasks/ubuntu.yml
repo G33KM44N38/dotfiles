@@ -1,8 +1,8 @@
 - name: Install FZF on Ubuntu
-  apt:
-    name: fzf
-    state: present
-
-- name: Set keybinding for FZF
   ansible.builtin.shell:
-    cmd: "echo $(fzf --print-key-bindings | sed 's/\x1b/^[/' | sed 's/^M$//') | $(which fzf)/install"
+    cmd: sudo apt install fzf
+#
+# - name: Set keybinding for FZF
+#   apt:
+#     name: fzf
+#     state: present
