@@ -1,6 +1,7 @@
 ---
 - name: Run FZF
   ansible.builtin.import_tasks: darwin.yaml
+  when: ansible_system == 'Darwin'
 
 - name: Run FZF
   ansible.builtin.import_tasks: ubuntu.yml
