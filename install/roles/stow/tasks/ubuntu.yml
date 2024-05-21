@@ -1,2 +1,5 @@
 - name: STOW | installation
   command: sudo apt install stow build-essential -y
+
+- name: STOW | init
+  command: cd ~/.dotfiles/ && stow .

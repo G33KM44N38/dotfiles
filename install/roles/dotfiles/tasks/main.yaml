@@ -1,0 +1,6 @@
+- name: clone facefusion
+  ansible.builtin.git:
+    clone: true
+    repo: https://github.com/G33KM44N38/dotfiles
+    dest: ~/.dotfiles
+    update: false
