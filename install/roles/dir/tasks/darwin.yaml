@@ -3,3 +3,13 @@
   ansible.builtin.file:
     path: ~/goinfre
     state: directory
+
+- name: Creates work directory
+  ansible.builtin.file:
+    path: ~/coding/
+    state: directory
+
+- name: Creates work directory
+  ansible.builtin.file:
+    path: ~/coding/work/
+    state: directory

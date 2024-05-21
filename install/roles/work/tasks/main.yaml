@@ -1,0 +1,15 @@
+---
+- name: Run z task
+  ansible.builtin.git:
+    version: develop
+    repo: https://github.com/minata-soft/stackdev
+    update: false
+    dest: ~/coding/work/minata
+
+---
+- name: Run z task
+  ansible.builtin.git:
+    version: develop
+    repo: https://github.com/G33KM44N38/baba_coiffure
+    update: false
+    dest: ~/coding/work/baba_coiffure
