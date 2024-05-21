@@ -1,0 +1,4 @@
+- name: LAZYGIT | Install lazygit
+  ansible.builtin.apt:
+    name: lazygit
+    allow_change_held_packages: true
