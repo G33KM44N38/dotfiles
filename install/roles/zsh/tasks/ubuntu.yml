@@ -6,3 +6,4 @@
 
 - name: ZSH | Install oh-my-zsh
   ansible.builtin.shell: sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+  ignore_errors: yes
