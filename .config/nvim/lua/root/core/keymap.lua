@@ -67,8 +67,8 @@ keymap("n", "<leader>ke", ":lua require('telescope.builtin').keymaps()<CR>", opt
 keymap("n", "J", "mzJ`z", opts)
 
 -- quickfix-list
-keymap("n", ";f", "<cmd>cprev<CR>", opts)
-keymap("n", ";j", "<cmd>cnext<CR>", opts)
+keymap("n", "<C-[>f", "<cmd>cprev<CR>", opts)
+keymap("n", "<C-]>j", "<cmd>cnext<CR>", opts)
 
 vim.keymap.set({ "n", "v" }, "<leader>c", vim.lsp.buf.code_action, { desc = "See available code actions" }) -- see available code actions, in visual mode will apply to selection
 
