@@ -4,7 +4,6 @@
     name: stow
     state: present
     update_homebrew: yes
-
   handlers:
     - name: Clone Dotfiles
       ansible.builtin.git:
