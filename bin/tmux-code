@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# Function to check if a tmux window with a given name exists
+check_window_exist() {
+    window_name="$1"
+    if echo "$existing_windows" | grep -q "^${window_name}$"; then
+        return 0  # true
+    else
+        return 1  # false
+    fi
+}
+
+# Get the list of existing tmux windows once
+existing_windows=$(tmux list-windows -F "#{window_name}")
+
+# Find directories containing a .git directory and create tmux windows
+find . -type d -name ".git" -prune | while read -r git_dir; do
+    # Extract the parent directory name
+    parent_dir=$(dirname "$git_dir")
+    dir_name=$(basename "$parent_dir")
+    
+    # Skip if the parent directory is the current directory
+    if [ "$parent_dir" = "." ]; then
+        continue
+    fi
+
+    # Check if a tmux window with the directory name already exists
+    if ! check_window_exist "$dir_name"; then
+        tmux new-window -n "$dir_name" -c "$parent_dir"
+    fi
+done
