@@ -1,0 +1,6 @@
+# !/bin/bash
+
+# get the remote url and open it in the browser
+git remote -v | grep origin | grep fetch | awk '{print $2}' | xargs open
+
+# vi:ft=sh:
