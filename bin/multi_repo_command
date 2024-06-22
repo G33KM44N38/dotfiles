@@ -7,32 +7,75 @@ PURPLE='\033[0;32m'
 YELLOW='\033[0;33m'
 ORANGE='\033[0;33m'
 
-print_error_color_exclude() {
+print_error_color_private() {
     echo  "${RED}$1${WHITE}"
 }
 
-print_info_color_exclude() {
+print_info_color_private() {
     echo  "${ORANGE}$1${WHITE}"
 }
 
-print_working_branch_exclude() {
+print_working_branch_private() {
     echo  "${PURPLE}$1${WHITE}"
 }
 
-set_all_repos_path_exclude() {
-    all_repos_path=$(find . -type d -name ".git" | sed 's/\/.git//g')
-    # Convert the space-separated string into an array
-    IFS=$'\n' read -rd '' -a all_repos_path <<< "$all_repos_path"
+set_all_repos_path_private() {
+	if [ -z "$all_repos_path" ]; then
+	    set_all_repos_path_private() {
+		   all_repos_path=$(find . -type d -name ".git" | sed 's/\/.git//g')
+		   # Convert the space-separated string into an array
+		   IFS=$'\n' read -rd '' -a all_repos_path <<< "$all_repos_path"
+	    }
+
+	    set_all_repos_path_private
+	fi
 }
 
-similar_branch_fzf_exclude() {
+repos_push() {      
+    set_all_repos_path_private      
+    if [ -n "$1" ]; then
+        choosed_branch=$1
+    else
+        choosed_branch=$(similar_branch_fzf_private)
+    fi      
+    for git_dir in "${all_repos_path[@]}"; do
+        print_working_branch_private " work on $git_dir "
+        cd "$git_dir"
+        git push --set-upstream origin $choosed_branch
+        cd -
+    done  
+}
+
+repos_commit(){
+  options=("feat" "fix" "custom" "build" "chore" "ci" "docs" "style" "refactor" "perf" "test")
+  selected_option=$(printf '%s\n' "${options[@]}" | fzf)
+  
+  read -p "Enter context (e.g. subscription, press Enter to skip): " context
+  read -p "message: " commit_message
+
+  set_all_repos_path_private
+
+  for git_dir in "${all_repos_path[@]}"; do
+    print_working_branch_private " work on $git_dir "
+    cd "$git_dir"
+    if [ -z "$context" ]; then
+      git commit -m "$selected_option: $commit_message"
+    else
+      git commit -m "$selected_option($context): $commit_message"
+    fi
+    cd -
+  done
+  
+}
+
+similar_branch_fzf_private() {
     # Get branches of the current repository
     curre_repo_branches=$(git branch | sed 's/*//g' | sed 's/ //g')
     
     # Temporary file to collect all similar branches across repositories
     similar_branches_file=$(mktemp)
     
-    set_all_repos_path_exclude
+    set_all_repos_path_private
     # Iterate over all found .git directories
     for git_dir in "${all_repos_path[@]}"; do
         # Move to the repository directory
@@ -66,29 +109,24 @@ similar_branch_fzf_exclude() {
     rm "$similar_branches_file"
 }
 
-set_all_repos_path_exclude() {
-    all_repos_path=$(find . -type d -name ".git" | sed 's/\/.git//g')
-    # Convert the space-separated string into an array
-    IFS=$'\n' read -rd '' -a all_repos_path <<< "$all_repos_path"
-}
 
 ticket_start() {
-  print_info_color_exclude "What type of branch do you want to create?"
+  print_info_color_private "What type of branch do you want to create?"
   options=("feature" "bugfix" "hotfix" "release" "support" "custom")
   read -p "Enter the name of the ticket: " ticket_name
 
   selected_option=$(printf '%s\n' "${options[@]}" | fzf)
 
-  set_all_repos_path_exclude
+  set_all_repos_path_private
 
   # Check every repo is committed before creating the branch
-  set_all_repos_path_exclude
+  set_all_repos_path_private
   for git_dir in "${all_repos_path[@]}"; do
-    print_working_branch_exclude " work on $git_dir "
+    print_working_branch_private " work on $git_dir "
     cd $git_dir
     git status
     if [ $? -ne 0 ]; then
-	 print_error_color_exclude "You have uncommitted changes in $git_dir"
+	 print_error_color_private "You have uncommitted changes in $git_dir"
 	 return
     fi
     cd -
@@ -97,7 +135,7 @@ ticket_start() {
   # Create the branch if it doesn't exist prefixed with the type + / into all git directories
   for git_dir in "${all_repos_path[@]}"; do
 	# display the future branch name that will be created and the repo
-    print_info_color_exclude "Creating branch $selected_option/$ticket_name in $git_dir"
+    print_info_color_private "Creating branch $selected_option/$ticket_name in $git_dir"
     cd $git_dir
     git fetch
     default_branch=$(git remote show origin | grep 'HEAD branch' | cut -d ':' -f 2 | xargs)
@@ -109,14 +147,14 @@ ticket_start() {
 }
  
 ticket_check() {
-  choosed_branch=$(similar_branch_fzf_exclude)
+  choosed_branch=$(similar_branch_fzf_private)
   if [ "$choosed_branch" == "" ]; then
-    print_error_color_exclude "No branch selected"
+    print_error_color_private "No branch selected"
     return
   fi
-  set_all_repos_path_exclude
+  set_all_repos_path_private
   for git_dir in "${all_repos_path[@]}"; do
-    print_working_branch_exclude " work on $git_dir "
+    print_working_branch_private " work on $git_dir "
     cd $git_dir
     git checkout $choosed_branch
     git pull
@@ -124,86 +162,110 @@ ticket_check() {
   done
 }
 
-ticket_finish(){
-	choosed_branch=$(similar_branch_fzf_exclude)
-	if [ "$choosed_branch" == "" ]; then
-		print_error_color_exclude "No branch selected"
-		return
-	fi
-	set_all_repos_path_exclude
-	if [ "$choosed_branch" == "develop" ] || [ "$choosed_branch" == "master" ] || [ "$choosed_branch" == "main" ]; then
-		print_error_color_exclude "You can't delete the develop or master branch"
-		return
-	fi
+repos_open_pull_request_on_change_branch(){
+    set_all_repos_path_private
 
-	print_info_color_exclude "\n  Branch of the ticket: "
+    if [ -n "$1" ]; then
+	    choosed_branch=$1
+    else
+	    choosed_branch=$(similar_branch_fzf_private)
+    fi
 
-	print_info_color_exclude "\n  1. Pushing the changes in all the repos\n "
-	for git_dir in "${all_repos_path[@]}"; do
-		read -p "Do you want to push the changes in $git_dir ? (y/n)" confirm
-		if [ "$confirm" == "n" ]; then
-			print_info_color_exclude "Skipping $git_dir"
-			continue
-		fi
-		print_working_branch_exclude " work on $git_dir "
-		cd $git_dir
-		# if remote branch exists, fetch and pull
-		print_info_color_exclude "\n  1.1 Fetching and pulling the changes if the branch exists remotely: $choosed_branch \n "
-		if [ $(git branch -r | grep $choosed_branch ) ]; then
-			git fetch
-			git pull
-		fi
-
-		# otherwise if it exist locallly checkout to it
-		if [ $(git branch -r | grep $choosed_branch ) ]; then
-			git checkout $choosed_branch
-		fi
-
-		if [ $(git branch -r | grep $choosed_branch ) ]; then
-			# set the upstream branch if it doesn't exist
-			if [ $(git branch -vv | grep $choosed_branch | wc -l) -eq 0 ]; then
-				git push --set-upstream origin $choosed_branch
-			else
-				git push
-			fi
-		fi
-		cd -
-	done
-
-	print_info_color_exclude "\n  2. Create a pull request in all the repos\n "
-	for git_dir in "${all_repos_path[@]}"; do
-		print_working_branch_exclude " work on $git_dir "
-		cd $git_dir
-		git checkout develop
-		git pull
-		git checkout $choosed_branch
-		print_info_color_exclude "\n  2.1 Creating a pull request if there is difference between develop and $choosed_branch"
+    for git_dir in "${all_repos_path[@]}"; do
+		cd "$git_dir"
+		print_working_branch_private " work on $git_dir "
 
 		github_url=`git remote -v | awk '/fetch/{print $2}' | sed -Ee 's#(git@|git://)#https://#' -e 's@com:@com/@' -e 's%\.git$%%' | awk '/github/'`;
 		default_branch=$(git remote show origin | grep 'HEAD branch' | cut -d ':' -f 2 | xargs)
-		if [ $(git diff $default_branch $choosed_branch) ]; then
+
+		if git fetch origin "$default_branch" && git fetch origin "$choosed_branch" && [[ $(git diff "origin/$default_branch" "origin/$choosed_branch") ]]; then
+			print_info_color_private "There is a diff between $default_branch and $choosed_branch"
+
 			pr_url=$github_url"/compare/${default_branch}..."$choosed_branch
+			echo open $pr_url;
 			open $pr_url;
 		fi
 		cd -
-	done
+    done
+}
 
-	print_info_color_exclude "\n  3. Deleting the branch locally\n "
+repos_go_to_default_branch(){
+	set_all_repos_path_private
 	for git_dir in "${all_repos_path[@]}"; do
-		print_working_branch_exclude " work on $git_dir "
 		cd $git_dir
 		github_url=`git remote -v | awk '/fetch/{print $2}' | sed -Ee 's#(git@|git://)#https://#' -e 's@com:@com/@' -e 's%\.git$%%' | awk '/github/'`;
 		default_branch=$(git remote show origin | grep 'HEAD branch' | cut -d ':' -f 2 | xargs)
+		print_info_color_private "Switching to default branch $default_branch in $git_dir"
 		git checkout $default_branch
-		git branch -d $choosed_branch
 		cd -
 	done
 }
 
-get_all_remote_branch_locally() {
-    set_all_repos_path_exclude
+repos_delete_local_branch() {
+    set_all_repos_path_private
+
+    if [ -n "$1" ]; then
+	    choosed_branch=$1
+    else
+	    choosed_branch=$(similar_branch_fzf_private)
+    fi
+
+    if [ -z "$choosed_branch" ]; then
+        print_error_color_private "No branch selected"
+        return
+    fi
+
+    if [[ "$choosed_branch" =~ ^(main)$ ]]; then
+        print_error_color_private "You can't delete the develop, master, or main branch"
+        return
+    fi
+
+
+    for repo_dir in "${all_repos_path[@]}"; do
+        print_working_branch_private "Work on $repo_dir"
+        cd "$repo_dir"
+        
+        git branch -D "$choosed_branch"
+        
+        cd -
+    done
+}
+
+ticket_finish(){
+	choosed_branch=$(similar_branch_fzf_private)
+	if [ "$choosed_branch" == "" ]; then
+		print_error_color_private "No branch selected"
+		return
+	fi
+	set_all_repos_path_private
+	if [ "$choosed_branch" == "develop" ] || [ "$choosed_branch" == "master" ] || [ "$choosed_branch" == "main" ]; then
+		print_error_color_private "You can't delete the develop | master | develope branch"
+		return
+	fi
+
+	print_info_color_private "\n  Branch of the ticket: "
+	
+	print_info_color_private "\n  1. Commit all the change\n "
+	repos_commit
+
+	print_info_color_private "\n  2. Pushing the changes in all the repos\n "
+	repos_push $choosed_branch
+
+	print_info_color_private "\n  3. Create a pull request in all the repos\n "
+	repos_open_pull_request_on_change_branch $choosed_branch
+
+	print_info_color_private "\n  4. go to default branch\n "
+	repos_go_to_default_branch
+
+	print_info_color_private "\n  5. delete local branch\n "
+	repos_delete_local_branch $choosed_branch
+
+}
+
+repos_get_all_remote_branch_locally() {
+    set_all_repos_path_private
     for git_dir in "${all_repos_path[@]}"; do
-	   print_working_branch_exclude " work on $git_dir "
+	   print_working_branch_private " work on $git_dir "
 	   cd $git_dir
 	   git branch -r | grep -v '\->' | sed "s,\x1B\[[0-9;]*[a-zA-Z],,g" | while read remote; do git branch --track "${remote#origin/}" "$remote"; done
 	   git fetch --all
@@ -248,19 +310,19 @@ actions() {
 
 
     if [ "$selected_key" == "delete_branch" ] || [ "$selected_key" == "checkout" ]; then
-        choosed_branch=$(similar_branch_fzf_exclude)
-        print_info_color_exclude "Selected branch: "
+        choosed_branch=$(similar_branch_fzf_private)
+        print_info_color_private "Selected branch: "
         selected_command="$selected_command $choosed_branch"
         github_url=`git remote -v | awk '/fetch/{print $2}' | sed -Ee 's#(git@|git://)#https://#' -e 's@com:@com/@' -e 's%\.git$%%' | awk '/github/'`;
         default_branch=$(git remote show origin | grep 'HEAD branch' | cut -d ':' -f 2 | xargs)
 	   if [ "$choosed_branch" == "${default_branch}" ]; then
-		   print_error_color_exclude "You can't delete the develop or master branch"
+		   print_error_color_private "You can't delete the develop or master branch"
 		   return
 	   fi
     fi
 
 
-    set_all_repos_path_exclude
+    set_all_repos_path_private
 
     if [ "$selected_key" == "custom" ]; then
         echo "Enter the command you want to execute:" && read custom_command
@@ -273,96 +335,80 @@ actions() {
     fi
 
     for git_dir in "${all_repos_path[@]}"; do
-        print_info_color_exclude "Executing command on ${YELLOW} $git_dir"
+        print_info_color_private "Executing command on ${YELLOW} $git_dir"
 
         repo_dir=$(dirname "$git_dir")
 
         cd "$git_dir" 
         
 	   # execute and print error if the command fails
-	   eval "$selected_command" || print_error_color_exclude "Command failed in $git_dir"
+	   eval "$selected_command" || print_error_color_private "Command failed in $git_dir"
         
         cd -
     done
 }
 
 # get programmtically and pipe all the functions of the script into fzf
-get_all_functions_of_the_script_and_pipe_into_fzf_and_execute_it_exclude(){
-  execute_function=$(declare -F | awk '{print $3}' | grep -v "exclude" | fzf)
-  $execute_function
+get_all_functions_of_the_script_and_pipe_into_fzf_and_execute_it_private() {
+    execute_function=$(declare -F | awk '{print $3}' | grep -v "private" | fzf)
+    $execute_function
 }
 
-check_if_the_change_are_merged_into_the_develop_branch() {
-    set_all_repos_path_exclude
-    for git_dir in "${all_repos_path[@]}"; do
-	   print_working_branch_exclude " work on $git_dir "
-	   cd $git_dir
-	   git checkout develop
-	   git pull
-	   git branch --no-merged
-	   cd -
+repos_check_if_the_change_are_merged_into_the_default_branch() {
+    set_all_repos_path_private
+    for repo_dir in "${all_repos_path[@]}"; do
+        print_working_branch_private "Work on $repo_dir"
+        cd "$repo_dir"
+        default_branch=$(git remote show origin | grep 'HEAD branch' | cut -d ':' -f 2 | xargs)
+        git checkout $default_branch
+        git pull
+        git branch --no-merged
+        cd -
     done
 }
 
-delete_current_local_and_current_remote_branch() {
-    set_all_repos_path_exclude
-    choosed_branch=$(similar_branch_fzf_exclude)
+repos_delete_current_local_and_current_remote_branch() {
+    set_all_repos_path_private
+    choosed_branch=$(similar_branch_fzf_private)
 
+    if [ -z "$choosed_branch" ]; then
+        print_error_color_private "No branch selected"
+        return
+    fi
+
+    if [[ "$choosed_branch" =~ ^(main)$ ]]; then
+        print_error_color_private "You can't delete the develop, master, or main branch"
+        return
+    fi
+
+    for repo_dir in "${all_repos_path[@]}"; do
+        print_working_branch_private "Work on $repo_dir"
+        cd "$repo_dir"
+        
+	   # go to default_branch
+        github_url=`git remote -v | awk '/fetch/{print $2}' | sed -Ee 's#(git@|git://)#https://#' -e 's@com:@com/@' -e 's%\.git$%%' | awk '/github/'`;
+        default_branch=$(git remote show origin | grep 'HEAD branch' | cut -d ':' -f 2 | xargs)
+        print_info_color_private "Switching to default branch $default_branch in $git_dir"
+        git checkout $default_branch
+        git pull
+
+        git branch -D "$choosed_branch"
+        git push origin --delete "$choosed_branch"
+        cd -
+    done
+}
+
+
+repos_merge_branch_into_default_branch() {
+    set_all_repos_path_private
+    choosed_branch=$(similar_branch_fzf_private)
     if [ "$choosed_branch" == "" ]; then
-	   print_error_color_exclude "No branch selected"
-	   return
-    fi
-
-    if [ "$choosed_branch" == "develop" ] || [ "$choosed_branch" == "master" ] || [ "$choosed_branch" == "main" ]; then
-	   print_error_color_exclude "You can't delete the develop or master branch"
-	   return
-    fi
-    for git_dir in "${all_repos_path[@]}"; do
-	   print_working_branch_exclude " work on $git_dir "
-	   cd $git_dir
-	   git checkout develop
-	   git branch -d $choosed_branch
-	   git push origin --delete $choosed_branch
-	   cd -
-    done
-}
-
-go_to_default_branch(){
-	set_all_repos_path_exclude
-	for git_dir in "${all_repos_path[@]}"; do
-		cd $git_dir
-		github_url=`git remote -v | awk '/fetch/{print $2}' | sed -Ee 's#(git@|git://)#https://#' -e 's@com:@com/@' -e 's%\.git$%%' | awk '/github/'`;
-		default_branch=$(git remote show origin | grep 'HEAD branch' | cut -d ':' -f 2 | xargs)
-		print_info_color_exclude "Switching to default branch $default_branch in $git_dir"
-		git checkout $default_branch
-		cd -
-	done
-}
-
-committed_all_changes() {
-    set_all_repos_path_exclude
-
-    read -p "Enter the commit message: " commit_message
-    for git_dir in "${all_repos_path[@]}"; do
-	   print_working_branch_exclude " work on $git_dir "
-	   cd $git_dir
-	   git status
-	   git add --all
-	   git commit -m "$commit_message"
-	   cd -
-    done
-}
-
-merge_branch_into_default_branch() {
-    set_all_repos_path_exclude
-    choosed_branch=$(similar_branch_fzf_exclude)
-    if [ "$choosed_branch" == "" ]; then
-	   print_error_color_exclude "No branch selected"
+	   print_error_color_private "No branch selected"
 	   return
     fi
 
     for git_dir in "${all_repos_path[@]}"; do
-	   print_working_branch_exclude " work on $git_dir "
+	   print_working_branch_private " work on $git_dir "
 	   cd $git_dir
 	   default_branch=$(git remote show origin | grep 'HEAD branch' | cut -d ':' -f 2 | xargs)
 	   git checkout $default_branch
@@ -372,36 +418,30 @@ merge_branch_into_default_branch() {
     done
 }
 
-merge_from_specified_branch_to_specified_branch() {
-    set_all_repos_path_exclude
-    from_branch=$(similar_branch_fzf_exclude)
-    to_branch=$(similar_branch_fzf_exclude)
+repos_merge_from_specified_branch_to_specified_branch() {
+    set_all_repos_path_private
+    from_branch=$(similar_branch_fzf_private)
+    to_branch=$(similar_branch_fzf_private)
     if [ "$from_branch" == "" ] || [ "$to_branch" == "" ]; then
-	   print_error_color_exclude "No branch selected"
+	   print_error_color_private "No branch selected"
 	   return
     fi
 
     for git_dir in "${all_repos_path[@]}"; do
-	   print_working_branch_exclude " work on $git_dir "
-	   cd $git_dir || print_error_color_exclude "Error in $git_dir"
-	   git checkout $to_branch || print_error_color_exclude "Error in $git_dir"
-	   git pull || print_error_color_exclude "Error in $git_dir"
+	   print_working_branch_private " work on $git_dir "
+	   cd $git_dir || print_error_color_private "Error in $git_dir"
+	   git checkout $to_branch || print_error_color_private "Error in $git_dir"
+	   git pull || print_error_color_private "Error in $git_dir"
 	   # display if there is error
-	   git merge $from_branch || print_error_color_exclude "Error in $git_dir"
-	   cd - || print_error_color_exclude "Error in $git_dir"
+	   git merge $from_branch || print_error_color_private "Error in $git_dir"
+	   cd - || print_error_color_private "Error in $git_dir"
     done
 }
 
-push_all_branches() {
-    set_all_repos_path_exclude
-    for git_dir in "${all_repos_path[@]}"; do
-	   print_working_branch_exclude " work on $git_dir "
-	   cd $git_dir
-	   git push --all
-	   cd -
-    done
-}
 
-get_all_functions_of_the_script_and_pipe_into_fzf_and_execute_it_exclude
+
+
+
+get_all_functions_of_the_script_and_pipe_into_fzf_and_execute_it_private
 
 # vi:ft=sh:

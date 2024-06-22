@@ -44,11 +44,9 @@ keymap('n', '-', '<C-x>', opts)
 -- mapping fugitif
 keymap("n", "<leader>g", ":G<CR>", opts)
 -- keymap("n", "<leader>gc", ":Git commit<CR>", noSilent)
-keymap("n", "<leader>gs", ":Git status<CR>", opts)
-keymap("n", "<leader>gP", ":Git push<CR>", opts)
-keymap("n", "<leader>gp", ":Git pull<CR>", opts)
-keymap("n", "<leader>gC", ":Git checkout ", noSilent)
-keymap("n", "<leader>gCn", ":Git checkout -b ", noSilent)
+-- keymap("n", "<leader>gs", ":Git status<CR>", opts)
+-- keymap("n", "<leader>gP", ":Git push<CR>", opts)
+-- keymap("n", "<leader>gp", ":Git pull<CR>", opts)
 
 -- open term
 keymap("n", "<leader>tt", ":ToggleTerm direction=float fish<CR>", opts)
@@ -56,19 +54,17 @@ keymap("n", "<leader>tt", ":ToggleTerm direction=float fish<CR>", opts)
 -- mapping Open Buffer fzf telescope
 keymap("n", "<leader>n", ":lua require('telescope').extensions.git_worktree.git_worktrees()<CR>", opts)
 keymap("n", "<leader>N", ":lua require('telescope').extensions.git_worktree.create_git_worktree()<CR>", opts)
+keymap("n", "gi", "<cmd>Telescope lsp_implementations<CR>", opts)
 keymap("n", "gd", "<cmd>Telescope lsp_definitions<CR>", opts)
 keymap("n", 'gr', "<cmd>Telescope lsp_references<CR>", opts)
 keymap("n", "<leader>pf", ":lua require('telescope.builtin').find_files()<CR>", opts)
 keymap("n", "<C-s>", ":lua require('telescope.builtin').live_grep()<CR>", opts)
+keymap("n", "<leader>gof", ":lua require('telescope.builtin').live_grep({grep_open_files=true})", opts)
 keymap("n", "<C-p>", ":lua require('telescope.builtin').git_files()<CR>", opts)
 keymap("n", "<leader>ke", ":lua require('telescope.builtin').keymaps()<CR>", opts)
 
 -- allow my cursor stay at the same place, when using `J`
 keymap("n", "J", "mzJ`z", opts)
-
--- quickfix-list
-keymap("n", "<C-[>f", "<cmd>cprev<CR>", opts)
-keymap("n", "<C-]>j", "<cmd>cnext<CR>", opts)
 
 vim.keymap.set({ "n", "v" }, "<leader>c", vim.lsp.buf.code_action, { desc = "See available code actions" }) -- see available code actions, in visual mode will apply to selection
 

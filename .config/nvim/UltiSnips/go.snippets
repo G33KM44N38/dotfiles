@@ -136,3 +136,13 @@ err !=nil{}
 }
 require.Nil(t, err)
 endsnippet
+
+# =====================================
+snippet lp "log.Println(${})"
+log.Println($0)
+endsnippet
+
+# =====================================
+snippet lpa "log.Println('${0}'${0})"
+log.Println("$1",$1)
+endsnippet

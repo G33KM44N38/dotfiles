@@ -7,8 +7,6 @@ selected=$(find \
     ~/keyboard/ \
     ~/coding/ \
     ~/coding/* \
-    ~/coding/work/minata/ \
-    ~/coding/work/minata/src/* \
     ~/goinfre/ \
     ~/.dotfiles/ \
     ~/.dotfiles/* \

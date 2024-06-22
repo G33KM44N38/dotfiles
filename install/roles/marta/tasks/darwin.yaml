@@ -1,0 +1,6 @@
+---
+- name: Install Marta
+  community.general.homebrew_cask:
+    name: marta
+    state: present
+    update_homebrew: yes

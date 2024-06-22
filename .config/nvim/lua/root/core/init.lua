@@ -94,6 +94,9 @@ vim.g.cpp_member_highlight = 1
 -- vim-test
 vim.cmd('let test#strategy = "vimux"')
 
+-- no higlight search
+vim.cmd('set nohlsearch')
+
 -- set completeopt=noinsert,menuone,noselect
 vim.g.completion_matching_strategy_list = { 'exact', 'substring', 'fuzzy', 'all' }
 
@@ -102,13 +105,23 @@ vim.g.nvcode_termcolors = 256
 
 
 vim.cmd("set nowrap")
-vim.api.nvim_set_option('autoindent', false)
-vim.api.nvim_set_option('wrap', false)
-vim.api.nvim_set_option('autoindent', false)
-vim.api.nvim_set_option('wrap', false)
+vim.api.nvim_set_option_value('autoindent', false, {})
+vim.api.nvim_set_option_value('wrap', false, {})
 
 vim.cmd("set conceallevel=1")
 
+vim.api.nvim_create_autocmd("LspAttach", {
+	callback = function(args)
+		local bufnr = args.buf
+		local client = vim.lsp.get_client_by_id(args.data.client_id)
+		if vim.tbl_contains({ 'null-ls' }, client.name) then -- blacklist lsp
+			return
+		end
+		require("lsp_signature").on_attach({
+			-- ... setup options here ...
+		}, bufnr)
+	end,
+})
 
 vim.api.nvim_create_autocmd("TextYankPost", {
 	desc = "Highlight when yanking text",

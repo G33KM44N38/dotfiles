@@ -20,7 +20,7 @@ return {
 			opts.buffer = bufnr
 			-- set keybinds
 			opts.desc = "Show LSP references"
-			keymap("n", "gD", "<cmd>Lspsaga finder<CR>", opts)
+			keymap.set("n", "gD", "<cmd>Lspsaga finder<CR>", opts)
 
 			opts.desc = "Go to declaration"
 			keymap.set("n", "gR", vim.lsp.buf.declaration, opts) -- go to declaration
@@ -60,77 +60,77 @@ return {
 
 		-- configure html server
 		lspconfig["html"].setup({
-			capabilities = capabilities,
+			-- capabilities = capabilities,
 			on_attach = on_attach,
-			filetypes = { "html", "templ" },
+			filetypes = { "html" },
 		})
 
 		-- configure bash server with plugin
 		lspconfig["bashls"].setup({
-			capabilities = capabilities,
+			-- capabilities = capabilities,
 			on_attach = on_attach,
 			filetypes = { "sh" },
 		})
 
 		-- configure docker server with plugin
 		lspconfig["dockerls"].setup({
-			capabilities = capabilities,
+			-- capabilities = capabilities,
 			on_attach = on_attach,
 		})
 
 		-- configure docker-compose server with plugin
 		lspconfig["docker_compose_language_service"].setup({
-			capabilities = capabilities,
+			-- capabilities = capabilities,
 			on_attach = on_attach,
 		})
 
 		-- configure css server
 		lspconfig["cssls"].setup({
-			capabilities = capabilities,
+			-- capabilities = capabilities,
 			on_attach = on_attach,
 		})
 
 		-- configure C language server
 		lspconfig["clangd"].setup({
-			capabilities = capabilities,
+			-- capabilities = capabilities,
 			on_attach = on_attach,
 		})
 
 		-- configure python server
 		lspconfig["jsonls"].setup({
-			capabilities = capabilities,
+			-- capabilities = capabilities,
 			on_attach = on_attach,
 		})
 
 
 		-- configure yamlls server
 		lspconfig["yamlls"].setup({
-			capabilities = capabilities,
+			-- capabilities = capabilities,
 			on_attach = on_attach,
 		})
 
 		-- configure lua_ls server
 		lspconfig["lua_ls"].setup({
-			capabilities = capabilities,
+			-- capabilities = capabilities,
 			on_attach = on_attach,
 		})
 
 		-- configure bashls server
 		lspconfig["bashls"].setup({
-			capabilities = capabilities,
+			-- capabilities = capabilities,
 			on_attach = on_attach,
 		})
 
 
 		-- configure gopls server
 		lspconfig["gopls"].setup({
-			capabilities = capabilities,
+			-- capabilities = capabilities,
 			on_attach = on_attach,
 		})
 
 		-- configure lua server (with special settings)
 		lspconfig["lua_ls"].setup({
-			capabilities = capabilities,
+			-- capabilities = capabilities,
 			on_attach = on_attach,
 			settings = { -- custom settings for lua
 				Lua = {
@@ -150,42 +150,42 @@ return {
 		})
 
 		lspconfig["eslint"].setup({
-			capabilities = capabilities,
+			-- capabilities = capabilities,
 			on_attach = on_attach,
 		})
 
 		lspconfig["tsserver"].setup({
-			capabilities = capabilities,
+			-- capabilities = capabilities,
 			on_attach = on_attach,
 		})
 
 		lspconfig["tailwindcss"].setup({
-			capabilities = capabilities,
+			-- capabilities = capabilities,
 			on_attach = on_attach,
 		})
 
 		lspconfig["pyright"].setup({
-			capabilities = capabilities,
+			-- capabilities = capabilities,
 			on_attach = on_attach,
 		})
 
 		lspconfig["volar"].setup({
-			capabilities = capabilities,
+			-- capabilities = capabilities,
 			on_attach = on_attach,
 		})
 
 		lspconfig["solang"].setup({
-			capabilities = capabilities,
+			-- capabilities = capabilities,
 			on_attach = on_attach,
 		})
 
 		lspconfig["solidity"].setup({
-			capabilities = capabilities,
+			-- capabilities = capabilities,
 			on_attach = on_attach,
 		})
 
 		lspconfig["graphql"].setup({
-			capabilities = capabilities,
+			-- capabilities = capabilities,
 			on_attach = on_attach,
 
 		})

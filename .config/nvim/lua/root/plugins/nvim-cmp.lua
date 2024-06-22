@@ -23,7 +23,8 @@ return {
 
 
 		cmp.setup({
-			preselect = cmp.PreselectMode.Item, -- set focus on the first line
+			-- preselect = cmp.PreselectMode.Item, -- set focus on the first line
+			preselect = cmp.PreselectMode.None,
 			completion = {
 				completeopt = "menu,preview",
 			},
@@ -39,7 +40,8 @@ return {
 				["<C-b>"] = cmp.mapping.scroll_docs(-4),
 				["<C-f>"] = cmp.mapping.scroll_docs(4),
 				["<C-e>"] = cmp.mapping.abort(), -- close completion window
-				['<CR>'] = cmp.mapping.confirm({ select = true }),
+				["<C-y>"] = {},  --disable for copilot
+				["<CR>"] = cmp.mapping.confirm({ select = true }),
 				["<Tab>"] = cmp.mapping(
 					function(fallback)
 						luasnip.jump(1)
@@ -76,7 +78,6 @@ return {
 		cmp.setup.cmdline({ '/', '?' }, {
 			mapping = {
 				['<CR>'] = cmp.mapping.confirm({ select = true }),
-				-- ['<Up>'] = cmp.mapping(cmp.mapping.select_prev_item(), { 'i', 'c' }),
 				['<Tab>'] = cmp.mapping(cmp.mapping({
 					i = function(fallback)
 						if cmp.visible() and cmp.get_active_entry() then
@@ -111,7 +112,6 @@ return {
 					s = cmp.mapping.confirm({ select = true }),
 					c = cmp.mapping.confirm({ behavior = cmp.ConfirmBehavior.Replace, select = true }),
 				})),
-				-- ['<Down>'] = cmp.mapping(cmp.mapping.select_next_item(), { 'i', 'c' }),
 				['<C-k>'] = cmp.mapping(cmp.mapping.select_prev_item(), { 'i', 'c' }),
 				['<C-j>'] = cmp.mapping(cmp.mapping.select_next_item(), { 'i', 'c' }),
 			},
