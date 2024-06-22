@@ -1,4 +1,16 @@
-- name: Add Homebrew tap for fonts
-  community.general.homebrew_tap:
-    name: homebrew/cask-fonts
-    state: present
+- name: ensure fonts directory
+  file:
+    path: "{{ lookup('env', 'HOME') }}/.fonts"
+    state: directory
+
+- name: Hack exists
+  shell: "ls {{ lookup('env', 'HOME') }}/.fonts/Hack*Nerd*Font*Complete*"
+  register: hack_exists
+  ignore_errors: true
+
+- name: Download Hack
+  when: hack_exists is failed
+  ansible.builtin.unarchive:
+    src: https://github.com/ryanoasis/nerd-fonts/releases/download/v2.1.0/Hack.zip
+    dest: "{{ lookup('env', 'HOME') }}/.fonts/"
+    remote_src: yes
