@@ -4,14 +4,12 @@ if [[ $# -eq 1 ]]; then
     selected=$1
 else
 selected=$(find \
-    # ~/keyboard/ \
     ~/coding/ \
     ~/coding/* \
     ~/goinfre/ \
     ~/.dotfiles/ \
     ~/.dotfiles/* \
     ~/.dotfiles/.config/ \
-    # ~/SecondBrain/ \
     -mindepth 1 -maxdepth 1 -type d | fzf)
 fi
 
