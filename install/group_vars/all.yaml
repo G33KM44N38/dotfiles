@@ -26,3 +26,4 @@ default_roles:
   - work
   - zsh
   - dock
+  - figma
