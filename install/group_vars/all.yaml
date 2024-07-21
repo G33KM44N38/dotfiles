@@ -27,3 +27,5 @@ default_roles:
   - zsh
   - sops
   - age
+  - dock
+  - figma
