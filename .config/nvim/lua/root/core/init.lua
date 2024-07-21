@@ -91,9 +91,6 @@ vim.g.cpp_attributes_highlight = 1
 -- Highlight struct/class member variables (affects both C and C++ files)
 vim.g.cpp_member_highlight = 1
 
--- vim-test
-vim.cmd('let test#strategy = "vimux"')
-
 -- no higlight search
 vim.cmd('set nohlsearch')
 
