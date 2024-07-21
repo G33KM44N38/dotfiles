@@ -25,3 +25,5 @@ default_roles:
   - arc
   - work
   - zsh
+  - sops
+  - age

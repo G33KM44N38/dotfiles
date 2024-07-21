@@ -1,0 +1,3 @@
+---
+- name: Run AGE
+  ansible.builtin.import_tasks: darwin.yaml
