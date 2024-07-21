@@ -133,9 +133,9 @@ _cmd "ansible-galaxy install -r \"$DOTFILES_DIR/install/requirements.yml\""
 
 _task "Running playbook"; _task_done
 if [[ -f $VAULT_SECRET ]]; then
-    ansible-playbook --vault-password-file $VAULT_SECRET "$DOTFILES_DIR/install/main.yaml" "$@"
+    ansible-playbook --ask-become-pass --vault-password-file $VAULT_SECRET "$DOTFILES_DIR/install/main.yaml" "$@"
 else
-    ansible-playbook "$DOTFILES_DIR/install/main.yaml" "$@"
+    ansible-playbook --ask-become-pass "$DOTFILES_DIR/install/main.yaml" "$@"
 fi
 
 if ! [[ -f "$IS_FIRST_RUN" ]]; then
