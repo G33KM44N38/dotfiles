@@ -1,6 +1,14 @@
----
+- name: Update Homebrew
+  community.general.homebrew:
+    update_homebrew: yes
+
+- name: Check if Figma is installed
+  ansible.builtin.stat:
+    path: "/Applications/Figma.app"
+  register: figma_app
+
 - name: Install Figma
   community.general.homebrew_cask:
     name: figma
     state: present
-    update_homebrew: yes
+  when: not figma_app.stat.exists
