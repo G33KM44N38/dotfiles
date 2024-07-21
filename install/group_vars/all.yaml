@@ -21,7 +21,7 @@ default_roles:
   - dir
   - appcleaner
   - raycast
-  # - nerd_font
+  - nerd_font
   - arc
   - work
   - zsh
