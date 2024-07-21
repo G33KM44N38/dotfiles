@@ -1,0 +1,6 @@
+---
+- name: Install Figma
+  community.general.homebrew_cask:
+    name: figma
+    state: present
+    update_homebrew: yes
