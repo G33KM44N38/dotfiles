@@ -25,7 +25,7 @@ default_roles:
   - arc
   - work
   - zsh
-
   - age
   - dock
   - figma
+  - karabiner

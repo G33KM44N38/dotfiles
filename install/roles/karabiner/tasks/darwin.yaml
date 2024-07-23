@@ -1,0 +1,7 @@
+---
+- name: Install karabiner
+  community.general.homebrew_cask:
+    name: karabiner-elements
+    state: present
+    update_homebrew: yes
+  ignore_errors: true
