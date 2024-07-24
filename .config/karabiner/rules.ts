@@ -29,7 +29,7 @@ const rules: KarabinerRules[] = [
     ],
   },
   {
-    description: "Hyper Key (⌃⌥⇧⌘)",
+    description: "cmd touch",
     manipulators: [
       {
         description: "Caps Lock -> Hyper Key",
@@ -57,7 +57,62 @@ const rules: KarabinerRules[] = [
         ],
         to_if_alone: [
           {
-            key_code: "escape",
+            key_code: "delete_or_backspace",
+          },
+        ],
+        type: "basic",
+      },
+      {
+        description: "Caps Lock -> Hyper Key",
+        from: {
+          key_code: "left_gui",
+          modifiers: {
+            optional: ["any"],
+          },
+        },
+        to: [
+          {
+            key_code: "left_gui",
+          },
+        ],
+        to_if_alone: [
+          {
+            key_code: "return_or_enter",
+          },
+        ],
+        type: "basic",
+      },
+    ],
+  },
+  {
+    description: "deactivate touch",
+    manipulators: [
+      {
+        description: "deactivate delete ",
+        from: {
+          key_code: "delete_or_backspace",
+          modifiers: {
+            optional: ["any"],
+          },
+        },
+        to_if_alone: [
+          {
+            key_code: "out",
+          },
+        ],
+        type: "basic",
+      },
+      {
+        description: "deactivate essacpe",
+        from: {
+          key_code: "escape",
+          modifiers: {
+            optional: ["any"],
+          },
+        },
+        to_if_alone: [
+          {
+            key_code: "out",
           },
         ],
         type: "basic",
@@ -79,9 +134,11 @@ const rules: KarabinerRules[] = [
       n: app("Notion"),
       t: app("iTerm"),
       b: app("Beeper"),
+      i: app("Messages"),
       p: app("Music"),
       m: app("Mail"),
       s: app("Simulator"),
+      f: app("Figma"),
     },
 
     // s = "System"
@@ -136,9 +193,6 @@ const rules: KarabinerRules[] = [
           },
         ],
       },
-      e: open(
-        `raycast://extensions/thomas/elgato-key-light/toggle?launchType=background`
-      ),
       // "D"o not disturb toggle
       d: open(
         `raycast://extensions/yakitrak/do-not-disturb/toggle?launchType=background`

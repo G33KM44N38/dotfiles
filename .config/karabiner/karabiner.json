@@ -35,7 +35,7 @@
             ]
           },
           {
-            "description": "Hyper Key (⌃⌥⇧⌘)",
+            "description": "cmd touch",
             "manipulators": [
               {
                 "description": "Caps Lock -> Hyper Key",
@@ -65,7 +65,68 @@
                 ],
                 "to_if_alone": [
                   {
-                    "key_code": "escape"
+                    "key_code": "delete_or_backspace"
+                  }
+                ],
+                "type": "basic"
+              },
+              {
+                "description": "Caps Lock -> Hyper Key",
+                "from": {
+                  "key_code": "left_gui",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "key_code": "left_gui"
+                  }
+                ],
+                "to_if_alone": [
+                  {
+                    "key_code": "return_or_enter"
+                  }
+                ],
+                "type": "basic"
+              }
+            ]
+          },
+          {
+            "description": "deactivate touch",
+            "manipulators": [
+              {
+                "description": "deactivate delete ",
+                "from": {
+                  "key_code": "delete_or_backspace",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to_if_alone": [
+                  {
+                    "key_code": "out"
+                  }
+                ],
+                "type": "basic"
+              },
+              {
+                "description": "deactivate essacpe",
+                "from": {
+                  "key_code": "escape",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to_if_alone": [
+                  {
+                    "key_code": "out"
                   }
                 ],
                 "type": "basic"
@@ -421,6 +482,30 @@
               {
                 "to": [
                   {
+                    "shell_command": "open -a 'Messages.app'"
+                  }
+                ],
+                "description": "Open -a 'Messages.app'",
+                "type": "basic",
+                "from": {
+                  "key_code": "i",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "hyper_sublayer_o",
+                    "value": 1
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
                     "shell_command": "open -a 'Music.app'"
                   }
                 ],
@@ -476,6 +561,30 @@
                 "type": "basic",
                 "from": {
                   "key_code": "s",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "hyper_sublayer_o",
+                    "value": 1
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "shell_command": "open -a 'Figma.app'"
+                  }
+                ],
+                "description": "Open -a 'Figma.app'",
+                "type": "basic",
+                "from": {
+                  "key_code": "f",
                   "modifiers": {
                     "optional": [
                       "any"
@@ -711,30 +820,6 @@
                 "type": "basic",
                 "from": {
                   "key_code": "semicolon",
-                  "modifiers": {
-                    "optional": [
-                      "any"
-                    ]
-                  }
-                },
-                "conditions": [
-                  {
-                    "type": "variable_if",
-                    "name": "hyper_sublayer_s",
-                    "value": 1
-                  }
-                ]
-              },
-              {
-                "to": [
-                  {
-                    "shell_command": "open raycast://extensions/thomas/elgato-key-light/toggle?launchType=background"
-                  }
-                ],
-                "description": "Open raycast://extensions/thomas/elgato-key-light/toggle?launchType=background",
-                "type": "basic",
-                "from": {
-                  "key_code": "e",
                   "modifiers": {
                     "optional": [
                       "any"
