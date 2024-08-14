@@ -16,12 +16,32 @@ const rules: KarabinerRules[] = [
         },
         to: [
           {
-            key_code: "left_control",
+            key_code: "out",
           },
         ],
         to_if_alone: [
           {
             key_code: "escape",
+          },
+        ],
+        type: "basic",
+      },
+      {
+        description: " spacebar -> spacebar/control",
+        from: {
+          key_code: "spacebar",
+          modifiers: {
+            optional: ["any"],
+          },
+        },
+        to: [
+          {
+            key_code: "left_control",
+          },
+        ],
+        to_if_alone: [
+          {
+            key_code: "spacebar",
           },
         ],
         type: "basic",
@@ -63,6 +83,20 @@ const rules: KarabinerRules[] = [
         type: "basic",
       },
       {
+        type: "basic",
+        from: {
+          key_code: "left_gui",
+          modifiers: {
+            mandatory: ["right_gui"],
+          },
+        },
+        to: [
+          {
+            key_code: "return_or_enter",
+          },
+        ],
+      },
+      {
         description: "Caps Lock -> Hyper Key",
         from: {
           key_code: "left_gui",
@@ -87,6 +121,21 @@ const rules: KarabinerRules[] = [
   {
     description: "deactivate touch",
     manipulators: [
+      {
+        description: "deactivate delete ",
+        from: {
+          key_code: "return_or_enter",
+          modifiers: {
+            optional: ["any"],
+          },
+        },
+        to_if_alone: [
+          {
+            key_code: "out",
+          },
+        ],
+        type: "basic",
+      },
       {
         description: "deactivate delete ",
         from: {
@@ -126,18 +175,23 @@ const rules: KarabinerRules[] = [
     // b = "B"rowse
     b: {
       y: open("https://youtube.com"),
+      r: open("https://reddit.com"),
+      c: open("https://claude.ai"),
+      i: open("https://instagram.com"),
     },
     // o = "Open" applications
     o: {
-      a: app("Arc"),
+      d: app("Discord"),
+      // a: app("Arc"),
       c: app("Notion Calendar"),
+      u: app("Calendar"),
       n: app("Notion"),
       t: app("iTerm"),
       b: app("Beeper"),
       i: app("Messages"),
       p: app("Music"),
       m: app("Mail"),
-      s: app("Simulator"),
+      s: app("Safari"),
       f: app("Figma"),
     },
 
@@ -222,10 +276,10 @@ const rules: KarabinerRules[] = [
         to: [{ key_code: "f", modifiers: ["right_control"] }],
         // TODO: Trigger Vim Easymotion when VSCode is focused
       },
-      u: {
+      d: {
         to: [{ key_code: "page_down" }],
       },
-      i: {
+      u: {
         to: [{ key_code: "page_up" }],
       },
     },
@@ -246,12 +300,11 @@ const rules: KarabinerRules[] = [
     // r = "Raycast"
     r: {
       a: open("raycast://extensions/abielzulio/chatgpt/ask"),
-      n: open("raycast://script-commands/dismiss-notifications"),
       e: open(
         "raycast://extensions/raycast/emoji-symbols/search-emoji-symbols"
       ),
       p: open("raycast://extensions/raycast/raycast/confetti"),
-      s: open("raycast://extensions/peduarte/silent-mention/index"),
+      s: open("raycast://extensions/raycast/snippets/search-snippets"),
       h: open(
         "raycast://extensions/raycast/clipboard-history/clipboard-history"
       ),
