@@ -13,5 +13,5 @@
 # @raycast.author me
 
 open -a "Docker"
-open -a "Arc"
+open https://google.com
 open -a "iTerm"

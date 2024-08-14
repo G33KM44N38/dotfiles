@@ -15,6 +15,7 @@ return {
 		map('n', '<leader>TV', ':TestFile -v<CR>', opts)
 		map('n', '<leader>T', ':TestFile<CR>', opts)
 		map('n', '<leader>TA', ':TestSuite<CR>', opts)
-		map('n', '<leader>l', ':TestLast<CR>', opts)
+		map('n', '<leader>TVA', ':TestSuite -v<CR>', opts)
+		map('n', '<leader>tl', ':TestLast<CR>', opts)
 	end
 }

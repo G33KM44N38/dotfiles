@@ -33,6 +33,7 @@ yabai -m rule --add app="^Numi$" manage=off
 
 # Send apps to specific spaces
 yabai -m rule --add app=Arc space=1
+yabai -m rule --add app=Safari space=1
 yabai -m rule --add app="^Arc$" title="" manage=off
 yabai -m rule --add app=iTerm space=2
 yabai -m rule --add app=Simulator space=2
