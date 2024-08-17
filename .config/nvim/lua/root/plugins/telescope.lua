@@ -3,7 +3,6 @@ return {
 	branch = "0.1.x",
 	dependencies = {
 		"nvim-lua/plenary.nvim",
-		{ "nvim-telescope/telescope-fzf-native.nvim", build = "make" },
 		"nvim-tree/nvim-web-devicons",
 	},
 
@@ -73,14 +72,6 @@ return {
 						["<C-j>"] = "move_selection_next",
 						["<C-k>"] = "move_selection_previous",
 					},
-				},
-			},
-			extensions = {
-				fzf = {
-					fuzzy = true,
-					override_generic_sorter = true,
-					override_file_sorter = true,
-					case_mode = "smart_case",
 				},
 			},
 		}
