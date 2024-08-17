@@ -1,6 +1,7 @@
-- name: YARN | Run yarn
-  command: yarn
-  args:
-    chdir: "{{ project_root }}"
-  register: yarn_result
-  changed_when: yarn_result.stdout is not search('Already up-to-date.')
+- name: YARN | Install yarn using Homebrew
+  homebrew:
+    name: yarn
+    state: present
+    update_homebrew: yes
+  register: yarn_install_result
+  changed_when: yarn_install_result.changed
