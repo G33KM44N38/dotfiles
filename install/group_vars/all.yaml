@@ -30,4 +30,5 @@ default_roles:
   - figma
   - karabiner
   - yarn
-  - nodemon
+  # - nodemon
+  - next
