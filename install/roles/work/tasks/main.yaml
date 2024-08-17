@@ -16,6 +16,6 @@
 - name: SBERS - Clone
   ansible.builtin.git:
     version: main
-    repo: git@github.com:sberrs/website.git
+    repo: https://github.com/sberrs/website.git
     update: false
     dest: ~/coding/work/sbers/
