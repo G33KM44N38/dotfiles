@@ -438,9 +438,40 @@ repos_merge_from_specified_branch_to_specified_branch() {
     done
 }
 
+pull_all_branch() {
+    set_all_repos_path_private
+    for git_dir in "${all_repos_path[@]}"; do
+        echo "Updating repository: $git_dir"
+        cd "$git_dir" || continue
 
+        # Fetch all remotes
+        git fetch --all
 
+        # Get list of remote branches
+        remote_branches=$(git branch -r | grep -v '\->' | sed 's/origin\///')
 
+        # Create local branches tracking remote ones if they don't exist
+        for branch in $remote_branches; do
+            if ! git show-ref --verify --quiet "refs/heads/$branch"; then
+                git branch --track "$branch" "origin/$branch"
+            fi
+        done
+
+        # Checkout each branch and pull
+        for branch in $remote_branches; do
+            echo "Updating branch: $branch"
+            git checkout "$branch"
+            git pull origin "$branch"
+        done
+
+        # Return to the original branch
+        git checkout -
+
+        echo "Finished updating $git_dir"
+        echo "-----------------------------"
+	   cd -
+    done
+}
 
 get_all_functions_of_the_script_and_pipe_into_fzf_and_execute_it_private
 
