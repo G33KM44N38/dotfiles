@@ -181,8 +181,8 @@ const rules: KarabinerRules[] = [
     },
     // o = "Open" applications
     o: {
+      a: app("Arc"),
       d: app("Discord"),
-      // a: app("Arc"),
       c: app("Notion Calendar"),
       u: app("Calendar"),
       n: app("Notion"),
@@ -192,7 +192,6 @@ const rules: KarabinerRules[] = [
       p: app("Music"),
       m: app("Mail"),
       s: app("Safari"),
-      a: app("Arc"),
       f: app("Figma"),
     },
 
