@@ -192,6 +192,7 @@ const rules: KarabinerRules[] = [
       p: app("Music"),
       m: app("Mail"),
       s: app("Safari"),
+      a: app("Arc"),
       f: app("Figma"),
     },
 
