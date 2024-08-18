@@ -42,6 +42,7 @@ return {
 				"volar",
 				"solang",
 				"solidity",
+				"prismals",
 				"graphql",
 			},
 			-- auto-install configured servers (with lspconfig)

@@ -23,7 +23,8 @@ return {
 			"markdown_inline",
 			"cmake",
 			"c",
-			"bash"
+			"bash",
+			"prisma"
 		})
 
 		-- Configure nvim-treesitter with the desired settings

@@ -189,5 +189,11 @@ return {
 			on_attach = on_attach,
 
 		})
+
+		lspconfig["prismals"].setup({
+			-- capabilities = capabilities,
+			on_attach = on_attach,
+
+		})
 	end,
 }
