@@ -193,6 +193,7 @@ const rules: KarabinerRules[] = [
       m: app("Mail"),
       s: app("Safari"),
       f: app("Figma"),
+      v: app("DaVinci Resolve"),
     },
 
     // s = "System"
@@ -312,6 +313,12 @@ const rules: KarabinerRules[] = [
         "raycast://extensions/VladCuciureanu/toothpick/manage-bluetooth-connections"
       ),
       o: open("raycast://extensions/benvp/audio-device/set-output-device"),
+      1: open(
+        "raycast://extensions/VladCuciureanu/toothpick/connect-favorite-device-1"
+      ),
+      2: open(
+        "raycast://extensions/VladCuciureanu/toothpick/connect-favorite-device-2"
+      ),
     },
   }),
 ];
