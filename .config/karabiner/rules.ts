@@ -4,6 +4,221 @@ import { createHyperSubLayers, app, open } from "./utils";
 
 const rules: KarabinerRules[] = [
   {
+    description: "Homerow mods",
+    manipulators: [
+      {
+        description: "Left hand homerow mods",
+        type: "basic",
+        from: {
+          key_code: "a",
+          modifiers: {
+            optional: ["any"],
+          },
+        },
+        to: [
+          {
+            key_code: "left_gui",
+          },
+        ],
+        to_if_alone: [
+          {
+            key_code: "a",
+          },
+        ],
+        conditions: [
+          {
+            type: "variable_if",
+            name: "hyper",
+            value: 0,
+          },
+        ],
+      },
+      {
+        type: "basic",
+        from: {
+          key_code: "s",
+          modifiers: {
+            optional: ["any"],
+          },
+        },
+        to: [
+          {
+            key_code: "left_option",
+          },
+        ],
+        to_if_alone: [
+          {
+            key_code: "s",
+          },
+        ],
+        conditions: [
+          {
+            type: "variable_if",
+            name: "hyper",
+            value: 0,
+          },
+        ],
+      },
+      {
+        type: "basic",
+        from: {
+          key_code: "d",
+          modifiers: {
+            optional: ["any"],
+          },
+        },
+        to: [
+          {
+            key_code: "left_shift",
+          },
+        ],
+        to_if_alone: [
+          {
+            key_code: "d",
+          },
+        ],
+        conditions: [
+          {
+            type: "variable_if",
+            name: "hyper",
+            value: 0,
+          },
+        ],
+      },
+      {
+        type: "basic",
+        from: {
+          key_code: "f",
+          modifiers: {
+            optional: ["any"],
+          },
+        },
+        to: [
+          {
+            key_code: "left_control",
+          },
+        ],
+        to_if_alone: [
+          {
+            key_code: "f",
+          },
+        ],
+        conditions: [
+          {
+            type: "variable_if",
+            name: "hyper",
+            value: 0,
+          },
+        ],
+      },
+      {
+        description: "Right hand homerow mods",
+        type: "basic",
+        from: {
+          key_code: "j",
+          modifiers: {
+            optional: ["any"],
+          },
+        },
+        to: [
+          {
+            key_code: "right_control",
+          },
+        ],
+        to_if_alone: [
+          {
+            key_code: "j",
+          },
+        ],
+        conditions: [
+          {
+            type: "variable_if",
+            name: "hyper",
+            value: 0,
+          },
+        ],
+      },
+      {
+        type: "basic",
+        from: {
+          key_code: "k",
+          modifiers: {
+            optional: ["any"],
+          },
+        },
+        to: [
+          {
+            key_code: "right_shift",
+          },
+        ],
+        to_if_alone: [
+          {
+            key_code: "k",
+          },
+        ],
+        conditions: [
+          {
+            type: "variable_if",
+            name: "hyper",
+            value: 0,
+          },
+        ],
+      },
+      {
+        type: "basic",
+        from: {
+          key_code: "l",
+          modifiers: {
+            optional: ["any"],
+          },
+        },
+        to: [
+          {
+            key_code: "right_option",
+          },
+        ],
+        to_if_alone: [
+          {
+            key_code: "l",
+          },
+        ],
+        conditions: [
+          {
+            type: "variable_if",
+            name: "hyper",
+            value: 0,
+          },
+        ],
+      },
+      {
+        type: "basic",
+        from: {
+          key_code: "semicolon",
+          modifiers: {
+            optional: ["any"],
+          },
+        },
+        to: [
+          {
+            key_code: "right_gui",
+          },
+        ],
+        to_if_alone: [
+          {
+            key_code: "semicolon",
+          },
+        ],
+        conditions: [
+          {
+            type: "variable_if",
+            name: "hyper",
+            value: 0,
+          },
+        ],
+      },
+    ],
+  },
+  {
     description: "Caps Lock -> escape/control",
     manipulators: [
       {
@@ -49,12 +264,12 @@ const rules: KarabinerRules[] = [
     ],
   },
   {
-    description: "cmd touch",
+    description: "Hyper Key (Right Command)",
     manipulators: [
       {
-        description: "Caps Lock -> Hyper Key",
+        description: "Right Command -> Hyper Key",
         from: {
-          key_code: "right_gui",
+          key_code: "right_command",
           modifiers: {
             optional: ["any"],
           },
@@ -75,27 +290,13 @@ const rules: KarabinerRules[] = [
             },
           },
         ],
-        to_if_alone: [
-          {
-            key_code: "delete_or_backspace",
-          },
-        ],
         type: "basic",
       },
-      {
-        type: "basic",
-        from: {
-          key_code: "left_gui",
-          modifiers: {
-            mandatory: ["right_gui"],
-          },
-        },
-        to: [
-          {
-            key_code: "return_or_enter",
-          },
-        ],
-      },
+    ],
+  },
+  {
+    description: "cmd touch",
+    manipulators: [
       {
         description: "Caps Lock -> Hyper Key",
         from: {
@@ -106,7 +307,7 @@ const rules: KarabinerRules[] = [
         },
         to: [
           {
-            key_code: "left_gui",
+            key_code: "out",
           },
         ],
         to_if_alone: [
@@ -121,21 +322,6 @@ const rules: KarabinerRules[] = [
   {
     description: "deactivate touch",
     manipulators: [
-      {
-        description: "deactivate delete ",
-        from: {
-          key_code: "return_or_enter",
-          modifiers: {
-            optional: ["any"],
-          },
-        },
-        to_if_alone: [
-          {
-            key_code: "out",
-          },
-        ],
-        type: "basic",
-      },
       {
         description: "deactivate delete ",
         from: {
@@ -166,6 +352,56 @@ const rules: KarabinerRules[] = [
         ],
         type: "basic",
       },
+      {
+        description: "deactivate essacpe",
+        from: {
+          key_code: "right_shift",
+          modifiers: {
+            optional: ["any"],
+          },
+        },
+        to_if_alone: [
+          {
+            key_code: "out",
+          },
+        ],
+        type: "basic",
+      },
+      {
+        description: "deactivate essacpe",
+        from: {
+          key_code: "left_shift",
+          modifiers: {
+            optional: ["any"],
+          },
+        },
+        to_if_alone: [
+          {
+            key_code: "out",
+          },
+        ],
+        type: "basic",
+      },
+    ],
+  },
+  {
+    description: "alt to backspace",
+    manipulators: [
+      {
+        description: "alt to backspace",
+        type: "basic",
+        from: {
+          key_code: "left_option",
+          modifiers: {
+            optional: ["any"],
+          },
+        },
+        to: [
+          {
+            key_code: "delete_or_backspace",
+          },
+        ],
+      },
     ],
   },
   ...createHyperSubLayers({
@@ -181,6 +417,7 @@ const rules: KarabinerRules[] = [
     },
     // o = "Open" applications
     o: {
+      1: app("Cursor"),
       a: app("Arc"),
       d: app("Discord"),
       c: app("Notion Calendar"),
@@ -273,10 +510,6 @@ const rules: KarabinerRules[] = [
         to: [{ key_code: "right_arrow" }],
       },
       // Magicmove via homerow.app
-      m: {
-        to: [{ key_code: "f", modifiers: ["right_control"] }],
-        // TODO: Trigger Vim Easymotion when VSCode is focused
-      },
       d: {
         to: [{ key_code: "page_down" }],
       },
