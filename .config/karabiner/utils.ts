@@ -197,3 +197,44 @@ export function shell(
 export function app(name: string): LayerCommand {
   return open(`-a '${name}.app'`);
 }
+
+export function createHomeRowMod(
+  key_code: KeyCode,
+  to_key_code: KeyCode,
+  description: string = "",
+  simultaneous_threshold_milliseconds: number = 2000
+): Manipulator {
+  return {
+    description: description || `${key_code} -> ${to_key_code}`,
+    type: "basic",
+    from: {
+      key_code,
+      modifiers: { optional: ["any"] },
+    },
+    to: [{ key_code: to_key_code }],
+    to_if_alone: [{ key_code }],
+    conditions: [{ type: "variable_if", name: "hyper", value: 0 }],
+    parameters: {
+      "basic.simultaneous_threshold_milliseconds":
+        simultaneous_threshold_milliseconds,
+    },
+  };
+}
+
+export function createBasicManipulator(
+  from_key: KeyCode,
+  to_key: KeyCode,
+  description: string = "",
+  to_if_alone?: { key_code: KeyCode }[]
+): Manipulator {
+  return {
+    description: description || `${from_key} -> ${to_key}`,
+    type: "basic",
+    from: {
+      key_code: from_key,
+      modifiers: { optional: ["any"] },
+    },
+    to: [{ key_code: to_key }],
+    ...(to_if_alone && { to_if_alone }),
+  };
+}

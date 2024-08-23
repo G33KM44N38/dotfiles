@@ -1,266 +1,44 @@
 import fs from "fs";
-import { KarabinerRules } from "./types";
-import { createHyperSubLayers, app, open } from "./utils";
+import { KarabinerRules, KeyCode, Manipulator } from "./types";
+import {
+  createHyperSubLayers,
+  app,
+  open,
+  createBasicManipulator,
+  createHomeRowMod,
+} from "./utils";
+
+const homeRowMods: Manipulator[] = [
+  createHomeRowMod("a", "left_gui"),
+  createHomeRowMod("s", "left_option"),
+  createHomeRowMod("d", "left_shift"),
+  createHomeRowMod("f", "left_control"),
+  createHomeRowMod("j", "right_control"),
+  createHomeRowMod("k", "right_shift"),
+  createHomeRowMod("l", "right_option"),
+  createHomeRowMod("semicolon", "right_gui"),
+];
 
 const rules: KarabinerRules[] = [
   {
     description: "Homerow mods",
-    manipulators: [
-      {
-        description: "Left hand homerow mods",
-        type: "basic",
-        from: {
-          key_code: "a",
-          modifiers: {
-            optional: ["any"],
-          },
-        },
-        to: [
-          {
-            key_code: "left_gui",
-          },
-        ],
-        to_if_alone: [
-          {
-            key_code: "a",
-          },
-        ],
-        conditions: [
-          {
-            type: "variable_if",
-            name: "hyper",
-            value: 0,
-          },
-        ],
-      },
-      {
-        type: "basic",
-        from: {
-          key_code: "s",
-          modifiers: {
-            optional: ["any"],
-          },
-        },
-        to: [
-          {
-            key_code: "left_option",
-          },
-        ],
-        to_if_alone: [
-          {
-            key_code: "s",
-          },
-        ],
-        conditions: [
-          {
-            type: "variable_if",
-            name: "hyper",
-            value: 0,
-          },
-        ],
-      },
-      {
-        type: "basic",
-        from: {
-          key_code: "d",
-          modifiers: {
-            optional: ["any"],
-          },
-        },
-        to: [
-          {
-            key_code: "left_shift",
-          },
-        ],
-        to_if_alone: [
-          {
-            key_code: "d",
-          },
-        ],
-        conditions: [
-          {
-            type: "variable_if",
-            name: "hyper",
-            value: 0,
-          },
-        ],
-      },
-      {
-        type: "basic",
-        from: {
-          key_code: "f",
-          modifiers: {
-            optional: ["any"],
-          },
-        },
-        to: [
-          {
-            key_code: "left_control",
-          },
-        ],
-        to_if_alone: [
-          {
-            key_code: "f",
-          },
-        ],
-        conditions: [
-          {
-            type: "variable_if",
-            name: "hyper",
-            value: 0,
-          },
-        ],
-      },
-      {
-        description: "Right hand homerow mods",
-        type: "basic",
-        from: {
-          key_code: "j",
-          modifiers: {
-            optional: ["any"],
-          },
-        },
-        to: [
-          {
-            key_code: "right_control",
-          },
-        ],
-        to_if_alone: [
-          {
-            key_code: "j",
-          },
-        ],
-        conditions: [
-          {
-            type: "variable_if",
-            name: "hyper",
-            value: 0,
-          },
-        ],
-      },
-      {
-        type: "basic",
-        from: {
-          key_code: "k",
-          modifiers: {
-            optional: ["any"],
-          },
-        },
-        to: [
-          {
-            key_code: "right_shift",
-          },
-        ],
-        to_if_alone: [
-          {
-            key_code: "k",
-          },
-        ],
-        conditions: [
-          {
-            type: "variable_if",
-            name: "hyper",
-            value: 0,
-          },
-        ],
-      },
-      {
-        type: "basic",
-        from: {
-          key_code: "l",
-          modifiers: {
-            optional: ["any"],
-          },
-        },
-        to: [
-          {
-            key_code: "right_option",
-          },
-        ],
-        to_if_alone: [
-          {
-            key_code: "l",
-          },
-        ],
-        conditions: [
-          {
-            type: "variable_if",
-            name: "hyper",
-            value: 0,
-          },
-        ],
-      },
-      {
-        type: "basic",
-        from: {
-          key_code: "semicolon",
-          modifiers: {
-            optional: ["any"],
-          },
-        },
-        to: [
-          {
-            key_code: "right_gui",
-          },
-        ],
-        to_if_alone: [
-          {
-            key_code: "semicolon",
-          },
-        ],
-        conditions: [
-          {
-            type: "variable_if",
-            name: "hyper",
-            value: 0,
-          },
-        ],
-      },
-    ],
+    manipulators: homeRowMods,
   },
   {
     description: "Caps Lock -> escape/control",
     manipulators: [
-      {
-        description: "Caps Lock -> escape/control",
-        from: {
-          key_code: "caps_lock",
-          modifiers: {
-            optional: ["any"],
-          },
-        },
-        to: [
-          {
-            key_code: "out",
-          },
-        ],
-        to_if_alone: [
-          {
-            key_code: "escape",
-          },
-        ],
-        type: "basic",
-      },
-      {
-        description: " spacebar -> spacebar/control",
-        from: {
-          key_code: "spacebar",
-          modifiers: {
-            optional: ["any"],
-          },
-        },
-        to: [
-          {
-            key_code: "left_control",
-          },
-        ],
-        to_if_alone: [
-          {
-            key_code: "spacebar",
-          },
-        ],
-        type: "basic",
-      },
+      createBasicManipulator(
+        "caps_lock",
+        "left_control",
+        "Caps Lock -> escape/control",
+        [{ key_code: "escape" }]
+      ),
+      createBasicManipulator(
+        "spacebar",
+        "left_control",
+        "spacebar -> spacebar/control",
+        [{ key_code: "spacebar" }]
+      ),
     ],
   },
   {
@@ -268,154 +46,54 @@ const rules: KarabinerRules[] = [
     manipulators: [
       {
         description: "Right Command -> Hyper Key",
-        from: {
-          key_code: "right_command",
-          modifiers: {
-            optional: ["any"],
-          },
-        },
-        to: [
-          {
-            set_variable: {
-              name: "hyper",
-              value: 1,
-            },
-          },
-        ],
-        to_after_key_up: [
-          {
-            set_variable: {
-              name: "hyper",
-              value: 0,
-            },
-          },
-        ],
         type: "basic",
+        from: { key_code: "right_command", modifiers: { optional: ["any"] } },
+        to: [{ set_variable: { name: "hyper", value: 1 } }],
+        to_after_key_up: [{ set_variable: { name: "hyper", value: 0 } }],
       },
     ],
   },
   {
     description: "cmd touch",
     manipulators: [
-      {
-        description: "Caps Lock -> Hyper Key",
-        from: {
-          key_code: "left_gui",
-          modifiers: {
-            optional: ["any"],
-          },
-        },
-        to: [
-          {
-            key_code: "out",
-          },
-        ],
-        to_if_alone: [
-          {
-            key_code: "return_or_enter",
-          },
-        ],
-        type: "basic",
-      },
+      createBasicManipulator("left_gui", "left_gui", "Caps Lock -> Hyper Key", [
+        { key_code: "return_or_enter" },
+      ]),
     ],
   },
   {
     description: "deactivate touch",
     manipulators: [
-      {
-        description: "deactivate delete ",
-        from: {
-          key_code: "delete_or_backspace",
-          modifiers: {
-            optional: ["any"],
-          },
-        },
-        to_if_alone: [
-          {
-            key_code: "out",
-          },
-        ],
-        type: "basic",
-      },
-      {
-        description: "deactivate essacpe",
-        from: {
-          key_code: "escape",
-          modifiers: {
-            optional: ["any"],
-          },
-        },
-        to_if_alone: [
-          {
-            key_code: "out",
-          },
-        ],
-        type: "basic",
-      },
-      {
-        description: "deactivate essacpe",
-        from: {
-          key_code: "right_shift",
-          modifiers: {
-            optional: ["any"],
-          },
-        },
-        to_if_alone: [
-          {
-            key_code: "out",
-          },
-        ],
-        type: "basic",
-      },
-      {
-        description: "deactivate essacpe",
-        from: {
-          key_code: "left_shift",
-          modifiers: {
-            optional: ["any"],
-          },
-        },
-        to_if_alone: [
-          {
-            key_code: "out",
-          },
-        ],
-        type: "basic",
-      },
-    ],
+      "delete_or_backspace",
+      "escape",
+      "right_shift",
+      "left_shift",
+    ].map((key) =>
+      createBasicManipulator(key as KeyCode, "vk_none", `deactivate ${key}`, [
+        { key_code: key as KeyCode },
+      ])
+    ),
   },
   {
     description: "alt to backspace",
     manipulators: [
-      {
-        description: "alt to backspace",
-        type: "basic",
-        from: {
-          key_code: "left_option",
-          modifiers: {
-            optional: ["any"],
-          },
-        },
-        to: [
-          {
-            key_code: "delete_or_backspace",
-          },
-        ],
-      },
+      createBasicManipulator(
+        "left_option",
+        "delete_or_backspace",
+        "alt to backspace"
+      ),
     ],
   },
   ...createHyperSubLayers({
     spacebar: open(
       "raycast://extensions/stellate/mxstbr-commands/create-notion-todo"
     ),
-    // b = "B"rowse
     b: {
       y: open("https://youtube.com"),
       r: open("https://reddit.com"),
       c: open("https://claude.ai"),
       i: open("https://instagram.com"),
     },
-    // o = "Open" applications
     o: {
       1: app("Cursor"),
       a: app("Arc"),
@@ -432,106 +110,35 @@ const rules: KarabinerRules[] = [
       f: app("Figma"),
       v: app("DaVinci Resolve"),
     },
-
-    // s = "System"
     s: {
-      u: {
-        to: [
-          {
-            key_code: "volume_increment",
-          },
-        ],
-      },
-      j: {
-        to: [
-          {
-            key_code: "volume_decrement",
-          },
-        ],
-      },
-      i: {
-        to: [
-          {
-            key_code: "display_brightness_increment",
-          },
-        ],
-      },
-      k: {
-        to: [
-          {
-            key_code: "display_brightness_decrement",
-          },
-        ],
-      },
+      u: { to: [{ key_code: "volume_increment" }] },
+      j: { to: [{ key_code: "volume_decrement" }] },
+      i: { to: [{ key_code: "display_brightness_increment" }] },
+      k: { to: [{ key_code: "display_brightness_decrement" }] },
       l: {
-        to: [
-          {
-            key_code: "q",
-            modifiers: ["right_control", "right_command"],
-          },
-        ],
+        to: [{ key_code: "q", modifiers: ["right_control", "right_command"] }],
       },
-      p: {
-        to: [
-          {
-            key_code: "play_or_pause",
-          },
-        ],
-      },
-      semicolon: {
-        to: [
-          {
-            key_code: "fastforward",
-          },
-        ],
-      },
-      // "D"o not disturb toggle
+      p: { to: [{ key_code: "play_or_pause" }] },
+      semicolon: { to: [{ key_code: "fastforward" }] },
       d: open(
         `raycast://extensions/yakitrak/do-not-disturb/toggle?launchType=background`
       ),
-      // "T"heme
       t: open(`raycast://extensions/raycast/system/toggle-system-appearance`),
       c: open("raycast://extensions/raycast/system/open-camera"),
     },
-
-    // v = "moVe" which isn't "m" because we want it to be on the left hand
-    // so that hjkl work like they do in vim
     v: {
-      h: {
-        to: [{ key_code: "left_arrow" }],
-      },
-      j: {
-        to: [{ key_code: "down_arrow" }],
-      },
-      k: {
-        to: [{ key_code: "up_arrow" }],
-      },
-      l: {
-        to: [{ key_code: "right_arrow" }],
-      },
-      // Magicmove via homerow.app
-      d: {
-        to: [{ key_code: "page_down" }],
-      },
-      u: {
-        to: [{ key_code: "page_up" }],
-      },
+      h: { to: [{ key_code: "left_arrow" }] },
+      j: { to: [{ key_code: "down_arrow" }] },
+      k: { to: [{ key_code: "up_arrow" }] },
+      l: { to: [{ key_code: "right_arrow" }] },
+      d: { to: [{ key_code: "page_down" }] },
+      u: { to: [{ key_code: "page_up" }] },
     },
-
-    // c = Musi*c* which isn't "m" because we want it to be on the left hand
     c: {
-      p: {
-        to: [{ key_code: "play_or_pause" }],
-      },
-      n: {
-        to: [{ key_code: "fastforward" }],
-      },
-      b: {
-        to: [{ key_code: "rewind" }],
-      },
+      p: { to: [{ key_code: "play_or_pause" }] },
+      n: { to: [{ key_code: "fastforward" }] },
+      b: { to: [{ key_code: "rewind" }] },
     },
-
-    // r = "Raycast"
     r: {
       a: open("raycast://extensions/abielzulio/chatgpt/ask"),
       e: open(
@@ -560,17 +167,8 @@ fs.writeFileSync(
   "karabiner.json",
   JSON.stringify(
     {
-      global: {
-        show_in_menu_bar: false,
-      },
-      profiles: [
-        {
-          name: "Default",
-          complex_modifications: {
-            rules,
-          },
-        },
-      ],
+      global: { show_in_menu_bar: false },
+      profiles: [{ name: "Default", complex_modifications: { rules } }],
     },
     null,
     2
