@@ -15,7 +15,7 @@ default_roles:
   # - z
   # - gh
   # - qmk
-  # - shortcat
+  - shortcat
   # aldente
   # - scw
   - dir
