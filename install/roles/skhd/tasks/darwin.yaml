@@ -1,14 +1,18 @@
 ---
-   - name: Install skhd
-     homebrew:
-       name: koekeishiya/formulae/skhd
-       state: present
-       update_homebrew: yes
+- name: Install skhd
+  homebrew:
+    name: koekeishiya/formulae/skhd
+    state: present
+    update_homebrew: yes
 
-   - name: setup skhd
-     ignore_errors: yes
-     command: skhd --start-service
+- name: setup skhd
+  ignore_errors: true
+  command: skhd --start-service
 
-   - name: restart skhd
-     ignore_errors: yes
-     command: skhd --restart-service
+- name: restart skhd
+  ignore_errors: true
+  command: skhd --restart-service
+
+- name: restart skhd
+  ignore_errors: true
+  command: skhd --reload
