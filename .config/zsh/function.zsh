@@ -55,4 +55,3 @@ _package_json_completion() {
 
 # Define the completion for package.json
 compdef _package_json_completion jq -c '.' package.json
-

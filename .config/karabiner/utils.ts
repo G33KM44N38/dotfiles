@@ -198,11 +198,23 @@ export function app(name: string): LayerCommand {
   return open(`-a '${name}.app'`);
 }
 
+/**
+ * Creates a home row modifier key manipulation for Karabiner-Elements.
+ *
+ * This function generates a manipulator that allows a key to act as both its original
+ * character when pressed alone, and as a modifier key when held down or used in combination.
+ *
+ * @param {KeyCode} key_code - The original key code to be modified.
+ * @param {KeyCode} to_key_code - The key code to be sent when the original key is held or used in combination.
+ * @param {string} [description=""] - Optional description of the manipulation.
+ * @param {number} [simultaneous_threshold_milliseconds=2000] - The maximum time (in milliseconds) between key down events to be considered simultaneous.
+ * @returns {Manipulator} A Karabiner-Elements manipulator object.
+ */
 export function createHomeRowMod(
   key_code: KeyCode,
   to_key_code: KeyCode,
   description: string = "",
-  simultaneous_threshold_milliseconds: number = 2000
+  simultaneous_threshold_milliseconds: number = 100
 ): Manipulator {
   return {
     description: description || `${key_code} -> ${to_key_code}`,

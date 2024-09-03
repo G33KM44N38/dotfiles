@@ -68,6 +68,7 @@ const rules: KarabinerRules[] = [
       "escape",
       "right_shift",
       "left_shift",
+      "return_or_enter",
     ].map((key) =>
       createBasicManipulator(key as KeyCode, "vk_none", `deactivate ${key}`, [
         { key_code: key as KeyCode },
