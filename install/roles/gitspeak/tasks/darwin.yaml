@@ -1,0 +1,41 @@
+- name: Install GitSpeak (custom directory)
+  block:
+    - name: Ensure .dotfiles/bin directory exists
+      file:
+        path: "{{ ansible_env.HOME }}/.dotfiles/bin"
+        state: directory
+        mode: '0755'
+
+    - name: Clone GitSpeak repository
+      git:
+        repo: 'git@github.com:waxdred/GitSpeak.git'
+        dest: "{{ ansible_env.HOME }}/GitSpeak"
+        version: main
+
+    - name: Compile GitSpeak
+      command: make
+      args:
+        chdir: "{{ ansible_env.HOME }}/GitSpeak"
+      register: make_result
+      changed_when: make_result.rc == 0
+
+    - name: Install GitSpeak to custom directory
+      command: cp {{ ansible_env.HOME }}/GitSpeak/gitspeak {{ ansible_env.HOME }}/.dotfiles/bin/
+      args:
+        creates: "{{ ansible_env.HOME }}/.dotfiles/bin/gitspeak"
+
+    - name: Add custom GitSpeak directory to PATH in .zshrc
+      lineinfile:
+        path: "{{ ansible_env.HOME }}/.zshrc"
+        line: 'export PATH=$PATH:$HOME/.dotfiles/bin'
+        state: present
+
+    - name: Source .zshrc
+      shell: source ~/.zshrc
+      args:
+        executable: /bin/zsh
+
+    - name: Clean up GitSpeak repository
+      file:
+        path: "{{ ansible_env.HOME }}/GitSpeak"
+        state: absent

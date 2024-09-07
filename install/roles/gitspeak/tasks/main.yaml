@@ -1,0 +1,3 @@
+---
+- name: Run Gitspeak
+  ansible.builtin.import_tasks: darwin.yaml
