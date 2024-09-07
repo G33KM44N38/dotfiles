@@ -250,3 +250,25 @@ export function createBasicManipulator(
     ...(to_if_alone && { to_if_alone }),
   };
 }
+
+export function DisableKeyConfig(keyToDisable: KeyCode): KarabinerRules {
+  return {
+    description: `Disable ${keyToDisable} key`,
+    manipulators: [
+      {
+        type: "basic",
+        from: {
+          key_code: keyToDisable,
+          modifiers: {
+            optional: ["any"],
+          },
+        },
+        to: [
+          {
+            key_code: "out",
+          },
+        ],
+      },
+    ],
+  };
+}

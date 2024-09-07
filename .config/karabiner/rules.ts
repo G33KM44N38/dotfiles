@@ -6,6 +6,7 @@ import {
   open,
   createBasicManipulator,
   createHomeRowMod,
+  DisableKeyConfig,
 } from "./utils";
 
 const homeRowMods: Manipulator[] = [
@@ -25,23 +26,6 @@ const rules: KarabinerRules[] = [
     manipulators: homeRowMods,
   },
   {
-    description: "Caps Lock -> escape/control",
-    manipulators: [
-      createBasicManipulator(
-        "caps_lock",
-        "left_control",
-        "Caps Lock -> escape/control",
-        [{ key_code: "escape" }]
-      ),
-      createBasicManipulator(
-        "spacebar",
-        "left_control",
-        "spacebar -> spacebar/control",
-        [{ key_code: "spacebar" }]
-      ),
-    ],
-  },
-  {
     description: "Hyper Key (Right Command)",
     manipulators: [
       {
@@ -56,25 +40,34 @@ const rules: KarabinerRules[] = [
   {
     description: "cmd touch",
     manipulators: [
-      createBasicManipulator("left_gui", "left_gui", "Caps Lock -> Hyper Key", [
+      createBasicManipulator("left_gui", "left_gui", "", [
         { key_code: "return_or_enter" },
       ]),
     ],
   },
   {
-    description: "deactivate touch",
+    description: "right option to tab",
     manipulators: [
-      "delete_or_backspace",
-      "escape",
-      "right_shift",
-      "left_shift",
-      "return_or_enter",
-    ].map((key) =>
-      createBasicManipulator(key as KeyCode, "vk_none", `deactivate ${key}`, [
-        { key_code: key as KeyCode },
-      ])
-    ),
+      createBasicManipulator("right_option", "right_option", "", [
+        { key_code: "tab" },
+      ]),
+    ],
   },
+  {
+    description: "left control to escape",
+    manipulators: [
+      createBasicManipulator("left_control", "left_control", "", [
+        { key_code: "escape" },
+      ]),
+    ],
+  },
+  DisableKeyConfig("tab"),
+  DisableKeyConfig("caps_lock"),
+  DisableKeyConfig("delete_or_backspace"),
+  DisableKeyConfig("escape"),
+  DisableKeyConfig("right_shift"),
+  DisableKeyConfig("left_shift"),
+  DisableKeyConfig("return_or_enter"),
   {
     description: "alt to backspace",
     manipulators: [
