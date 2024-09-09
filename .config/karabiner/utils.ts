@@ -272,3 +272,67 @@ export function DisableKeyConfig(keyToDisable: KeyCode): KarabinerRules {
     ],
   };
 }
+
+/**
+ * Create a layer triggered by holding a specified key
+ */
+export function createKeyLayer(
+  triggerKey: KeyCode,
+  commands: HyperKeySublayer,
+  tapBehavior: KeyCode | To[],
+  layerName: string = `${triggerKey}_layer`
+): KarabinerRules {
+  return {
+    description: `Key Layer (${layerName})`,
+    manipulators: [
+      {
+        description: `Toggle ${layerName}`,
+        type: "basic",
+        from: {
+          key_code: triggerKey,
+          modifiers: {
+            optional: ["any"],
+          },
+        },
+        to_if_alone: Array.isArray(tapBehavior)
+          ? tapBehavior
+          : [{ key_code: tapBehavior }],
+        to_after_key_up: [
+          {
+            set_variable: {
+              name: layerName,
+              value: 0,
+            },
+          },
+        ],
+        to: [
+          {
+            set_variable: {
+              name: layerName,
+              value: 1,
+            },
+          },
+        ],
+      },
+      ...(Object.keys(commands) as (keyof typeof commands)[]).map(
+        (command_key): Manipulator => ({
+          ...commands[command_key],
+          type: "basic",
+          from: {
+            key_code: command_key,
+            modifiers: {
+              optional: ["any"],
+            },
+          },
+          conditions: [
+            {
+              type: "variable_if",
+              name: layerName,
+              value: 1,
+            },
+          ],
+        })
+      ),
+    ],
+  };
+}
