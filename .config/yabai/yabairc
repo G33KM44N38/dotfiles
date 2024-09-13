@@ -34,7 +34,7 @@ yabai -m rule --add app="^Numi$" manage=off
 # Send apps to specific spaces
 yabai -m rule --add app=Arc space=1
 yabai -m rule --add app=Safari space=1
-# yabai -m rule --add app="^Arc$" title="" manage=off
+yabai -m rule --add app="^Arc$" title="" manage=off
 yabai -m rule --add app=iTerm space=2
 yabai -m rule --add app=Cursor space=2
 yabai -m rule --add app=Simulator space=2
@@ -48,7 +48,7 @@ yabai -m rule --add app=Beeper space=5
 yabai -m rule --add app=Discord space=5
 yabai -m rule --add app=Mail space=5
 yabai -m rule --add app=Messages space=5
-yabai -m rule --add app=Marta space=6
+yabai -m rule --add app=OBS space=6
 yabai -m rule --add app=Music space=8
 yabai -m rule --add app=Figma space=7
 yabai -m rule --add app=Podcasts space=8
