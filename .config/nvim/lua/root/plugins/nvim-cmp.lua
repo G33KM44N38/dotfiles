@@ -58,12 +58,12 @@ return {
 				),
 			}),
 			sources = cmp.config.sources({
-				-- { name = "copilot" },
+				{ name = "supermaven" },
 				{ name = "ultisnips", group_index = 1 },
 				{ name = "luasnip",   group_index = 1 }, -- snippets
 				{ name = "nvim_lsp" },
-				{ name = "buffer" },   -- text within current buffer
-				{ name = "path" },     -- file system paths
+				{ name = "buffer" },     -- text within current buffer
+				{ name = "path" },       -- file system paths
 			}),
 			-- configure lspkind for vs-code like pictograms in completion menu
 			formatting = {
