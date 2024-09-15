@@ -1,7 +1,0 @@
-- name: NODEMON | Install nodemon using Homebrew
-  homebrew:
-    name: nodemon
-    state: present
-    update_homebrew: yes
-  register: nodemon_install_result
-  changed_when: nodemon_install_result.changed
