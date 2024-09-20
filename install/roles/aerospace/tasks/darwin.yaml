@@ -1,0 +1,5 @@
+- name: AEROSPACE | Install aerospace
+  homebrew_cask:
+    name: nikitabobko/tap/aerospace
+    state: present
+    update_homebrew: yes
