@@ -31,7 +31,7 @@ return {
 			snippet = { -- configure how nvim-cmp interacts with snippet engine
 				expand = function(args)
 					luasnip.lsp_expand(args.body)
-					-- vim.fn["UltiSnips#Anon"](args.body)
+					vim.fn["UltiSnips#Anon"](args.body)
 				end,
 			},
 			mapping = cmp.mapping.preset.insert({
@@ -39,8 +39,8 @@ return {
 				["<C-j>"] = cmp.mapping.select_next_item(), -- next suggestion
 				["<C-b>"] = cmp.mapping.scroll_docs(-4),
 				["<C-f>"] = cmp.mapping.scroll_docs(4),
-				["<C-e>"] = cmp.mapping.abort(), -- close completion window
-				["<C-y>"] = {},  --disable for copilot
+				["<C-y>"] = cmp.config.disable,
+				["<C-e>"] = cmp.mapping.abort(),                -- close completion window
 				["<CR>"] = cmp.mapping.confirm({ select = true }),
 				["<Tab>"] = cmp.mapping(
 					function(fallback)
@@ -58,7 +58,7 @@ return {
 				),
 			}),
 			sources = cmp.config.sources({
-				{ name = "supermaven" },
+				-- { name = "supermaven" },
 				{ name = "ultisnips", group_index = 1 },
 				{ name = "luasnip",   group_index = 1 }, -- snippets
 				{ name = "nvim_lsp" },
