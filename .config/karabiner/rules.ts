@@ -20,22 +20,21 @@ const hyperSubLayers = createHyperSubLayers({
     c: open("https://claude.ai"),
     i: open("https://instagram.com"),
     d: open("http://localhost:3000"),
+    t: open("https://www.twitch.tv/"),
   },
   o: {
-    1: app("Cursor"),
     a: app("Arc"),
-    d: app("Discord"),
-    c: app("Notion Calendar"),
-    u: app("Calendar"),
-    n: app("Notion"),
-    t: app("iTerm"),
     b: app("Beeper"),
-    i: app("Messages"),
-    p: app("Music"),
-    m: app("Mail"),
-    s: app("Safari"),
+    c: app("Calendar"),
+    d: app("DaVinci Resolve"),
     f: app("Figma"),
-    v: app("DaVinci Resolve"),
+    i: app("Messages"),
+    m: app("Mail"),
+    n: app("Notion"),
+    p: app("Music"),
+    s: app("OBS"),
+    t: app("iTerm"),
+    u: app("Cursor"),
   },
   s: {
     u: { to: [{ key_code: "volume_increment" }] },
@@ -76,10 +75,10 @@ const hyperSubLayers = createHyperSubLayers({
       "raycast://extensions/VladCuciureanu/toothpick/manage-bluetooth-connections"
     ),
     o: open("raycast://extensions/benvp/audio-device/set-output-device"),
-    1: open(
+    j: open(
       "raycast://extensions/VladCuciureanu/toothpick/connect-favorite-device-1"
     ),
-    2: open(
+    k: open(
       "raycast://extensions/VladCuciureanu/toothpick/connect-favorite-device-2"
     ),
   },
@@ -118,13 +117,27 @@ const rightGuiLayer = createKeyLayer(
   "right_command",
   {
     //left hand
+    a: { to: [{ key_code: "backslash", modifiers: ["left_shift"] }] },
     b: { to: [{ key_code: "open_bracket", modifiers: ["left_shift"] }] },
     v: { to: [{ key_code: "open_bracket" }] },
-    g: { to: [{ key_code: "9", modifiers: ["left_shift"] }] }, // to have the closing parenthesis
+    g: { to: [{ key_code: "9", modifiers: ["left_shift"] }] },
+    f: {
+      to: [{ key_code: "grave_accent_and_tilde", modifiers: ["left_shift"] }],
+    },
+    d: {
+      to: [{ key_code: "slash" }],
+    },
+    s: {
+      to: [{ key_code: "quote" }],
+    },
+
     //right hand
     m: { to: [{ key_code: "close_bracket" }] },
     n: { to: [{ key_code: "close_bracket", modifiers: ["left_shift"] }] },
-    h: { to: [{ key_code: "0", modifiers: ["left_shift"] }] }, // to have the closing parenthesis
+    h: { to: [{ key_code: "0", modifiers: ["left_shift"] }] },
+    j: { to: [{ key_code: "hyphen", modifiers: ["left_shift"] }] },
+    k: { to: [{ key_code: "backslash" }] },
+    l: { to: [{ key_code: "grave_accent_and_tilde" }] },
   },
   "spacebar"
 );
@@ -167,6 +180,7 @@ const rules: KarabinerRules[] = [
       ]),
     ],
   },
+  DisableKeyConfig("grave_accent_and_tilde"),
   DisableKeyConfig("tab"),
   DisableKeyConfig("caps_lock"),
   DisableKeyConfig("delete_or_backspace"),
@@ -174,6 +188,19 @@ const rules: KarabinerRules[] = [
   DisableKeyConfig("right_shift"),
   DisableKeyConfig("left_shift"),
   DisableKeyConfig("return_or_enter"),
+  DisableKeyConfig("open_bracket"),
+  DisableKeyConfig("close_bracket"),
+  DisableKeyConfig("0"),
+  DisableKeyConfig("1"),
+  DisableKeyConfig("2"),
+  DisableKeyConfig("3"),
+  DisableKeyConfig("4"),
+  DisableKeyConfig("5"),
+  DisableKeyConfig("6"),
+  DisableKeyConfig("7"),
+  DisableKeyConfig("8"),
+  DisableKeyConfig("9"),
+  DisableKeyConfig("hyphen"),
   {
     description: "alt to backspace",
     manipulators: [

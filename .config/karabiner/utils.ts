@@ -1,4 +1,10 @@
-import { To, KeyCode, Manipulator, KarabinerRules } from "./types";
+import {
+  To,
+  KeyCode,
+  Manipulator,
+  KarabinerRules,
+  DeviceCondition,
+} from "./types";
 
 /**
  * Custom way to describe a command in a layer
@@ -58,6 +64,7 @@ export function createHyperSubLayer(
       // (e.g. Hyper + O > M even though Hyper + M is also a sublayer)
       // basically, only trigger a sublayer if no other sublayer is active
       conditions: [
+        BuiltinKeyboardCondition,
         ...allSubLayerVariables
           .filter(
             (subLayerVariable) => subLayerVariable !== subLayerVariableName
@@ -87,6 +94,7 @@ export function createHyperSubLayer(
         },
         // Only trigger this command if the variable is 1 (i.e., if Hyper + sublayer is held)
         conditions: [
+          BuiltinKeyboardCondition,
           {
             type: "variable_if",
             name: subLayerVariableName,
@@ -125,6 +133,7 @@ export function createHyperSubLayers(subLayers: {
                 },
               },
               conditions: [
+                BuiltinKeyboardCondition,
                 {
                   type: "variable_if",
                   name: "hyper",
@@ -198,37 +207,29 @@ export function app(name: string): LayerCommand {
   return open(`-a '${name}.app'`);
 }
 
-/**
- * Creates a home row modifier key manipulation for Karabiner-Elements.
- *
- * This function generates a manipulator that allows a key to act as both its original
- * character when pressed alone, and as a modifier key when held down or used in combination.
- *
- * @param {KeyCode} key_code - The original key code to be modified.
- * @param {KeyCode} to_key_code - The key code to be sent when the original key is held or used in combination.
- * @param {string} [description=""] - Optional description of the manipulation.
- * @param {number} [simultaneous_threshold_milliseconds=2000] - The maximum time (in milliseconds) between key down events to be considered simultaneous.
- * @returns {Manipulator} A Karabiner-Elements manipulator object.
- */
-export function createHomeRowMod(
-  key_code: KeyCode,
-  to_key_code: KeyCode,
-  description: string = "",
-  simultaneous_threshold_milliseconds: number = 100
-): Manipulator {
+export function createHomeRowMod(key_code: KeyCode, mod: KeyCode): Manipulator {
   return {
-    description: description || `${key_code} -> ${to_key_code}`,
+    description: `${key_code} -> ${mod}`,
     type: "basic",
     from: {
       key_code,
       modifiers: { optional: ["any"] },
     },
-    to: [{ key_code: to_key_code }],
+    to: [{ key_code: mod }],
     to_if_alone: [{ key_code }],
-    conditions: [{ type: "variable_if", name: "hyper", value: 0 }],
+    to_if_held_down: [
+      {
+        key_code: mod,
+      },
+    ],
+    conditions: [
+      { type: "variable_if", name: "hyper", value: 0 },
+      BuiltinKeyboardCondition,
+    ],
     parameters: {
-      "basic.simultaneous_threshold_milliseconds":
-        simultaneous_threshold_milliseconds,
+      "basic.to_if_held_down_threshold_milliseconds": 250,
+      "basic.to_if_alone_timeout_milliseconds": 250,
+      "basic.to_delayed_action_delay_milliseconds": 100,
     },
   };
 }
@@ -242,6 +243,7 @@ export function createBasicManipulator(
   return {
     description: description || `${from_key} -> ${to_key}`,
     type: "basic",
+    conditions: [BuiltinKeyboardCondition],
     from: {
       key_code: from_key,
       modifiers: { optional: ["any"] },
@@ -268,6 +270,7 @@ export function DisableKeyConfig(keyToDisable: KeyCode): KarabinerRules {
             key_code: "out",
           },
         ],
+        conditions: [BuiltinKeyboardCondition],
       },
     ],
   };
@@ -286,6 +289,7 @@ export function createKeyLayer(
     description: `Key Layer (${layerName})`,
     manipulators: [
       {
+        conditions: [BuiltinKeyboardCondition],
         description: `Toggle ${layerName}`,
         type: "basic",
         from: {
@@ -330,9 +334,20 @@ export function createKeyLayer(
               name: layerName,
               value: 1,
             },
+            BuiltinKeyboardCondition,
           ],
         })
       ),
     ],
   };
 }
+
+const BuiltinKeyboardCondition: DeviceCondition = {
+  type: "device_if",
+  identifiers: [
+    {
+      vendor_id: 1452,
+    },
+  ],
+  description: "MacBook Pro built-in keyboard",
+};

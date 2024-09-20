@@ -7,7 +7,9 @@ export interface Manipulator {
   description?: string;
   type: "basic";
   from: From;
+
   to?: To[];
+  to_if_held_down?: To[];
   to_after_key_up?: To[];
   to_if_alone?: To[];
   parameters?: Parameters;
@@ -16,9 +18,12 @@ export interface Manipulator {
 
 export interface Parameters {
   "basic.simultaneous_threshold_milliseconds"?: number;
+  "basic.to_if_alone_timeout_milliseconds"?: number;
+  "basic.to_if_held_down_threshold_milliseconds"?: number;
+  "basic.to_delayed_action_delay_milliseconds"?: number;
 }
 
-type Conditions =
+export type Conditions =
   | FrontMostApplicationCondition
   | DeviceCondition
   | KeybaordTypeCondition
@@ -33,17 +38,18 @@ type FrontMostApplicationCondition = {
   description?: string;
 };
 
-type DeviceCondition = {
+export type DeviceCondition = {
   type:
     | "device_if"
     | "device_unless"
     | "device_exists_if"
     | "device_exists_unless";
-  identifiers: Identifiers;
+  identifiers: Identifiers[];
   description?: string;
 };
 
-interface Identifiers {
+export interface Identifiers {
+  description?: string;
   vendor_id?: number;
   product_id?: number;
   location_id?: number;
@@ -106,6 +112,8 @@ export interface Modifiers {
 }
 
 export interface To {
+  lazy?: boolean;
+  halt?: boolean;
   key_code?: KeyCode;
   modifiers?: string[];
   shell_command?: string;

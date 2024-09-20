@@ -8,6 +8,1085 @@
       "complex_modifications": {
         "rules": [
           {
+            "description": "Key Layer (left_gui_layer)",
+            "manipulators": [
+              {
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ],
+                "description": "Toggle left_gui_layer",
+                "type": "basic",
+                "from": {
+                  "key_code": "left_gui",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to_if_alone": [
+                  {
+                    "key_code": "return_or_enter"
+                  }
+                ],
+                "to_after_key_up": [
+                  {
+                    "set_variable": {
+                      "name": "left_gui_layer",
+                      "value": 0
+                    }
+                  }
+                ],
+                "to": [
+                  {
+                    "set_variable": {
+                      "name": "left_gui_layer",
+                      "value": 1
+                    }
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "1"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "q",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "left_gui_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "2"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "w",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "left_gui_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "3"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "e",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "left_gui_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "4"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "r",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "left_gui_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "5"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "t",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "left_gui_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "6"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "y",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "left_gui_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "7"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "u",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "left_gui_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "8"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "i",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "left_gui_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "9"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "o",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "left_gui_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "0"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "p",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "left_gui_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "left_arrow"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "h",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "left_gui_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "down_arrow"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "j",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "left_gui_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "up_arrow"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "k",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "left_gui_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "right_arrow"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "l",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "left_gui_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "keypad_hyphen"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "s",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "left_gui_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "keypad_plus"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "d",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "left_gui_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "keypad_equal_sign"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "f",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "left_gui_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "description": "Key Layer (right_command_layer)",
+            "manipulators": [
+              {
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ],
+                "description": "Toggle right_command_layer",
+                "type": "basic",
+                "from": {
+                  "key_code": "right_command",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to_if_alone": [
+                  {
+                    "key_code": "spacebar"
+                  }
+                ],
+                "to_after_key_up": [
+                  {
+                    "set_variable": {
+                      "name": "right_command_layer",
+                      "value": 0
+                    }
+                  }
+                ],
+                "to": [
+                  {
+                    "set_variable": {
+                      "name": "right_command_layer",
+                      "value": 1
+                    }
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "backslash",
+                    "modifiers": [
+                      "left_shift"
+                    ]
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "a",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "right_command_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "open_bracket",
+                    "modifiers": [
+                      "left_shift"
+                    ]
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "b",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "right_command_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "open_bracket"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "v",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "right_command_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "9",
+                    "modifiers": [
+                      "left_shift"
+                    ]
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "g",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "right_command_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "grave_accent_and_tilde",
+                    "modifiers": [
+                      "left_shift"
+                    ]
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "f",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "right_command_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "slash"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "d",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "right_command_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "quote"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "s",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "right_command_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "close_bracket"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "m",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "right_command_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "close_bracket",
+                    "modifiers": [
+                      "left_shift"
+                    ]
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "n",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "right_command_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "0",
+                    "modifiers": [
+                      "left_shift"
+                    ]
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "h",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "right_command_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "hyphen",
+                    "modifiers": [
+                      "left_shift"
+                    ]
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "j",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "right_command_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "backslash"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "k",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "right_command_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "key_code": "grave_accent_and_tilde"
+                  }
+                ],
+                "type": "basic",
+                "from": {
+                  "key_code": "l",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "variable_if",
+                    "name": "right_command_layer",
+                    "value": 1
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              }
+            ]
+          },
+          {
             "description": "Homerow mods",
             "manipulators": [
               {
@@ -31,15 +1110,31 @@
                     "key_code": "a"
                   }
                 ],
+                "to_if_held_down": [
+                  {
+                    "key_code": "left_gui"
+                  }
+                ],
                 "conditions": [
                   {
                     "type": "variable_if",
                     "name": "hyper",
                     "value": 0
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
                   }
                 ],
                 "parameters": {
-                  "basic.simultaneous_threshold_milliseconds": 100
+                  "basic.to_if_held_down_threshold_milliseconds": 250,
+                  "basic.to_if_alone_timeout_milliseconds": 250,
+                  "basic.to_delayed_action_delay_milliseconds": 100
                 }
               },
               {
@@ -63,15 +1158,31 @@
                     "key_code": "s"
                   }
                 ],
+                "to_if_held_down": [
+                  {
+                    "key_code": "left_option"
+                  }
+                ],
                 "conditions": [
                   {
                     "type": "variable_if",
                     "name": "hyper",
                     "value": 0
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
                   }
                 ],
                 "parameters": {
-                  "basic.simultaneous_threshold_milliseconds": 100
+                  "basic.to_if_held_down_threshold_milliseconds": 250,
+                  "basic.to_if_alone_timeout_milliseconds": 250,
+                  "basic.to_delayed_action_delay_milliseconds": 100
                 }
               },
               {
@@ -95,15 +1206,31 @@
                     "key_code": "d"
                   }
                 ],
+                "to_if_held_down": [
+                  {
+                    "key_code": "left_shift"
+                  }
+                ],
                 "conditions": [
                   {
                     "type": "variable_if",
                     "name": "hyper",
                     "value": 0
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
                   }
                 ],
                 "parameters": {
-                  "basic.simultaneous_threshold_milliseconds": 100
+                  "basic.to_if_held_down_threshold_milliseconds": 250,
+                  "basic.to_if_alone_timeout_milliseconds": 250,
+                  "basic.to_delayed_action_delay_milliseconds": 100
                 }
               },
               {
@@ -127,15 +1254,31 @@
                     "key_code": "f"
                   }
                 ],
+                "to_if_held_down": [
+                  {
+                    "key_code": "left_control"
+                  }
+                ],
                 "conditions": [
                   {
                     "type": "variable_if",
                     "name": "hyper",
                     "value": 0
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
                   }
                 ],
                 "parameters": {
-                  "basic.simultaneous_threshold_milliseconds": 100
+                  "basic.to_if_held_down_threshold_milliseconds": 250,
+                  "basic.to_if_alone_timeout_milliseconds": 250,
+                  "basic.to_delayed_action_delay_milliseconds": 100
                 }
               },
               {
@@ -159,15 +1302,31 @@
                     "key_code": "j"
                   }
                 ],
+                "to_if_held_down": [
+                  {
+                    "key_code": "right_control"
+                  }
+                ],
                 "conditions": [
                   {
                     "type": "variable_if",
                     "name": "hyper",
                     "value": 0
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
                   }
                 ],
                 "parameters": {
-                  "basic.simultaneous_threshold_milliseconds": 100
+                  "basic.to_if_held_down_threshold_milliseconds": 250,
+                  "basic.to_if_alone_timeout_milliseconds": 250,
+                  "basic.to_delayed_action_delay_milliseconds": 100
                 }
               },
               {
@@ -191,15 +1350,31 @@
                     "key_code": "k"
                   }
                 ],
+                "to_if_held_down": [
+                  {
+                    "key_code": "right_shift"
+                  }
+                ],
                 "conditions": [
                   {
                     "type": "variable_if",
                     "name": "hyper",
                     "value": 0
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
                   }
                 ],
                 "parameters": {
-                  "basic.simultaneous_threshold_milliseconds": 100
+                  "basic.to_if_held_down_threshold_milliseconds": 250,
+                  "basic.to_if_alone_timeout_milliseconds": 250,
+                  "basic.to_delayed_action_delay_milliseconds": 100
                 }
               },
               {
@@ -223,15 +1398,31 @@
                     "key_code": "l"
                   }
                 ],
+                "to_if_held_down": [
+                  {
+                    "key_code": "right_option"
+                  }
+                ],
                 "conditions": [
                   {
                     "type": "variable_if",
                     "name": "hyper",
                     "value": 0
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
                   }
                 ],
                 "parameters": {
-                  "basic.simultaneous_threshold_milliseconds": 100
+                  "basic.to_if_held_down_threshold_milliseconds": 250,
+                  "basic.to_if_alone_timeout_milliseconds": 250,
+                  "basic.to_delayed_action_delay_milliseconds": 100
                 }
               },
               {
@@ -255,98 +1446,32 @@
                     "key_code": "semicolon"
                   }
                 ],
+                "to_if_held_down": [
+                  {
+                    "key_code": "right_gui"
+                  }
+                ],
                 "conditions": [
                   {
                     "type": "variable_if",
                     "name": "hyper",
                     "value": 0
+                  },
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
                   }
                 ],
                 "parameters": {
-                  "basic.simultaneous_threshold_milliseconds": 100
+                  "basic.to_if_held_down_threshold_milliseconds": 250,
+                  "basic.to_if_alone_timeout_milliseconds": 250,
+                  "basic.to_delayed_action_delay_milliseconds": 100
                 }
-              }
-            ]
-          },
-          {
-            "description": "Caps Lock -> escape/control",
-            "manipulators": [
-              {
-                "description": "Caps Lock -> escape/control",
-                "type": "basic",
-                "from": {
-                  "key_code": "caps_lock",
-                  "modifiers": {
-                    "optional": [
-                      "any"
-                    ]
-                  }
-                },
-                "to": [
-                  {
-                    "key_code": "left_control"
-                  }
-                ],
-                "to_if_alone": [
-                  {
-                    "key_code": "escape"
-                  }
-                ]
-              },
-              {
-                "description": "spacebar -> spacebar/control",
-                "type": "basic",
-                "from": {
-                  "key_code": "spacebar",
-                  "modifiers": {
-                    "optional": [
-                      "any"
-                    ]
-                  }
-                },
-                "to": [
-                  {
-                    "key_code": "left_control"
-                  }
-                ],
-                "to_if_alone": [
-                  {
-                    "key_code": "spacebar"
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "description": "Hyper Key (Right Command)",
-            "manipulators": [
-              {
-                "description": "Right Command -> Hyper Key",
-                "type": "basic",
-                "from": {
-                  "key_code": "right_command",
-                  "modifiers": {
-                    "optional": [
-                      "any"
-                    ]
-                  }
-                },
-                "to": [
-                  {
-                    "set_variable": {
-                      "name": "hyper",
-                      "value": 1
-                    }
-                  }
-                ],
-                "to_after_key_up": [
-                  {
-                    "set_variable": {
-                      "name": "hyper",
-                      "value": 0
-                    }
-                  }
-                ]
               }
             ]
           },
@@ -354,8 +1479,19 @@
             "description": "cmd touch",
             "manipulators": [
               {
-                "description": "Caps Lock -> Hyper Key",
+                "description": "left_gui -> left_gui",
                 "type": "basic",
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ],
                 "from": {
                   "key_code": "left_gui",
                   "modifiers": {
@@ -378,10 +1514,176 @@
             ]
           },
           {
-            "description": "deactivate touch",
+            "description": "right option to tab",
             "manipulators": [
               {
-                "description": "deactivate delete_or_backspace",
+                "description": "right_option -> tab",
+                "type": "basic",
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ],
+                "from": {
+                  "key_code": "right_option",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "key_code": "tab"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "description": "left control to escape",
+            "manipulators": [
+              {
+                "description": "left_control -> left_control",
+                "type": "basic",
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ],
+                "from": {
+                  "key_code": "left_control",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "key_code": "left_control"
+                  }
+                ],
+                "to_if_alone": [
+                  {
+                    "key_code": "escape"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "description": "Disable grave_accent_and_tilde key",
+            "manipulators": [
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "grave_accent_and_tilde",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "key_code": "out"
+                  }
+                ],
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "description": "Disable tab key",
+            "manipulators": [
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "tab",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "key_code": "out"
+                  }
+                ],
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "description": "Disable caps_lock key",
+            "manipulators": [
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "caps_lock",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "key_code": "out"
+                  }
+                ],
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "description": "Disable delete_or_backspace key",
+            "manipulators": [
+              {
                 "type": "basic",
                 "from": {
                   "key_code": "delete_or_backspace",
@@ -393,17 +1695,27 @@
                 },
                 "to": [
                   {
-                    "key_code": "vk_none"
+                    "key_code": "out"
                   }
                 ],
-                "to_if_alone": [
+                "conditions": [
                   {
-                    "key_code": "delete_or_backspace"
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
                   }
                 ]
-              },
+              }
+            ]
+          },
+          {
+            "description": "Disable escape key",
+            "manipulators": [
               {
-                "description": "deactivate escape",
                 "type": "basic",
                 "from": {
                   "key_code": "escape",
@@ -415,17 +1727,27 @@
                 },
                 "to": [
                   {
-                    "key_code": "vk_none"
+                    "key_code": "out"
                   }
                 ],
-                "to_if_alone": [
+                "conditions": [
                   {
-                    "key_code": "escape"
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
                   }
                 ]
-              },
+              }
+            ]
+          },
+          {
+            "description": "Disable right_shift key",
+            "manipulators": [
               {
-                "description": "deactivate right_shift",
                 "type": "basic",
                 "from": {
                   "key_code": "right_shift",
@@ -437,17 +1759,27 @@
                 },
                 "to": [
                   {
-                    "key_code": "vk_none"
+                    "key_code": "out"
                   }
                 ],
-                "to_if_alone": [
+                "conditions": [
                   {
-                    "key_code": "right_shift"
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
                   }
                 ]
-              },
+              }
+            ]
+          },
+          {
+            "description": "Disable left_shift key",
+            "manipulators": [
               {
-                "description": "deactivate left_shift",
                 "type": "basic",
                 "from": {
                   "key_code": "left_shift",
@@ -459,17 +1791,27 @@
                 },
                 "to": [
                   {
-                    "key_code": "vk_none"
+                    "key_code": "out"
                   }
                 ],
-                "to_if_alone": [
+                "conditions": [
                   {
-                    "key_code": "left_shift"
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
                   }
                 ]
-              },
+              }
+            ]
+          },
+          {
+            "description": "Disable return_or_enter key",
+            "manipulators": [
               {
-                "description": "deactivate return_or_enter",
                 "type": "basic",
                 "from": {
                   "key_code": "return_or_enter",
@@ -481,12 +1823,434 @@
                 },
                 "to": [
                   {
-                    "key_code": "vk_none"
+                    "key_code": "out"
                   }
                 ],
-                "to_if_alone": [
+                "conditions": [
                   {
-                    "key_code": "return_or_enter"
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "description": "Disable open_bracket key",
+            "manipulators": [
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "open_bracket",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "key_code": "out"
+                  }
+                ],
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "description": "Disable close_bracket key",
+            "manipulators": [
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "close_bracket",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "key_code": "out"
+                  }
+                ],
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "description": "Disable 0 key",
+            "manipulators": [
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "0",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "key_code": "out"
+                  }
+                ],
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "description": "Disable 1 key",
+            "manipulators": [
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "1",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "key_code": "out"
+                  }
+                ],
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "description": "Disable 2 key",
+            "manipulators": [
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "2",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "key_code": "out"
+                  }
+                ],
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "description": "Disable 3 key",
+            "manipulators": [
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "3",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "key_code": "out"
+                  }
+                ],
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "description": "Disable 4 key",
+            "manipulators": [
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "4",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "key_code": "out"
+                  }
+                ],
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "description": "Disable 5 key",
+            "manipulators": [
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "5",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "key_code": "out"
+                  }
+                ],
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "description": "Disable 6 key",
+            "manipulators": [
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "6",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "key_code": "out"
+                  }
+                ],
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "description": "Disable 7 key",
+            "manipulators": [
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "7",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "key_code": "out"
+                  }
+                ],
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "description": "Disable 8 key",
+            "manipulators": [
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "8",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "key_code": "out"
+                  }
+                ],
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "description": "Disable 9 key",
+            "manipulators": [
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "9",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "key_code": "out"
+                  }
+                ],
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "description": "Disable hyphen key",
+            "manipulators": [
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "hyphen",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "key_code": "out"
+                  }
+                ],
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
                   }
                 ]
               }
@@ -498,6 +2262,17 @@
               {
                 "description": "alt to backspace",
                 "type": "basic",
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ],
                 "from": {
                   "key_code": "left_option",
                   "modifiers": {
@@ -509,6 +2284,44 @@
                 "to": [
                   {
                     "key_code": "delete_or_backspace"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "description": "Hyper Key (spacebar)",
+            "manipulators": [
+              {
+                "description": "spacebar -> Hyper Key",
+                "type": "basic",
+                "from": {
+                  "key_code": "spacebar",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "set_variable": {
+                      "name": "hyper",
+                      "value": 1
+                    }
+                  }
+                ],
+                "to_if_alone": [
+                  {
+                    "key_code": "spacebar"
+                  }
+                ],
+                "to_after_key_up": [
+                  {
+                    "set_variable": {
+                      "name": "hyper",
+                      "value": 0
+                    }
                   }
                 ]
               }
@@ -534,6 +2347,15 @@
                   }
                 },
                 "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper",
@@ -610,6 +2432,15 @@
                 ],
                 "conditions": [
                   {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_spacebar",
                     "value": 0
@@ -664,6 +2495,15 @@
                 },
                 "conditions": [
                   {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_b",
                     "value": 1
@@ -687,6 +2527,15 @@
                   }
                 },
                 "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_b",
@@ -712,6 +2561,15 @@
                 },
                 "conditions": [
                   {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_b",
                     "value": 1
@@ -735,6 +2593,81 @@
                   }
                 },
                 "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
+                    "type": "variable_if",
+                    "name": "hyper_sublayer_b",
+                    "value": 1
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "shell_command": "open http://localhost:3000"
+                  }
+                ],
+                "description": "Open http://localhost:3000",
+                "type": "basic",
+                "from": {
+                  "key_code": "d",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
+                    "type": "variable_if",
+                    "name": "hyper_sublayer_b",
+                    "value": 1
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "shell_command": "open https://www.twitch.tv/"
+                  }
+                ],
+                "description": "Open https://www.twitch.tv/",
+                "type": "basic",
+                "from": {
+                  "key_code": "t",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_b",
@@ -776,6 +2709,15 @@
                 ],
                 "conditions": [
                   {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_spacebar",
                     "value": 0
@@ -815,30 +2757,6 @@
               {
                 "to": [
                   {
-                    "shell_command": "open -a 'Cursor.app'"
-                  }
-                ],
-                "description": "Open -a 'Cursor.app'",
-                "type": "basic",
-                "from": {
-                  "key_code": "1",
-                  "modifiers": {
-                    "optional": [
-                      "any"
-                    ]
-                  }
-                },
-                "conditions": [
-                  {
-                    "type": "variable_if",
-                    "name": "hyper_sublayer_o",
-                    "value": 1
-                  }
-                ]
-              },
-              {
-                "to": [
-                  {
                     "shell_command": "open -a 'Arc.app'"
                   }
                 ],
@@ -854,125 +2772,14 @@
                 },
                 "conditions": [
                   {
-                    "type": "variable_if",
-                    "name": "hyper_sublayer_o",
-                    "value": 1
-                  }
-                ]
-              },
-              {
-                "to": [
-                  {
-                    "shell_command": "open -a 'Discord.app'"
-                  }
-                ],
-                "description": "Open -a 'Discord.app'",
-                "type": "basic",
-                "from": {
-                  "key_code": "d",
-                  "modifiers": {
-                    "optional": [
-                      "any"
-                    ]
-                  }
-                },
-                "conditions": [
-                  {
-                    "type": "variable_if",
-                    "name": "hyper_sublayer_o",
-                    "value": 1
-                  }
-                ]
-              },
-              {
-                "to": [
-                  {
-                    "shell_command": "open -a 'Notion Calendar.app'"
-                  }
-                ],
-                "description": "Open -a 'Notion Calendar.app'",
-                "type": "basic",
-                "from": {
-                  "key_code": "c",
-                  "modifiers": {
-                    "optional": [
-                      "any"
-                    ]
-                  }
-                },
-                "conditions": [
-                  {
-                    "type": "variable_if",
-                    "name": "hyper_sublayer_o",
-                    "value": 1
-                  }
-                ]
-              },
-              {
-                "to": [
-                  {
-                    "shell_command": "open -a 'Calendar.app'"
-                  }
-                ],
-                "description": "Open -a 'Calendar.app'",
-                "type": "basic",
-                "from": {
-                  "key_code": "u",
-                  "modifiers": {
-                    "optional": [
-                      "any"
-                    ]
-                  }
-                },
-                "conditions": [
-                  {
-                    "type": "variable_if",
-                    "name": "hyper_sublayer_o",
-                    "value": 1
-                  }
-                ]
-              },
-              {
-                "to": [
-                  {
-                    "shell_command": "open -a 'Notion.app'"
-                  }
-                ],
-                "description": "Open -a 'Notion.app'",
-                "type": "basic",
-                "from": {
-                  "key_code": "n",
-                  "modifiers": {
-                    "optional": [
-                      "any"
-                    ]
-                  }
-                },
-                "conditions": [
-                  {
-                    "type": "variable_if",
-                    "name": "hyper_sublayer_o",
-                    "value": 1
-                  }
-                ]
-              },
-              {
-                "to": [
-                  {
-                    "shell_command": "open -a 'iTerm.app'"
-                  }
-                ],
-                "description": "Open -a 'iTerm.app'",
-                "type": "basic",
-                "from": {
-                  "key_code": "t",
-                  "modifiers": {
-                    "optional": [
-                      "any"
-                    ]
-                  }
-                },
-                "conditions": [
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
@@ -998,29 +2805,14 @@
                 },
                 "conditions": [
                   {
-                    "type": "variable_if",
-                    "name": "hyper_sublayer_o",
-                    "value": 1
-                  }
-                ]
-              },
-              {
-                "to": [
-                  {
-                    "shell_command": "open -a 'Messages.app'"
-                  }
-                ],
-                "description": "Open -a 'Messages.app'",
-                "type": "basic",
-                "from": {
-                  "key_code": "i",
-                  "modifiers": {
-                    "optional": [
-                      "any"
-                    ]
-                  }
-                },
-                "conditions": [
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
@@ -1031,13 +2823,13 @@
               {
                 "to": [
                   {
-                    "shell_command": "open -a 'Music.app'"
+                    "shell_command": "open -a 'Calendar.app'"
                   }
                 ],
-                "description": "Open -a 'Music.app'",
+                "description": "Open -a 'Calendar.app'",
                 "type": "basic",
                 "from": {
-                  "key_code": "p",
+                  "key_code": "c",
                   "modifiers": {
                     "optional": [
                       "any"
@@ -1045,6 +2837,15 @@
                   }
                 },
                 "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
@@ -1055,13 +2856,13 @@
               {
                 "to": [
                   {
-                    "shell_command": "open -a 'Mail.app'"
+                    "shell_command": "open -a 'DaVinci Resolve.app'"
                   }
                 ],
-                "description": "Open -a 'Mail.app'",
+                "description": "Open -a 'DaVinci Resolve.app'",
                 "type": "basic",
                 "from": {
-                  "key_code": "m",
+                  "key_code": "d",
                   "modifiers": {
                     "optional": [
                       "any"
@@ -1070,29 +2871,14 @@
                 },
                 "conditions": [
                   {
-                    "type": "variable_if",
-                    "name": "hyper_sublayer_o",
-                    "value": 1
-                  }
-                ]
-              },
-              {
-                "to": [
-                  {
-                    "shell_command": "open -a 'Safari.app'"
-                  }
-                ],
-                "description": "Open -a 'Safari.app'",
-                "type": "basic",
-                "from": {
-                  "key_code": "s",
-                  "modifiers": {
-                    "optional": [
-                      "any"
-                    ]
-                  }
-                },
-                "conditions": [
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
@@ -1118,6 +2904,15 @@
                 },
                 "conditions": [
                   {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
                     "value": 1
@@ -1127,13 +2922,13 @@
               {
                 "to": [
                   {
-                    "shell_command": "open -a 'DaVinci Resolve.app'"
+                    "shell_command": "open -a 'Messages.app'"
                   }
                 ],
-                "description": "Open -a 'DaVinci Resolve.app'",
+                "description": "Open -a 'Messages.app'",
                 "type": "basic",
                 "from": {
-                  "key_code": "v",
+                  "key_code": "i",
                   "modifiers": {
                     "optional": [
                       "any"
@@ -1141,6 +2936,213 @@
                   }
                 },
                 "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
+                    "type": "variable_if",
+                    "name": "hyper_sublayer_o",
+                    "value": 1
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "shell_command": "open -a 'Mail.app'"
+                  }
+                ],
+                "description": "Open -a 'Mail.app'",
+                "type": "basic",
+                "from": {
+                  "key_code": "m",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
+                    "type": "variable_if",
+                    "name": "hyper_sublayer_o",
+                    "value": 1
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "shell_command": "open -a 'Notion.app'"
+                  }
+                ],
+                "description": "Open -a 'Notion.app'",
+                "type": "basic",
+                "from": {
+                  "key_code": "n",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
+                    "type": "variable_if",
+                    "name": "hyper_sublayer_o",
+                    "value": 1
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "shell_command": "open -a 'Music.app'"
+                  }
+                ],
+                "description": "Open -a 'Music.app'",
+                "type": "basic",
+                "from": {
+                  "key_code": "p",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
+                    "type": "variable_if",
+                    "name": "hyper_sublayer_o",
+                    "value": 1
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "shell_command": "open -a 'OBS.app'"
+                  }
+                ],
+                "description": "Open -a 'OBS.app'",
+                "type": "basic",
+                "from": {
+                  "key_code": "s",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
+                    "type": "variable_if",
+                    "name": "hyper_sublayer_o",
+                    "value": 1
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "shell_command": "open -a 'iTerm.app'"
+                  }
+                ],
+                "description": "Open -a 'iTerm.app'",
+                "type": "basic",
+                "from": {
+                  "key_code": "t",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
+                    "type": "variable_if",
+                    "name": "hyper_sublayer_o",
+                    "value": 1
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "shell_command": "open -a 'Cursor.app'"
+                  }
+                ],
+                "description": "Open -a 'Cursor.app'",
+                "type": "basic",
+                "from": {
+                  "key_code": "u",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
@@ -1181,6 +3183,15 @@
                   }
                 ],
                 "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_spacebar",
@@ -1235,6 +3246,15 @@
                 },
                 "conditions": [
                   {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_s",
                     "value": 1
@@ -1257,6 +3277,15 @@
                   }
                 },
                 "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_s",
@@ -1281,6 +3310,15 @@
                 },
                 "conditions": [
                   {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_s",
                     "value": 1
@@ -1303,6 +3341,15 @@
                   }
                 },
                 "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_s",
@@ -1331,6 +3378,15 @@
                 },
                 "conditions": [
                   {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_s",
                     "value": 1
@@ -1354,6 +3410,15 @@
                 },
                 "conditions": [
                   {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_s",
                     "value": 1
@@ -1376,6 +3441,15 @@
                   }
                 },
                 "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_s",
@@ -1401,6 +3475,15 @@
                 },
                 "conditions": [
                   {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_s",
                     "value": 1
@@ -1425,6 +3508,15 @@
                 },
                 "conditions": [
                   {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_s",
                     "value": 1
@@ -1448,6 +3540,15 @@
                   }
                 },
                 "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_s",
@@ -1488,6 +3589,15 @@
                   }
                 ],
                 "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_spacebar",
@@ -1542,6 +3652,15 @@
                 },
                 "conditions": [
                   {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_v",
                     "value": 1
@@ -1564,6 +3683,15 @@
                   }
                 },
                 "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_v",
@@ -1588,6 +3716,15 @@
                 },
                 "conditions": [
                   {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_v",
                     "value": 1
@@ -1610,6 +3747,15 @@
                   }
                 },
                 "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_v",
@@ -1634,6 +3780,15 @@
                 },
                 "conditions": [
                   {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_v",
                     "value": 1
@@ -1656,6 +3811,15 @@
                   }
                 },
                 "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_v",
@@ -1696,6 +3860,15 @@
                   }
                 ],
                 "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_spacebar",
@@ -1750,6 +3923,15 @@
                 },
                 "conditions": [
                   {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_c",
                     "value": 1
@@ -1773,6 +3955,15 @@
                 },
                 "conditions": [
                   {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_c",
                     "value": 1
@@ -1795,6 +3986,15 @@
                   }
                 },
                 "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_c",
@@ -1836,6 +4036,15 @@
                 ],
                 "conditions": [
                   {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_spacebar",
                     "value": 0
@@ -1875,54 +4084,6 @@
               {
                 "to": [
                   {
-                    "shell_command": "open raycast://extensions/VladCuciureanu/toothpick/connect-favorite-device-1"
-                  }
-                ],
-                "description": "Open raycast://extensions/VladCuciureanu/toothpick/connect-favorite-device-1",
-                "type": "basic",
-                "from": {
-                  "key_code": "1",
-                  "modifiers": {
-                    "optional": [
-                      "any"
-                    ]
-                  }
-                },
-                "conditions": [
-                  {
-                    "type": "variable_if",
-                    "name": "hyper_sublayer_r",
-                    "value": 1
-                  }
-                ]
-              },
-              {
-                "to": [
-                  {
-                    "shell_command": "open raycast://extensions/VladCuciureanu/toothpick/connect-favorite-device-2"
-                  }
-                ],
-                "description": "Open raycast://extensions/VladCuciureanu/toothpick/connect-favorite-device-2",
-                "type": "basic",
-                "from": {
-                  "key_code": "2",
-                  "modifiers": {
-                    "optional": [
-                      "any"
-                    ]
-                  }
-                },
-                "conditions": [
-                  {
-                    "type": "variable_if",
-                    "name": "hyper_sublayer_r",
-                    "value": 1
-                  }
-                ]
-              },
-              {
-                "to": [
-                  {
                     "shell_command": "open raycast://extensions/abielzulio/chatgpt/ask"
                   }
                 ],
@@ -1937,6 +4098,15 @@
                   }
                 },
                 "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_r",
@@ -1962,6 +4132,15 @@
                 },
                 "conditions": [
                   {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_r",
                     "value": 1
@@ -1985,6 +4164,15 @@
                   }
                 },
                 "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_r",
@@ -2010,6 +4198,15 @@
                 },
                 "conditions": [
                   {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_r",
                     "value": 1
@@ -2033,6 +4230,15 @@
                   }
                 },
                 "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_r",
@@ -2058,6 +4264,15 @@
                 },
                 "conditions": [
                   {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_r",
                     "value": 1
@@ -2081,6 +4296,81 @@
                   }
                 },
                 "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
+                    "type": "variable_if",
+                    "name": "hyper_sublayer_r",
+                    "value": 1
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "shell_command": "open raycast://extensions/VladCuciureanu/toothpick/connect-favorite-device-1"
+                  }
+                ],
+                "description": "Open raycast://extensions/VladCuciureanu/toothpick/connect-favorite-device-1",
+                "type": "basic",
+                "from": {
+                  "key_code": "j",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
+                  {
+                    "type": "variable_if",
+                    "name": "hyper_sublayer_r",
+                    "value": 1
+                  }
+                ]
+              },
+              {
+                "to": [
+                  {
+                    "shell_command": "open raycast://extensions/VladCuciureanu/toothpick/connect-favorite-device-2"
+                  }
+                ],
+                "description": "Open raycast://extensions/VladCuciureanu/toothpick/connect-favorite-device-2",
+                "type": "basic",
+                "from": {
+                  "key_code": "k",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_r",
