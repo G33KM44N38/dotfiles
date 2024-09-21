@@ -1,0 +1,5 @@
+- name: Install Python
+  homebrew:
+    name: python
+    state: present
+    update_homebrew: yes
