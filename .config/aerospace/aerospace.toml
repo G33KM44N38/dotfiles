@@ -160,6 +160,11 @@ if.app-id = 'notion.id'
 run = ['move-node-to-workspace 3']  # The callback itself
 
 [[on-window-detected]]
+if.app-id = 'com.apple.reminders'
+run = ['move-node-to-workspace 3']  # The callback itself
+
+
+[[on-window-detected]]
 if.app-id = 'org.jkiss.dbeaver.core.product'
 run = ['move-node-to-workspace 4']  # The callback itself
 
