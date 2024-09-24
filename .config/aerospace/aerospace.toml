@@ -175,6 +175,9 @@ run = ['move-node-to-workspace 5']  # The callback itself
 if.app-id = 'com.apple.MobileSMS'
 run = ['move-node-to-workspace 5']  # The callback itself
 
+[[on-window-detected]]
+if.app-id = 'com.figma.Desktop'
+run = ['move-node-to-workspace 7']  # The callback itself
 
 [[on-window-detected]]
 if.app-id = 'com.apple.Music'
