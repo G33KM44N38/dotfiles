@@ -183,3 +183,8 @@ run = ['move-node-to-workspace 8']  # The callback itself
 [[on-window-detected]]
 if.app-id = 'com.electron.dockerdesktop'
 run = ['move-node-to-workspace 9']  # The callback itself
+
+[[on-window-detected]]
+if.app-id = 'com.apple.Passwords'
+run = ['layout floating']  # The callback itself
+
