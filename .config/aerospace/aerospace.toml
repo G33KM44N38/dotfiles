@@ -135,8 +135,8 @@ r = ['flatten-workspace-tree', 'mode main'] # reset layout
 #s = ['layout sticky tiling', 'mode main'] # sticky is not yet supported https://github.com/nikitabobko/AeroSpace/issues/2
 f = ['layout floating tiling', 'mode main'] # Toggle between floating and tiling layout
 backspace = ['close-all-windows-but-current', 'mode main']
-alt-shift-k = 'resize smart -50'
-alt-shift-j = 'resize smart +50'
+k = 'resize smart -50'
+j = 'resize smart +50'
 
 
 # alt-shift-h = ['join-with left', 'mode main']
@@ -154,6 +154,10 @@ run = ['move-node-to-workspace 2']  # The callback itself
 [[on-window-detected]]
 if.app-id = 'com.apple.iphonesimulator'
 run = ['move-node-to-workspace 2']  # The callback itself
+
+[[on-window-detected]]
+if.app-id = 'notion.id'
+run = ['move-node-to-workspace 3']  # The callback itself
 
 [[on-window-detected]]
 if.app-id = 'org.jkiss.dbeaver.core.product'
@@ -174,4 +178,3 @@ run = ['move-node-to-workspace 8']  # The callback itself
 [[on-window-detected]]
 if.app-id = 'com.electron.dockerdesktop'
 run = ['move-node-to-workspace 9']  # The callback itself
-
