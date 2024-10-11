@@ -6,7 +6,7 @@
 # @raycast.mode compact
 
 # Optional parameters:
-# @raycast.iconk🔑
+# @raycast.icon 🔑
 
 # Documentation:
 # @raycast.description  passwords
