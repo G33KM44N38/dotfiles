@@ -20,15 +20,16 @@ print_working_branch_private() {
 }
 
 set_all_repos_path_private() {
-	if [ -z "$all_repos_path" ]; then
-	    set_all_repos_path_private() {
-		   all_repos_path=$(find . -type d -name ".git" | sed 's/\/.git//g')
-		   # Convert the space-separated string into an array
-		   IFS=$'\n' read -rd '' -a all_repos_path <<< "$all_repos_path"
-	    }
-
-	    set_all_repos_path_private
-	fi
+    if [ -z "$all_repos_path" ]; then
+        all_repos_path=$(find . -type d -name ".git" | sed 's/\/.git//g')
+        # Convert the space-separated string into an array
+        IFS=$'\n' read -rd '' -a all_repos_path <<< "$all_repos_path"
+        # Cache the result
+        echo "${all_repos_path[@]}" > ~/.all_repos_path_cache
+    else
+        # Load from cache if available
+        [ -f ~/.all_repos_path_cache ] && IFS=$'\n' read -d '' -r -a all_repos_path < ~/.all_repos_path_cache
+    fi
 }
 
 repos_push() {      
@@ -39,11 +40,13 @@ repos_push() {
         choosed_branch=$(similar_branch_fzf_private)
     fi      
     for git_dir in "${all_repos_path[@]}"; do
-        print_working_branch_private " work on $git_dir "
-        cd "$git_dir"
-        git push --set-upstream origin $choosed_branch
-        cd -
+        (
+            print_working_branch_private " work on $git_dir "
+            cd "$git_dir"
+            git push --set-upstream origin $choosed_branch
+        ) &
     done  
+    wait
 }
 
 repos_commit(){
@@ -69,44 +72,54 @@ repos_commit(){
 }
 
 similar_branch_fzf_private() {
-    # Get branches of the current repository
-    curre_repo_branches=$(git branch | sed 's/*//g' | sed 's/ //g')
-    
-    # Temporary file to collect all similar branches across repositories
-    similar_branches_file=$(mktemp)
-    
-    set_all_repos_path_private
-    # Iterate over all found .git directories
-    for git_dir in "${all_repos_path[@]}"; do
-        # Move to the repository directory
-        repo_dir=$(dirname "$git_dir")
-        cd "$repo_dir"
+    cache_file=~/.similar_branches_cache
+
+    if [ -f "$cache_file" ] && [ $(( $(date +%s) - $(stat -c %Y "$cache_file") )) -lt 3600 ]; then
+        # Use cached result if it's less than an hour old
+        cat "$cache_file" | fzf
+    else
+        # Get branches of the current repository
+        curre_repo_branches=$(git branch | sed 's/*//g' | sed 's/ //g')
         
-        # Get branches of the other repository
-        other_repo_branches=$(git branch | sed 's/*//g' | sed 's/ //g')
+        # Temporary file to collect all similar branches across repositories
+        similar_branches_file=$(mktemp)
         
-        # Use temporary files to store sorted branch names
-        curre_repo_branches_sorted=$(mktemp)
-        other_repo_branches_sorted=$(mktemp)
+        set_all_repos_path_private
+        # Iterate over all found .git directories
+        for git_dir in "${all_repos_path[@]}"; do
+            # Move to the repository directory
+            repo_dir=$(dirname "$git_dir")
+            cd "$repo_dir"
+            
+            # Get branches of the other repository
+            other_repo_branches=$(git branch | sed 's/*//g' | sed 's/ //g')
+            
+            # Use temporary files to store sorted branch names
+            curre_repo_branches_sorted=$(mktemp)
+            other_repo_branches_sorted=$(mktemp)
 
-        echo "$curre_repo_branches" | sort > "$curre_repo_branches_sorted"
-        echo "$other_repo_branches" | sort > "$other_repo_branches_sorted"
+            echo "$curre_repo_branches" | sort > "$curre_repo_branches_sorted"
+            echo "$other_repo_branches" | sort > "$other_repo_branches_sorted"
 
-        # Get the similar branches between the two repositories
-        comm -12 "$curre_repo_branches_sorted" "$other_repo_branches_sorted" >> "$similar_branches_file"
+            # Get the similar branches between the two repositories
+            comm -12 "$curre_repo_branches_sorted" "$other_repo_branches_sorted" >> "$similar_branches_file"
 
-        # Clean up temporary files
-        rm "$curre_repo_branches_sorted" "$other_repo_branches_sorted"
-        
-        # Return to the previous directory
-        cd - > /dev/null
-    done
+            # Clean up temporary files
+            rm "$curre_repo_branches_sorted" "$other_repo_branches_sorted"
+            
+            # Return to the previous directory
+            cd - > /dev/null
+        done
 
-    # Pipe the collected similar branches into fzf for interactive selection
-    cat "$similar_branches_file" | sort | uniq | fzf
+        # Cache the result
+        sort "$similar_branches_file" | uniq > "$cache_file"
 
-    # Clean up the final temporary file
-    rm "$similar_branches_file"
+        # Pipe the collected similar branches into fzf for interactive selection
+        cat "$cache_file" | fzf
+
+        # Clean up the final temporary file
+        rm "$similar_branches_file"
+    fi
 }
 
 
