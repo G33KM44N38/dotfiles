@@ -1,3 +1,4 @@
+import { openArcWebsite } from "./scripts/arc";
 import {
   To,
   KeyCode,
@@ -175,6 +176,16 @@ export function open(...what: string[]): LayerCommand {
   };
 }
 
+export function searchTabs(tabName: string) {
+  return {
+    to: [
+      {
+        shell_command: openArcWebsite(tabName),
+      },
+    ],
+  };
+}
+
 /**
  * Utility function to create a LayerCommand from a tagged template literal
  * where each line is a shell command to be executed.
@@ -209,16 +220,40 @@ export function app(name: string): LayerCommand {
 
 export function createHomeRowMod(key_code: KeyCode, mod: KeyCode): Manipulator {
   return {
+    description: `${key_code} -> ${mod} (optimized for fast typing)`,
+    type: "basic",
+    from: {
+      key_code,
+      modifiers: { optional: ["any"] },
+    },
+    to: [{ key_code: mod, lazy: true }],
+    to_if_alone: [{ key_code: key_code }],
+    conditions: [
+      { type: "variable_if", name: "hyper", value: 0 },
+      BuiltinKeyboardCondition,
+    ],
+    parameters: {
+      "basic.to_if_alone_timeout_milliseconds": 100,
+      "basic.to_if_held_down_threshold_milliseconds": 100,
+    },
+  };
+}
+export function ncreateHomeRowMod(
+  key_code: KeyCode,
+  mod: KeyCode
+): Manipulator {
+  return {
     description: `${key_code} -> ${mod}`,
     type: "basic",
     from: {
       key_code,
       modifiers: { optional: ["any"] },
     },
-    to_if_alone: [{ key_code: key_code }],
+    to_after_key_up: [{ key_code }],
     to_if_held_down: [
       {
         key_code: mod,
+        halt: true,
       },
     ],
     conditions: [
@@ -226,7 +261,7 @@ export function createHomeRowMod(key_code: KeyCode, mod: KeyCode): Manipulator {
       BuiltinKeyboardCondition,
     ],
     parameters: {
-      "basic.to_if_held_down_threshold_milliseconds": 50,
+      "basic.to_if_held_down_threshold_milliseconds": 75,
       "basic.to_if_alone_timeout_milliseconds": 250,
       "basic.to_delayed_action_delay_milliseconds": 100,
     },

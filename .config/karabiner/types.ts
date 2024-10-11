@@ -96,6 +96,8 @@ export interface SimultaneousFrom {
 
 export interface SimultaneousOptions {
   key_down_order?: "insensitive" | "strict" | "strict_inverse";
+  key_up_order?: "insensitive" | "strict" | "strict_inverse";
+  key_up_when?: "any" | "all";
   detect_key_down_uninterruptedly?: boolean;
 }
 
@@ -117,6 +119,7 @@ export interface To {
   key_code?: KeyCode;
   modifiers?: string[];
   shell_command?: string;
+  repeat?: boolean;
   set_variable?: {
     name: string;
     value: boolean | number | string;

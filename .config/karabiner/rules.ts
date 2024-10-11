@@ -17,19 +17,23 @@ const hyperSubLayers = createHyperSubLayers({
   b: {
     y: open("https://youtube.com"),
     r: open("https://reddit.com"),
-    c: open("https://claude.ai"),
+    c: open("https://claude.ai/recents"),
     i: open("https://instagram.com"),
     d: open("http://localhost:3000"),
     t: open("https://www.twitch.tv/"),
+    x: open("https://www.x.com/"),
   },
   o: {
+    // open
     a: app("Arc"),
     b: app("Beeper"),
+    w: app("Brave Browser"),
     c: app("Calendar"),
     d: app("Dbeaver"),
     e: app("Mail"),
     f: app("Figma"),
-    i: app("Messsages"),
+    g: app("ChatGPT"),
+    i: app("Messages"),
     m: app("Music"),
     n: app("Notion"),
     r: app("Davinci Resolve"),
@@ -113,6 +117,23 @@ const leftGuiLayer = createKeyLayer(
   "return_or_enter"
 );
 
+const left_option_layer = createKeyLayer(
+  "left_option",
+  {
+    a: { to: [{ key_code: "f1" }] },
+    s: { to: [{ key_code: "f2" }] },
+    d: { to: [{ key_code: "f3" }] },
+    f: { to: [{ key_code: "f4" }] },
+    g: { to: [{ key_code: "f5" }] },
+    h: { to: [{ key_code: "f6" }] },
+    j: { to: [{ key_code: "f7" }] },
+    k: { to: [{ key_code: "f8" }] },
+    l: { to: [{ key_code: "f9" }] },
+    p: { to: [{ key_code: "f10" }] },
+  },
+  "delete_or_backspace"
+);
+
 const rightGuiLayer = createKeyLayer(
   "right_command",
   {
@@ -156,6 +177,7 @@ const homeRowMods: Manipulator[] = [
 const rules: KarabinerRules[] = [
   leftGuiLayer,
   rightGuiLayer,
+  left_option_layer,
   {
     description: "Homerow mods",
     manipulators: homeRowMods,

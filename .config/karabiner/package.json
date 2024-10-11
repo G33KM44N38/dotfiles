@@ -13,5 +13,8 @@
   "scripts": {
     "build": "tsm rules.ts",
     "watch": "nodemon --exec yarn build -e ts"
+  },
+  "dependencies": {
+    "run-applescript": "^7.0.0"
   }
 }
