@@ -40,7 +40,7 @@ return {
 				["<C-b>"] = cmp.mapping.scroll_docs(-4),
 				["<C-f>"] = cmp.mapping.scroll_docs(4),
 				["<C-y>"] = cmp.config.disable,
-				["<C-e>"] = cmp.mapping.abort(),                -- close completion window
+				["<C-e>"] = cmp.mapping.abort(), -- close completion window
 				["<CR>"] = cmp.mapping.confirm({ select = true }),
 				["<Tab>"] = cmp.mapping(
 					function(fallback)
