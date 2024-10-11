@@ -1,6 +1,6 @@
 ---
-   - name: Install node
-     homebrew:
-       name: node
-       state: present
-       update_homebrew: yes
+- name: Install node
+  homebrew:
+    name: node
+    state: present
+    update_homebrew: yes
