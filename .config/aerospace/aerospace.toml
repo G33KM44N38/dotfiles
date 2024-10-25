@@ -174,9 +174,18 @@ run = ['move-node-to-workspace 5']  # The callback itself
 [[on-window-detected]]
 if.app-id = 'com.apple.MobileSMS'
 run = ['move-node-to-workspace 5']  # The callback itself
+[[on-window-detected]]
+if.app-id = 'com.apple.mail'
+run = ['move-node-to-workspace 5']  # The callback itself
 
 [[on-window-detected]]
 if.app-id = 'com.figma.Desktop'
+run = ['move-node-to-workspace 7']  # The callback itself
+[[on-window-detected]]
+if.app-id = 'com.obsproject.obs-studio'
+run = ['move-node-to-workspace 7']  # The callback itself
+[[on-window-detected]]
+if.app-id = 'com.blackmagic-design.DaVinciResolve'
 run = ['move-node-to-workspace 7']  # The callback itself
 
 [[on-window-detected]]
@@ -190,4 +199,3 @@ run = ['move-node-to-workspace 9']  # The callback itself
 [[on-window-detected]]
 if.app-id = 'com.apple.Passwords'
 run = ['layout floating']  # The callback itself
-
