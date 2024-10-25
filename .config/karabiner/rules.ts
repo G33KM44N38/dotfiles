@@ -22,12 +22,12 @@ const hyperSubLayers = createHyperSubLayers({
     d: open("http://localhost:3000"),
     t: open("https://www.twitch.tv/"),
     x: open("https://www.x.com/"),
+    f: open("https://www.netflix.com/"),
   },
   o: {
     // open
     a: app("Arc"),
     b: app("Beeper"),
-    w: app("Brave Browser"),
     c: app("Calendar"),
     d: app("Dbeaver"),
     e: app("Mail"),
@@ -39,6 +39,7 @@ const hyperSubLayers = createHyperSubLayers({
     r: app("Davinci Resolve"),
     s: app("OBS"),
     t: app("iTerm"),
+    w: app("Brave Browser"),
   },
   s: {
     u: { to: [{ key_code: "volume_increment" }] },
