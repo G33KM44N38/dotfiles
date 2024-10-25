@@ -24,10 +24,9 @@ return {
 			"cmake",
 			"c",
 			"bash",
-			"prisma"
+			"prisma",
 		})
 
-		-- Configure nvim-treesitter with the desired settings
 		configs.setup {
 			autopairs = {
 				enable = true,
@@ -35,8 +34,8 @@ return {
 			highlight = {
 				enable = true,
 				disable = { "" },
-				filetype_exclude = { "tsx" }, -- exclude tsx from typescript highlighting
-				additional_vim_regex_highlighting = { "tsx" } -- but include it for other highlighting
+				filetype_exclude = { "tsx" },
+				additional_vim_regex_highlighting = { "tsx" }
 				-- additional_vim_regex_highlighting = true,
 			},
 			indent = {

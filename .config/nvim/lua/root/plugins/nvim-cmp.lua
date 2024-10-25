@@ -2,7 +2,7 @@ return {
 	"hrsh7th/nvim-cmp",
 	event = "InsertEnter",
 	dependencies = {
-		'SirVer/ultisnips',
+		-- 'SirVer/ultisnips',
 		"quangnguyen30192/cmp-nvim-ultisnips",
 		-- "zbirenbaum/copilot-cmp",
 		"hrsh7th/cmp-cmdline",

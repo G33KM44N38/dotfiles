@@ -1,6 +1,6 @@
 require("root.core.keymap")
 
-vim.opt.scrolloff = 10
+vim.opt.scrolloff = 1
 -- Required to be compatible with Neovim
 vim.opt.compatible = false
 
@@ -105,7 +105,7 @@ vim.cmd("set nowrap")
 vim.api.nvim_set_option_value('autoindent', false, {})
 vim.api.nvim_set_option_value('wrap', false, {})
 
-vim.cmd("set conceallevel=1")
+-- vim.cmd("set conceallevel=1")
 
 vim.api.nvim_create_autocmd("LspAttach", {
 	callback = function(args)
@@ -114,9 +114,6 @@ vim.api.nvim_create_autocmd("LspAttach", {
 		if vim.tbl_contains({ 'null-ls' }, client.name) then -- blacklist lsp
 			return
 		end
-		require("lsp_signature").on_attach({
-			-- ... setup options here ...
-		}, bufnr)
 	end,
 })
 
@@ -126,4 +123,18 @@ vim.api.nvim_create_autocmd("TextYankPost", {
 	callback = function()
 		vim.highlight.on_yank()
 	end,
+})
+
+vim.api.nvim_create_autocmd("BufRead", {
+	pattern = "*.txt",
+	callback = function()
+		vim.cmd("TSBufDisable highlight")
+	end
+})
+
+vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
+	pattern = { ".env", ".env.*" },
+	callback = function()
+		vim.bo.filetype = "dotenv"
+	end
 })

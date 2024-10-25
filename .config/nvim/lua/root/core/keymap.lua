@@ -57,10 +57,10 @@ keymap("n", "<leader>N", ":lua require('telescope').extensions.git_worktree.crea
 keymap("n", "gi", "<cmd>Telescope lsp_implementations<CR>", opts)
 keymap("n", "gd", "<cmd>Telescope lsp_definitions<CR>", opts)
 keymap("n", 'gr', "<cmd>Telescope lsp_references<CR>", opts)
-keymap("n", "<leader>pf", ":lua require('telescope.builtin').find_files()<CR>", opts)
+keymap("n", "<C-p>", ":Telescope find_files hidden=true<CR>", opts)
 keymap("n", "<C-s>", ":lua require('telescope.builtin').live_grep()<CR>", opts)
 keymap("n", "<leader>gof", ":lua require('telescope.builtin').live_grep({grep_open_files=true})", opts)
-keymap("n", "<C-p>", ":lua require('telescope.builtin').git_files()<CR>", opts)
+keymap("n", "<leader>gf", ":lua require('telescope.builtin').git_files()<CR>", opts)
 keymap("n", "<leader>ke", ":lua require('telescope.builtin').keymaps()<CR>", opts)
 
 -- allow my cursor stay at the same place, when using `J`
@@ -75,8 +75,7 @@ vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Show diagn
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
 
 -- Trouble
-vim.keymap.set("n", "<leader>xw", function() require("trouble").toggle("workspace_diagnostics") end)
-vim.keymap.set("n", "<leader>xx", function() require("trouble").toggle() end)
+vim.keymap.set("n", "<leader>x", ":Trouble diagnostics<CR>", opts)
 
 -- Move text up and down
 keymap("x", "J", ":move '>+1<CR>gv-gv", opts)
