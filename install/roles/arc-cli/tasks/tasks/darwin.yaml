@@ -1,0 +1,5 @@
+- name: Install @georgesg/arc-cli globally
+  npm:
+    name: "@georgesg/arc-cli"
+    global: yes
+    state: present

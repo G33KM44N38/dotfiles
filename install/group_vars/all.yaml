@@ -35,3 +35,4 @@ default_roles:
   - gitspeak
   - aerospace
   - python
+  - arc-cli
