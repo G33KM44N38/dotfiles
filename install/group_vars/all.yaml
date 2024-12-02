@@ -36,3 +36,4 @@ default_roles:
   - aerospace
   - python
   - arc-cli
+  - solana
