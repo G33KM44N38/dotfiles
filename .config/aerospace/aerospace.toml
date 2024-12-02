@@ -212,10 +212,20 @@ run = ['move-node-to-workspace 10']  # The callback itself
 if.app-id = 'com.apple.FaceTime'
 run = ['move-node-to-workspace 10']  # The callback itself
 
+[[on-window-detected]]
+if.app-id = 'com.hnc.Discord'
+run = ['move-node-to-workspace 10']  # The callback itself
+
 
 [[on-window-detected]]
 if.app-id = 'com.apple.Passwords'
 run = ['layout floating']  # The callback itself
+
+[[on-window-detected]]
+if.app-id = 'com.apple.finder'
+run = ['layout floating']  # The callback itself
+
+
 
 [workspace-to-monitor-force-assignment]
 # 1 = 1                            # Monitor sequence number from left to right. 1-based indexing
