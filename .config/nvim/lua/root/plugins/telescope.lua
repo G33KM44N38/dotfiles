@@ -4,6 +4,7 @@ return {
 	dependencies = {
 		"nvim-lua/plenary.nvim",
 		"nvim-tree/nvim-web-devicons",
+		{ 'nvim-telescope/telescope-fzf-native.nvim', build = 'cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release' }
 	},
 
 	config = function()
@@ -13,7 +14,13 @@ return {
 			return
 		end
 
+		local actions = require("telescope.actions")
+
 		telescope.setup {
+			extensions = {
+				fzf = {
+				}
+			},
 			picker = {
 				hidden = true,
 			},
@@ -50,7 +57,7 @@ return {
 					preview_cutoff = 120,
 				},
 				file_sorter = require("telescope.sorters").get_fuzzy_file,
-				file_ignore_patterns = { "node_modules/", ".git/", "dist/", "go.sum", "package-lock.json" },
+				file_ignore_patterns = { "node_modules/", ".git/", "dist/", "go.sum", "package-lock.json", "lazy-lock.json", "target", "Cargo.lock" },
 				generic_sorter = require("telescope.sorters").get_generic_fuzzy_sorter,
 				path_display = { "absolute" },
 				winblend = 0,
@@ -73,5 +80,10 @@ return {
 				},
 			},
 		}
+
+		-- To get fzf loaded and working with telescope, you need to call
+		-- load_extension, somewhere after setup function:
+		require('telescope').load_extension('fzf')
+		-- require "plugins.custom.telescope.multigrep".setup()
 	end
 }

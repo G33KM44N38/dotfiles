@@ -59,11 +59,9 @@ return {
 				lualine_a = { 'mode' },
 				lualine_b = { 'filename' },
 				lualine_c = { "diagnostics" },
-				lualine_x = {
-					{ "filetype" },
-				},
-				lualine_y = {},
-				lualine_z = { 'branch', },
+				lualine_x = {},
+				lualine_y = { 'filetype' },
+				lualine_z = { 'branch' },
 			},
 			extensions = { 'fugitive', 'fzf', 'quickfix' }
 		})

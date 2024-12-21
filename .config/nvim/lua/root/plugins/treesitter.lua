@@ -25,6 +25,7 @@ return {
 			"c",
 			"bash",
 			"prisma",
+			"rust"
 		})
 
 		configs.setup {

@@ -106,6 +106,12 @@ vim.api.nvim_set_option_value('autoindent', false, {})
 vim.api.nvim_set_option_value('wrap', false, {})
 
 -- vim.cmd("set conceallevel=1")
+vim.opt.foldmethod = "expr"
+vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+vim.opt.foldlevel = 99
+vim.opt.foldcolumn = "0" -- Disables the fold column
+vim.opt.foldtext = ""    -- Shows syntax highlighting in folded text
+-- vim.opt.foldlevelstart = 1 -- Closes nested folds by default
 
 vim.api.nvim_create_autocmd("LspAttach", {
 	callback = function(args)

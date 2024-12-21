@@ -57,7 +57,7 @@ keymap("n", "<leader>N", ":lua require('telescope').extensions.git_worktree.crea
 keymap("n", "gi", "<cmd>Telescope lsp_implementations<CR>", opts)
 keymap("n", "gd", "<cmd>Telescope lsp_definitions<CR>", opts)
 keymap("n", 'gr', "<cmd>Telescope lsp_references<CR>", opts)
-keymap("n", "<C-p>", ":Telescope find_files hidden=true<CR>", opts)
+keymap("n", "<C-p>", ":Telescope find_files<CR>", opts)
 keymap("n", "<C-s>", ":lua require('telescope.builtin').live_grep()<CR>", opts)
 keymap("n", "<leader>gof", ":lua require('telescope.builtin').live_grep({grep_open_files=true})", opts)
 keymap("n", "<leader>gf", ":lua require('telescope.builtin').git_files()<CR>", opts)

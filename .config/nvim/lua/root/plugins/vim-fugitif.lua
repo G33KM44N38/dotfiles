@@ -51,6 +51,8 @@ return {
 		vim.api.nvim_set_keymap('n', '<leader>q', ':lua QuitMenu()<CR>', { noremap = true, silent = true })
 
 		vim.cmd('command -bar -bang -nargs=* Gcommit lua InputArgs()')
-		vim.api.nvim_set_keymap('n', '<leader>gc', ':Gcommit<CR>', { noremap = true, silent = true })
+		-- vim.api.nvim_set_keymap('n', '<leader>gc', ':Gcommit<CR>', { noremap = true, silent = true })
+		vim.keymap.set('n', 'gj', '<cmd>diffget //2<CR>')
+		vim.keymap.set('n', 'gf', '<cmd>diffget //3<CR>')
 	end
 }

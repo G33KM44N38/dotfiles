@@ -2,6 +2,17 @@ return {
 	"williamboman/mason.nvim",
 	dependencies = {
 		"williamboman/mason-lspconfig.nvim",
+		{
+			"folke/lazydev.nvim",
+			ft = "lua", -- only load on lua files
+			opts = {
+				library = {
+					-- See the configuration section for more details
+					-- Load luvit types when the `vim.uv` word is found
+					{ path = "${3rd}/luv/library", words = { "vim%.uv" } },
+				},
+			},
+		},
 	},
 	config = function()
 		-- import mason
@@ -34,7 +45,6 @@ return {
 				"clangd",
 				"bashls",
 				"yamlls",
-				"lua_ls",
 				"eslint",
 				"bashls",
 				"gopls",
@@ -44,6 +54,7 @@ return {
 				"solidity",
 				"prismals",
 				"graphql",
+				"rust_analyzer"
 			},
 			-- auto-install configured servers (with lspconfig)
 			automatic_installation = true, -- not the same as ensure_installed

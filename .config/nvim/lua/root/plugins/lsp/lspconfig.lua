@@ -112,7 +112,7 @@ return {
 		-- configure lua_ls server
 		lspconfig["lua_ls"].setup({
 			-- capabilities = capabilities,
-			on_attach = on_attach,
+			-- on_attach = on_attach,
 		})
 
 		-- configure bashls server
@@ -191,6 +191,12 @@ return {
 		})
 
 		lspconfig["prismals"].setup({
+			-- capabilities = capabilities,
+			on_attach = on_attach,
+
+		})
+
+		lspconfig["rust_analyzer"].setup({
 			-- capabilities = capabilities,
 			on_attach = on_attach,
 
