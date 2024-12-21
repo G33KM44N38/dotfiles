@@ -32,16 +32,20 @@ const hyperSubLayers = createHyperSubLayers({
     d: app("Dbeaver"),
     e: app("Mail"),
     f: app("Figma"),
-    g: app("ChatGPT"),
     i: app("Messages"),
+    k: app("Ledger Live"),
     m: app("Music"),
     n: app("Notion"),
+    p: app("Obsidian"),
     r: app("Davinci Resolve"),
     s: app("OBS"),
     t: app("iTerm"),
+    v: app("Visual Studio Code"),
     w: app("Brave Browser"),
+    x: app("Discord"),
   },
   s: {
+    h: { to: [{ key_code: "f20" }] },
     u: { to: [{ key_code: "volume_increment" }] },
     j: { to: [{ key_code: "volume_decrement" }] },
     i: { to: [{ key_code: "display_brightness_increment" }] },
@@ -71,21 +75,24 @@ const hyperSubLayers = createHyperSubLayers({
     b: { to: [{ key_code: "rewind" }] },
   },
   r: {
+    l: open("raycast://extensions/kaanrkaraman/twitter-video-downloader/index"),
     a: open("raycast://extensions/abielzulio/chatgpt/ask"),
-    e: open("raycast://extensions/raycast/emoji-symbols/search-emoji-symbols"),
-    p: open("raycast://extensions/raycast/raycast/confetti"),
-    s: open("raycast://extensions/raycast/snippets/search-snippets"),
-    h: open("raycast://extensions/raycast/clipboard-history/clipboard-history"),
     b: open(
       "raycast://extensions/VladCuciureanu/toothpick/manage-bluetooth-connections"
     ),
-    o: open("raycast://extensions/benvp/audio-device/set-output-device"),
+    u: open("raycast://extensions/raycast/screenshots/search-screenshots"),
+    e: open("raycast://extensions/raycast/emoji-symbols/search-emoji-symbols"),
+    h: open("raycast://extensions/raycast/clipboard-history/clipboard-history"),
+    i: open("raycast://extensions/benvp/audio-device/set-input-device"),
     j: open(
       "raycast://extensions/VladCuciureanu/toothpick/connect-favorite-device-1"
     ),
     k: open(
       "raycast://extensions/VladCuciureanu/toothpick/connect-favorite-device-2"
     ),
+    o: open("raycast://extensions/benvp/audio-device/set-output-device"),
+    p: open("raycast://extensions/raycast/raycast/confetti"),
+    s: open("raycast://extensions/raycast/snippets/search-snippets"),
   },
 });
 
@@ -196,12 +203,8 @@ const rules: KarabinerRules[] = [
     manipulators: [createBasicManipulator("right_option", "tab", "")],
   },
   {
-    description: "left control to escape",
-    manipulators: [
-      createBasicManipulator("left_control", "left_control", "", [
-        { key_code: "escape" },
-      ]),
-    ],
+    description: "caps lock to escape",
+    manipulators: [createBasicManipulator("caps_lock", "escape", "")],
   },
   DisableKeyConfig("grave_accent_and_tilde"),
   DisableKeyConfig("tab"),

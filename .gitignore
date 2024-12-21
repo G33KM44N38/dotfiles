@@ -54,3 +54,4 @@ fish/functions/fzf_key_bindings.fish
 stripe
 raycast
 .config/raycast/extensions
+.config/karabiner/automatic_backups/*

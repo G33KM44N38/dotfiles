@@ -65,7 +65,6 @@ export function createHyperSubLayer(
       // (e.g. Hyper + O > M even though Hyper + M is also a sublayer)
       // basically, only trigger a sublayer if no other sublayer is active
       conditions: [
-        BuiltinKeyboardCondition,
         ...allSubLayerVariables
           .filter(
             (subLayerVariable) => subLayerVariable !== subLayerVariableName
@@ -134,7 +133,6 @@ export function createHyperSubLayers(subLayers: {
                 },
               },
               conditions: [
-                BuiltinKeyboardCondition,
                 {
                   type: "variable_if",
                   name: "hyper",
@@ -235,35 +233,6 @@ export function createHomeRowMod(key_code: KeyCode, mod: KeyCode): Manipulator {
     parameters: {
       "basic.to_if_alone_timeout_milliseconds": 100,
       "basic.to_if_held_down_threshold_milliseconds": 100,
-    },
-  };
-}
-export function ncreateHomeRowMod(
-  key_code: KeyCode,
-  mod: KeyCode
-): Manipulator {
-  return {
-    description: `${key_code} -> ${mod}`,
-    type: "basic",
-    from: {
-      key_code,
-      modifiers: { optional: ["any"] },
-    },
-    to_after_key_up: [{ key_code }],
-    to_if_held_down: [
-      {
-        key_code: mod,
-        halt: true,
-      },
-    ],
-    conditions: [
-      { type: "variable_if", name: "hyper", value: 0 },
-      BuiltinKeyboardCondition,
-    ],
-    parameters: {
-      "basic.to_if_held_down_threshold_milliseconds": 75,
-      "basic.to_if_alone_timeout_milliseconds": 250,
-      "basic.to_delayed_action_delay_milliseconds": 100,
     },
   };
 }
