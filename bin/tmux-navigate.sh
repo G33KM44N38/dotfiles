@@ -4,6 +4,7 @@ if [[ $# -eq 1 ]]; then
     selected=$1
 else
 selected=$(find \
+    ~/backup/ \
     ~/coding/ \
     ~/coding/* \
     ~/goinfre/ \
