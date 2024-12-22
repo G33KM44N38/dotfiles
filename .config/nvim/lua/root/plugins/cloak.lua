@@ -21,12 +21,11 @@ return {
 					cloak_pattern = '=.+',
 					replace = nil,
 				},
-				-- Add more patterns as needed
-				-- {
-				--     file_pattern = 'credentials.yml',
-				--     cloak_pattern = ':.+',
-				-- },
-			},
+				{
+					file_pattern = '.vault-password',
+					cloak_pattern = '.+',
+				},
+			}
 		})
 	end
 }
