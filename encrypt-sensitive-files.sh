@@ -2,9 +2,8 @@
 
 # List of files to check and potentially encrypt
 FILES_TO_CHECK=(
-  "secrets.yml"
-  "credentials.json"
-  "sensitive_config.txt"
+  ".ssh/*"
+  ".zshrc"
 )
 
 # Path to the Ansible Vault password file
