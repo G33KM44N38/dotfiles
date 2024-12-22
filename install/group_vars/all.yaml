@@ -37,3 +37,4 @@ default_roles:
   - python
   - arc-cli
   - solana
+  - pnpm

@@ -1,0 +1,5 @@
+- name: PNPM | Install yarn using Homebrew
+  homebrew:
+    name: pnpm
+    state: present
+    update_homebrew: yes
