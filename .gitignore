@@ -55,3 +55,6 @@ stripe
 raycast
 .config/raycast/extensions
 .config/karabiner/automatic_backups/*
+.vault-password
+node_modules/
+.DS_Store
