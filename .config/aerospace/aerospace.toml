@@ -224,10 +224,6 @@ if.app-id = 'com.electron.dockerdesktop'
 run = ['move-node-to-workspace 9']  # The callback itself
 
 [[on-window-detected]]
-if.app-id = 'com.brave.Browser'
-run = ['move-node-to-workspace 11']  # The callback itself
-
-[[on-window-detected]]
 if.app-id = 'com.apple.FaceTime'
 run = ['move-node-to-workspace 10']  # The callback itself
 
@@ -239,6 +235,13 @@ run = ['move-node-to-workspace 10']  # The callback itself
 if.app-id = 'md.obsidian'
 run = ['move-node-to-workspace 10']  # The callback itself
 
+[[on-window-detected]]
+if.app-id = 'com.brave.Browser'
+run = ['move-node-to-workspace 11']  # The callback itself
+
+[[on-window-detected]]
+if.app-id = 'com.raycast.macos'
+run = ['move-node-to-workspace 12']  # The callback itself
 
 [[on-window-detected]]
 if.app-id = 'com.apple.Passwords'
@@ -265,3 +268,4 @@ run = ['layout floating']  # The callback itself
 9 = 'main'                       
 10 = 'secondary'
 11 = 'main'                       
+12 = 'secondary'                       
