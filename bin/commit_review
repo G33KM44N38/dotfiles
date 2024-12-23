@@ -1,0 +1,94 @@
+#!/bin/bash
+
+# Required parameters:
+# @raycast.schemaVersion 1
+# @raycast.title  commit_review
+# @raycast.mode compact
+
+# Optional parameters:
+# @raycast.icon 📝
+
+# Documentation:
+# @raycast.description  commit_review
+# @raycast.author me
+
+# List of directories to watch (you can add multiple directories here)
+directories_to_check=(
+  "$HOME/code/"
+  "$HOME/coding/"
+  "$HOME/.dotfiles/"
+)
+
+# Get your global username and email from the Git configuration
+global_user_name=$(git config --global user.name)
+global_user_email=$(git config --global user.email)
+
+# Get the full datetime for "one week ago" (macOS/BSD date)
+one_week_ago=$(date -v -7d "+%Y-%m-%d %H:%M:%S")
+
+# Function to get the user information from a specific git configuration
+get_git_user_info() {
+    local repo_path=$1
+
+    # Change directory to the repo
+    pushd "$repo_path" > /dev/null
+
+    # Retrieve user info based on the repository-specific config
+    local repo_user_name=$(git config user.name)
+    local repo_user_email=$(git config user.email)
+
+    # If no repo-specific user name is set, fall back to global config
+    if [ -z "$repo_user_name" ]; then
+        repo_user_name=$global_user_name
+    fi
+    if [ -z "$repo_user_email" ]; then
+        repo_user_email=$global_user_email
+    fi
+
+    # Return user name and email
+    echo "$repo_user_name $repo_user_email"
+
+    popd > /dev/null
+}
+
+# Loop through the specified directories to search for .git directories recursively
+for base_dir in "${directories_to_check[@]}"; do
+    # Ensure correct home directory expansion
+    expanded_base_dir="$base_dir"
+    
+    # Find all .git directories under the base directory
+    find "$expanded_base_dir" -type d -name ".git" | while IFS= read -r git_dir; do
+        # Get the repo path by stripping the "/.git" part
+        repo_path=$(dirname "$git_dir")
+
+        # Check if the repository exists and is a valid Git repository
+        if [ -d "$repo_path/.git" ]; then
+            echo "Checking repo: $repo_path"
+            
+            # Get the user info for the repository (either repo-specific or global)
+            read -r user_name user_email <<< $(get_git_user_info "$repo_path")
+            
+            # Use pushd to temporarily change directories and ensure we return to the original directory
+            pushd "$repo_path" > /dev/null
+            
+            # Get the commit logs for the last week, filtered by your user name/email, sorted by oldest first
+            commits=$(git log --since="$one_week_ago" --author="$user_name" --pretty=format:"%h %ad %s" --date=iso --reverse)
+
+            # Check if there are commits, ensuring we correctly handle empty output
+            if [ -n "$commits" ]; then
+                echo "Commits in the last week for $repo_path:"
+                echo "$commits"
+            else
+                echo "No commits in the last week for $repo_path."
+            fi
+            
+            echo "----------------------------------------"
+            
+            # Return to the original directory
+            popd > /dev/null
+        else
+            echo "Not a Git repository: $repo_path"
+            echo "----------------------------------------"
+        fi
+    done
+done | pbcopy
