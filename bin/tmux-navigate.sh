@@ -11,7 +11,7 @@ selected=$(find \
     ~/.dotfiles/ \
     ~/.dotfiles/* \
     ~/.dotfiles/.config/ \
-    -mindepth 1 -maxdepth 1 -type d | fzf)
+    -mindepth 0 -maxdepth 1 -type d | fzf)
 fi
 
 if [[ -z $selected ]]; then
