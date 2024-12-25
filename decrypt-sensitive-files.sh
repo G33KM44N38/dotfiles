@@ -2,8 +2,8 @@
 
 # List of files and directories to check and potentially decrypt
 FILES_TO_CHECK=(
-  "./.ssh/"  # Directory to check all files inside
-  "./.zshrc"  # Individual file to check
+  ".ssh/"  # Directory to check all files inside
+  ".zshrc"  # Individual file to check
 )
 
 # Path to the Ansible Vault password file
@@ -100,8 +100,8 @@ for item in "${FILES_TO_CHECK[@]}"; do
         # Decrypt the file
         decrypt_with_ansible_vault "$item"
         
-        # Stage the newly decrypted file if using git
-        git add "$item"
+        # Unstage the newly decrypted file if using git
+	   git restore --staged "$item"
       else
         echo "$item is not encrypted. Proceeding without decryption."
       fi
