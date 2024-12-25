@@ -70,8 +70,8 @@ check_and_decrypt_files() {
       # Decrypt the file
       decrypt_with_ansible_vault "$file"
       
-      # Stage the newly decrypted file if using git
-      git add "$file"
+      # Unstage the newly decrypted file if using git
+      git restore --staged "$file"
     else
       echo "$file is not encrypted. Proceeding without decryption."
     fi
