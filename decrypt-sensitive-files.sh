@@ -85,8 +85,6 @@ for item in "${FILES_TO_CHECK[@]}"; do
     # If it's a directory, check all files inside it
     check_and_decrypt_files "$item"
   else
-    # Check if the item is staged
-    if git diff --cached --name-only | grep -q "$item"; then
       echo "Checking $item..."
       
       # Check if file exists
@@ -105,9 +103,6 @@ for item in "${FILES_TO_CHECK[@]}"; do
       else
         echo "$item is not encrypted. Proceeding without decryption."
       fi
-    else
-      echo "$item is not staged. Consider staging it for decryption."
-    fi
   fi
 done
 
