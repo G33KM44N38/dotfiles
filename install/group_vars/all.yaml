@@ -38,3 +38,4 @@ default_roles:
   - arc-cli
   - solana
   - pnpm
+  - ghostty

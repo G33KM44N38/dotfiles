@@ -1,0 +1,3 @@
+---
+- name: Run ghostty task
+  ansible.builtin.import_tasks: darwin.yaml

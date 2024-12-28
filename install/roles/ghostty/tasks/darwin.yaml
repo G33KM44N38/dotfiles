@@ -1,0 +1,6 @@
+---
+- name: Install ghostty on macos
+  community.general.homebrew_cask:
+    name: ghostty
+    state: present
+    update_homebrew: yes
