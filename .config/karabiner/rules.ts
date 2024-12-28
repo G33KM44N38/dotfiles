@@ -39,7 +39,7 @@ const hyperSubLayers = createHyperSubLayers({
     p: app("Obsidian"),
     r: app("Davinci Resolve"),
     s: app("OBS"),
-    t: app("iTerm"),
+    t: app("Ghostty"),
     v: app("Visual Studio Code"),
     w: app("Brave Browser"),
     x: app("Discord"),
