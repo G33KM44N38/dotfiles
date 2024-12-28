@@ -158,6 +158,9 @@ run = ['move-node-to-workspace 1']  # The callback itself
 if.app-id = 'com.googlecode.iterm2'
 run = ['move-node-to-workspace 2']  # The callback itself
 
+[[on-window-detected]]
+if.app-id = 'com.mitchellh.ghostty'
+run = ['move-node-to-workspace 2']  # The callback itself
 
 [[on-window-detected]]
 if.app-id = 'com.microsoft.VSCode'
