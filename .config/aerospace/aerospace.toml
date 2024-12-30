@@ -178,9 +178,20 @@ run = ['move-node-to-workspace 3']  # The callback itself
 if.app-id = 'com.ledger.live'
 run = ['move-node-to-workspace 3']  # The callback itself
 
+
 [[on-window-detected]]
 if.app-id = 'com.apple.iCal'
 run = ['move-node-to-workspace 3']  # The callback itself
+
+[[on-window-detected]]
+if.app-id = 'io.rize'
+run = ['move-node-to-workspace 3']  # The callback itself
+
+
+[[on-window-detected]]
+if.app-id = 'com.electron.motion'
+run = ['move-node-to-workspace 3']  # The callback itself
+
 
 [[on-window-detected]]
 if.app-id = 'com.apple.reminders'
