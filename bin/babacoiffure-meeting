@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Required parameters:
+# @raycast.schemaVersion 1
+# @raycast.title  babacoiffure meeting
+# @raycast.mode compact
+
+# Optional parameters:
+# @raycast.icon 📝
+
+# Documentation:
+# @raycast.description  make a meeting to jules for babacoiffure
+# @raycast.author me
+
+
+# Open Google Meet and Beeper
+open raycast://extensions/vitoorgomes/google-meet/default-profile
+open -a "Beeper"
