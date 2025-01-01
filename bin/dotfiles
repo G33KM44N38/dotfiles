@@ -59,9 +59,9 @@ function _cmd {
         return 0 # success
     fi
     printf "${OVERWRITE}${LRED} [X]  ${TASK}${LRED}\n"
-    cat $DOTFILES_LOG | sed 's/^/      /'
+    sed 's/^/      /' "$DOTFILES_LOG"
     printf "\n"
-    rm $DOTFILES_LOG
+    rm -f $DOTFILES_LOG
     exit 1
 }
 
@@ -97,7 +97,6 @@ if [[ ! -d "$DOTFILES_DIR" ]]; then
 else
     _task "Updating repository"
     
-    # Stash any changes before pulling
     pushd "$DOTFILES_DIR" > /dev/null
     if [[ -n $(git status --porcelain) ]]; then
         _task "Stashing changes..."
@@ -106,7 +105,6 @@ else
 
     _cmd "git pull --rebase --quiet"
     
-    # Apply stashed changes if there were any
     if git stash list | grep -q 'stash@{0}'; then
         _task "Applying stashed changes..."
         _cmd "git stash pop"
@@ -131,8 +129,8 @@ if [[ ! -f "$IS_FIRST_RUN" ]]; then
     touch "$IS_FIRST_RUN"
 fi
 
-rm -rf ~/.zshrc
+rm -f ~/.zshrc
 
-_cmd "cd ~/.dotfiles/ && stow . &&  ./decrypt-sensitive-files.sh"
+_cmd "cd ~/.dotfiles/ && stow . && ./decrypt-sensitive-files.sh"
 
 # vi:ft=sh:
