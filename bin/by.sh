@@ -18,7 +18,5 @@ pkill -TERM "Brave Browser"
 pkill -TERM "QuickTime Player"
 pkill -TERM "Telegram"
 open raycast://extensions/raycast/system/eject-all-disks
-open -a "iTerm"
-open -a "Arc"
 
 # vi:ft=sh:
