@@ -32,7 +32,7 @@ default_roles:
   - yarn
   - next
   - sops
-  - gitspeak
+  # - gitspeak
   - aerospace
   - python
   - arc-cli
