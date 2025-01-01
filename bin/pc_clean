@@ -12,54 +12,58 @@
 # @raycast.description Comprehensive system and development environment cleanup
 # @raycast.author me
 
-# System memory and cache cleanup
-sudo purge
+# Function to handle cleanup with error checking
+cleanup() {
+    echo "Starting cleanup process..."
 
-# Homebrew package management
-brew update && brew upgrade && brew cleanup
-brew autoremove  # Remove unused dependencies
+    # System memory and cache cleanup
+    sudo purge
 
-# Remove old node_modules directories
-find . -name "node_modules" -type d -mtime +120 | xargs rm -rf
+    # Homebrew package management
+    brew update && brew upgrade && brew cleanup && brew autoremove
 
-# Clean up iOS simulator
-xcrun simctl delete unavailable
+    # Remove old node_modules directories
+    find . -name "node_modules" -type d -mtime +120 -exec rm -rf {} +
 
-# Remove Xcode and developer-related caches
-rm -rf ~/Library/Developer
-rm -rf ~/Library/Caches/com.apple.dt.Xcode
+    # Clean up iOS simulator
+    xcrun simctl delete unavailable
 
-# Clean Rust project build artifacts
-find . -name "Cargo.toml" -type f -execdir cargo clean \;
+    # Remove Xcode and developer-related caches
+    rm -rf ~/Library/Developer ~/Library/Caches/com.apple.dt.Xcode
 
-# Remove Python cache directories
-find . -name "__pycache__" -type d -exec rm -rf {} \;
+    # Clean Rust project build artifacts
+    find . -name "Cargo.toml" -type f -execdir cargo clean \;
+    brew reinstall rust
 
-# Clean CocoaPods cache
-rm -rf ~/Library/Caches/CocoaPods
+    # Remove Python cache directories
+    find . -name "__pycache__" -type d -exec rm -rf {} +
 
-# Docker cleanup
-docker volume prune
-docker system prune -af --volumes  # More aggressive cleanup
+    # Clean CocoaPods cache
+    rm -rf ~/Library/Caches/CocoaPods
 
-# Clean temporary files
-rm -rf ~/Library/Caches/pip
-rm -rf ~/.npm
-rm -rf ~/.gradle/caches
+    # Docker cleanup
+    docker volume prune -f
+    docker system prune -af --volumes
 
-# Clear download history
-sqlite3 ~/Library/Preferences/com.apple.LaunchServices.QuarantineEventsV* 'delete from LSQuarantineEvent'
+    # Clean temporary files
+    rm -rf ~/Library/Caches/pip ~/.npm ~/.gradle/caches
 
-# Optional: Empty Trash
-sudo rm -rf ~/.Trash/*
+    # Clear download history
+    sqlite3 ~/Library/Preferences/com.apple.LaunchServices.QuarantineEventsV* 'delete from LSQuarantineEvent'
 
-# Clean up merged git branches across all directories
-for d in */; do 
-    cd "$d"
-    echo "WORKING ON $d"
-    git branch --merged master | grep -v "\* master" | xargs -n 1 git branch -d
-    cd ..
-done
+    # Optional: Empty Trash
+    sudo rm -rf ~/.Trash/*
 
+    # Clean up merged git branches across all directories
+    for d in */; do 
+        if [ -d "$d/.git" ]; then
+            echo "Cleaning up merged branches in $d"
+            git -C "$d" branch --merged master | grep -v "\* master" | xargs -r git -C "$d" branch -d
+        fi
+    done
 
-echo "Cleanup complete!"
+    echo "Cleanup complete!"
+}
+
+# Execute the cleanup function
+cleanup
