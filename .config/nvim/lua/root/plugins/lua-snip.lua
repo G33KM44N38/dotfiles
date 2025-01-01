@@ -22,11 +22,18 @@ return {
 
 		-- Define snippets for JavaScript/TypeScript
 		ls.add_snippets("javascript", {
+			s("imr", {
+				t('import React from "react";')
+			}),
 			s("conl", {
 				t("console.log("), i(1), t(")"),
 			}),
 		})
+
 		ls.add_snippets("typescript", {
+			s("imr", {
+				t('import React from "react";')
+			}),
 			s("conl", {
 				t("console.log("), i(1), t(")"),
 			}),
@@ -230,6 +237,28 @@ return {
 				t(".PHONY: all clean fclean re san\n"),
 				t(".SILENT :\n"),
 				t("re: fclean all\n"),
+			}),
+		})
+
+		-- Define snippets for Rust
+		ls.add_snippets("rust", {
+			s("match", {
+				t("match "), i(1, "value"), t(" {"),
+				t({ "", "    " }), i(2, "pattern => {"), t({ "", "        " }), i(3), t({ "", "    }," }),
+				t({ "", "}" }),
+			}),
+		})
+
+		-- Define snippets for Ansible
+		ls.add_snippets("yaml", {
+			s("install_arc", {
+				t("---\n"),
+				t("- name: Install arc\n"),
+				t("  community.general.homebrew_cask:\n"),
+				t("    name: arc\n"),
+				t("    state: present\n"),
+				t("    update_homebrew: yes\n"),
+				t("  ignore_errors: true\n"),
 			}),
 		})
 
