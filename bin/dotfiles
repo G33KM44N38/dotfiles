@@ -131,6 +131,6 @@ if [[ ! -f "$IS_FIRST_RUN" ]]; then
     touch "$IS_FIRST_RUN"
 fi
 
-_cmd "cd ~/.dotfiles/ && stow ."
+_cmd "cd ~/.dotfiles/ && stow . &&  ./~/.dotfiles/decrypt-sensitive-files.sh"
 
 # vi:ft=sh:
