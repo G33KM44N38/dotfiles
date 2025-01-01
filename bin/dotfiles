@@ -131,6 +131,8 @@ if [[ ! -f "$IS_FIRST_RUN" ]]; then
     touch "$IS_FIRST_RUN"
 fi
 
+rm -rf ~/.zshrc
+
 _cmd "cd ~/.dotfiles/ && stow . &&  ./decrypt-sensitive-files.sh"
 
 # vi:ft=sh:
