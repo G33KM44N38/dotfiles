@@ -43,9 +43,9 @@ const hyperSubLayers = createHyperSubLayers({
     v: app("Visual Studio Code"),
     w: app("Brave Browser"),
     x: app("Discord"),
+    y: app("Notes"),
   },
   s: {
-    h: { to: [{ key_code: "f20" }] },
     u: { to: [{ key_code: "volume_increment" }] },
     j: { to: [{ key_code: "volume_decrement" }] },
     i: { to: [{ key_code: "display_brightness_increment" }] },
@@ -53,13 +53,15 @@ const hyperSubLayers = createHyperSubLayers({
     l: {
       to: [{ key_code: "q", modifiers: ["right_control", "right_command"] }],
     },
-    p: { to: [{ key_code: "play_or_pause" }] },
+    h: { to: [{ key_code: "play_or_pause" }] },
     semicolon: { to: [{ key_code: "fastforward" }] },
     d: open(
       `raycast://extensions/yakitrak/do-not-disturb/toggle?launchType=background`
     ),
     t: open(`raycast://extensions/raycast/system/toggle-system-appearance`),
     c: open("raycast://extensions/raycast/system/open-camera"),
+    n: { to: [{ key_code: "vk_consumer_next" }] },
+    p: { to: [{ key_code: "vk_consumer_previous" }] },
   },
   v: {
     h: { to: [{ key_code: "left_arrow" }] },
@@ -80,16 +82,11 @@ const hyperSubLayers = createHyperSubLayers({
     b: open(
       "raycast://extensions/VladCuciureanu/toothpick/manage-bluetooth-connections"
     ),
+    k: open("raycast://extensions/rolandleth/kill-process/index"),
     u: open("raycast://extensions/raycast/screenshots/search-screenshots"),
     e: open("raycast://extensions/raycast/emoji-symbols/search-emoji-symbols"),
     h: open("raycast://extensions/raycast/clipboard-history/clipboard-history"),
     i: open("raycast://extensions/benvp/audio-device/set-input-device"),
-    j: open(
-      "raycast://extensions/VladCuciureanu/toothpick/connect-favorite-device-1"
-    ),
-    k: open(
-      "raycast://extensions/VladCuciureanu/toothpick/connect-favorite-device-2"
-    ),
     o: open("raycast://extensions/benvp/audio-device/set-output-device"),
     p: open("raycast://extensions/raycast/raycast/confetti"),
     s: open("raycast://extensions/raycast/snippets/search-snippets"),
