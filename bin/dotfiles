@@ -12,7 +12,7 @@
 # @raycast.description dotfiles
 # @raycast.author me
 
-# color codes
+# Color codes
 RESTORE='\033[0m'
 NC='\033[0m'
 BLACK='\033[00;30m'
@@ -22,7 +22,6 @@ YELLOW='\033[00;33m'
 BLUE='\033[00;34m'
 PURPLE='\033[00;35m'
 CYAN='\033[00;36m'
-SEA="\\033[38;5;49m"
 LIGHTGRAY='\033[00;37m'
 LBLACK='\033[01;30m'
 LRED='\033[01;31m'
@@ -34,51 +33,35 @@ LCYAN='\033[01;36m'
 WHITE='\033[01;37m'
 OVERWRITE='\e[1A\e[K'
 
-#emoji codes
+# Emoji codes
 CHECK_MARK="${GREEN}\xE2\x9C\x94${NC}"
 X_MARK="${RED}\xE2\x9C\x96${NC}"
-PIN="${RED}\xF0\x9F\x93\x8C${NC}"
-CLOCK="${GREEN}\xE2\x8C\x9B${NC}"
-ARROW="${SEA}\xE2\x96\xB6${NC}"
-BOOK="${RED}\xF0\x9F\x93\x8B${NC}"
-HOT="${ORANGE}\xF0\x9F\x94\xA5${NC}"
-WARNING="${RED}\xF0\x9F\x9A\xA8${NC}"
-RIGHT_ANGLE="${GREEN}\xE2\x88\x9F${NC}"
+ARROW="${CYAN}\xE2\x96\xB6${NC}"
 
 DOTFILES_LOG="$HOME/.dotfiles.log"
+CONFIG_DIR="$HOME/.dotfiles"
+VAULT_SECRET="$HOME/.ansible-vault/vault.secret"
+IS_FIRST_RUN="$HOME/.dotfiles_run"
+DOTFILES_DIR="$HOME/.dotfiles"
 
-# _header colorize the given argument with spacing
+# _task colorizes the given argument with spacing
 function _task {
-    # if _task is called while a task was set, complete the previous
-    if [[ $TASK != "" ]]; then
-        printf "${OVERWRITE}${LGREEN} [✓]  ${LGREEN}${TASK}\n"
-    fi
-    # set new task title and print
-    TASK=$1
+    [[ -n $TASK ]] && printf "${OVERWRITE}${LGREEN} [✓]  ${LGREEN}${TASK}\n"
+    TASK="$1"
     printf "${LBLACK} [ ]  ${TASK} \n${LRED}"
 }
 
 # _cmd performs commands with error checking
 function _cmd {
-    #create log if it doesn't exist
-    if ! [[ -f $DOTFILES_LOG ]]; then
-        touch $DOTFILES_LOG
-    fi
-    # empty conduro.log
+    [[ ! -f $DOTFILES_LOG ]] && touch $DOTFILES_LOG
     > $DOTFILES_LOG
-    # hide stdout, on error we print and exit
-    if eval "$1" 1> /dev/null 2> $DOTFILES_LOG; then
+    if eval "$1" > /dev/null 2> $DOTFILES_LOG; then
         return 0 # success
     fi
-    # read error from log and add spacing
     printf "${OVERWRITE}${LRED} [X]  ${TASK}${LRED}\n"
-    while read line; do
-        printf "      ${line}\n"
-    done < $DOTFILES_LOG
+    cat $DOTFILES_LOG | sed 's/^/      /'
     printf "\n"
-    # remove log file
     rm $DOTFILES_LOG
-    # exit installation
     exit 1
 }
 
@@ -93,55 +76,61 @@ function _task_done {
 
 set -e
 
-# Paths
-CONFIG_DIR="$HOME/.dotfiles"
-VAULT_SECRET="$HOME/.ansible-vault/vault.secret"
-SSH_DIR="$HOME/.ssh"
-IS_FIRST_RUN="$HOME/.dotfiles_run"
-DOTFILES_DIR="$HOME/.dotfiles"
-
 # Check if Homebrew is installed
 if [[ "$(uname)" == "Darwin" ]]; then
     if ! command -v brew &> /dev/null; then
-        _task -e "${ARROW} ${CYAN}Homebrew is not installed. Installing Homebrew..."
+        _task "Installing Homebrew..."
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-        export PATH="/usr/local/bin:$PATH"
         echo 'export PATH="/usr/local/bin:$PATH"' >> "$HOME/.bash_profile"
     fi
-fi
 
-if [[ "$(uname)" == "Darwin" ]]; then
     if ! command -v ansible &> /dev/null; then
-        _task -e "${ARROW} ${CYAN}Installing Ansible..."
+        _task "Installing Ansible..."
         _cmd "brew install ansible"
     fi
 fi
 
-
-# Clone repository
-if ! [[ -d "$DOTFILES_DIR" ]]; then
+# Clone or update repository
+if [[ ! -d "$DOTFILES_DIR" ]]; then
     _task "Cloning repository"
-        _cmd "git clone --quiet https://github.com/G33KM44N38/dotfiles $DOTFILES_DIR"
+    _cmd "git clone --quiet https://github.com/G33KM44N38/dotfiles $DOTFILES_DIR"
 else
     _task "Updating repository"
-        _cmd "git -C $DOTFILES_DIR pull --quiet"
+    
+    # Stash any changes before pulling
+    pushd "$DOTFILES_DIR" > /dev/null
+    if [[ -n $(git status --porcelain) ]]; then
+        _task "Stashing changes..."
+        _cmd "git stash"
+    fi
+
+    _cmd "git pull --rebase --quiet"
+    
+    # Apply stashed changes if there were any
+    if git stash list | grep -q 'stash@{0}'; then
+        _task "Applying stashed changes..."
+        _cmd "git stash pop"
+    fi
+    popd > /dev/null
 fi
 
-pushd "$DOTFILES_DIR" 2>&1 > /dev/null
+pushd "$DOTFILES_DIR" > /dev/null
 _task "Updating Galaxy"
 _cmd "ansible-galaxy install -r \"$DOTFILES_DIR/install/requirements.yml\""
 
-_task "Running playbook"; _task_done
+_task "Running playbook"
 if [[ -f $VAULT_SECRET ]]; then
-    ansible-playbook --ask-become-pass --vault-password-file $VAULT_SECRET "$DOTFILES_DIR/install/main.yaml" "$@"
+    ansible-playbook --ask-become-pass --vault-password-file "$VAULT_SECRET" "$DOTFILES_DIR/install/main.yaml" "$@"
 else
     ansible-playbook --ask-become-pass "$DOTFILES_DIR/install/main.yaml" "$@"
 fi
 
-if ! [[ -f "$IS_FIRST_RUN" ]]; then
+if [[ ! -f "$IS_FIRST_RUN" ]]; then
     echo -e "${CHECK_MARK} ${GREEN}First run complete!${NC}"
     echo -e "${ARROW} ${CYAN}Please reboot your computer to complete the setup.${NC}"
     touch "$IS_FIRST_RUN"
 fi
+
+_cmd "cd ~/.dotfiles/ && stow ."
 
 # vi:ft=sh:
