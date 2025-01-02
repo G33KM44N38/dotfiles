@@ -175,6 +175,11 @@ if.app-id = 'notion.id'
 run = ['move-node-to-workspace 3']  # The callback itself
 
 [[on-window-detected]]
+if.app-id = 'md.obsidian'
+run = ['move-node-to-workspace 3']  # The callback itself
+
+
+[[on-window-detected]]
 if.app-id = 'com.ledger.live'
 run = ['move-node-to-workspace 3']  # The callback itself
 
@@ -243,10 +248,6 @@ run = ['move-node-to-workspace 10']  # The callback itself
 
 [[on-window-detected]]
 if.app-id = 'com.hnc.Discord'
-run = ['move-node-to-workspace 10']  # The callback itself
-
-[[on-window-detected]]
-if.app-id = 'md.obsidian'
 run = ['move-node-to-workspace 10']  # The callback itself
 
 [[on-window-detected]]
