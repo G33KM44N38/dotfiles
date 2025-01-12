@@ -37,7 +37,7 @@ const hyperSubLayers = createHyperSubLayers({
     m: app("Music"),
     n: app("Notion"),
     p: app("Obsidian"),
-    r: app("Davinci Resolve"),
+    r: app("Reader"),
     s: app("OBS"),
     t: app("Ghostty"),
     v: app("Visual Studio Code"),
@@ -53,15 +53,12 @@ const hyperSubLayers = createHyperSubLayers({
     l: {
       to: [{ key_code: "q", modifiers: ["right_control", "right_command"] }],
     },
-    h: { to: [{ key_code: "play_or_pause" }] },
-    semicolon: { to: [{ key_code: "fastforward" }] },
+    h: app("Home"),
     d: open(
       `raycast://extensions/yakitrak/do-not-disturb/toggle?launchType=background`
     ),
     t: open(`raycast://extensions/raycast/system/toggle-system-appearance`),
     c: open("raycast://extensions/raycast/system/open-camera"),
-    n: { to: [{ key_code: "vk_consumer_next" }] },
-    p: { to: [{ key_code: "vk_consumer_previous" }] },
   },
   v: {
     h: { to: [{ key_code: "left_arrow" }] },
@@ -72,9 +69,9 @@ const hyperSubLayers = createHyperSubLayers({
     u: { to: [{ key_code: "page_up" }] },
   },
   c: {
-    p: { to: [{ key_code: "play_or_pause" }] },
-    n: { to: [{ key_code: "fastforward" }] },
-    b: { to: [{ key_code: "rewind" }] },
+    h: { to: [{ key_code: "play_or_pause" }] },
+    k: { to: [{ key_code: "fastforward" }] },
+    j: { to: [{ key_code: "rewind" }] },
   },
   r: {
     l: open("raycast://extensions/kaanrkaraman/twitter-video-downloader/index"),

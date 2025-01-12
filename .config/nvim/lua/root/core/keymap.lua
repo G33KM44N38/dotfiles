@@ -43,10 +43,6 @@ keymap('n', '-', '<C-x>', opts)
 
 -- mapping fugitif
 keymap("n", "<leader>g", ":G<CR>", opts)
--- keymap("n", "<leader>gc", ":Git commit<CR>", noSilent)
--- keymap("n", "<leader>gs", ":Git status<CR>", opts)
--- keymap("n", "<leader>gP", ":Git push<CR>", opts)
--- keymap("n", "<leader>gp", ":Git pull<CR>", opts)
 
 -- open term
 keymap("n", "<leader>tt", ":ToggleTerm direction=float fish<CR>", opts)

@@ -20,10 +20,19 @@ return {
 					file_pattern = '.env*',
 					cloak_pattern = '=.+',
 					replace = nil,
-				},
+				}, {
+				file_pattern = '.zshrc',
+				cloak_pattern = '=.+',
+				replace = nil,
+			},
 				{
 					file_pattern = '.vault-password',
 					cloak_pattern = '.+',
+				},
+				{
+					file_pattern = '.npmrc',
+					cloak_pattern = '=.+', -- Cloak the registry line if needed
+					replace = '*',
 				},
 			}
 		})

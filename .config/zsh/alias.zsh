@@ -15,6 +15,9 @@ alias gs="git status"
 alias gp="git push"
 alias gaa="git add --all"
 alias graph="git log --all --decorate --oneline --graph"
+alias gcg="git config --edit --global"
+alias gcl="git config --edit --local"
+
 #create an alias, for github copilot
 alias ghs="gh copilot suggest"
 alias ghe="gh copilot explain"
