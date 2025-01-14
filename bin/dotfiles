@@ -54,14 +54,13 @@ function _task {
 # _cmd performs commands with error checking
 function _cmd {
     [[ ! -f $DOTFILES_LOG ]] && touch $DOTFILES_LOG
-    > $DOTFILES_LOG
-    if eval "$1" > /dev/null 2> $DOTFILES_LOG; then
+    echo "" >> $DOTFILES_LOG
+    if eval "$1" >> /dev/null 2>> $DOTFILES_LOG; then
         return 0 # success
     fi
     printf "${OVERWRITE}${LRED} [X]  ${TASK}${LRED}\n"
     sed 's/^/      /' "$DOTFILES_LOG"
     printf "\n"
-    rm -f $DOTFILES_LOG
     exit 1
 }
 
@@ -81,7 +80,7 @@ if [[ "$(uname)" == "Darwin" ]]; then
     if ! command -v brew &> /dev/null; then
         _task "Installing Homebrew..."
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-        echo 'export PATH="/usr/local/bin:$PATH"' >> "$HOME/.bash_profile"
+        echo 'export PATH="/usr/local/bin:$PATH"' >> "$HOME/.bashrc" # Changed to .bashrc
     fi
 
     if ! command -v ansible &> /dev/null; then
@@ -97,7 +96,7 @@ if [[ ! -d "$DOTFILES_DIR" ]]; then
 else
     _task "Updating repository"
     
-    pushd "$DOTFILES_DIR" > /dev/null
+    cd "$DOTFILES_DIR"
     if [[ -n $(git status --porcelain) ]]; then
         _task "Stashing changes..."
         _cmd "git stash"
@@ -109,10 +108,9 @@ else
         _task "Applying stashed changes..."
         _cmd "git stash pop"
     fi
-    popd > /dev/null
 fi
 
-pushd "$DOTFILES_DIR" > /dev/null
+cd "$DOTFILES_DIR"
 _task "Updating Galaxy"
 _cmd "ansible-galaxy install -r \"$DOTFILES_DIR/install/requirements.yml\""
 
@@ -129,7 +127,9 @@ if [[ ! -f "$IS_FIRST_RUN" ]]; then
     touch "$IS_FIRST_RUN"
 fi
 
-rm -f ~/.zshrc
+if [[ -f ~/.zshrc ]]; then # Check if file exists before removing
+    rm -f ~/.zshrc
+fi
 
 _cmd "cd ~/.dotfiles/ && stow . && ./decrypt-sensitive-files.sh"
 
