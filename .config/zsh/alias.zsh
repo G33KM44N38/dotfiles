@@ -22,6 +22,9 @@ alias gcl="git config --edit --local"
 alias ghs="gh copilot suggest"
 alias ghe="gh copilot explain"
 
+# golang
+alias go="richgo"
+
 # Tmux
 alias tma="tmux a"
 alias tml="tmux ls"
