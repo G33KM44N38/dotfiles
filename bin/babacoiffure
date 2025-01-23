@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Required parameters:
+# @raycast.schemaVersion 1
+# @raycast.title babacoiffure
+# @raycast.mode compact
+
+# Optional parameters:
+# @raycast.icon 💼 ‍♀️
+
+# Documentation:
+# @raycast.description Opens Babacoiffure development environment in Arc and tmux
+# @raycast.author Guillaume Hammadi
+
+
+arc-cli select-space-name babacoiffure
+tmux switch -t baba_coiffure
