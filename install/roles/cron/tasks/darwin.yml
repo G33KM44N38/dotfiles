@@ -1,7 +1,7 @@
 ---
 - name: Add cron job for cleanup script
   vars:
-    script_path: "{{ ansible_env.HOME }}/.dotfiles/bin/cleanup_goinfre" # Use ansible_env.HOME for the home directory
+    script_path: "cleanup_goinfre" # Use ansible_env.HOME for the home directory
     cron_name: "Cleanup old files"
     cron_time: "0 0 * * *" # Every day at midnight
   cron:
