@@ -1,0 +1,4 @@
+---
+- name: Setup cron
+  ansible.builtin.import_tasks: darwin.yml
+  when: ansible_system == 'Darwin'

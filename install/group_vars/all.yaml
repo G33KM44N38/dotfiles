@@ -39,3 +39,4 @@ default_roles:
   - solana
   - pnpm
   - ghostty
+  - cron
