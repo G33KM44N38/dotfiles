@@ -26,6 +26,7 @@ const hyperSubLayers = createHyperSubLayers({
   },
   o: {
     // open
+    h: app("Home"),
     a: app("Arc"),
     b: app("Beeper"),
     c: app("Calendar"),
