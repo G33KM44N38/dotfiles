@@ -14,6 +14,6 @@
 #
 
 arc-cli select-space-name J
-open https://creators.mym.fans/app/myms
+open -a "Brave Browser" https://creators.mym.fans/app/myms
 
 # vi:ft=sh:
