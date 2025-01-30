@@ -13,7 +13,7 @@
 # @raycast.author me
 #
 
-arc-cli select-space-name J
+# arc-cli select-space-name J
 open -a "Brave Browser" https://creators.mym.fans/app/myms
 
 # vi:ft=sh:
