@@ -8,7 +8,7 @@ alias m="cd ~/myproject/freelance/site/minata/"
 alias g="cd ~/goinfre/"
 alias ld="lazydocker"
 alias lg="lazygit"
-alias lt="exa --tree"
+# alias lt="exa --tree"
 
 # Git command
 alias gs="git status"

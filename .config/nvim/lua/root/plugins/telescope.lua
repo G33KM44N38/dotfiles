@@ -22,7 +22,6 @@ return {
 				}
 			},
 			picker = {
-				hidden = true,
 			},
 			defaults = {
 				vimgrep_arguments = {
@@ -36,6 +35,7 @@ return {
 					"--smart-case",
 					"--hidden",
 				},
+
 				prompt_prefix = "",
 				selection_caret = "  ",
 				entry_prefix = "  ",

@@ -58,6 +58,9 @@ keymap("n", "<C-s>", ":lua require('telescope.builtin').live_grep()<CR>", opts)
 keymap("n", "<leader>gof", ":lua require('telescope.builtin').live_grep({grep_open_files=true})", opts)
 keymap("n", "<leader>gf", ":lua require('telescope.builtin').git_files()<CR>", opts)
 keymap("n", "<leader>ke", ":lua require('telescope.builtin').keymaps()<CR>", opts)
+keymap("n", "<leader>h",
+	":lua require('telescope.builtin').find_files({ hidden = true, no_ignore = true, file_ignore_patterns = {'.git/'} })<CR>",
+	opts)
 
 -- allow my cursor stay at the same place, when using `J`
 keymap("n", "J", "mzJ`z", opts)

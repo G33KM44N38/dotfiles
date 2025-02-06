@@ -2105,6 +2105,27 @@
                                         "value": 1
                                     }
                                 ],
+                                "description": "Open -a 'Home.app'",
+                                "from": {
+                                    "key_code": "h",
+                                    "modifiers": { "optional": ["any"] }
+                                },
+                                "to": [{ "shell_command": "open -a 'Home.app'" }],
+                                "type": "basic"
+                            },
+                            {
+                                "conditions": [
+                                    {
+                                        "description": "MacBook Pro built-in keyboard",
+                                        "identifiers": [{ "vendor_id": 1452 }],
+                                        "type": "device_if"
+                                    },
+                                    {
+                                        "name": "hyper_sublayer_o",
+                                        "type": "variable_if",
+                                        "value": 1
+                                    }
+                                ],
                                 "description": "Open -a 'Arc.app'",
                                 "from": {
                                     "key_code": "a",

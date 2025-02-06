@@ -1,4 +1,5 @@
 require("root.core.keymap")
+require("root.my_plugins.Commiter")
 
 vim.opt.scrolloff = 1
 -- Required to be compatible with Neovim
