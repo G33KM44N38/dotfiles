@@ -40,3 +40,4 @@ default_roles:
   - pnpm
   - ghostty
   - cron
+  - mouseless
