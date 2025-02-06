@@ -1,0 +1,6 @@
+---
+- name: Install mouseless
+  community.general.homebrew_cask:
+    name: mouseless
+    state: present
+    update_homebrew: yes
