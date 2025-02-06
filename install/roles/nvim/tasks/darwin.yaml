@@ -1,5 +1,12 @@
 - name: NVIM | Install nvim
-  homebrew:
-    name: nvim
-    state: present
-    update_homebrew: yes
+  block:
+    - name: NVIM | Remove existing Lazy.nvim plugin directory
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME }}/.local/share/nvim/lazy"
+        state: absent
+
+    - name: NVIM | Install nvim
+      homebrew:
+        name: nvim
+        state: present
+        update_homebrew: yes
