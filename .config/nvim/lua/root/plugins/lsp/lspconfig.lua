@@ -109,12 +109,6 @@ return {
 			on_attach = on_attach,
 		})
 
-		-- configure lua_ls server
-		lspconfig["lua_ls"].setup({
-			-- capabilities = capabilities,
-			-- on_attach = on_attach,
-		})
-
 		-- configure bashls server
 		lspconfig["bashls"].setup({
 			-- capabilities = capabilities,
@@ -130,20 +124,12 @@ return {
 
 		-- configure lua server (with special settings)
 		lspconfig["lua_ls"].setup({
-			-- capabilities = capabilities,
-			on_attach = on_attach,
-			settings = { -- custom settings for lua
+			on_attach = on_attach, -- Assurez-vous que cette fonction est bien définie
+			capabilities = capabilities, -- Assurez-vous d'avoir défini 'capabilities'
+			settings = {
 				Lua = {
-					-- make the language server recognize "vim" global
 					diagnostics = {
 						globals = { "vim" },
-					},
-					workspace = {
-						-- make language server aware of runtime files
-						library = {
-							[vim.fn.expand("$VIMRUNTIME/lua")] = true,
-							[vim.fn.stdpath("config") .. "/lua"] = true,
-						},
 					},
 				},
 			},
