@@ -34,7 +34,7 @@ return {
 			s("imr", {
 				t('import React from "react";')
 			}),
-			s("conl", {
+			s("clg", {
 				t("console.log("), i(1), t(")"),
 			}),
 		})
