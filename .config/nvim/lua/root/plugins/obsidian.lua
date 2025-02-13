@@ -73,47 +73,42 @@ local function edit_frontmatter(key, new_value)
 end
 
 local function check_metadata()
-	-- Extract the filename date
+	-- Get the current file's full path and name
+	local current_file_path = vim.fn.expand('%:p')
 	local current_file = vim.fn.expand('%:t:r') -- Get current file name without extension
-	local date_pattern = "(%d+)%-(%d+)%-(%d+)"
-	local month, day, year = current_file:match(date_pattern)
 
-	if not (month and day and year) then
-		print("Current file is not a daily note")
+	-- Get the file's modification time
+	local file_stats = vim.loop.fs_stat(current_file_path)
+	if not file_stats then
+		print("Could not get file stats")
 		return false
 	end
 
-	-- Format the filename date as per the configured date format
-	local filename_date = string.format("%02d-%02d-%04d", tonumber(month), tonumber(day), tonumber(year))
+	-- Convert file modification time to a formatted date string
+	local file_date = os.date("%m-%d-%Y", file_stats.mtime.sec)
 
 	-- Extract frontmatter
 	local frontmatter = extract_frontmatter()
 	if not frontmatter then
-		print("No frontmatter found")
-		return false
+		-- No frontmatter, so we'll add it
+		edit_frontmatter("created", file_date)
+		return true
 	end
 
 	-- Check if date exists in frontmatter
 	local frontmatter_date = frontmatter:match("created:%s*(.-)%s*$")
 
-	-- Handle template placeholder
+	-- Handle template placeholder for any markdown file
 	if frontmatter_date and frontmatter_date:match("<%% tp%.date%.now%(%) %%>") then
-		print("Replacing template placeholder with actual created")
-		edit_frontmatter("created", filename_date)
-		frontmatter_date = filename_date
-	end
-
-	if not frontmatter_date then
-		edit_frontmatter("created", filename_date)
+		print("Replacing template placeholder with actual created date")
+		edit_frontmatter("created", file_date)
 		return true
 	end
 
-	-- Compare dates
-	if frontmatter_date ~= filename_date then
-		print(string.format("Date mismatch! Filename: %s, Frontmatter: %s", filename_date, frontmatter_date))
-		-- Update frontmatter to match filename
-		edit_frontmatter("created", filename_date)
-		return false
+	-- If no date is set, add the current file's date
+	if not frontmatter_date then
+		edit_frontmatter("created", file_date)
+		return true
 	end
 
 	return true
@@ -125,7 +120,6 @@ local function import_todos_from_previous_daily()
 	local date_pattern = "(%d+)%-(%d+)%-(%d+)"
 	local month, day, year = current_file:match(date_pattern)
 
-	-- print(string.format("[DEBUG] Current file: %s, Extracted date: %s-%s-%s", current_file, month, day, year))
 
 	if not (month and day and year) then
 		-- print("[DEBUG] Current file is not a daily note")
@@ -135,7 +129,6 @@ local function import_todos_from_previous_daily()
 	local current_date = os.time({ year = tonumber(year), month = tonumber(month), day = tonumber(day) })
 	local daily_folder = "/Users/kylian/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Daily/"
 
-	-- print(string.format("[DEBUG] Current date: %s, Daily folder: %s", os.date("%Y-%m-%d", current_date), daily_folder))
 
 	-- Find previous daily note
 	local i = 1
@@ -144,14 +137,12 @@ local function import_todos_from_previous_daily()
 		local prev_file = string.format("%02d-%02d-%04d.md", prev_date.month, prev_date.day, prev_date.year)
 		local full_path = daily_folder .. prev_file
 
-		-- print(string.format("[DEBUG] Checking previous daily note: %s", full_path))
 
 		-- Check if file exists
 		local f = io.open(full_path, "r")
 		if f then
 			f:close()
 
-			-- print("[DEBUG] Previous daily note found")
 
 			-- Read the previous daily note
 			local content = {}
@@ -165,43 +156,53 @@ local function import_todos_from_previous_daily()
 			for _, line in ipairs(content) do
 				if line:match("^## TODOS") then
 					in_todos_section = true
-					-- print("[DEBUG] Found TODOS section")
 				elseif in_todos_section and line:match("^##") then
 					-- Stop when next section starts
 					break
 				elseif in_todos_section and line:match("%s*-%s*%[%s*%]") then
 					-- Unchecked todo item
 					table.insert(todos, line)
-					-- print(string.format("[DEBUG] Found unchecked todo: %s", line))
 				end
 			end
 
 			-- If todos found, add them to current file
 			if #todos > 0 then
-				-- print(string.format("[DEBUG] Found %d unchecked todos", #todos))
-
 				-- Get current buffer
 				local bufnr = vim.api.nvim_get_current_buf()
 
 				-- Find the TODOS section in current file
 				local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 				local todos_index = nil
+				local existing_todos = {}
+
+				-- First, find the TODOS section and collect existing todos
 				for i, line in ipairs(lines) do
 					if line:match("^## TODOS") then
 						todos_index = i
+					elseif todos_index and line:match("%s*-%s*%[%s*%]") then
+						-- Collect existing unchecked todos
+						existing_todos[line:gsub("%s*-%s*%[%s*%]%s*(.*)$", "%1")] = true
+					elseif todos_index and line:match("^##") then
+						-- Stop when next section starts
 						break
 					end
 				end
 
-				if todos_index then
-					-- print(string.format("[DEBUG] Inserting todos at index %d", todos_index + 1))
-					-- Insert todos after the TODOS header
-					vim.api.nvim_buf_set_lines(bufnr, todos_index + 1, todos_index + 1, false, todos)
-					print(string.format("Imported %d todos from previous daily note", #todos))
+				-- Filter out todos that already exist
+				local new_todos = {}
+				for _, todo in ipairs(todos) do
+					local todo_text = todo:gsub("%s*-%s*%[%s*%]%s*(.*)$", "%1")
+					if not existing_todos[todo_text] then
+						table.insert(new_todos, todo)
+					end
+				end
+
+				-- Insert new todos if any
+				if #new_todos > 0 and todos_index then
+					vim.api.nvim_buf_set_lines(bufnr, todos_index + 1, todos_index + 1, false, new_todos)
+					print(string.format("Imported %d new todos from previous daily note", #new_todos))
 					return true
 				end
-			else
-				-- print("[DEBUG] No unchecked todos found in previous daily note")
 			end
 
 			return true
@@ -209,7 +210,6 @@ local function import_todos_from_previous_daily()
 
 		-- Prevent infinite loop
 		if i > 1000 then
-			-- print("[DEBUG] No previous daily notes found after 1000 iterations")
 			return false
 		end
 
@@ -526,8 +526,8 @@ return {
 					{ noremap = true, silent = true })
 				vim.api.nvim_set_keymap("n", "<leader>it", "<cmd>ObsidianTemplate<cr>",
 					{ noremap = true, silent = true })
-				vim.api.nvim_set_keymap("n", "<c-P>", "<cmd>ObsidianSearch<cr>",
-					{ noremap = true, silent = true })
+				-- vim.api.nvim_set_keymap("n", "<c-P>", "<cmd>ObsidianSearch<cr>",
+				-- 	{ noremap = true, silent = true })
 				vim.api.nvim_set_keymap("n", "<leader>ef", ":ObsidianEditFrontmatter ",
 					{ noremap = true })
 				-- Create command to check metadata

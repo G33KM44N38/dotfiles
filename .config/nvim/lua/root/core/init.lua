@@ -106,7 +106,7 @@ vim.cmd("set nowrap")
 vim.api.nvim_set_option_value('autoindent', false, {})
 vim.api.nvim_set_option_value('wrap', false, {})
 
--- vim.cmd("set conceallevel=1")
+vim.cmd("set conceallevel=1")
 vim.opt.foldmethod = "expr"
 vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
 vim.opt.foldlevel = 99
@@ -145,3 +145,8 @@ vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
 		vim.bo.filetype = "dotenv"
 	end
 })
+
+vim.api.nvim_create_user_command("FileCreationDate", function()
+	local date = vim.fn.system('stat -c %w ' .. vim.fn.expand('%'))
+	print(os.date('%Y-%m-%d %H:%M:%S', vim.fn.system('stat -f %B ' .. vim.fn.expand('%'))))
+end, {})
