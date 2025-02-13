@@ -415,7 +415,9 @@ return {
 			time_format = "%H:%M",
 		},
 		disable_frontmatter = true,
-		note_id_func = nil,
+		note_id_func = function(title)
+			return title
+		end,
 		daily_notes = {
 			folder = "Daily/",
 			date_format = "%m-%d-%Y",
