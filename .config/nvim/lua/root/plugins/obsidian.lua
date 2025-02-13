@@ -1,3 +1,35 @@
+-- Function to extract frontmatter
+local function extract_frontmatter()
+	-- Get all lines in the current buffer
+	local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+	local start_index = nil
+	local end_index = nil
+	local found_first = false
+
+	-- Find the start and end indices of the --- blocks
+	for i, line in ipairs(lines) do
+		if line:match("^%-%-%-") then
+			if not found_first then
+				start_index = i
+				found_first = true
+			else
+				end_index = i
+				break
+			end
+		end
+	end
+
+	-- If we found both markers, extract and return the content
+	if start_index and end_index then
+		local content = table.concat(
+			vim.api.nvim_buf_get_lines(0, start_index, end_index - 1, false),
+			"\n"
+		)
+		return content
+	end
+	return nil
+end
+
 -- Function to edit frontmatter values
 local function edit_frontmatter(key, new_value)
 	-- Get all lines in the current buffer
@@ -40,6 +72,55 @@ local function edit_frontmatter(key, new_value)
 	end
 	return false
 end
+
+local function check_metadata()
+	-- Extract the filename date
+	local current_file = vim.fn.expand('%:t:r') -- Get current file name without extension
+	local date_pattern = "(%d+)%-(%d+)%-(%d+)"
+	local month, day, year = current_file:match(date_pattern)
+
+	if not (month and day and year) then
+		print("Current file is not a daily note")
+		return false
+	end
+
+	-- Format the filename date as per the configured date format
+	local filename_date = string.format("%02d-%02d-%04d", tonumber(month), tonumber(day), tonumber(year))
+
+	-- Extract frontmatter
+	local frontmatter = extract_frontmatter()
+	if not frontmatter then
+		print("No frontmatter found")
+		return false
+	end
+
+	-- Check if date exists in frontmatter
+	local frontmatter_date = frontmatter:match("created:%s*(.-)%s*$")
+
+	-- Handle template placeholder
+	if frontmatter_date and frontmatter_date:match("<%% tp%.date%.now%(%) %%>") then
+		print("Replacing template placeholder with actual created")
+		edit_frontmatter("created", filename_date)
+		frontmatter_date = filename_date
+	end
+
+	if not frontmatter_date then
+		print("No created found in frontmatter. Adding date...")
+		edit_frontmatter("created", filename_date)
+		return true
+	end
+
+	-- Compare dates
+	if frontmatter_date ~= filename_date then
+		print(string.format("Date mismatch! Filename: %s, Frontmatter: %s", filename_date, frontmatter_date))
+		-- Update frontmatter to match filename
+		edit_frontmatter("created", filename_date)
+		return false
+	end
+
+	return true
+end
+
 
 -- New function to find previous existing daily note
 local function find_previous_daily()
@@ -162,6 +243,9 @@ return {
 				return string.format("%s-", os.time())
 			end,
 		},
+		follow_url_func = function(url)
+			vim.fn.jobstart({ "open", url })
+		end
 	},
 	config = function(_, opts)
 		require("obsidian").setup(opts)
@@ -219,10 +303,20 @@ return {
 					{ noremap = true, silent = true })
 				vim.api.nvim_set_keymap("n", "<leader>it", "<cmd>ObsidianTemplate<cr>",
 					{ noremap = true, silent = true })
+				vim.api.nvim_set_keymap("n", "<c-P>", "<cmd>ObsidianSearch<cr>",
+					{ noremap = true, silent = true })
 
 				-- New keymap for editing frontmatter
 				vim.api.nvim_set_keymap("n", "<leader>ef", ":ObsidianEditFrontmatter ",
 					{ noremap = true })
+
+				-- Create command to check metadata
+				vim.api.nvim_create_user_command("ObsidianCheckMetadata", function()
+					check_metadata()
+				end, {})
+
+				-- Automatically check metadata when opening a daily note
+				check_metadata()
 			end
 		})
 	end,
