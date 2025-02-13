@@ -126,13 +126,13 @@ return {
 		lspconfig["lua_ls"].setup({
 			on_attach = on_attach, -- Assurez-vous que cette fonction est bien définie
 			capabilities = capabilities, -- Assurez-vous d'avoir défini 'capabilities'
-			settings = {
-				Lua = {
-					diagnostics = {
-						globals = { "vim" },
-					},
-				},
-			},
+			-- settings = {
+			-- 	Lua = {
+			-- 		diagnostics = {
+			-- 			globals = { "vim" },
+			-- 		},
+			-- 	},
+			-- },
 		})
 
 		lspconfig["eslint"].setup({
