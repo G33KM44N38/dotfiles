@@ -12,7 +12,7 @@ import {
 
 const hyperSubLayers = createHyperSubLayers({
   spacebar: open(
-    "raycast://extensions/stellate/mxstbr-commands/create-notion-todo"
+    "raycast://extensions/stellate/mxstbr-commands/create-notion-todo",
   ),
   b: {
     y: open("https://youtube.com"),
@@ -25,15 +25,15 @@ const hyperSubLayers = createHyperSubLayers({
     f: open("https://www.netflix.com/"),
   },
   o: {
-    // open
-    h: app("Home"),
     a: app("Arc"),
     b: app("Beeper"),
     c: app("Calendar"),
     d: app("Dbeaver"),
     e: app("Mail"),
     f: app("Figma"),
+    h: app("Home"),
     i: app("Messages"),
+    j: app("FaceTime"),
     k: app("Ledger Live"),
     m: app("Music"),
     n: app("Notion"),
@@ -56,7 +56,7 @@ const hyperSubLayers = createHyperSubLayers({
     },
     h: app("Home"),
     d: open(
-      `raycast://extensions/yakitrak/do-not-disturb/toggle?launchType=background`
+      `raycast://extensions/yakitrak/do-not-disturb/toggle?launchType=background`,
     ),
     t: open(`raycast://extensions/raycast/system/toggle-system-appearance`),
     c: open("raycast://extensions/raycast/system/open-camera"),
@@ -78,7 +78,7 @@ const hyperSubLayers = createHyperSubLayers({
     l: open("raycast://extensions/kaanrkaraman/twitter-video-downloader/index"),
     a: open("raycast://extensions/abielzulio/chatgpt/ask"),
     b: open(
-      "raycast://extensions/VladCuciureanu/toothpick/manage-bluetooth-connections"
+      "raycast://extensions/VladCuciureanu/toothpick/manage-bluetooth-connections",
     ),
     k: open("raycast://extensions/rolandleth/kill-process/index"),
     u: open("raycast://extensions/raycast/screenshots/search-screenshots"),
@@ -117,7 +117,7 @@ const leftGuiLayer = createKeyLayer(
     d: { to: [{ key_code: "keypad_plus" }] },
     f: { to: [{ key_code: "keypad_equal_sign" }] },
   },
-  "return_or_enter"
+  "return_or_enter",
 );
 
 const left_option_layer = createKeyLayer(
@@ -134,7 +134,7 @@ const left_option_layer = createKeyLayer(
     l: { to: [{ key_code: "f9" }] },
     p: { to: [{ key_code: "f10" }] },
   },
-  "delete_or_backspace"
+  "delete_or_backspace",
 );
 
 const rightGuiLayer = createKeyLayer(
@@ -163,7 +163,7 @@ const rightGuiLayer = createKeyLayer(
     k: { to: [{ key_code: "backslash" }] },
     l: { to: [{ key_code: "grave_accent_and_tilde" }] },
   },
-  "spacebar"
+  "spacebar",
 );
 
 const homeRowMods: Manipulator[] = [
@@ -228,7 +228,7 @@ const rules: KarabinerRules[] = [
       createBasicManipulator(
         "left_option",
         "delete_or_backspace",
-        "alt to backspace"
+        "alt to backspace",
       ),
     ],
   },
@@ -258,6 +258,6 @@ fs.writeFileSync(
       profiles: [{ name: "Default", complex_modifications: { rules } }],
     },
     null,
-    2
-  )
+    2,
+  ),
 );
