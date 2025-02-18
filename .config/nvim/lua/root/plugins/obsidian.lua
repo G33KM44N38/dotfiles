@@ -1,4 +1,104 @@
--- Function to extract frontmatter
+local workspace_path = "/Users/kylian/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/"
+local daily_folder =
+"/Users/kylian/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Daily/"
+
+-- Sample function to read the content of a file
+---@param file_path string Path to the file to read
+---@return string The content of the file
+local function readFile(file_path)
+	local file = io.open(file_path, "r")
+	if not file then return "" end
+	local content = file:read("*all")
+	file:close()
+	return content
+end
+
+-- Parse the YAML-like metadata from the file content
+---@param content string The content of the file
+---@return table The parsed metadata (tags and created)
+local function parseMetadata(content)
+	local metadata = {}
+	-- Search for tags (e.g., tags: - daily) and created (e.g., created: 02-14-2025)
+	local tags = {}
+	for tag in content:gmatch("tags:%s*%-?%s*(%w+)") do
+		table.insert(tags, tag)
+	end
+	metadata.tags = tags
+	metadata.created = content:match("created:%s*(%d+-%d+-%d+)") -- Match date format (e.g., 02-14-2025)
+
+	return metadata
+end
+
+-- Scan the workspace and return a list of files with metadata
+---@param workspace string Path to the workspace directory
+---@return table A list of files with their metadata
+local function scanWorkspace(workspace)
+	local files = {}
+	local scan = require("plenary.scandir")
+	local results = scan.scan_dir(workspace_path, {
+		hidden = false,
+		add_dirs = false,
+		respect_gitignore = true,
+		depth = 1,
+		search_pattern = "%.md$"
+	})
+
+	for _, file_path in ipairs(results) do
+		local file = vim.fn.fnamemodify(file_path, ":t")
+		local content = readFile(file_path)
+		local metadata = parseMetadata(content)
+		table.insert(files, { name = file, metadata = metadata })
+	end
+	return files
+end
+
+local function markdown_headings()
+	local pickers = require("telescope.pickers")
+	local finders = require("telescope.finders")
+	local conf = require("telescope.config").values
+	local actions = require("telescope.actions")
+	local action_state = require("telescope.actions.state")
+
+	-- Get current buffer contents
+	local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+	local headings = {}
+
+	-- Find all headings with their line numbers
+	for i, line in ipairs(lines) do
+		if line:match("^#+ ") then
+			table.insert(headings, {
+				line = i,
+				text = line:gsub("^#+%s*", ""), -- Remove #s from display
+				raw = line
+			})
+		end
+	end
+
+	pickers.new({}, {
+		prompt_title = "Markdown Headings",
+		finder = finders.new_table({
+			results = headings,
+			entry_maker = function(entry)
+				return {
+					value = entry,
+					display = string.format("%d: %s", entry.line, entry.text),
+					ordinal = string.format("%d %s", entry.line, entry.text),
+					lnum = entry.line
+				}
+			end
+		}),
+		sorter = conf.generic_sorter({}),
+		attach_mappings = function(prompt_bufnr)
+			actions.select_default:replace(function()
+				actions.close(prompt_bufnr)
+				local selection = action_state.get_selected_entry()
+				vim.api.nvim_win_set_cursor(0, { selection.lnum, 0 })
+			end)
+			return true
+		end,
+	}):find()
+end
+
 local function extract_frontmatter()
 	-- Get all lines in the current buffer
 	local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
@@ -78,9 +178,9 @@ local function check_metadata()
 	local current_file = vim.fn.expand('%:t:r') -- Get current file name without extension
 
 	-- Get the file's modification time
-	local file_stats = vim.loop.fs_stat(current_file_path)
+	local file_stats = vim.uv.fs_stat(current_file_path)
 	if not file_stats then
-		print("Could not get file stats")
+		-- print("Could not get file stats")
 		return false
 	end
 
@@ -100,7 +200,7 @@ local function check_metadata()
 
 	-- Handle template placeholder for any markdown file
 	if frontmatter_date and frontmatter_date:match("<%% tp%.date%.now%(%) %%>") then
-		print("Replacing template placeholder with actual created date")
+		-- print("Replacing template placeholder with actual created date")
 		edit_frontmatter("created", file_date)
 		return true
 	end
@@ -126,8 +226,7 @@ local function import_todos_from_previous_daily()
 		return false
 	end
 
-	local current_date = os.time({ year = tonumber(year), month = tonumber(month), day = tonumber(day) })
-	local daily_folder = "/Users/kylian/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Daily/"
+	local current_date = os.time({ year = year, month = month, day = day })
 
 
 	-- Find previous daily note
@@ -176,9 +275,9 @@ local function import_todos_from_previous_daily()
 				local existing_todos = {}
 
 				-- First, find the TODOS section and collect existing todos
-				for i, line in ipairs(lines) do
+				for i_2, line in ipairs(lines) do
 					if line:match("^## TODOS") then
-						todos_index = i
+						todos_index = i_2
 					elseif todos_index and line:match("%s*-%s*%[%s*%]") then
 						-- Collect existing unchecked todos
 						existing_todos[line:gsub("%s*-%s*%[%s*%]%s*(.*)$", "%1")] = true
@@ -200,7 +299,7 @@ local function import_todos_from_previous_daily()
 				-- Insert new todos if any
 				if #new_todos > 0 and todos_index then
 					vim.api.nvim_buf_set_lines(bufnr, todos_index + 1, todos_index + 1, false, new_todos)
-					print(string.format("Imported %d new todos from previous daily note", #new_todos))
+					-- print(string.format("Imported %d new todos from previous daily note", #new_todos))
 					return true
 				end
 			end
@@ -223,15 +322,13 @@ local function find_previous_daily()
 	local month, day, year = current_file:match(date_pattern)
 
 	if month and day and year then
-		local current_date = os.time({ year = tonumber(year), month = tonumber(month), day = tonumber(day) })
+		local current_date = os.time({ year = year, month = month, day = day })
 
 		-- Start checking from yesterday, going backwards
 		local i = 1
 		while true do
 			local prev_date = os.date("*t", current_date - (i * 86400)) -- 86400 seconds = 1 day
 			local prev_file = string.format("%02d-%02d-%04d.md", prev_date.month, prev_date.day, prev_date.year)
-			local daily_folder =
-			"/Users/kylian/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Daily/"
 			local full_path = daily_folder .. prev_file
 
 			-- Check if file exists
@@ -245,45 +342,188 @@ local function find_previous_daily()
 
 			-- Prevent infinite loop by checking a reasonable max (e.g., 1000 days)
 			if i > 1000 then
-				print("No previous daily notes found")
+				-- print("No previous daily notes found")
 				return false
 			end
 
 			i = i + 1
 		end
 	else
-		print("Current file is not a daily note")
+		-- print("Current file is not a daily note")
 		return false
 	end
 end
 
+local ts = vim.treesitter
+local query = ts.query.parse('markdown', [[
+  (fenced_code_block
+    (info_string) @language
+    (#eq? @language "dataview")
+  ) @block
+]])
+
+local function is_dataview_block(lines)
+	-- Check if the block starts and ends with triple backticks and contains 'dataview' keyword
+	return lines[1]:match("```") and
+	    lines[#lines]:match("```") and
+	    vim.fn.join(lines, " "):match("dataview")
+end
+
+---@param type string The parameter name
+---@return string # Return value description
+local function type_of_display(type)
+	return type
+end
+
+local dataview_query = ""
+local function display_virtual_dataview_output()
+	local bufnr = vim.api.nvim_get_current_buf()
+	local parser = ts.get_parser(bufnr, "markdown")
+	local tree = parser:parse()[1]
+	local root = tree:root()
+	local ns_id = vim.api.nvim_create_namespace("dataview_output_namespace")
+
+	for pattern_id, match, metadata in query:iter_matches(root, bufnr, 0, -1, { all = true }) do
+		for capture_id, nodes in pairs(match) do
+			for _, node in ipairs(nodes) do
+				local start_row, start_col, end_row, end_col = node:range()
+
+				-- Get all lines from the buffer
+				local all_lines = vim.api.nvim_buf_get_lines(bufnr, start_row, -1, false)
+				local block_end = nil
+
+				-- Find the closing backticks
+				for i, line in ipairs(all_lines) do
+					if line:match("^```%s*$") then
+						block_end = start_row + i - 1
+						break
+					end
+				end
+
+				if block_end then
+					-- Get just the content between the backticks (excluding them)
+					local content_lines = vim.api.nvim_buf_get_lines(bufnr, start_row + 1, block_end, false)
+					dataview_query = table.concat(content_lines, " ")
+
+					if is_dataview_block(content_lines) then
+						local bloc_type = type_of_display("table")
+						local dataview_output = { bloc_type }
+
+						vim.api.nvim_buf_clear_namespace(bufnr, ns_id, 0, -1)
+						for idx, text in ipairs(dataview_output) do
+							vim.api.nvim_buf_set_extmark(bufnr, ns_id, block_end + idx, 0, {
+								virt_text = { { text, "inline" } },
+								virt_text_pos = "inline"
+							})
+						end
+						return
+					end
+				end
+			end
+		end
+	end
+	-- print("No dataview block found.")
+end
+
+local table_dataview_query = {}
+
+---@param query_string string The query string to parse
+---@return table Parsed query components (request type, condition, assignment)
+local function parseDataViewQuery(query_string)
+	-- Clean up the input string by trimming extra spaces and newlines
+	query_string = query_string:gsub("\n", " "):gsub("%s+", " "):trim()
+
+	-- Split the query string into words
+	local words = {}
+	for word in query_string:gmatch("%S+") do
+		table.insert(words, word)
+	end
+
+	-- Initialize the parsed components
+	local parsed_query = {
+		request_type = words[1],         -- First word is the request type (e.g., 'table')
+		condition = words[2],            -- Second word is the condition (e.g., 'where')
+		assignment = table.concat(words, " ", 3) -- The rest is the assignment (e.g., 'created = this.created')
+	}
+
+	-- Print parsed components for debugging
+	-- print("Request Type:", parsed_query.request_type)
+	-- print("Condition:", parsed_query.condition)
+	-- print("Assignment:", parsed_query.assignment)
+
+	return parsed_query
+end
+
+-- Helper function to trim spaces
+function string.trim(s)
+	return s:match("^%s*(.-)%s*$")
+end
+
+-- Function to execute the query and filter files based on metadata
+---@param query_string string The query string to parse
+---@param files table A list of files with metadata to search through
+---@return table A list of files matching the query
+local function executeQuery(query_string, files)
+	local parsed_query = parseDataViewQuery(query_string)
+
+	-- Initialize result table
+	local results = {}
+
+	-- Check the condition (e.g., 'where')
+	if parsed_query.condition == "where" then
+		-- Match the assignment (e.g., 'created = this.created')
+		local field, value = parsed_query.assignment:match("(%w+) = (.+)")
+
+		-- If we matched the assignment, filter files based on the field and value
+		if field and value then
+			for _, file in ipairs(files) do
+				-- Check if the field exists in the metadata
+				if file.metadata[field] then
+					-- Compare the field value with the query value
+					if type(file.metadata[field]) == "table" then
+						-- For tags (which can be a list), check if the value exists in the list
+						for _, tag in ipairs(file.metadata[field]) do
+							if tag == value then
+								table.insert(results, file)
+								break
+							end
+						end
+					else
+						-- For non-list fields (like created), directly compare the values
+						if file.metadata[field] == value then
+							table.insert(results, file)
+						end
+					end
+				end
+			end
+		end
+	end
+
+	-- Return the filtered results
+	return results
+end
+
 local function find_next_daily()
-	local current_file = vim.fn.expand('%:t:r') -- Get current file name without extension
+	local current_file = vim.fn.expand('%:t:r')
 	local date_pattern = "(%d+)%-(%d+)%-(%d+)"
 	local month, day, year = current_file:match(date_pattern)
 
 	if month and day and year then
-		local current_date = os.time({ year = tonumber(year), month = tonumber(month), day = tonumber(day) })
+		local current_date = os.time({ year = year, month = month, day = day })
 
-		-- Start checking from yesterday, going backwards
 		local i = 1
 		while true do
-			local prev_date = os.date("*t", current_date - (i * 86400)) -- 86400 seconds = 1 day
-			local prev_file = string.format("%02d-%02d-%04d.md", prev_date.month, prev_date.day, prev_date.year)
-			local daily_folder =
-			"/Users/kylian/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Daily/"
+			local next_date = os.date("*t", current_date + (i * 86400))
+			local prev_file = string.format("%02d-%02d-%04d.md", next_date.month, next_date.day, next_date.year)
 			local full_path = daily_folder .. prev_file
 
-			-- Check if file exists
 			local f = io.open(full_path, "r")
 			if f then
 				f:close()
-				-- File exists, open it
 				vim.cmd('edit ' .. vim.fn.fnameescape(full_path))
 				return true
 			end
 
-			-- Prevent infinite loop by checking a reasonable max (e.g., 1000 days)
 			if i > 1000 then
 				print("No previous daily notes found")
 				return false
@@ -308,40 +548,29 @@ local function find_weekly()
 end
 
 local function apply_template_by_folder()
-	-- Get the full path of the current buffer
 	local current_file_path = vim.fn.expand('%:p')
-	local workspace_path = "/Users/kylian/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/"
-
-	-- Remove the workspace path to get the relative path
 	local relative_path = current_file_path:sub(#workspace_path + 1)
 
-	-- Define template mappings
 	local template_mappings = {
 		["Daily/"] = "Daily Template.md",
 		["Weekly/"] = "Weekly Template.md"
 	}
 
-	-- Check if the file is in a specific folder and needs a template
 	for folder, template in pairs(template_mappings) do
 		if relative_path:match("^" .. folder) then
 			local template_path = workspace_path .. "Templates/" .. template
 
-			-- Check if the file is empty
 			local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
 			if #lines <= 1 and (lines[1] == "" or lines[1]:match("^%s*$")) then
-				-- Read template content
 				local template_content = {}
 				for line in io.lines(template_path) do
-					-- You can add dynamic replacements here if needed
-					-- For example, replacing date placeholders
 					line = line:gsub("%%DATE%%", os.date("%m-%d-%Y"))
 					table.insert(template_content, line)
 				end
 
-				-- Insert template content
 				vim.api.nvim_buf_set_lines(0, 0, -1, false, template_content)
 
-				print(string.format("Applied template: %s for folder %s", template, folder))
+				-- print(string.format("Applied template: %s for folder %s", template, folder))
 				return true
 			end
 		end
@@ -354,18 +583,15 @@ local function create_weekly_note()
 	local weekly_folder =
 	"/Users/kylian/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Weekly/"
 
-	-- Get the current date and calculate the week number
 	local current_time = os.time()
 	local current_date = os.date("*t", current_time)
 
-	-- Get the month name
 	local month_names = {
 		"January", "February", "March", "April", "May", "June",
 		"July", "August", "September", "October", "November", "December"
 	}
 	local month_name = month_names[current_date.month]
 
-	-- Determine the week number and add appropriate ordinal suffix
 	local week_number = math.ceil(current_date.day / 7)
 	local week_suffix
 	if week_number == 1 then
@@ -378,18 +604,16 @@ local function create_weekly_note()
 		week_suffix = "th"
 	end
 
-	-- Create filename in the new format
 	local filename = string.format("%d-%s %d%s.md",
 		current_date.year, month_name, week_number, week_suffix)
 	local full_path = weekly_folder .. filename
 
-	-- Create the file if it doesn't exist
 	local f = io.open(full_path, "a")
 	if f then
 		f:close()
 		vim.cmd('edit ' .. vim.fn.fnameescape(full_path))
 	else
-		print("Failed to create weekly note")
+		-- print("Failed to create weekly note")
 	end
 end
 
@@ -429,7 +653,6 @@ return {
 			img_folder = "Attachments/",
 			---@return string
 			img_name_func = function()
-				-- Prefix image names with timestamp.
 				return string.format("%s-", os.time())
 			end,
 		},
@@ -447,29 +670,21 @@ return {
 			create_weekly_note()
 		end, {})
 
-		-- Create command to edit frontmatter
 		vim.api.nvim_create_user_command("ObsidianEditFrontmatter", function(args)
 			if #args.fargs < 2 then
-				print("Usage: ObsidianEditFrontmatter <key> <value>")
+				-- print("Usage: ObsidianEditFrontmatter <key> <value>")
 				return
 			end
 			local key = args.fargs[1]
 			local value = table.concat({ select(2, unpack(args.fargs)) }, " ")
-			if edit_frontmatter(key, value) then
-				print(string.format("Updated frontmatter: %s = %s", key, value))
-			else
-				print("Failed to update frontmatter")
-			end
 		end, {
 			nargs = "+",
 			complete = function(ArgLead, CmdLine, CursorPos)
-				-- Add common frontmatter keys for completion
 				return { "tags", "alias", "date", "title", "status", "type" }
 			end
 		})
 
 
-		-- Create command to find previous daily
 		vim.api.nvim_create_user_command("ObsidianPreviousDaily", function()
 			find_previous_daily()
 		end, {})
@@ -478,6 +693,8 @@ return {
 			find_next_daily()
 		end, {})
 
+		vim.api.nvim_create_user_command("Headings", markdown_headings, {})
+
 		vim.api.nvim_create_user_command("ObsidianOpenDaily", function()
 			vim.api.nvim_command("ObsidianToday")
 		end, {})
@@ -485,7 +702,6 @@ return {
 		vim.api.nvim_create_autocmd("BufReadPost", {
 			pattern = "*.md",
 			callback = function()
-				-- Check if the current file is a daily note by matching the filename pattern
 				local current_file = vim.fn.expand('%:t:r')
 				local date_pattern = "(%d+)%-(%d+)%-(%d+)"
 				local month, day, year = current_file:match(date_pattern)
@@ -497,10 +713,15 @@ return {
 		})
 
 
-		-- FileType autocommand for markdown files
 		vim.api.nvim_create_autocmd("FileType", {
 			pattern = "markdown",
 			callback = function()
+				vim.keymap.set('n', '<leader>fh', ':Headings<CR>',
+					{ noremap = true, silent = true, desc = "Find headings" })
+				vim.api.nvim_set_keymap("n", "[#", "?^#\\+\\s<CR>",
+					{ noremap = true, silent = true, desc = "Go to previous heading" })
+				vim.api.nvim_set_keymap("n", "]#", "/^#\\+\\s<CR>",
+					{ noremap = true, silent = true, desc = "Go to next heading" })
 				-- Weekly
 				vim.api.nvim_set_keymap("n", "<leader>wa", "<cmd>ObsidianFindWeekly<CR>",
 					{ noremap = true, silent = true })
@@ -518,6 +739,8 @@ return {
 				-- Commands
 				vim.api.nvim_set_keymap("n", "gf", "<cmd>ObsidianFollowLink<cr>",
 					{ noremap = true, silent = true })
+				vim.api.nvim_set_keymap("n", "ch", "<cmd>ObsidianToggleCheckbox<cr>",
+					{ noremap = true, silent = true })
 				vim.api.nvim_set_keymap("n", "<leader>bl", "<cmd>ObsidianBacklinks<cr>",
 					{ noremap = true, silent = true })
 				vim.api.nvim_set_keymap("n", "<leader>ot", "<cmd>ObsidianTags<cr>",
@@ -528,8 +751,6 @@ return {
 					{ noremap = true, silent = true })
 				vim.api.nvim_set_keymap("n", "<leader>it", "<cmd>ObsidianTemplate<cr>",
 					{ noremap = true, silent = true })
-				-- vim.api.nvim_set_keymap("n", "<c-P>", "<cmd>ObsidianSearch<cr>",
-				-- 	{ noremap = true, silent = true })
 				vim.api.nvim_set_keymap("n", "<leader>ef", ":ObsidianEditFrontmatter ",
 					{ noremap = true })
 				-- Create command to check metadata
@@ -537,8 +758,11 @@ return {
 					check_metadata()
 				end, {})
 
-				-- Automatically check metadata when opening a daily note
 				check_metadata()
+				display_virtual_dataview_output()
+				local files_in_workspace = scanWorkspace(workspace_path)
+				local result_files = executeQuery(dataview_query, files_in_workspace)
+				-- print(result_files)
 			end
 		})
 
