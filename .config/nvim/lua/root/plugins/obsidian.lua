@@ -1,6 +1,7 @@
 local workspace_path = "/Users/kylian/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/"
 local daily_folder =
 "/Users/kylian/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Daily/"
+local weekly_folder = "/Users/kylian/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Weekly/"
 
 -- Sample function to read the content of a file
 ---@param file_path string Path to the file to read
@@ -177,6 +178,11 @@ local function check_metadata()
 	local current_file_path = vim.fn.expand('%:p')
 	local current_file = vim.fn.expand('%:t:r') -- Get current file name without extension
 
+	-- Skip files in the Templates folder
+	if current_file_path:match("Templates/") then
+		return false
+	end
+
 	-- Get the file's modification time
 	local file_stats = vim.uv.fs_stat(current_file_path)
 	if not file_stats then
@@ -215,14 +221,12 @@ local function check_metadata()
 end
 
 local function import_todos_from_previous_daily()
-	-- print("[DEBUG] Starting import_todos_from_previous_daily()")
 	local current_file = vim.fn.expand('%:t:r') -- Get current file name without extension
 	local date_pattern = "(%d+)%-(%d+)%-(%d+)"
 	local month, day, year = current_file:match(date_pattern)
 
 
 	if not (month and day and year) then
-		-- print("[DEBUG] Current file is not a daily note")
 		return false
 	end
 
@@ -538,12 +542,43 @@ local function find_next_daily()
 end
 
 local function find_weekly()
-	local weekly_folder = "/Users/kylian/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Weekly/"
+	-- Use Telescope to find files, but with custom sorting
 	require('telescope.builtin').find_files({
 		prompt_title = "Find Weekly Notes",
 		cwd = weekly_folder,
 		hidden = true,
 		find_command = { "fd", "--type", "f", "--strip-cwd-prefix" },
+		sorter = require('telescope.sorters').get_generic_fuzzy_sorter(),
+		attach_mappings = function(prompt_bufnr, map)
+			-- Override default sorting to sort files chronologically
+			local custom_sorter = require('telescope.sorters').get_generic_fuzzy_sorter()
+
+			-- Custom function to sort files
+			custom_sorter.scoring_function = function(_, prompt, entry)
+				-- Extract year, month, and week from filename
+				local year, month, week = entry.value:match("(%d+)%-([%a]+) (%d+)%a+")
+
+				-- Convert month to number
+				local month_names = {
+					"January", "February", "March", "April", "May", "June",
+					"July", "August", "September", "October", "November", "December"
+				}
+				local month_num = 0
+				for i, m in ipairs(month_names) do
+					if m == month then
+						month_num = i
+						break
+					end
+				end
+
+				-- Create a sortable key
+				local sort_key = tonumber(year) * 10000 + month_num * 100 + tonumber(week)
+
+				return sort_key -- Positive to sort chronologically (oldest at top)
+			end
+
+			return true
+		end
 	})
 end
 
@@ -580,9 +615,6 @@ local function apply_template_by_folder()
 end
 
 local function create_weekly_note()
-	local weekly_folder =
-	"/Users/kylian/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Weekly/"
-
 	local current_time = os.time()
 	local current_date = os.date("*t", current_time)
 
@@ -613,7 +645,199 @@ local function create_weekly_note()
 		f:close()
 		vim.cmd('edit ' .. vim.fn.fnameescape(full_path))
 	else
-		-- print("Failed to create weekly note")
+		print("Failed to create weekly note")
+	end
+end
+
+
+local function find_previous_weekly()
+	local current_file = vim.fn.expand('%:t:r')
+
+	-- Parse the current weekly note filename (e.g., "2025-January 1st")
+	local year, month, week_number = current_file:match("(%d+)%-([%a]+) (%d+)%a+")
+
+	if year and month and week_number then
+		local month_names = {
+			"January", "February", "March", "April", "May", "June",
+			"July", "August", "September", "October", "November", "December"
+		}
+
+		-- Convert month name to number
+		local month_number
+		for i, name in ipairs(month_names) do
+			if name == month then
+				month_number = i
+				break
+			end
+		end
+
+		-- Start checking from the previous week
+		local i = 1
+		while true do
+			local prev_week_number = tonumber(week_number) - i
+			local prev_year = tonumber(year)
+			local prev_month_number = month_number
+
+			-- Adjust week number, month, and year
+			while prev_week_number < 1 do
+				prev_week_number = prev_week_number + 4
+				prev_month_number = prev_month_number - 1
+				if prev_month_number < 1 then
+					prev_month_number = 12
+					prev_year = prev_year - 1
+				end
+			end
+
+			local prev_month_name = month_names[prev_month_number]
+
+			-- Determine week suffix
+			local week_suffix
+			if prev_week_number == 1 then
+				week_suffix = "st"
+			elseif prev_week_number == 2 then
+				week_suffix = "nd"
+			elseif prev_week_number == 3 then
+				week_suffix = "rd"
+			else
+				week_suffix = "th"
+			end
+
+			local prev_file = string.format("%d-%s %d%s.md", prev_year, prev_month_name, prev_week_number, week_suffix)
+			local full_path = weekly_folder .. prev_file
+
+			-- Check if file exists
+			local f = io.open(full_path, "r")
+			if f then
+				f:close()
+				vim.cmd('edit ' .. vim.fn.fnameescape(full_path))
+				return true
+			end
+
+			-- Prevent infinite loop
+			if i > 1000 then
+				print("No previous weekly notes found")
+				return false
+			end
+
+			i = i + 1
+		end
+	else
+		print("Current file is not a weekly note")
+		return false
+	end
+end
+
+local function find_next_weekly()
+	local current_file = vim.fn.expand('%:t:r')
+
+	-- Parse the current weekly note filename (e.g., "2025-January 1st")
+	local year, month, week_number = current_file:match("(%d+)%-([%a]+) (%d+)%a+")
+
+	if year and month and week_number then
+		local month_names = {
+			"January", "February", "March", "April", "May", "June",
+			"July", "August", "September", "October", "November", "December"
+		}
+
+		-- Convert month name to number
+		local month_number
+		for i, name in ipairs(month_names) do
+			if name == month then
+				month_number = i
+				break
+			end
+		end
+
+		-- Start checking from the next week
+		local i = 1
+		while true do
+			local next_week_number = tonumber(week_number) + i
+			local next_year = tonumber(year)
+			local next_month_number = month_number
+
+			-- Adjust week number, month, and year
+			while next_week_number > 4 do
+				next_week_number = next_week_number - 4
+				next_month_number = next_month_number + 1
+				if next_month_number > 12 then
+					next_month_number = 1
+					next_year = next_year + 1
+				end
+			end
+
+			local next_month_name = month_names[next_month_number]
+
+			-- Determine week suffix
+			local week_suffix
+			if next_week_number == 1 then
+				week_suffix = "st"
+			elseif next_week_number == 2 then
+				week_suffix = "nd"
+			elseif next_week_number == 3 then
+				week_suffix = "rd"
+			else
+				week_suffix = "th"
+			end
+
+			local next_file = string.format("%d-%s %d%s.md", next_year, next_month_name, next_week_number, week_suffix)
+			local full_path = weekly_folder .. next_file
+
+			-- Check if file exists
+			local f = io.open(full_path, "r")
+			if f then
+				f:close()
+				vim.cmd('edit ' .. vim.fn.fnameescape(full_path))
+				return true
+			end
+
+			-- Prevent infinite loop
+			if i > 1000 then
+				print("No next weekly notes found")
+				return false
+			end
+
+			i = i + 1
+		end
+	else
+		print("Current file is not a weekly note")
+		return false
+	end
+end
+
+local function find_current_weekly()
+	local current_time = os.time()
+	local current_date = os.date("*t", current_time)
+
+	local month_names = {
+		"January", "February", "March", "April", "May", "June",
+		"July", "August", "September", "October", "November", "December"
+	}
+	local month_name = month_names[current_date.month]
+
+	local week_number = math.ceil(current_date.day / 7)
+	local week_suffix
+	if week_number == 1 then
+		week_suffix = "st"
+	elseif week_number == 2 then
+		week_suffix = "nd"
+	elseif week_number == 3 then
+		week_suffix = "rd"
+	else
+		week_suffix = "th"
+	end
+
+	local filename = string.format("%d-%s %d%s.md",
+		current_date.year, month_name, week_number, week_suffix)
+	local full_path = weekly_folder .. filename
+
+	local f = io.open(full_path, "r")
+	if f then
+		f:close()
+		vim.cmd('edit ' .. vim.fn.fnameescape(full_path))
+		return true
+	else
+		print("Current weekly note not found")
+		return false
 	end
 end
 
@@ -662,6 +886,18 @@ return {
 	},
 	config = function(_, opts)
 		require("obsidian").setup(opts)
+
+		vim.api.nvim_create_user_command("ObsidianPreviousWeekly", function()
+			find_previous_weekly()
+		end, {})
+
+		vim.api.nvim_create_user_command("ObsidianCurrentWeekly", function()
+			find_current_weekly()
+		end, {})
+
+		vim.api.nvim_create_user_command("ObsidianNextWeekly", function()
+			find_next_weekly()
+		end, {})
 
 		vim.api.nvim_create_user_command("ObsidianFindWeekly", function()
 			find_weekly()
@@ -723,10 +959,16 @@ return {
 				vim.api.nvim_set_keymap("n", "]#", "/^#\\+\\s<CR>",
 					{ noremap = true, silent = true, desc = "Go to next heading" })
 				-- Weekly
+				vim.api.nvim_set_keymap("n", "<leader>ww", "<cmd>ObsidianCurrentWeekly<cr>",
+					{ noremap = true, silent = true, desc = "Current Weekly Note" })
 				vim.api.nvim_set_keymap("n", "<leader>wa", "<cmd>ObsidianFindWeekly<CR>",
 					{ noremap = true, silent = true })
 				vim.api.nvim_set_keymap("n", "<leader>wn", "<cmd>WeeklyCreate<CR>",
 					{ noremap = true, silent = true })
+				vim.api.nvim_set_keymap("n", "<leader>wp", "<cmd>ObsidianPreviousWeekly<cr>",
+					{ noremap = true, silent = true, desc = "Previous Weekly Note" })
+				vim.api.nvim_set_keymap("n", "<leader>wn", "<cmd>ObsidianNextWeekly<cr>",
+					{ noremap = true, silent = true, desc = "Next Weekly Note" })
 				-- Daily
 				vim.api.nvim_set_keymap("n", "<leader>da", "<cmd>ObsidianDailies<cr>",
 					{ noremap = true, silent = true })
