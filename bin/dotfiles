@@ -131,6 +131,6 @@ if [[ -f ~/.zshrc ]]; then # Check if file exists before removing
     rm -f ~/.zshrc
 fi
 
-_cmd "cd ~/.dotfiles/ && stow . && ./decrypt-sensitive-files.sh"
+_cmd "cd ~/.dotfiles/ && stow . --ignore=node_modules && ./decrypt-sensitive-files.sh"
 
 # vi:ft=sh:
