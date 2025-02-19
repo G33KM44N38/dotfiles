@@ -12,7 +12,6 @@ return {
 			local dapui = require("dapui")
 			require("dap-go").setup()
 			dapui.setup()
-
 			vim.keymap.set("n", "<leader>dt", dapui.toggle, { noremap = true, desc = "Toggle DAP UI" })
 			vim.keymap.set("n", "<leader>db", dap.toggle_breakpoint, { noremap = true, desc = "Toggle Breakpoint" })
 			vim.keymap.set("n", "<leader>dc", dap.continue, { noremap = true, desc = "DAP Continue" })

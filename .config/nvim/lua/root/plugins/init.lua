@@ -7,7 +7,10 @@ return {
 	"tpope/vim-commentary",
 	"tpope/vim-repeat",
 	"tpope/vim-sensible",
-	"tpope/vim-surround",
+	{
+		"tpope/vim-surround",
+		ft = { "notmarkdown" } -- Prevents loading for Markdown
+	},
 	"tpope/vim-unimpaired",
 	"voldikss/vim-floaterm",
 	"williamboman/nvim-lsp-installer",

@@ -76,6 +76,7 @@ vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagn
 -- Trouble
 vim.keymap.set("n", "<leader>x", ":Trouble diagnostics<CR>", opts)
 
+
 -- Move text up and down
 keymap("x", "J", ":move '>+1<CR>gv-gv", opts)
 keymap("x", "K", ":move '<-2<CR>gv-gv", opts)
@@ -84,7 +85,12 @@ keymap("x", "K", ":move '<-2<CR>gv-gv", opts)
 keymap("n", "n", "nzzzv", opts)
 keymap("n", "N", "Nzzzv", opts)
 
--- git worktrees
+vim.keymap.set("n", "<leader>st", function()
+	vim.cmd.vnew()
+	vim.cmd.term()
+	vim.cmd.wincmd("J")
+	vim.api.nvim_win_set_height(0, 15)
+end)
 
 local function setup_mappings()
 	-- NERDTree mappings
@@ -95,5 +101,6 @@ local function setup_mappings()
 	vim.cmd(
 		[[ autocmd BufEnter * if tabpagenr('$') == 1 && winnr('$') == 1 && exists('b:NERDTree') && b:NERDTree.isTabTree() | quit | endif ]])
 end
+
 
 setup_mappings()

@@ -150,3 +150,12 @@ vim.api.nvim_create_user_command("FileCreationDate", function()
 	local date = vim.fn.system('stat -c %w ' .. vim.fn.expand('%'))
 	print(os.date('%Y-%m-%d %H:%M:%S', vim.fn.system('stat -f %B ' .. vim.fn.expand('%'))))
 end, {})
+
+vim.api.nvim_create_autocmd("TermOpen", {
+	group = vim.api.nvim_create_augroup("custom-term-open", { clear = true }),
+	callback = function()
+		vim.opt.number = false
+		vim.opt.relativenumber = false
+		vim.api.nvim_set_keymap("i", "<C-\\><C-n>", "<Esc>", { noremap = true, silent = true })
+	end
+})
