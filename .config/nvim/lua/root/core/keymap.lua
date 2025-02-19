@@ -65,6 +65,7 @@ keymap("n", "<leader>h",
 -- allow my cursor stay at the same place, when using `J`
 keymap("n", "J", "mzJ`z", opts)
 
+
 vim.keymap.set({ "n", "v" }, "<leader>c", vim.lsp.buf.code_action, { desc = "See available code actions" }) -- see available code actions, in visual mode will apply to selection
 
 -- Diagnostic keymaps
@@ -102,5 +103,16 @@ local function setup_mappings()
 		[[ autocmd BufEnter * if tabpagenr('$') == 1 && winnr('$') == 1 && exists('b:NERDTree') && b:NERDTree.isTabTree() | quit | endif ]])
 end
 
+
+vim.api.nvim_create_user_command("TmuxNavigateSecondBrain", function()
+	-- Use vim.fn.system() for better handling of shell commands in Neovim
+	vim.fn.system("tmux-navigate.sh Second_Brain")
+end, {})
+
+-- Set the keymap with proper options
+vim.keymap.set("n", "<leader>sb", ":TmuxNavigateSecondBrain<CR>", {
+	noremap = true, -- Prevent recursive mapping
+	silent = true -- Prevent command from being echoed
+})
 
 setup_mappings()
