@@ -952,6 +952,11 @@ return {
 		vim.api.nvim_create_autocmd("FileType", {
 			pattern = "markdown",
 			callback = function()
+				local current_path = os.getenv("PWD") or os.execute("cd")
+				if current_path ~= workspace_path then
+					return
+				else
+
 				vim.keymap.set('n', '<leader>fh', ':Headings<CR>',
 					{ noremap = true, silent = true, desc = "Find headings" })
 				vim.api.nvim_set_keymap("n", "[#", "?^#\\+\\s<CR>",
