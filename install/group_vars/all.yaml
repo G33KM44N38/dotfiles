@@ -45,3 +45,4 @@ default_roles:
   - discord
   - rust
   - beeper
+  - dbeaver
