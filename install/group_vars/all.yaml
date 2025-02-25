@@ -43,3 +43,4 @@ default_roles:
   - mouseless
   - beeper
   - backup
+  - discord
