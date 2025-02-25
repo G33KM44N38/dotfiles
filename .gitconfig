@@ -1,2 +1,4 @@
 [includeIf "gitdir:~/coding/work/division-v/*"]
   path = ./git_configuration/.gitconfig-division
+[user]
+	email = kylianmayanga@gmail.com

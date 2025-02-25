@@ -28,3 +28,4 @@ if [[ -z $TMUX_CONF ]]; then
     export TMUX_CONF=~/.config/tmux/tmux.conf
     export fish_tmux_config=~/.config/tmux/tmux.conf
 fi
+eval "$(zoxide init zsh)"

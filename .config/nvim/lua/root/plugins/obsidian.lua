@@ -836,7 +836,8 @@ local function find_current_weekly()
 		vim.cmd('edit ' .. vim.fn.fnameescape(full_path))
 		return true
 	else
-		print("Current weekly note not found")
+		vim.cmd("WeeklyCreate")
+		-- print("Current weekly note not found")
 		return false
 	end
 end
@@ -952,10 +953,10 @@ return {
 		vim.api.nvim_create_autocmd("FileType", {
 			pattern = "markdown",
 			callback = function()
-				local current_path = os.getenv("PWD") or os.execute("cd")
-				if current_path ~= workspace_path then
-					return
-				else
+				-- local current_path = os.execute("cd")
+				-- if current_path ~= workspace_path then
+				-- 	return
+				-- end
 
 				vim.keymap.set('n', '<leader>fh', ':Headings<CR>',
 					{ noremap = true, silent = true, desc = "Find headings" })

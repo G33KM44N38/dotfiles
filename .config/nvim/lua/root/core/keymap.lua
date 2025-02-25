@@ -48,6 +48,7 @@ keymap("n", "<leader>g", ":G<CR>", opts)
 keymap("n", "<leader>tt", ":ToggleTerm direction=float fish<CR>", opts)
 
 -- mapping Open Buffer fzf telescope
+keymap("n", "<leader>he", "<cmd>Telescope help_tags<CR>", opts)
 keymap("n", "<leader>n", ":lua require('telescope').extensions.git_worktree.git_worktrees()<CR>", opts)
 keymap("n", "<leader>N", ":lua require('telescope').extensions.git_worktree.create_git_worktree()<CR>", opts)
 keymap("n", "gi", "<cmd>Telescope lsp_implementations<CR>", opts)
@@ -58,7 +59,7 @@ keymap("n", "<C-s>", ":lua require('telescope.builtin').live_grep()<CR>", opts)
 keymap("n", "<leader>gof", ":lua require('telescope.builtin').live_grep({grep_open_files=true})", opts)
 keymap("n", "<leader>gf", ":lua require('telescope.builtin').git_files()<CR>", opts)
 keymap("n", "<leader>ke", ":lua require('telescope.builtin').keymaps()<CR>", opts)
-keymap("n", "<leader>h",
+keymap("n", "<leader>hi",
 	":lua require('telescope.builtin').find_files({ hidden = true, no_ignore = true, file_ignore_patterns = {'.git/'} })<CR>",
 	opts)
 
@@ -91,6 +92,7 @@ vim.keymap.set("n", "<leader>st", function()
 	vim.cmd.term()
 	vim.cmd.wincmd("J")
 	vim.api.nvim_win_set_height(0, 15)
+	vim.cmd("startinsert")
 end)
 
 local function setup_mappings()

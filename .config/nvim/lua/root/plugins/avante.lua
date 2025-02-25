@@ -11,6 +11,10 @@ return {
 			'cd',
 			vim.fn.expand('~/.local/share/nvim/lazy/avante.nvim') .. ' && make'
 		})
+
+		vim.fn.system({
+			'vi -c "AvanteBuild"',
+		})
 	end,
 	dependencies = {
 		"stevearc/dressing.nvim",

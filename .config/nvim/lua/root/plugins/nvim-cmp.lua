@@ -35,7 +35,7 @@ return {
 				['<C-y>'] = cmp.mapping(function(fallback)
 					local entry = cmp.get_selected_entry()
 					cmp.confirm(entry)
-				end, { "i", "s" }),
+				end, { "i", "s" })
 			}),
 			sources = {
 				{ name = "path" },
@@ -66,18 +66,7 @@ return {
 				["<C-b>"] = cmp.mapping.scroll_docs(-4),
 				["<C-f>"] = cmp.mapping.scroll_docs(4),
 				["<C-e>"] = cmp.mapping.abort(),
-				["<CR>"] = cmp.mapping({
-					i = function(fallback)
-						if cmp.visible() and cmp.get_active_entry() then
-							cmp.confirm({ behavior = cmp.ConfirmBehavior.Replace, select = false })
-						else
-							fallback()
-						end
-					end,
-					s = cmp.mapping.confirm({ select = true }),
-					c = cmp.mapping.confirm({ behavior = cmp.ConfirmBehavior.Replace, select = true }),
-				}),
-
+				["<CR>"] = cmp.mapping.confirm({ select = true, behavior = cmp.SelectBehavior.Select }),
 				["<Tab>"] = cmp.mapping(function()
 					if cmp.visible() then
 						cmp.select_next_item({ behavior = cmp.SelectBehavior.Select })

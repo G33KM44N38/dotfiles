@@ -2,20 +2,14 @@ return {
 	"ThePrimeagen/vim-be-good",
 	"cdelledonne/vim-cmake",
 	"junegunn/fzf.vim",
-	"kabouzeid/nvim-lspinstall",
+	"tpope/vim-surround",
+	-- "kabouzeid/nvim-lspinstall",
 	"rafi/awesome-vim-colorschemes",
 	"tpope/vim-commentary",
 	"tpope/vim-repeat",
 	"tpope/vim-sensible",
-	{
-		"tpope/vim-surround",
-		ft = { "notmarkdown" } -- Prevents loading for Markdown
-	},
-	"tpope/vim-unimpaired",
+	-- "tpope/vim-unimpaired",
 	"voldikss/vim-floaterm",
-	"williamboman/nvim-lsp-installer",
-	"windwp/nvim-autopairs",
-	"windwp/nvim-ts-autotag",
 	{
 		'fatih/vim-go',
 		keys = false,
