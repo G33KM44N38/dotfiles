@@ -7,7 +7,7 @@ if [[ $# -eq 1 ]]; then
     selected=$1
 else
 selected=$(find \
-    "/Users/kylian/Library/Mobile Documents/iCloud~md~obsidian/Documents/" \
+    "$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents/" \
     ~/backup/ \
     ~/coding/ \
     ~/coding/* \
