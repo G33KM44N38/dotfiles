@@ -42,3 +42,4 @@ default_roles:
   - cron
   - mouseless
   - beeper
+  - backup

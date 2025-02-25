@@ -1,0 +1,7 @@
+---
+- name: BACKUP
+  ansible.builtin.git:
+    version: main
+    repo: https://github.com/G33KM44N38/backup
+    update: false
+    dest: ~/
