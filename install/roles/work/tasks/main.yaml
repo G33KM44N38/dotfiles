@@ -1,21 +1,21 @@
 ---
-- name: MINATA - Close
-  ansible.builtin.git:
-    version: main
-    repo: https://github.com/minata-soft/stackdev
-    update: false
-    dest: ~/coding/work/minata
+#- name: MINATA - Close
+#  ansible.builtin.git:
+#    version: main
+#    repo: https://github.com/minata-soft/stackdev
+#    update: false
+#    dest: ~/coding/work/minata
 
-- name: BABACOIFURE - Clone
-  ansible.builtin.git:
-    version: main
-    repo: https://github.com/G33KM44N38/baba_coiffure
-    update: false
-    dest: ~/coding/work/baba_coiffure
+#- name: BABACOIFURE - Clone
+#  ansible.builtin.git:
+#    version: main
+#    repo: https://github.com/G33KM44N38/baba_coiffure
+#    update: false
+#    dest: ~/coding/work/baba_coiffure
 
-- name: SBERS - Clone
-  ansible.builtin.git:
-    version: main
-    repo: https://github.com/sberrs/website.git
-    update: false
-    dest: ~/coding/work/sbers/
+#- name: SBERS - Clone
+#  ansible.builtin.git:
+#    version: main
+#    repo: https://github.com/sberrs/website.git
+#    update: false
+#    dest: ~/coding/work/sbers/
