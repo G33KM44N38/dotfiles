@@ -1,0 +1,5 @@
+- name: Install beeper
+  community.general.homebrew_cask:
+    name: beeper
+    state: present
+  when: not beeper.stat.exists

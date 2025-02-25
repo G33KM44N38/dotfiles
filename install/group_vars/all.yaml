@@ -41,3 +41,4 @@ default_roles:
   - ghostty
   - cron
   - mouseless
+  - beeper
