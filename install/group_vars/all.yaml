@@ -41,6 +41,7 @@ default_roles:
   - ghostty
   - cron
   - mouseless
-  - beeper
   - backup
   - discord
+  - rust
+  - beeper

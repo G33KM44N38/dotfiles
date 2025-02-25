@@ -1,0 +1,6 @@
+---
+- name: Install Beeper
+  community.general.homebrew_cask:
+    name: beeper
+    state: present
+
