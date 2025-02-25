@@ -4,3 +4,9 @@
     name: node
     state: present
     update_homebrew: yes
+
+- name: Install nodemon globally
+  npm:
+    name: nodemon
+    global: yes
+    state: present
