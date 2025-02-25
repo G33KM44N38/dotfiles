@@ -189,7 +189,7 @@ local function GenerateCommitMessageWithAI(provider)
 				["Content-Type"] = "application/json"
 			},
 			body = vim.fn.json_encode({
-				model = "gpt-3.5-turbo",
+				model = "gpt-4o-mini",
 				messages = {
 					{
 						role = "system",
