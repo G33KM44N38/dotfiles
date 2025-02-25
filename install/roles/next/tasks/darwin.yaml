@@ -1,7 +1,7 @@
-- name: NEXT | Install Next.js globally using npm
-  npm:
-    name: next
-    global: yes
-    state: present
-  register: next_install_result
-  changed_when: next_install_result.changed
+#- name: NEXT | Install Next.js globally using npm
+#  npm:
+#    name: next
+#    global: yes
+#    state: present
+#  register: next_install_result
+#  changed_when: next_install_result.changed
