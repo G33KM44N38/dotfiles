@@ -46,3 +46,4 @@ default_roles:
   - rust
   - beeper
   - dbeaver
+  - notion
