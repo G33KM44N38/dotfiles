@@ -87,3 +87,30 @@ cleanup() {
 
 # Execute the cleanup function
 cleanup
+
+#!/bin/bash
+:G
+
+# macOS Cleanup Script
+
+# Function to safely remove directory contents
+clean_directory() {
+    local dir="$1"
+    if [ -d "$dir" ]; then
+        echo "Cleaning: $dir"
+        # Use rm with -rf carefully, and only if directory exists
+        rm -rf "$dir"/*
+    else
+        echo "Directory not found: $dir"
+    fi
+}
+
+# Correct Cleanup Paths
+clean_directory "$HOME/Library/Application Support"
+clean_directory "/Library/Caches"
+clean_directory "/Library/Internet Plug-Ins"
+clean_directory "$HOME/Library/Preferences"
+clean_directory "/Library/Application Support/CrashReporter"
+clean_directory "$HOME/Library/Application State"
+
+echo "Cleanup complete!"
