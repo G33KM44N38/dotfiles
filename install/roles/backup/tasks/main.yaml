@@ -4,4 +4,4 @@
     version: main
     repo: https://github.com/G33KM44N38/backup
     update: false
-    dest: ~/
+    dest: ~/backup
