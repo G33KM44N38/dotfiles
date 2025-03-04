@@ -1,0 +1,26 @@
+---
+- name: Install Rust
+  block:
+    - name: Download and run Rust installer (rustup)
+      shell: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      args:
+        creates: "{{ ansible_env.HOME }}/.cargo/env"
+      become: no
+
+    - name: Source Rust environment
+      lineinfile:
+        path: "{{ ansible_env.HOME }}/.zshrc"
+        line: 'source "{{ ansible_env.HOME }}/.cargo/env"'
+        state: present
+      become: no
+
+    - name: Update Rust to latest stable version
+      shell: rustup update stable
+      become: no
+      changed_when: false
+
+    - name: Install common Rust tools
+      shell: rustup component add rustfmt clippy
+      become: no
+      changed_when: false
+
