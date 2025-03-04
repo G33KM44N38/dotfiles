@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# Enable debug output
-set -x
+# # Enable debug output
+# set -x
 
 if [[ $# -eq 1 ]]; then
     selected=$1
@@ -22,9 +22,6 @@ if [[ -z $selected ]]; then
     echo "No directory selected" >&2
     exit 0
 fi
-
-# Debug: print the selected path
-echo "Selected path: $selected" >&2
 
 selected_name=$(basename "$selected" | tr . _)
 tmux_running=$(pgrep tmux)
