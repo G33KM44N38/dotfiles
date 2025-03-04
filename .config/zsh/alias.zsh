@@ -23,7 +23,7 @@ alias ghs="gh copilot suggest"
 alias ghe="gh copilot explain"
 
 # golang
-alias go="richgo"
+# alias go="richgo"
 
 # Tmux
 alias tma="tmux a"

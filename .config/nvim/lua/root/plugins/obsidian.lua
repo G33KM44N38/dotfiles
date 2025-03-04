@@ -1,7 +1,7 @@
-local workspace_path = "/Users/kylian/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/"
+local workspace_path = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/"
 local daily_folder =
-"/Users/kylian/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Daily/"
-local weekly_folder = "/Users/kylian/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Weekly/"
+"/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Daily/"
+local weekly_folder = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Weekly/"
 
 -- Sample function to read the content of a file
 ---@param file_path string Path to the file to read
@@ -854,7 +854,7 @@ return {
 		workspaces = {
 			{
 				name = "personal",
-				path = "/Users/kylian/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/",
+				path = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/",
 			},
 		},
 		date_format = "%m-%d-%Y",

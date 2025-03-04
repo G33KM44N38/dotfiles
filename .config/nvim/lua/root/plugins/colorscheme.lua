@@ -5,6 +5,10 @@ return {
 		-- Lua initialization file
 		vim.g.nightflyVirtualTextColor = true
 		vim.cmd([[colorscheme nightfly]])
+
+		-- vim.o.background = "light"
+		-- vim.cmd('colorscheme gruvbox')
+
 		-- vim.cmd('colorscheme solarized8_high')
 		-- vim.cmd('colorscheme gruvbox')
 		-- vim.cmd([[colorscheme alduin]])

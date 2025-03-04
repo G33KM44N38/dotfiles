@@ -1,4 +1,12 @@
 return {
+	{
+		'echasnovski/mini.indentscope',
+		version = false,
+		config = function()
+			require('mini.indentscope').setup()
+		end
+	},
+	"tpope/vim-unimpaired",
 	"ThePrimeagen/vim-be-good",
 	"cdelledonne/vim-cmake",
 	"junegunn/fzf.vim",

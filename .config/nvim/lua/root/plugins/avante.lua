@@ -6,16 +6,16 @@ return {
 	opts = {
 		provider = "claude-haiku",
 	},
-	build = function()
-		vim.fn.system({
-			'cd',
-			vim.fn.expand('~/.local/share/nvim/lazy/avante.nvim') .. ' && make'
-		})
-
-		vim.fn.system({
-			'vi -c "AvanteBuild"',
-		})
-	end,
+	-- build = function()
+	-- 	vim.fn.system({
+	-- 		'cd',
+	-- 		vim.fn.expand('~/.local/share/nvim/lazy/avante.nvim') .. ' && make'
+	-- 	})
+	--
+	-- 	vim.fn.system({
+	-- 		'vi -c "AvanteBuild"',
+	-- 	})
+	-- end,
 	dependencies = {
 		"stevearc/dressing.nvim",
 		"nvim-lua/plenary.nvim",
