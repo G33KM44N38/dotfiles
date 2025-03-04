@@ -4,7 +4,15 @@ return {
 	dependencies = {
 		"nvim-lua/plenary.nvim",
 		"nvim-tree/nvim-web-devicons",
-		{ 'nvim-telescope/telescope-fzf-native.nvim', build = 'cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release' }
+		{
+			'nvim-telescope/telescope-fzf-native.nvim',
+			build =
+			'arch -arm64 cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release && arch -arm64 cmake --build build --config Release && arch -arm64 cmake --install build'
+		},
+		{
+			'junegunn/fzf.vim',
+			dependencies = { 'junegunn/fzf', build = './install --bin' }
+		},
 	},
 
 	config = function()
@@ -19,6 +27,11 @@ return {
 		telescope.setup {
 			extensions = {
 				fzf = {
+					fuzzy = true, -- false will only do exact matching
+					override_generic_sorter = true, -- override the generic sorter
+					override_file_sorter = true, -- override the file sorter
+					case_mode = "smart_case", -- or "ignore_case" or "respect_case"
+					-- the default case_mode is "smart_case"
 				}
 			},
 			picker = {
