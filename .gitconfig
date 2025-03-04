@@ -2,3 +2,4 @@
   path = ./git_configuration/.gitconfig-division
 [user]
 	email = kylianmayanga@gmail.com
+	name = kylian
