@@ -10,7 +10,7 @@ selected=$(find \
     "$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents/" \
     ~/backup/ \
     ~/coding/ \
-    ~/coding/* \
+    ~/coding/work/baba_coiffure/ \
     ~/goinfre/ \
     ~/.dotfiles/ \
     ~/.dotfiles/* \
