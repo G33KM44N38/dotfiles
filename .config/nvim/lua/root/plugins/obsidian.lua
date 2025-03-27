@@ -6,8 +6,8 @@ local weekly_folder = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/D
 
 local function sort_with_nested_children(start_line, end_line)
 	local lines_info = {}
-	local line_contents = {}
 
+	-- Step 1: Collect all lines with their indentation information
 	for line = start_line, end_line do
 		local line_content = vim.fn.getline(line)
 		local indent = vim.fn.indent(line)
@@ -17,147 +17,88 @@ local function sort_with_nested_children(start_line, end_line)
 			indent = indent,
 			content = line_content
 		})
-		table.insert(line_contents, line_content)
 	end
 
-	local function find_block(index)
-		local current_indent = lines_info[index].indent
-		local block = { lines_info[index] }
+	-- Step 2: Build a hierarchical structure of the lines
+	local function build_hierarchy()
+		local hierarchy = {}
+		local stack = {}
+		local current_level = hierarchy
 
-		-- Chercher les lignes enfants
-		for i = index + 1, #lines_info do
-			if lines_info[i].indent > current_indent then
-				table.insert(block, lines_info[i])
+		for i, line_info in ipairs(lines_info) do
+			-- Create node for this line
+			local node = {
+				line_info = line_info,
+				children = {},
+				parent = nil
+			}
+
+			-- Find the appropriate parent for this node based on indentation
+			while #stack > 0 and line_info.indent <= stack[#stack].line_info.indent do
+				table.remove(stack)
+			end
+
+			if #stack == 0 then
+				-- This is a top-level node
+				table.insert(hierarchy, node)
 			else
-				break
+				-- This is a child node
+				local parent = stack[#stack]
+				node.parent = parent
+				table.insert(parent.children, node)
 			end
+
+			-- Add this node to the stack as a potential parent for future nodes
+			table.insert(stack, node)
 		end
 
-		return block
+		return hierarchy
 	end
 
-	-- Recursive function to sort blocks at each indentation level
-	local function sort_blocks_recursive(blocks)
-		-- Group blocks by their indentation level
-		local indentation_levels = {}
-		local current_parent = nil
-		local current_indent = nil
-		local current_children = {}
-
-		for i, line_info in ipairs(blocks) do
-			if current_indent == nil or line_info.indent <= current_indent then
-				-- This is a new parent or sibling
-				if current_parent then
-					-- Add the previous parent and its children to the indentation levels
-					table.insert(indentation_levels, {
-						parent = current_parent,
-						children = current_children
-					})
-				end
-				current_parent = line_info
-				current_indent = line_info.indent
-				current_children = {}
-			else
-				-- This is a child
-				table.insert(current_children, line_info)
+	-- Step 3: Sort the hierarchy at all levels
+	local function sort_hierarchy(nodes)
+		-- Sort children recursively first
+		for _, node in ipairs(nodes) do
+			if #node.children > 0 then
+				sort_hierarchy(node.children)
 			end
 		end
 
-		-- Add the last parent and its children
-		if current_parent then
-			table.insert(indentation_levels, {
-				parent = current_parent,
-				children = current_children
-			})
-		end
+		-- Sort nodes at this level
+		table.sort(nodes, function(a, b)
+			return a.line_info.content < b.line_info.content
+		end)
+	end
 
-		-- Sort each level and its children recursively
-		for _, level in ipairs(indentation_levels) do
-			if #level.children > 0 then
-				-- Group children into their own blocks based on indentation
-				local child_blocks = {}
-				local i = 1
-				while i <= #level.children do
-					local child_indent = level.children[i].indent
-					local child_block = { level.children[i] }
-					i = i + 1
+	-- Step 4: Flatten the sorted hierarchy back to a list
+	local function flatten_hierarchy(nodes)
+		local result = {}
 
-					while i <= #level.children and level.children[i].indent > child_indent do
-						table.insert(child_block, level.children[i])
-						i = i + 1
-					end
-
-					table.insert(child_blocks, child_block)
-				end
-
-				-- Sort the child blocks
-				table.sort(child_blocks, function(a, b)
-					return a[1].content < b[1].content
-				end)
-
-				-- Recursively sort each child block's children
-				for _, child_block in ipairs(child_blocks) do
-					if #child_block > 1 then
-						sort_blocks_recursive(child_block)
-					end
-				end
-
-				-- Flatten the sorted child blocks back into level.children
-				level.children = {}
-				for _, child_block in ipairs(child_blocks) do
-					for _, line_info in ipairs(child_block) do
-						table.insert(level.children, line_info)
-					end
+		for _, node in ipairs(nodes) do
+			table.insert(result, node.line_info)
+			if #node.children > 0 then
+				local children = flatten_hierarchy(node.children)
+				for _, child in ipairs(children) do
+					table.insert(result, child)
 				end
 			end
 		end
 
-		-- Rebuild the blocks with sorted children
-		blocks = {}
-		for _, level in ipairs(indentation_levels) do
-			table.insert(blocks, level.parent)
-			for _, child in ipairs(level.children) do
-				table.insert(blocks, child)
-			end
-		end
-
-		return blocks
+		return result
 	end
 
-	local sorted_blocks = {}
-	local processed = {}
+	-- Build the hierarchical structure
+	local hierarchy = build_hierarchy()
 
-	for i = 1, #lines_info do
-		if not processed[i] then
-			local block = find_block(i)
-			table.insert(sorted_blocks, block)
+	-- Sort at all levels
+	sort_hierarchy(hierarchy)
 
-			for _, line_info in ipairs(block) do
-				processed[line_info.line_num - start_line + 1] = true
-			end
-		end
-	end
+	-- Flatten the hierarchy back to a list
+	local sorted_lines = flatten_hierarchy(hierarchy)
 
-	table.sort(sorted_blocks, function(a, b)
-		return a[1].content < b[1].content
-	end)
-
-	-- Now sort children recursively within each block
-	for i, block in ipairs(sorted_blocks) do
-		if #block > 1 then -- Only process blocks with children
-			sorted_blocks[i] = sort_blocks_recursive(block)
-		end
-	end
-
-	local new_lines = {}
-	for _, block in ipairs(sorted_blocks) do
-		for _, line_info in ipairs(block) do
-			table.insert(new_lines, line_info.content)
-		end
-	end
-
-	for i, line_content in ipairs(new_lines) do
-		vim.fn.setline(start_line + i - 1, line_content)
+	-- Apply the sorted lines back to the buffer
+	for i, line_info in ipairs(sorted_lines) do
+		vim.fn.setline(start_line + i - 1, line_info.content)
 	end
 end
 
