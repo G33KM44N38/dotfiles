@@ -5,7 +5,6 @@ local EXAMPLE_OF_COMMIT = [[
 Here are five **Conventional Commit** examples based on different types of changes:
 
 ### 1️⃣ **Feature Addition**
-```
 feat(ui): add dark mode toggle
 
 Implemented a dark mode toggle in the settings menu. Users can now switch between light and dark themes, with preferences saved in local storage.
@@ -15,12 +14,8 @@ Implemented a dark mode toggle in the settings menu. Users can now switch betwee
 - Updated styles for dark mode compatibility
 
 Closes #15
-```
 
 ### 2️⃣ **Bug Fix**
-```
-fix(api): resolve token expiration issue
-
 Fixed an issue where expired JWT tokens were not being properly invalidated, leading to authentication errors.
 
 - Updated token validation logic
@@ -28,10 +23,8 @@ Fixed an issue where expired JWT tokens were not being properly invalidated, lea
 - Improved logging for debugging authentication issues
 
 Closes #27
-```
 
 ### 3️⃣ **Performance Improvement**
-```
 perf(database): optimize query for user search
 
 Refactored the user search query to improve response times by 40%. Added indexing for better performance on large datasets.
@@ -41,10 +34,8 @@ Refactored the user search query to improve response times by 40%. Added indexin
 - Updated tests to cover edge cases
 
 Closes #33
-```
 
 ### 4️⃣ **Code Refactoring**
-```
 refactor(auth): modularize authentication logic
 
 Reorganized authentication functions into separate modules for better maintainability and reusability.
@@ -53,10 +44,8 @@ Reorganized authentication functions into separate modules for better maintainab
 - Improved function documentation
 - No changes in functionality
 
-```
 
 ### 5️⃣ **Chore (Tooling/CI Updates)**
-```
 chore(deps): upgrade Next.js to v14
 
 Updated Next.js to the latest version to benefit from performance improvements and new features.
@@ -65,7 +54,6 @@ Updated Next.js to the latest version to benefit from performance improvements a
 - Fixed minor compatibility issues
 - Updated package-lock.json
 
-```
 
 Would you like me to tailor these to a specific project or context ? ]]
 
