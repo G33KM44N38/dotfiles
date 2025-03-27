@@ -36,6 +36,94 @@ local function sort_with_nested_children(start_line, end_line)
 		return block
 	end
 
+	-- Recursive function to sort blocks at each indentation level
+	local function sort_blocks_recursive(blocks)
+		-- Group blocks by their indentation level
+		local indentation_levels = {}
+		local current_parent = nil
+		local current_indent = nil
+		local current_children = {}
+
+		for i, line_info in ipairs(blocks) do
+			if current_indent == nil or line_info.indent <= current_indent then
+				-- This is a new parent or sibling
+				if current_parent then
+					-- Add the previous parent and its children to the indentation levels
+					table.insert(indentation_levels, {
+						parent = current_parent,
+						children = current_children
+					})
+				end
+				current_parent = line_info
+				current_indent = line_info.indent
+				current_children = {}
+			else
+				-- This is a child
+				table.insert(current_children, line_info)
+			end
+		end
+
+		-- Add the last parent and its children
+		if current_parent then
+			table.insert(indentation_levels, {
+				parent = current_parent,
+				children = current_children
+			})
+		end
+
+		-- Sort each level and its children recursively
+		for _, level in ipairs(indentation_levels) do
+			if #level.children > 0 then
+				-- Group children into their own blocks based on indentation
+				local child_blocks = {}
+				local i = 1
+				while i <= #level.children do
+					local child_indent = level.children[i].indent
+					local child_block = { level.children[i] }
+					i = i + 1
+
+					while i <= #level.children and level.children[i].indent > child_indent do
+						table.insert(child_block, level.children[i])
+						i = i + 1
+					end
+
+					table.insert(child_blocks, child_block)
+				end
+
+				-- Sort the child blocks
+				table.sort(child_blocks, function(a, b)
+					return a[1].content < b[1].content
+				end)
+
+				-- Recursively sort each child block's children
+				for _, child_block in ipairs(child_blocks) do
+					if #child_block > 1 then
+						sort_blocks_recursive(child_block)
+					end
+				end
+
+				-- Flatten the sorted child blocks back into level.children
+				level.children = {}
+				for _, child_block in ipairs(child_blocks) do
+					for _, line_info in ipairs(child_block) do
+						table.insert(level.children, line_info)
+					end
+				end
+			end
+		end
+
+		-- Rebuild the blocks with sorted children
+		blocks = {}
+		for _, level in ipairs(indentation_levels) do
+			table.insert(blocks, level.parent)
+			for _, child in ipairs(level.children) do
+				table.insert(blocks, child)
+			end
+		end
+
+		return blocks
+	end
+
 	local sorted_blocks = {}
 	local processed = {}
 
@@ -53,6 +141,13 @@ local function sort_with_nested_children(start_line, end_line)
 	table.sort(sorted_blocks, function(a, b)
 		return a[1].content < b[1].content
 	end)
+
+	-- Now sort children recursively within each block
+	for i, block in ipairs(sorted_blocks) do
+		if #block > 1 then -- Only process blocks with children
+			sorted_blocks[i] = sort_blocks_recursive(block)
+		end
+	end
 
 	local new_lines = {}
 	for _, block in ipairs(sorted_blocks) do
@@ -515,8 +610,8 @@ local query = ts.query.parse('markdown', [[
 local function is_dataview_block(lines)
 	-- Check if the block starts and ends with triple backticks and contains 'dataview' keyword
 	return lines[1]:match("```") and
-	    lines[#lines]:match("```") and
-	    vim.fn.join(lines, " "):match("dataview")
+		lines[#lines]:match("```") and
+		vim.fn.join(lines, " "):match("dataview")
 end
 
 ---@param type string The parameter name
@@ -591,8 +686,8 @@ local function parseDataViewQuery(query_string)
 
 	-- Initialize the parsed components
 	local parsed_query = {
-		request_type = words[1],         -- First word is the request type (e.g., 'table')
-		condition = words[2],            -- Second word is the condition (e.g., 'where')
+		request_type = words[1],           -- First word is the request type (e.g., 'table')
+		condition = words[2],              -- Second word is the condition (e.g., 'where')
 		assignment = table.concat(words, " ", 3) -- The rest is the assignment (e.g., 'created = this.created')
 	}
 
