@@ -3,6 +3,152 @@ local daily_folder =
 "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Daily/"
 local weekly_folder = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Weekly/"
 
+
+local function sort_with_nested_children(start_line, end_line)
+	local lines_info = {}
+	local line_contents = {}
+
+	for line = start_line, end_line do
+		local line_content = vim.fn.getline(line)
+		local indent = vim.fn.indent(line)
+
+		table.insert(lines_info, {
+			line_num = line,
+			indent = indent,
+			content = line_content
+		})
+		table.insert(line_contents, line_content)
+	end
+
+	local function find_block(index)
+		local current_indent = lines_info[index].indent
+		local block = { lines_info[index] }
+
+		-- Chercher les lignes enfants
+		for i = index + 1, #lines_info do
+			if lines_info[i].indent > current_indent then
+				table.insert(block, lines_info[i])
+			else
+				break
+			end
+		end
+
+		return block
+	end
+
+	local sorted_blocks = {}
+	local processed = {}
+
+	for i = 1, #lines_info do
+		if not processed[i] then
+			local block = find_block(i)
+			table.insert(sorted_blocks, block)
+
+			for _, line_info in ipairs(block) do
+				processed[line_info.line_num - start_line + 1] = true
+			end
+		end
+	end
+
+	table.sort(sorted_blocks, function(a, b)
+		return a[1].content < b[1].content
+	end)
+
+	local new_lines = {}
+	for _, block in ipairs(sorted_blocks) do
+		for _, line_info in ipairs(block) do
+			table.insert(new_lines, line_info.content)
+		end
+	end
+
+	for i, line_content in ipairs(new_lines) do
+		vim.fn.setline(start_line + i - 1, line_content)
+	end
+end
+
+
+
+-- Créer une commande utilisateur
+vim.api.nvim_create_user_command("SortWithChildren", function()
+	local start_line = vim.fn.line("'<")
+	local end_line = vim.fn.line("'>")
+
+	sort_with_nested_children(start_line, end_line)
+end, { range = true })
+
+local function line_has_content(line_number)
+	-- Get line content
+	local line_content = vim.fn.getline(line_number)
+
+	-- Check if line is nil or empty
+	if not line_content or line_content == "" then
+		return false
+	end
+
+	-- Remove all whitespace
+	local trimmed = line_content:gsub("%s+", "")
+
+	return trimmed ~= ""
+end
+
+
+local function get_end_of_block()
+	-- Get current line's indent
+	local current_line = vim.fn.line('.')
+	local current_indent = vim.fn.indent(current_line)
+
+	-- Start from next line
+	local next_line = current_line + 1
+	local total_lines = vim.fn.line('$')
+
+	while next_line <= total_lines do
+		if not line_has_content(next_line) then
+			break
+		end
+		local next_indent = vim.fn.indent(next_line)
+
+		next_line = next_line + 1
+	end
+
+	return current_line, next_line - 1 -- Last line of the block
+end
+
+local function get_indent_group()
+	-- Get current line's indent
+	local current_line = vim.fn.line('.')
+	local current_indent = vim.fn.indent(current_line)
+
+	-- Start from next line
+	local next_line = current_line + 1
+	local total_lines = vim.fn.line('$')
+
+	while next_line <= total_lines do
+		if not line_has_content(next_line) then
+			break
+		end
+		local next_indent = vim.fn.indent(next_line)
+
+		-- Stop if indent is less than or equal to current indent
+		if next_indent < current_indent then
+			break
+		end
+
+		next_line = next_line + 1
+	end
+
+	return current_line, next_line - 1 -- Last line of the block
+end
+
+vim.api.nvim_create_user_command("TODOSort", function()
+	local start_of_block, end_of_block = get_end_of_block()
+
+	local start_of_indent_group, end_of_indent_group = get_indent_group()
+	print("start_of_indent_group: ", start_of_indent_group, " end_of_indent_group: ", end_of_indent_group)
+	-- sort_lines(start_of_indent_group, end_of_indent_group)
+	sort_with_nested_children(start_of_indent_group, end_of_indent_group)
+end, {})
+vim.api.nvim_set_keymap("n", "<leader>tso", "<cmd>TODOSort<CR>", {})
+
 -- Sample function to read the content of a file
 ---@param file_path string Path to the file to read
 ---@return string The content of the file
