@@ -3,6 +3,36 @@ local daily_folder =
 "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Daily/"
 local weekly_folder = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Weekly/"
 
+local function find_todos_line()
+	-- Iterate through all lines in the current buffer
+	for i, line in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
+		if line:match("^%s*##%s*TODOS%s*$") then
+			-- Return the line number (Neovim uses 0-based indexing)
+			return i
+		end
+	end
+	return nil
+end
+
+local function find_next_non_empty_line(start_line)
+	-- Get total number of lines in the buffer
+	local total_lines = vim.api.nvim_buf_line_count(0)
+
+	-- Start from the next line
+	for i = start_line + 1, total_lines do
+		-- Get the line content
+		local line = vim.api.nvim_buf_get_lines(0, i - 1, i, false)[1]
+
+		-- Check if line is not empty (trim whitespace)
+		if line:match("%S") then
+			return i
+		end
+	end
+
+	-- Return nil if no non-empty line found
+	return nil
+end
+
 
 local function sort_with_nested_children(start_line, end_line)
 	local lines_info = {}
@@ -175,15 +205,19 @@ local function get_indent_group()
 	return current_line, next_line - 1 -- Last line of the block
 end
 
-vim.api.nvim_create_user_command("TODOSort", function()
-	local start_of_block, end_of_block = get_end_of_block()
+function TODOSort()
+	local cursor_position = vim.api.nvim_win_get_cursor(0)
+	local todo_line = find_todos_line()
+	local start_of_todo_list = find_next_non_empty_line(todo_line)
 
-	local start_of_indent_group, end_of_indent_group = get_indent_group()
-	print("start_of_indent_group: ", start_of_indent_group, " end_of_indent_group: ", end_of_indent_group)
-	-- sort_lines(start_of_indent_group, end_of_indent_group)
-	sort_with_nested_children(start_of_indent_group, end_of_indent_group)
-end, {})
-vim.api.nvim_set_keymap("n", "<leader>tso", "<cmd>TODOSort<CR>", {})
+	vim.api.nvim_win_set_cursor(0, { start_of_todo_list, 0 })
+
+	local _, end_of_indent_group = get_indent_group()
+
+	sort_with_nested_children(start_of_todo_list, end_of_indent_group)
+
+	vim.api.nvim_win_set_cursor(0, { cursor_position[1], cursor_position[2] })
+end
 
 -- Sample function to read the content of a file
 ---@param file_path string Path to the file to read
@@ -1135,10 +1169,7 @@ return {
 		vim.api.nvim_create_autocmd("FileType", {
 			pattern = "markdown",
 			callback = function()
-				-- local current_path = os.execute("cd")
-				-- if current_path ~= workspace_path then
-				-- 	return
-				-- end
+				vim.api.nvim_set_keymap("n", "<leader>ts", "<cmd>TODOSort<CR>", {})
 
 				vim.keymap.set('n', '<leader>fh', ':Headings<CR>',
 					{ noremap = true, silent = true, desc = "Find headings" })
@@ -1201,6 +1232,13 @@ return {
 			pattern = "*.md",
 			callback = function()
 				apply_template_by_folder()
+			end
+		})
+
+		vim.api.nvim_create_autocmd({ "BufWritePre" }, {
+			pattern = "*.md",
+			callback = function()
+				TODOSort()
 			end
 		})
 	end,
