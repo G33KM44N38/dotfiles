@@ -37,6 +37,43 @@ return {
 			s("clg", {
 				t("console.log("), i(1), t(")"),
 			}),
+
+		})
+		ls.add_snippets("typescriptreact", {
+			s("li", {
+				t("logger.info({"),
+				t({ "", "  component: '" }), i(1, "ComponentName"), t("',"),
+				t({ "", "  function: '" }), i(2, "functionName"), t("',"),
+				t({ "", "  message: '" }), i(3, "message"), t("',"),
+				t({ "", "  data: " }), i(4, "data"),
+				t({ "", "})" }),
+			}),
+			s("le", {
+				t("logger.error({"),
+				t({ "", "  component: '" }), i(1, "ComponentName"), t("',"),
+				t({ "", "  function: '" }), i(2, "functionName"), t("',"),
+				t({ "", "  message: '" }), i(3, "message"), t("',"),
+				t({ "", "  data: " }), i(4, "data"),
+				t({ "", "})" }),
+			}),
+			s("lw", {
+				t("logger.warn({"),
+				t({ "", "  component: '" }), i(1, "ComponentName"), t("',"),
+				t({ "", "  function: '" }), i(2, "functionName"), t("',"),
+				t({ "", "  message: '" }), i(3, "message"), t("',"),
+				t({ "", "  data: " }), i(4, "data"),
+				t({ "", "})" }),
+			}),
+
+			s("usee", {
+				t("useEffect(() => {"),
+				t({ "", "  " }), i(1, "// effect code here"),
+				t({ "", "}, [" }), i(2, "dependencies"), t("])"),
+			}),
+			s("uses", {
+				t("const ["), i(1, "state"), t(", set"), i(2, "State"), t("] = useState("), i(3, "initialState"), t(
+				")"),
+			}),
 		})
 
 		-- Define snippets for Go
