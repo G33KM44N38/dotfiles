@@ -93,5 +93,11 @@ return {
 				}),
 			},
 		})
+		-- cmp.setup.filetype({ "sql" }, {
+		-- 	sources = {
+		-- 		{ name = "kristijanhusak/vim-dadbod-completion" },
+		-- 		{ name = "buffer" }
+		-- 	}
+		-- })
 	end,
 }

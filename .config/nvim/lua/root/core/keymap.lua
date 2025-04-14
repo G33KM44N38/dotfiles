@@ -72,6 +72,10 @@ vim.keymap.set({ "n", "v" }, "<leader>c", vim.lsp.buf.code_action, { desc = "See
 -- Diagnostic keymaps
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous [D]iagnostic message' })
 vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = 'Go to next [D]iagnostic message' })
+
+-- vim.keymap.set('n', 'pe', vim.diagnostic.goto_prev, { desc = 'Go to previous [D]iagnostic message' })
+-- vim.keymap.set('n', 'ne', vim.diagnostic.goto_next, { desc = 'Go to next [D]iagnostic message' })
+
 vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Show diagnostic [E]rror messages' })
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
 
@@ -95,15 +99,9 @@ vim.keymap.set("n", "<leader>st", function()
 	vim.cmd("startinsert")
 end)
 
-local function setup_mappings()
-	-- NERDTree mappings
-	-- keymap('n', '<leader>d', ':NERDTreeToggle<CR>', opts)
-	keymap('n', '<leader>f', ':NERDTreeFind<CR>', opts)
-
-	-- Exit Vim if NERDTree is the only window remaining in the only tab.
-	vim.cmd(
-		[[ autocmd BufEnter * if tabpagenr('$') == 1 && winnr('$') == 1 && exists('b:NERDTree') && b:NERDTree.isTabTree() | quit | endif ]])
-end
+-- Exit Vim if NERDTree is the only window remaining in the only tab.
+vim.cmd(
+	[[ autocmd BufEnter * if tabpagenr('$') == 1 && winnr('$') == 1 && exists('b:NERDTree') && b:NERDTree.isTabTree() | quit | endif ]])
 
 
 vim.api.nvim_create_user_command("TmuxNavigateSecondBrain", function()
@@ -117,4 +115,7 @@ vim.keymap.set("n", "<leader>sb", ":TmuxNavigateSecondBrain<CR>", {
 	silent = true -- Prevent command from being echoed
 })
 
-setup_mappings()
+
+
+keymap('n', '<leader>tb', '<cmd>tabnext<CR>', opts)
+keymap('n', '<leader>tp', '<cmd>tabprevious<CR>', opts)

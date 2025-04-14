@@ -11,6 +11,7 @@ selected=$(find \
     ~/backup/ \
     ~/coding/ \
     ~/coding/work/baba_coiffure/ \
+    ~/coding/work/ \
     ~/goinfre/ \
     ~/.dotfiles/ \
     ~/.dotfiles/* \

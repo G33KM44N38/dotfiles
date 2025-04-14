@@ -13,7 +13,6 @@ Implemented a dark mode toggle in the settings menu. Users can now switch betwee
 - Implemented theme persistence using localStorage
 - Updated styles for dark mode compatibility
 
-Closes #15
 
 ### 2️⃣ **Bug Fix**
 Fixed an issue where expired JWT tokens were not being properly invalidated, leading to authentication errors.
@@ -22,7 +21,6 @@ Fixed an issue where expired JWT tokens were not being properly invalidated, lea
 - Added better error handling for expired tokens
 - Improved logging for debugging authentication issues
 
-Closes #27
 
 ### 3️⃣ **Performance Improvement**
 perf(database): optimize query for user search
@@ -33,7 +31,6 @@ Refactored the user search query to improve response times by 40%. Added indexin
 - Reduced query execution time from 2s to 200ms
 - Updated tests to cover edge cases
 
-Closes #33
 
 ### 4️⃣ **Code Refactoring**
 refactor(auth): modularize authentication logic

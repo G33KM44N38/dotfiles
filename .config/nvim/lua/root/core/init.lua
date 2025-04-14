@@ -106,7 +106,6 @@ vim.cmd("set nowrap")
 vim.api.nvim_set_option_value('autoindent', false, {})
 vim.api.nvim_set_option_value('wrap', false, {})
 
-vim.cmd("set conceallevel=1")
 vim.opt.foldmethod = "expr"
 vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
 vim.opt.foldlevel = 99

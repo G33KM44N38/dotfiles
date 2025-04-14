@@ -132,9 +132,6 @@ local function sort_with_nested_children(start_line, end_line)
 	end
 end
 
-
-
--- Créer une commande utilisateur
 vim.api.nvim_create_user_command("SortWithChildren", function()
 	local start_line = vim.fn.line("'<")
 	local end_line = vim.fn.line("'>")
@@ -156,7 +153,6 @@ local function line_has_content(line_number)
 
 	return trimmed ~= ""
 end
-
 
 local function get_end_of_block()
 	-- Get current line's indent
@@ -1102,6 +1098,7 @@ return {
 		end
 	},
 	config = function(_, opts)
+		vim.cmd("set conceallevel=1")
 		require("obsidian").setup(opts)
 
 		vim.api.nvim_create_user_command("ObsidianPreviousWeekly", function()

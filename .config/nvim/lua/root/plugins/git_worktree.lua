@@ -20,8 +20,8 @@ return {
 			local function update_tmux_windows()
 				os.execute("tmux kill-window -t 2")
 				os.execute("tmux kill-window -t 3")
-				os.execute("tmux new-window")
-				os.execute("tmux new-window")
+				os.execute("tmux new-window -n code")
+				os.execute("tmux new-window -n process")
 				os.execute("tmux select-window -t 1")
 			end
 
