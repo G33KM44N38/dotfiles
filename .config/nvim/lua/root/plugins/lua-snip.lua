@@ -30,16 +30,13 @@ return {
 			}),
 		})
 
-		ls.add_snippets("typescript", {
+		local typescript_snip = {
 			s("imr", {
 				t('import React from "react";')
 			}),
 			s("clg", {
 				t("console.log("), i(1), t(")"),
 			}),
-
-		})
-		ls.add_snippets("typescriptreact", {
 			s("li", {
 				t("logger.info({"),
 				t({ "", "  component: '" }), i(1, "ComponentName"), t("',"),
@@ -64,7 +61,14 @@ return {
 				t({ "", "  data: " }), i(4, "data"),
 				t({ "", "})" }),
 			}),
-
+			s("ld", {
+				t("logger.debug({"),
+				t({ "", "  component: '" }), i(1, "ComponentName"), t("',"),
+				t({ "", "  function: '" }), i(2, "functionName"), t("',"),
+				t({ "", "  message: '" }), i(3, "message"), t("',"),
+				t({ "", "  data: " }), i(4, "data"),
+				t({ "", "})" }),
+			}),
 			s("usee", {
 				t("useEffect(() => {"),
 				t({ "", "  " }), i(1, "// effect code here"),
@@ -74,11 +78,32 @@ return {
 				t("const ["), i(1, "state"), t(", set"), i(2, "State"), t("] = useState("), i(3, "initialState"), t(
 				")"),
 			}),
-		})
+			s('irnt', {
+				t({ "import React from 'react'; ", "" }),
+				t({ "import { render, screen } from '@testing-library/react-native'", "", "" }),
+			}),
+			s('desc', {
+				t("describe('"), i(1), t({ "', () => {", "" }),
+				i(2),
+				t("})")
+			}),
+			s('it', {
+				t("it('"), i(1), t({ "', () => {", "" }),
+				i(2),
+				t("})")
+			}),
+			s('ren', {
+				t("render(<"), i(1), t({ "/>);", "" }),
+			})
+		}
+
+		ls.add_snippets("typescript", typescript_snip)
+		ls.add_snippets("typescriptreact", typescript_snip)
 
 		-- Define snippets for Go
 		ls.add_snippets("go", {
 			s("genSuite", {
+
 				t("package "), i(1), t(
 				"\n\nimport (\n    \"testing\"\n    \"github.com/stretchr/testify/suite\"\n    \"github.com/stretchr/testify/assert\"\n)\n\n"),
 				t("type "), i(2), t("TestSuite struct {\n    suite.Suite\n}\n\n"),
