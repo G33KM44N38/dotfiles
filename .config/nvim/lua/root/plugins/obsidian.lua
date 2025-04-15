@@ -154,27 +154,6 @@ local function line_has_content(line_number)
 	return trimmed ~= ""
 end
 
-local function get_end_of_block()
-	-- Get current line's indent
-	local current_line = vim.fn.line('.')
-	local current_indent = vim.fn.indent(current_line)
-
-	-- Start from next line
-	local next_line = current_line + 1
-	local total_lines = vim.fn.line('$')
-
-	while next_line <= total_lines do
-		if not line_has_content(next_line) then
-			break
-		end
-		local next_indent = vim.fn.indent(next_line)
-
-		next_line = next_line + 1
-	end
-
-	return current_line, next_line - 1 -- Last line of the block
-end
-
 local function get_indent_group()
 	-- Get current line's indent
 	local current_line = vim.fn.line('.')
@@ -1054,6 +1033,29 @@ local function find_current_weekly()
 	end
 end
 
+local function toggle_checkbox_with_timestamp()
+	-- Get the current line
+	local line = vim.api.nvim_get_current_line()
+
+	-- Check if the line has a checkbox
+	local checkbox_pattern = "(%s*-%s*%[)([%s%a%d])(])(.*)"
+	local indent, prefix, mark, suffix = line:match(checkbox_pattern)
+
+	if indent and prefix and mark and suffix then
+		local new_line
+
+		local timestamp = os.date("%Y-%m-%d %H:%M")
+		new_line = indent .. "x" .. "] " .. suffix .. " [completed: " .. timestamp .. "]"
+
+		-- Update the line
+		vim.api.nvim_set_current_line(new_line)
+	else
+		-- If no checkbox pattern found, use the built-in toggle function
+		vim.cmd("ObsidianToggleCheckbox")
+	end
+end
+
+
 return {
 	"epwalsh/obsidian.nvim",
 	version = "*",
@@ -1197,7 +1199,7 @@ return {
 				-- Commands
 				vim.api.nvim_set_keymap("n", "gf", "<cmd>ObsidianFollowLink<cr>",
 					{ noremap = true, silent = true })
-				vim.api.nvim_set_keymap("n", "ch", "<cmd>ObsidianToggleCheckbox<cr>",
+				vim.api.nvim_set_keymap("n", "ch", "<cmd>ToggleCheckboxWithTimestamp<cr>",
 					{ noremap = true, silent = true })
 				vim.api.nvim_set_keymap("n", "<leader>bl", "<cmd>ObsidianBacklinks<cr>",
 					{ noremap = true, silent = true })
@@ -1238,5 +1240,9 @@ return {
 				TODOSort()
 			end
 		})
+
+		vim.api.nvim_create_user_command("ToggleCheckboxWithTimestamp", function()
+			toggle_checkbox_with_timestamp()
+		end, {})
 	end,
 }
