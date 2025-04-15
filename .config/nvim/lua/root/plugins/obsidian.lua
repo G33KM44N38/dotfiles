@@ -474,7 +474,7 @@ local function import_todos_from_previous_daily()
 				elseif in_todos_section and line:match("^##") then
 					-- Stop when next section starts
 					break
-				elseif in_todos_section and line:match("%s*-%s*%[%s*%]") then
+				elseif in_todos_section and line:match("%s*-%s*%[%s*[^xX]%s*%]") then
 					-- Unchecked todo item
 					table.insert(todos, line)
 				end
