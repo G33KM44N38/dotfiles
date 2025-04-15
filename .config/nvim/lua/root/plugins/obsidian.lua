@@ -3,6 +3,10 @@ local daily_folder =
 "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Daily/"
 local weekly_folder = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Weekly/"
 
+-- Global date format to be used throughout the file
+local date_format = "%m-%d-%Y"
+local time_format = "%H:%M"
+
 local function find_todos_line()
 	-- Iterate through all lines in the current buffer
 	for i, line in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
@@ -1044,7 +1048,8 @@ local function toggle_checkbox_with_timestamp()
 	if indent and prefix and mark and suffix then
 		local new_line
 
-		local timestamp = os.date("%Y-%m-%d %H:%M")
+		-- Use the date_format variable
+		local timestamp = os.date(date_format .. " " .. time_format)
 		new_line = indent .. "x" .. "] " .. suffix .. " [completed: " .. timestamp .. "]"
 
 		-- Update the line
@@ -1055,6 +1060,96 @@ local function toggle_checkbox_with_timestamp()
 	end
 end
 
+local function find_completed_todos_with_timestamps()
+	local pickers = require("telescope.pickers")
+	local finders = require("telescope.finders")
+	local conf = require("telescope.config").values
+	local actions = require("telescope.actions")
+	local action_state = require("telescope.actions.state")
+	local scan = require("plenary.scandir")
+
+	local completed_todos = {}
+
+	-- Get all markdown files in the daily folder
+	local files = scan.scan_dir(daily_folder, {
+		hidden = false,
+		add_dirs = false,
+		respect_gitignore = true,
+		depth = 1,
+		search_pattern = "%.md$"
+	})
+
+	-- Sort files by date (most recent first)
+	table.sort(files, function(a, b)
+		local a_filename = vim.fn.fnamemodify(a, ":t:r")
+		local b_filename = vim.fn.fnamemodify(b, ":t:r")
+		return a_filename > b_filename
+	end)
+
+	-- Process each file
+	for _, file_path in ipairs(files) do
+		local file_handle = io.open(file_path, "r")
+		if file_handle then
+			local filename = vim.fn.fnamemodify(file_path, ":t:r")
+			local content = file_handle:read("*all")
+			file_handle:close()
+
+			-- Process the file line by line
+			local line_num = 1
+			for line in content:gmatch("[^\r\n]+") do
+				-- Match checked todos with timestamp pattern: - [x] Todo text [completed: MM-DD-YYYY HH:MM]
+				local todo_text, timestamp = line:match("%s*-%s*%[x%]%s*(.-)%s*%[completed:%s*(.-)%]")
+				if todo_text and timestamp then
+					table.insert(completed_todos, {
+						file_path = file_path,
+						filename = filename,
+						line = line_num,
+						text = todo_text,
+						timestamp = timestamp,
+						raw = line
+					})
+				end
+				line_num = line_num + 1
+			end
+		end
+	end
+
+	-- Sort by timestamp (most recent first)
+	table.sort(completed_todos, function(a, b)
+		return a.timestamp > b.timestamp
+	end)
+
+	pickers.new({}, {
+		prompt_title = "Completed TODOs Across All Daily Notes",
+		finder = finders.new_table({
+			results = completed_todos,
+			entry_maker = function(entry)
+				return {
+					value = entry,
+					display = string.format("[%s] [%s] %s", entry.timestamp, entry.filename, entry.text),
+					ordinal = entry.timestamp .. " " .. entry.filename .. " " .. entry.text,
+					filename = entry.file_path,
+					lnum = entry.line
+				}
+			end
+		}),
+		sorter = conf.generic_sorter({}),
+		attach_mappings = function(prompt_bufnr)
+			actions.select_default:replace(function()
+				actions.close(prompt_bufnr)
+				local selection = action_state.get_selected_entry()
+				-- Open the file and go to that line
+				vim.cmd("edit " .. vim.fn.fnameescape(selection.filename))
+				vim.api.nvim_win_set_cursor(0, { selection.lnum, 0 })
+			end)
+			return true
+		end,
+	}):find()
+end
+
+vim.api.nvim_create_user_command("CompletedTodos", function()
+	find_completed_todos_with_timestamps()
+end, {})
 
 return {
 	"epwalsh/obsidian.nvim",
@@ -1071,11 +1166,11 @@ return {
 				path = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/",
 			},
 		},
-		date_format = "%m-%d-%Y",
+		date_format = date_format,
 		templates = {
 			folder = "Templates",
-			date_format = "%m-%d-%Y",
-			time_format = "%H:%M",
+			date_format = date_format,
+			time_format = time_format,
 		},
 		disable_frontmatter = true,
 		note_id_func = function(title)
@@ -1083,7 +1178,7 @@ return {
 		end,
 		daily_notes = {
 			folder = "Daily/",
-			date_format = "%m-%d-%Y",
+			date_format = date_format,
 			template = "Daily Template.md"
 		},
 		use_advanced_uri = true,
@@ -1213,6 +1308,9 @@ return {
 					{ noremap = true, silent = true })
 				vim.api.nvim_set_keymap("n", "<leader>ef", ":ObsidianEditFrontmatter ",
 					{ noremap = true })
+				-- Add keymap for finding completed todos
+				vim.api.nvim_set_keymap("n", "<leader>td", "<cmd>CompletedTodos<cr>",
+					{ noremap = true, silent = true, desc = "Find completed TODOs" })
 				-- Create command to check metadata
 				vim.api.nvim_create_user_command("ObsidianCheckMetadata", function()
 					check_metadata()
