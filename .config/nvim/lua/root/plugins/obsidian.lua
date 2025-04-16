@@ -497,6 +497,9 @@ local function import_todos_from_previous_daily()
 
 				-- Insert new todos if any
 				if #new_todos > 0 and todos_index then
+					-- Add an empty line after the todos for better readability
+					table.insert(new_todos, "")
+
 					vim.api.nvim_buf_set_lines(bufnr, todos_index + 1, todos_index + 1, false, new_todos)
 					-- print(string.format("Imported %d new todos from previous daily note", #new_todos))
 					return true
@@ -564,8 +567,8 @@ local query = ts.query.parse('markdown', [[
 local function is_dataview_block(lines)
 	-- Check if the block starts and ends with triple backticks and contains 'dataview' keyword
 	return lines[1]:match("```") and
-	    lines[#lines]:match("```") and
-	    vim.fn.join(lines, " "):match("dataview")
+		lines[#lines]:match("```") and
+		vim.fn.join(lines, " "):match("dataview")
 end
 
 ---@param type string The parameter name
@@ -640,8 +643,8 @@ local function parseDataViewQuery(query_string)
 
 	-- Initialize the parsed components
 	local parsed_query = {
-		request_type = words[1],         -- First word is the request type (e.g., 'table')
-		condition = words[2],            -- Second word is the condition (e.g., 'where')
+		request_type = words[1],           -- First word is the request type (e.g., 'table')
+		condition = words[2],              -- Second word is the condition (e.g., 'where')
 		assignment = table.concat(words, " ", 3) -- The rest is the assignment (e.g., 'created = this.created')
 	}
 
