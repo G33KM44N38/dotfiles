@@ -49,15 +49,9 @@ keymap("n", "<leader>tt", ":ToggleTerm direction=float fish<CR>", opts)
 
 -- mapping Open Buffer fzf telescope
 keymap("n", "<leader>he", "<cmd>Telescope help_tags<CR>", opts)
-keymap("n", "<leader>n", ":lua require('telescope').extensions.git_worktree.git_worktrees()<CR>", opts)
-keymap("n", "<leader>N", ":lua require('telescope').extensions.git_worktree.create_git_worktree()<CR>", opts)
 keymap("n", "gi", "<cmd>Telescope lsp_implementations<CR>", opts)
-keymap("n", "gd", "<cmd>Telescope lsp_definitions<CR>", opts)
-keymap("n", 'gr', "<cmd>Telescope lsp_references<CR>", opts)
-keymap("n", "<C-p>", ":Telescope find_files<CR>", opts)
+keymap("n", "<C-p>", "<cmd>Telescope find_files<CR>", opts)
 keymap("n", "<C-s>", ":lua require('telescope.builtin').live_grep()<CR>", opts)
-keymap("n", "<leader>gof", ":lua require('telescope.builtin').live_grep({grep_open_files=true})", opts)
-keymap("n", "<leader>gf", ":lua require('telescope.builtin').git_files()<CR>", opts)
 keymap("n", "<leader>ke", ":lua require('telescope.builtin').keymaps()<CR>", opts)
 keymap("n", "<leader>hi",
 	":lua require('telescope.builtin').find_files({ hidden = true, no_ignore = true, file_ignore_patterns = {'.git/'} })<CR>",
@@ -65,13 +59,6 @@ keymap("n", "<leader>hi",
 
 -- allow my cursor stay at the same place, when using `J`
 keymap("n", "J", "mzJ`z", opts)
-
-
-vim.keymap.set({ "n", "v" }, "<leader>c", vim.lsp.buf.code_action, { desc = "See available code actions" }) -- see available code actions, in visual mode will apply to selection
-
--- Diagnostic keymaps
-vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous [D]iagnostic message' })
-vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = 'Go to next [D]iagnostic message' })
 
 -- vim.keymap.set('n', 'pe', vim.diagnostic.goto_prev, { desc = 'Go to previous [D]iagnostic message' })
 -- vim.keymap.set('n', 'ne', vim.diagnostic.goto_next, { desc = 'Go to next [D]iagnostic message' })
