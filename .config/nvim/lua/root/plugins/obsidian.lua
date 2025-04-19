@@ -1249,10 +1249,6 @@ return {
 
 		vim.api.nvim_create_user_command("Headings", markdown_headings, {})
 
-		vim.api.nvim_create_user_command("ObsidianOpenDaily", function()
-			vim.api.nvim_command("ObsidianToday")
-		end, {})
-
 		vim.api.nvim_create_autocmd("BufReadPost", {
 			pattern = "*.md",
 			callback = function()
@@ -1292,7 +1288,7 @@ return {
 				-- Daily
 				vim.api.nvim_set_keymap("n", "<leader>da", "<cmd>ObsidianDailies<cr>",
 					{ noremap = true, silent = true })
-				vim.api.nvim_set_keymap("n", "<leader>dd", "<cmd>ObsidianOpenDaily<cr>",
+				vim.api.nvim_set_keymap("n", "<leader>dd", "<cmd>ObsidianToday<cr>",
 					{ noremap = true, silent = true })
 				vim.api.nvim_set_keymap("n", "<leader>dp", "<cmd>ObsidianPreviousDaily<cr>",
 					{ noremap = true, silent = true })
