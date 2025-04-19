@@ -5,6 +5,12 @@ return {
 		-- Set vim-test strategy
 		vim.g['test#strategy'] = 'vimux'
 
+		-- Set runners for TypeScript and JavaScript
+		vim.g["test#typescript#runner"] = "npx jest"
+		vim.g["test#javascript#runner"] = "npx jest"
+		vim.g["test#typescriptreact#runner"] = "npx jest"
+		vim.g["test#javascriptreact#runner"] = "npx jest"
+
 		-- Define keymappings
 		local map = vim.api.nvim_set_keymap
 		local opts = { noremap = true, silent = true }

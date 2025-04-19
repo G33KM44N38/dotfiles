@@ -5,13 +5,11 @@ return {
 	config = function()
 		local harpoon = require('harpoon')
 
-		-- Basic keymappings
 		vim.keymap.set("n", "<leader>a", function() harpoon:list():add() end,
 			{ desc = "Add file to Harpoon list" })
 		vim.keymap.set("n", "<C-e>", function() harpoon.ui:toggle_quick_menu(harpoon:list()) end,
 			{ desc = "Toggle Harpoon quick menu" })
 
-		-- Navigation keymaps (first 4 files)
 		vim.keymap.set("n", "<C-h>", function() harpoon:list():select(1) end,
 			{ desc = "Navigate to Harpoon file 1" })
 		vim.keymap.set("n", "<C-j>", function() harpoon:list():select(2) end,

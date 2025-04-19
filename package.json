@@ -3,7 +3,8 @@
     "dotfiles": "^0.8.0"
   },
   "devDependencies": {
-    "husky": "^9.1.7"
+    "husky": "^9.1.7",
+    "turbo": "^2.5.0"
   },
   "scripts": {
     "prepare": "husky"

@@ -2,115 +2,101 @@ local function harpoon_sync_worktree()
 	local harpoon = require('harpoon')
 	local list = harpoon:list().items
 	for index, item in ipairs(list) do
-		print(index, vim.inspect(item.value))
 		harpoon:list().add(item)
 	end
+end
+
+-- Function to run shell commands asynchronously
+local function async_exec(cmd, callback)
+	vim.fn.jobstart(cmd, {
+		on_exit = function(_, code)
+			if callback then
+				callback(code == 0)
+			end
+		end,
+		stdout_buffered = true,
+		stderr_buffered = true
+	})
 end
 
 -- Function to synchronize submodules to match the root branch
 local function sync_submodules_to_root_branch()
 	-- Initialize and update submodules first
 	print("Initializing and updating submodules...")
-	os.execute("git submodule init > /dev/null 2>&1")
-	os.execute("git submodule update > /dev/null 2>&1")
 
-	-- Get the current branch name
-	local current_branch_handle = io.popen("git rev-parse --abbrev-ref HEAD 2>/dev/null")
-	if not current_branch_handle then return end
+	-- Run submodule initialization in background
+	async_exec("git submodule init > /dev/null 2>&1", function(success)
+		if not success then return end
 
-	local current_branch = current_branch_handle:read("*a")
-	current_branch_handle:close()
+		async_exec("git submodule update --jobs=8 > /dev/null 2>&1", function(success)
+			if not success then return end
 
-	if not current_branch then return end
-	current_branch = current_branch:gsub("%s+$", "")
+			-- Get the current branch name
+			vim.fn.jobstart("git rev-parse --abbrev-ref HEAD 2>/dev/null", {
+				on_stdout = function(_, data)
+					if not data or #data < 1 or data[1] == "" then return end
 
-	if current_branch == "" then
-		print("Could not determine current branch")
-		return
-	end
+					local current_branch = data[1]:gsub("%s+$", "")
 
-	-- Get list of submodules
-	local submodules_handle = io.popen("git submodule foreach --quiet 'echo $name'")
-	if not submodules_handle then return end
+					-- Get list of submodules
+					vim.fn.jobstart("git submodule foreach --quiet 'echo $name'", {
+						on_stdout = function(_, submodule_data)
+							if not submodule_data or #submodule_data < 1 then
+								print("No submodules found")
+								return
+							end
 
-	local submodules_output = submodules_handle:read("*a")
-	submodules_handle:close()
+							local submodules = {}
+							for _, line in ipairs(submodule_data) do
+								if line and line ~= "" then
+									table.insert(submodules, line)
+								end
+							end
 
-	if not submodules_output then return end
+							if #submodules == 0 then
+								print("No submodules found")
+								return
+							end
 
-	local submodules = {}
-	for submodule in submodules_output:gmatch("[^\r\n]+") do
-		table.insert(submodules, submodule)
-	end
+							print("Synchronizing submodules to branch: " .. current_branch)
 
-	if #submodules == 0 then
-		print("No submodules found")
-		return
-	end
+							-- Process submodules in parallel by launching jobs
+							for _, submodule in ipairs(submodules) do
+								-- Fetch and branch check in one command for efficiency
+								local cmd = string.format(
+									"cd '%s' && git fetch -q && " ..
+									"(git rev-parse --verify refs/heads/%s >/dev/null 2>&1 && " ..
+									"(git checkout %s > /dev/null 2>&1 && git pull -q origin %s > /dev/null 2>&1 && " ..
+									"echo 'Switched and updated %s to branch %s') || " ..
+									"(git ls-remote --heads origin %s | grep -q %s && " ..
+									"git checkout -b %s --track origin/%s > /dev/null 2>&1 && " ..
+									"echo 'Created tracking branch %s in %s') || " ..
+									"echo 'Branch %s does not exist for %s')",
+									submodule, current_branch,
+									current_branch, current_branch,
+									submodule, current_branch,
+									current_branch, current_branch,
+									current_branch, current_branch,
+									current_branch, submodule,
+									current_branch, submodule
+								)
 
-	print("Synchronizing submodules to branch: " .. current_branch)
-
-	-- Try to check out the same branch in each submodule
-	for _, submodule in ipairs(submodules) do
-		-- Fetch the latest from remote first
-		print("Fetching latest updates for submodule " .. submodule)
-		local fetch_cmd = string.format("cd '%s' && git fetch > /dev/null 2>&1", submodule)
-		os.execute(fetch_cmd)
-
-		-- First verify if the branch exists in the submodule
-		local check_branch_cmd = string.format(
-			"cd '%s' && git rev-parse --verify refs/heads/%s >/dev/null 2>&1 && echo 'exists' || echo 'not_exists'",
-			submodule, current_branch)
-		local branch_exists_handle = io.popen(check_branch_cmd)
-		if not branch_exists_handle then
-			print("Failed to check branch in submodule " .. submodule)
-			goto continue
-		end
-
-		local branch_exists = branch_exists_handle:read("*a")
-		branch_exists_handle:close()
-
-		if not branch_exists then
-			print("Failed to read branch status in submodule " .. submodule)
-			goto continue
-		end
-
-		branch_exists = branch_exists:gsub("%s+$", "")
-
-		if branch_exists == "exists" then
-			print("Switching submodule " .. submodule .. " to branch " .. current_branch)
-			local checkout_cmd = string.format("cd '%s' && git checkout %s > /dev/null 2>&1", submodule,
-				current_branch)
-			os.execute(checkout_cmd)
-
-			-- Pull latest changes from remote
-			print("Pulling latest changes for submodule " .. submodule)
-			local pull_cmd = string.format("cd '%s' && git pull origin %s > /dev/null 2>&1", submodule, current_branch)
-			os.execute(pull_cmd)
-		else
-			print("Branch " .. current_branch .. " does not exist in submodule " .. submodule)
-
-			-- Try to check if the branch exists on the remote
-			local remote_branch_cmd = string.format(
-				"cd '%s' && git ls-remote --heads origin %s | grep -q %s && echo 'exists' || echo 'not_exists'",
-				submodule, current_branch, current_branch)
-			local remote_exists_handle = io.popen(remote_branch_cmd)
-			if remote_exists_handle then
-				local remote_exists = remote_exists_handle:read("*a")
-				remote_exists_handle:close()
-
-				if remote_exists and remote_exists:gsub("%s+$", "") == "exists" then
-					print("Branch exists on remote. Creating and tracking in submodule " .. submodule)
-					local create_cmd = string.format(
-						"cd '%s' && git checkout -b %s --track origin/%s > /dev/null 2>&1",
-						submodule, current_branch, current_branch)
-					os.execute(create_cmd)
-				end
-			end
-		end
-
-		::continue::
-	end
+								vim.fn.jobstart(cmd, {
+									on_stdout = function(_, output)
+										if output and #output > 0 and output[1] ~= "" then
+											print(output[1])
+										end
+									end
+								})
+							end
+						end,
+						stdout_buffered = true
+					})
+				end,
+				stdout_buffered = true
+			})
+		end)
+	end)
 end
 
 return {
@@ -138,11 +124,8 @@ return {
 
 			-- Function to update tmux windows in the current client
 			local function update_tmux_windows()
-				os.execute("tmux kill-window -t 2")
-				os.execute("tmux kill-window -t 3")
-				os.execute("tmux new-window -n code")
-				os.execute("tmux new-window -n process")
-				os.execute("tmux select-window -t 1")
+				async_exec(
+					"tmux kill-window -t 2 2>/dev/null; tmux kill-window -t 3 2>/dev/null; tmux new-window -n code; tmux new-window -n process; tmux select-window -t 1")
 			end
 
 			vim.api.nvim_set_keymap("n", "<leader>ws",
@@ -154,32 +137,39 @@ return {
 
 			Worktree.on_tree_change(function(op, metadata)
 				if op == Worktree.Operations.Switch then
-					harpoon_sync_worktree()
-					vim.api.nvim_command("LspRestart")
+					-- Execute tasks in parallel for speed
 
-					-- Update tmux windows in the current client to the new worktree path
+					-- Task 1: Synchronize harpoon
+					-- harpoon_sync_worktree()
+
+					-- Task 2: Restart LSP (after a short delay to let disk operations complete)
+					vim.defer_fn(function()
+						vim.api.nvim_command("LspRestart")
+					end, 500)
+
+					-- Task 3: Update tmux windows
 					update_tmux_windows()
 
-					-- Synchronize submodules to match the same branch as the root
+					-- -- Task 4: Update current directory and oil
+					-- vim.api.nvim_set_current_dir(metadata.path)
+					-- local oil_loaded, oil = pcall(require, "oil")
+					-- if oil_loaded then
+					-- 	vim.defer_fn(function()
+					-- 		-- Only close oil buffers if they exist
+					-- 		for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+					-- 			if vim.bo[buf].filetype == "oil" then
+					-- 				vim.api.nvim_buf_delete(buf, { force = true })
+					-- 				break -- Only need to close one oil buffer
+					-- 			end
+					-- 		end
+					-- 		oil.open(metadata.path)
+					-- 	end, 300)
+					-- end
+
+					-- Task 5: Synchronize submodules (in background)
 					sync_submodules_to_root_branch()
 
-					-- Set the current directory for Neovim and Oil
-					vim.api.nvim_set_current_dir(metadata.path)
-
-					-- If oil is loaded, refresh it to show the new directory
-					local oil_loaded, oil = pcall(require, "oil")
-					if oil_loaded then
-						-- Close any open oil buffers first
-						for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-							if vim.bo[buf].filetype == "oil" then
-								vim.api.nvim_buf_delete(buf, { force = true })
-							end
-						end
-						-- Open oil in the new directory
-						vim.defer_fn(function()
-							oil.open(metadata.path)
-						end, 100)
-					end
+					print("Switched to worktree: " .. metadata.path)
 				end
 			end)
 		end
