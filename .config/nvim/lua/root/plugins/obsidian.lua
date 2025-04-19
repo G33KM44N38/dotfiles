@@ -477,6 +477,10 @@ local function import_todos_from_previous_daily()
 				for i_2, line in ipairs(lines) do
 					if line:match("^## TODOS") then
 						todos_index = i_2
+					elseif todos_index and line:match("%s*-%s*%[") then
+						-- Si un todo (coché ou non coché) existe déjà, arrêter l'importation
+						print("stop the import TODOS already existing")
+						return false
 					elseif todos_index and line:match("%s*-%s*%[%s*%]") then
 						-- Collect existing unchecked todos
 						existing_todos[line:gsub("%s*-%s*%[%s*%]%s*(.*)$", "%1")] = true
