@@ -9,6 +9,8 @@ alias g="cd ~/goinfre/"
 alias ld="lazydocker"
 alias lg="lazygit"
 alias c="cursor ."
+alias ocr="open_current_repo"
+alias odn="daily_open.sh"
 
 # Git command
 alias gs="git status"

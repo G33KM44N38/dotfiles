@@ -1,11 +1,3 @@
-local function harpoon_sync_worktree()
-	local harpoon = require('harpoon')
-	local list = harpoon:list().items
-	for index, item in ipairs(list) do
-		harpoon:list().add(item)
-	end
-end
-
 -- Function to run shell commands asynchronously
 local function async_exec(cmd, callback)
 	vim.fn.jobstart(cmd, {
