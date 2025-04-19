@@ -1158,6 +1158,32 @@ vim.api.nvim_create_user_command("CompletedTodos", function()
 	find_completed_todos_with_timestamps()
 end, {})
 
+vim.api.nvim_create_user_command("ObsdianDaily", function()
+	-- Get current date
+	local date_time = os.date("*t")
+	local year = date_time.year
+	local month = date_time.month
+	local day = date_time.day
+
+	-- Format month and day with leading zeros if needed
+	local month_str = string.format("%02d", month)
+	local day_str = string.format("%02d", day)
+
+	-- Create filename
+	local daily_folder = "Daily/" -- Adjust this path as needed
+	local filename = daily_folder .. month_str .. "-" .. day_str .. "-" .. year .. ".md"
+
+	-- Check if the folder exists
+	local folder_exists = vim.fn.isdirectory(daily_folder)
+	if folder_exists == 0 then
+		-- Create the folder if it doesn't exist
+		vim.fn.mkdir(daily_folder, "p")
+	end
+
+	-- Open or create the file in Neovim
+	vim.cmd("edit " .. filename)
+end, {})
+
 return {
 	"epwalsh/obsidian.nvim",
 	version = "*",
