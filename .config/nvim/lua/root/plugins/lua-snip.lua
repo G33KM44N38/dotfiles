@@ -31,6 +31,12 @@ return {
 		})
 
 		local typescript_snip = {
+			s('fu', {
+				t("function "), i(1), t("("), i(2), t(")")
+			}),
+			s('afu', {
+				t("const "), i(1), t(" = ("), i(2), t(") => {"), i(3), t("}")
+			}),
 			s("imr", {
 				t('import React from "react";')
 			}),
