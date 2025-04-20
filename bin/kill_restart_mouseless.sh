@@ -13,5 +13,6 @@
 # @raycast.author me
 #
 
-pkill -f "mouseless" && open -a "mouseless"
+pkill -f "mouseless" 
+open -a "mouseless"
 # vi:ft=sh:
