@@ -17,6 +17,7 @@ keymap('n', '<leader>lg', '<cmd>silent !tmux neww lazygit<CR>', opts)
 keymap('n', '<leader>ld', '<cmd>silent !tmux neww lazydocker<CR>', opts)
 keymap('i', 'kj', '<Esc>', opts)
 keymap('i', 'KJ', '<Esc>', opts)
+keymap("n", '<leader>f', ':Ex<CR>', opts)
 
 keymap("n", "<C-z>", "<nop>", opts)
 
