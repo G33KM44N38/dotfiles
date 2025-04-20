@@ -136,7 +136,7 @@ return {
 
 					update_tmux_windows()
 
-					sync_submodules_to_root_branch()
+					-- sync_submodules_to_root_branch()
 
 					print("Switched to worktree: " .. metadata.path)
 				end
