@@ -1,4 +1,3 @@
--- Function to run shell commands asynchronously
 local function async_exec(cmd, callback)
 	vim.fn.jobstart(cmd, {
 		on_exit = function(_, code)
@@ -20,7 +19,7 @@ local function sync_submodules_to_root_branch()
 	async_exec("git submodule init > /dev/null 2>&1", function(success)
 		if not success then return end
 
-		async_exec("git submodule update --jobs=8 > /dev/null 2>&1", function(success)
+		async_exec("git submodule update --jobs=8 > /dev/null 2>&1", function()
 			if not success then return end
 
 			-- Get the current branch name
@@ -116,8 +115,10 @@ return {
 
 			-- Function to update tmux windows in the current client
 			local function update_tmux_windows()
-				async_exec(
-					"tmux kill-window -t 2 2>/dev/null; tmux kill-window -t 3 2>/dev/null; tmux new-window -n code; tmux new-window -n process; tmux select-window -t 1")
+				os.execute("tmux kill-window -t 2")
+				os.execute("tmux kill-window -t 3")
+				os.execute("tmux new-window -dn code")
+				os.execute("tmux new-window -dn process")
 			end
 
 			vim.api.nvim_set_keymap("n", "<leader>ws",
@@ -129,36 +130,12 @@ return {
 
 			Worktree.on_tree_change(function(op, metadata)
 				if op == Worktree.Operations.Switch then
-					-- Execute tasks in parallel for speed
-
-					-- Task 1: Synchronize harpoon
-					-- harpoon_sync_worktree()
-
-					-- Task 2: Restart LSP (after a short delay to let disk operations complete)
 					vim.defer_fn(function()
 						vim.api.nvim_command("LspRestart")
 					end, 500)
 
-					-- Task 3: Update tmux windows
 					update_tmux_windows()
 
-					-- -- Task 4: Update current directory and oil
-					-- vim.api.nvim_set_current_dir(metadata.path)
-					-- local oil_loaded, oil = pcall(require, "oil")
-					-- if oil_loaded then
-					-- 	vim.defer_fn(function()
-					-- 		-- Only close oil buffers if they exist
-					-- 		for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-					-- 			if vim.bo[buf].filetype == "oil" then
-					-- 				vim.api.nvim_buf_delete(buf, { force = true })
-					-- 				break -- Only need to close one oil buffer
-					-- 			end
-					-- 		end
-					-- 		oil.open(metadata.path)
-					-- 	end, 300)
-					-- end
-
-					-- Task 5: Synchronize submodules (in background)
 					sync_submodules_to_root_branch()
 
 					print("Switched to worktree: " .. metadata.path)
