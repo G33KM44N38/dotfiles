@@ -70,11 +70,15 @@ return {
 				["<Tab>"] = cmp.mapping(function()
 					if cmp.visible() then
 						cmp.select_next_item({ behavior = cmp.SelectBehavior.Select })
+					else
+						luasnip.jump(1)
 					end
 				end, { "i", "s", "c" }),
 				["<S-Tab>"] = cmp.mapping(function()
 					if cmp.visible() then
 						cmp.select_prev_item({ behavior = cmp.SelectBehavior.Select })
+					else
+						luasnip.jump(-1)
 					end
 				end, { "i", "s", "c" }),
 			},
