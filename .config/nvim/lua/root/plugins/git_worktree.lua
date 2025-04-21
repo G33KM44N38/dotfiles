@@ -1,146 +1,42 @@
-local function async_exec(cmd, callback)
-	vim.fn.jobstart(cmd, {
-		on_exit = function(_, code)
-			if callback then
-				callback(code == 0)
-			end
-		end,
-		stdout_buffered = true,
-		stderr_buffered = true
-	})
-end
-
--- Function to synchronize submodules to match the root branch
-local function sync_submodules_to_root_branch()
-	-- Initialize and update submodules first
-	print("Initializing and updating submodules...")
-
-	-- Run submodule initialization in background
-	async_exec("git submodule init > /dev/null 2>&1", function(success)
-		if not success then return end
-
-		async_exec("git submodule update --jobs=8 > /dev/null 2>&1", function()
-			if not success then return end
-
-			-- Get the current branch name
-			vim.fn.jobstart("git rev-parse --abbrev-ref HEAD 2>/dev/null", {
-				on_stdout = function(_, data)
-					if not data or #data < 1 or data[1] == "" then return end
-
-					local current_branch = data[1]:gsub("%s+$", "")
-
-					-- Get list of submodules
-					vim.fn.jobstart("git submodule foreach --quiet 'echo $name'", {
-						on_stdout = function(_, submodule_data)
-							if not submodule_data or #submodule_data < 1 then
-								print("No submodules found")
-								return
-							end
-
-							local submodules = {}
-							for _, line in ipairs(submodule_data) do
-								if line and line ~= "" then
-									table.insert(submodules, line)
-								end
-							end
-
-							if #submodules == 0 then
-								print("No submodules found")
-								return
-							end
-
-							print("Synchronizing submodules to branch: " .. current_branch)
-
-							-- Process submodules in parallel by launching jobs
-							for _, submodule in ipairs(submodules) do
-								-- Fetch and branch check in one command for efficiency
-								local cmd = string.format(
-									"cd '%s' && git fetch -q && " ..
-									"(git rev-parse --verify refs/heads/%s >/dev/null 2>&1 && " ..
-									"(git checkout %s > /dev/null 2>&1 && git pull -q origin %s > /dev/null 2>&1 && " ..
-									"echo 'Switched and updated %s to branch %s') || " ..
-									"(git ls-remote --heads origin %s | grep -q %s && " ..
-									"git checkout -b %s --track origin/%s > /dev/null 2>&1 && " ..
-									"echo 'Created tracking branch %s in %s') || " ..
-									"echo 'Branch %s does not exist for %s')",
-									submodule, current_branch,
-									current_branch, current_branch,
-									submodule, current_branch,
-									current_branch, current_branch,
-									current_branch, current_branch,
-									current_branch, submodule,
-									current_branch, submodule
-								)
-
-								vim.fn.jobstart(cmd, {
-									on_stdout = function(_, output)
-										if output and #output > 0 and output[1] ~= "" then
-											print(output[1])
-										end
-									end
-								})
-							end
-						end,
-						stdout_buffered = true
-					})
-				end,
-				stdout_buffered = true
-			})
-		end)
-	end)
+local function update_tmux_windows()
+	os.execute("tmux kill-window -t 2")
+	os.execute("tmux kill-window -t 3")
+	os.execute("tmux new-window -dn code")
+	os.execute("tmux new-window -dn process")
 end
 
 return {
 	"ThePrimeagen/git-worktree.nvim",
 	dependencies = {
-		'ThePrimeagen/harpoon',
-		branch = 'harpoon2',
+		"nvim-telescope/telescope.nvim",
+		{
+			'ThePrimeagen/harpoon',
+			branch = 'harpoon2',
+		}
 	},
+
 	config = function()
 		local harpoon = require('harpoon')
-		if vim.g.vscode then
-			vim.keymap.set("n", "<leader>ws", function()
-				require('vscode').action('git-worktree.list')
-			end)
-			vim.keymap.set("n", "<leader>wc", function()
-				require('vscode').action('git-worktree.add')
-			end)
-			vim.keymap.set("n", "<leader>wd", function()
-				require('vscode').action('git-worktree.remove')
-			end)
-		else
-			require("telescope").load_extension("git_worktree")
-			local Worktree = require("git-worktree")
-			local opts = { noremap = true, silent = true }
+		local Worktree = require("git-worktree")
 
-			-- Function to update tmux windows in the current client
-			local function update_tmux_windows()
-				os.execute("tmux kill-window -t 2")
-				os.execute("tmux kill-window -t 3")
-				os.execute("tmux new-window -dn code")
-				os.execute("tmux new-window -dn process")
+		vim.api.nvim_set_keymap("n", "<leader>ws",
+			":lua require('telescope').extensions.git_worktree.git_worktrees()<CR>", Opts)
+		vim.api.nvim_set_keymap("n", "<leader>wc",
+			":lua require('telescope').extensions.git_worktree.create_git_worktree()<CR>", Opts)
+		vim.api.nvim_set_keymap("n", "<leader>wt",
+			":lua require('telescope').extensions.git_worktree.git_worktrees()<CR>", Opts)
+
+		Worktree.on_tree_change(function(op, metadata)
+			if op == Worktree.Operations.Switch then
+				vim.defer_fn(function()
+					vim.api.nvim_command("LspRestart")
+				end, 500)
+
+				update_tmux_windows()
+
+
+				print("Switched to worktree: " .. metadata.path)
 			end
-
-			vim.api.nvim_set_keymap("n", "<leader>ws",
-				":lua require('telescope').extensions.git_worktree.git_worktrees()<CR>", opts)
-			vim.api.nvim_set_keymap("n", "<leader>wc",
-				":lua require('telescope').extensions.git_worktree.create_git_worktree()<CR>", opts)
-			vim.api.nvim_set_keymap("n", "<leader>wt",
-				":lua require('telescope').extensions.git_worktree.git_worktrees()<CR>", opts)
-
-			Worktree.on_tree_change(function(op, metadata)
-				if op == Worktree.Operations.Switch then
-					vim.defer_fn(function()
-						vim.api.nvim_command("LspRestart")
-					end, 500)
-
-					update_tmux_windows()
-
-					-- sync_submodules_to_root_branch()
-
-					print("Switched to worktree: " .. metadata.path)
-				end
-			end)
-		end
+		end)
 	end
 }
