@@ -296,6 +296,7 @@ return {
 		vim.cmd('command -bar -bang -nargs=* Gcommit lua InputArgs()')
 		vim.keymap.set('n', 'gj', '<cmd>diffget //3<CR>')
 		vim.keymap.set('n', 'gf', '<cmd>diffget //2<CR>')
+		vim.api.nvim_set_keymap("n", "<leader>g", ":G<CR>", { noremap = true, silent = true })
 
 		vim.api.nvim_create_user_command('AICommitMessage', function()
 			GenerateCommitMessageWithAI('openai')

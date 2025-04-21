@@ -36,17 +36,6 @@ keymap("n", "<leader>Y", "\"+y", opts)
 keymap('n', '+', '<C-a>', opts)
 keymap('n', '-', '<C-x>', opts)
 
--- mapping fugitif
-keymap("n", "<leader>g", ":G<CR>", opts)
-
--- open term
-keymap("n", "<leader>tt", ":ToggleTerm direction=float fish<CR>", opts)
-
-keymap("n", "<leader>he", "<cmd>Telescope help_tags<CR>", opts)
-keymap("n", "gi", "<cmd>Telescope lsp_implementations<CR>", opts)
-keymap("n", "<leader>hi",
-	":lua require('telescope.builtin').find_files({ hidden = true, no_ignore = true, file_ignore_patterns = {'.git/'} })<CR>",
-	opts)
 
 -- allow my cursor stay at the same place, when using `J`
 keymap("n", "J", "mzJ`z", opts)

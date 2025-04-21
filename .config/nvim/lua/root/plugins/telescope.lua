@@ -94,9 +94,9 @@ return {
 			},
 		}
 
-		-- To get fzf loaded and working with telescope, you need to call
-		-- load_extension, somewhere after setup function:
-		-- require('telescope').load_extension('fzf')
-		-- require "plugins.custom.telescope.multigrep".setup()
+		vim.api.nvim_set_keymap("n", "gi", "<cmd>Telescope lsp_implementations<CR>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>hi",
+			":lua require('telescope.builtin').find_files({ hidden = true, no_ignore = true, file_ignore_patterns = {'.git/'} })<CR>",
+			{ noremap = true, silent = true })
 	end
 }
