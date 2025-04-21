@@ -2,7 +2,7 @@
 vim.o.termguicolors = true
 vim.cmd("set termguicolors")
 
-local opts = { noremap = true, silent = true }
+Opts = { noremap = true, silent = true }
 local noSilent = { noremap = true }
 
 vim.g.mapleader = " "
@@ -10,46 +10,46 @@ vim.g.maplocalleader = " "
 -- Shorten function name
 local keymap = vim.api.nvim_set_keymap
 
-keymap("n", "<leader>de", "<cmd>silent !tmux split -v ~/.config/scripts/docker_container_exec.sh<CR>", opts)
-keymap("n", "<leader>dl", "<cmd>silent !tmux split -v ~/.config/scripts/docker_container_log.sh<CR>", opts)
-keymap("n", "<C-f>", "<cmd>silent !tmux neww tmux-navigate.sh<CR>", opts)
-keymap('n', '<leader>lg', '<cmd>silent !tmux neww lazygit<CR>', opts)
-keymap('n', '<leader>ld', '<cmd>silent !tmux neww lazydocker<CR>', opts)
-keymap('i', 'kj', '<Esc>', opts)
-keymap('i', 'KJ', '<Esc>', opts)
-keymap("n", '<leader>f', ':Ex<CR>', opts)
+keymap("n", "<leader>de", "<cmd>silent !tmux split -v ~/.config/scripts/docker_container_exec.sh<CR>", Opts)
+keymap("n", "<leader>dl", "<cmd>silent !tmux split -v ~/.config/scripts/docker_container_log.sh<CR>", Opts)
+keymap("n", "<C-f>", "<cmd>silent !tmux neww tmux-navigate.sh<CR>", Opts)
+keymap('n', '<leader>lg', '<cmd>silent !tmux neww lazygit<CR>', Opts)
+keymap('n', '<leader>ld', '<cmd>silent !tmux neww lazydocker<CR>', Opts)
+keymap('i', 'kj', '<Esc>', Opts)
+keymap('i', 'KJ', '<Esc>', Opts)
+keymap("n", '<leader>f', ':Ex<CR>', Opts)
 
-keymap("n", "<C-z>", "<nop>", opts)
+keymap("n", "<C-z>", "<nop>", Opts)
 
 -- Save all buffers
-keymap("n", "<leader>w", ":w<CR> :wa<CR>", opts)
+keymap("n", "<leader>w", ":w<CR> :wa<CR>", Opts)
 
 -- paste without overwrite
 vim.keymap.set("x", "<leader>p", "\"_dP")
 
 -- paste to the clipboard
-keymap("n", "<leader>y", "\"+y", opts)
-keymap("v", "<leader>y", "\"+y", opts)
-keymap("n", "<leader>Y", "\"+y", opts)
+keymap("n", "<leader>y", "\"+y", Opts)
+keymap("v", "<leader>y", "\"+y", Opts)
+keymap("n", "<leader>Y", "\"+y", Opts)
 
 -- Increment/decrement
-keymap('n', '+', '<C-a>', opts)
-keymap('n', '-', '<C-x>', opts)
+keymap('n', '+', '<C-a>', Opts)
+keymap('n', '-', '<C-x>', Opts)
 
 
 -- allow my cursor stay at the same place, when using `J`
-keymap("n", "J", "mzJ`z", opts)
+keymap("n", "J", "mzJ`z", Opts)
 
 vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Show diagnostic [E]rror messages' })
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
 
 -- Move text up and down
-keymap("x", "J", ":move '>+1<CR>gv-gv", opts)
-keymap("x", "K", ":move '<-2<CR>gv-gv", opts)
+keymap("x", "J", ":move '>+1<CR>gv-gv", Opts)
+keymap("x", "K", ":move '<-2<CR>gv-gv", Opts)
 
 -- allow search term to be in the middle
-keymap("n", "n", "nzzzv", opts)
-keymap("n", "N", "Nzzzv", opts)
+keymap("n", "n", "nzzzv", Opts)
+keymap("n", "N", "Nzzzv", Opts)
 
-keymap('n', '<leader>tb', '<cmd>tabnext<CR>', opts)
-keymap('n', '<leader>tp', '<cmd>tabprev<CR>', opts)
+keymap('n', '<leader>tb', '<cmd>tabnext<CR>', Opts)
+keymap('n', '<leader>tp', '<cmd>tabprev<CR>', Opts)
