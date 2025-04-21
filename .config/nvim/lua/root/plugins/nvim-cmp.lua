@@ -83,10 +83,10 @@ return {
 				end, { "i", "s", "c" }),
 			},
 			sources = cmp.config.sources({
-				{ name = "nvim_lsp" }, -- LSP source (assurez-vous que le serveur Lua est bien configuré)
-				{ name = "luasnip", group_index = 1 }, -- Snippets
-				{ name = "buffer" },   -- Texte dans le buffer actuel
-				{ name = "path" },     -- Chemins de fichiers
+				{ name = "nvim_lsp" },
+				{ name = "luasnip", group_index = 1 },
+				{ name = "buffer" },
+				{ name = "path" },
 			}),
 			formatting = {
 				fields = { "abbr" },
@@ -97,11 +97,5 @@ return {
 				}),
 			},
 		})
-		-- cmp.setup.filetype({ "sql" }, {
-		-- 	sources = {
-		-- 		{ name = "kristijanhusak/vim-dadbod-completion" },
-		-- 		{ name = "buffer" }
-		-- 	}
-		-- })
 	end,
 }

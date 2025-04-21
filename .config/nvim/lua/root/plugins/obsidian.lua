@@ -1296,9 +1296,9 @@ return {
 
 				vim.keymap.set('n', '<leader>fh', ':Headings<CR>',
 					{ noremap = true, silent = true, desc = "Find headings" })
-				vim.api.nvim_set_keymap("n", "[#", "?^#\\+\\s<CR>",
+				vim.api.nvim_set_keymap("n", "[h", "?^#\\+\\s<CR>",
 					{ noremap = true, silent = true, desc = "Go to previous heading" })
-				vim.api.nvim_set_keymap("n", "]#", "/^#\\+\\s<CR>",
+				vim.api.nvim_set_keymap("n", "]h", "/^#\\+\\s<CR>",
 					{ noremap = true, silent = true, desc = "Go to next heading" })
 				-- Weekly
 				vim.api.nvim_set_keymap("n", "<leader>ww", "<cmd>ObsidianCurrentWeekly<cr>",

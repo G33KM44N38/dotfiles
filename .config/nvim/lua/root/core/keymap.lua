@@ -44,9 +44,6 @@ keymap("n", "<leader>tt", ":ToggleTerm direction=float fish<CR>", opts)
 
 keymap("n", "<leader>he", "<cmd>Telescope help_tags<CR>", opts)
 keymap("n", "gi", "<cmd>Telescope lsp_implementations<CR>", opts)
-keymap("n", "<C-p>", "<cmd>Telescope find_files<CR>", opts)
-keymap("n", "<C-s>", ":lua require('telescope.builtin').live_grep()<CR>", opts)
-keymap("n", "<leader>ke", ":lua require('telescope.builtin').keymaps()<CR>", opts)
 keymap("n", "<leader>hi",
 	":lua require('telescope.builtin').find_files({ hidden = true, no_ignore = true, file_ignore_patterns = {'.git/'} })<CR>",
 	opts)

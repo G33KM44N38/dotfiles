@@ -2,6 +2,7 @@ return {
 	"nvimdev/lspsaga.nvim",
 	branch = "main",
 	config = function()
+		require('lspsaga').setup({})
 		local opts = { noremap = true, silent = true }
 		vim.keymap.set("n", "K", "<cmd>Lspsaga hover_doc<CR>", opts) -- show documentation for what is under cursor
 		vim.keymap.set("n", 'gr', "<cmd>Lspsaga finder<CR>", opts)
@@ -14,7 +15,5 @@ return {
 
 		vim.keymap.set({ "n", "v" }, '<leader>c', "<cmd>Lspsaga code_actions<CR>",
 			{ desc = 'Go to next [D]iagnostic message' })
-
-		require('lspsaga').setup({})
 	end,
 }
