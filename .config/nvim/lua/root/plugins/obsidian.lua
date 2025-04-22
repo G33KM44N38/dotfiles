@@ -2,8 +2,6 @@ local workspace_path = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/
 local daily_folder =
 "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Daily/"
 local weekly_folder = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Weekly/"
-
--- Global date format to be used throughout the file
 local date_format = "%m-%d-%Y"
 local time_format = "%H:%M"
 
@@ -37,6 +35,19 @@ local function find_next_non_empty_line(start_line)
 	return nil
 end
 
+local function is_current_buffer_under_path(target_path)
+	local current_file = vim.api.nvim_buf_get_name(0)
+
+	-- Normalize paths to avoid issues with slashes (especially on Windows)
+	local normalize = vim.fs and vim.fs.normalize or function(path)
+		return path:gsub("\\", "/")
+	end
+
+	current_file = normalize(current_file)
+	target_path = normalize(target_path)
+
+	return current_file:sub(1, #target_path) == target_path
+end
 
 local function sort_with_nested_children(start_line, end_line)
 	local lines_info = {}
@@ -196,56 +207,6 @@ function TODOSort()
 	sort_with_nested_children(start_of_todo_list, end_of_indent_group)
 
 	vim.api.nvim_win_set_cursor(0, { cursor_position[1], cursor_position[2] })
-end
-
--- Sample function to read the content of a file
----@param file_path string Path to the file to read
----@return string The content of the file
-local function readFile(file_path)
-	local file = io.open(file_path, "r")
-	if not file then return "" end
-	local content = file:read("*all")
-	file:close()
-	return content
-end
-
--- Parse the YAML-like metadata from the file content
----@param content string The content of the file
----@return table The parsed metadata (tags and created)
-local function parseMetadata(content)
-	local metadata = {}
-	-- Search for tags (e.g., tags: - daily) and created (e.g., created: 02-14-2025)
-	local tags = {}
-	for tag in content:gmatch("tags:%s*%-?%s*(%w+)") do
-		table.insert(tags, tag)
-	end
-	metadata.tags = tags
-	metadata.created = content:match("created:%s*(%d+-%d+-%d+)") -- Match date format (e.g., 02-14-2025)
-
-	return metadata
-end
-
--- Scan the workspace and return a list of files with metadata
----@param workspace string Path to the workspace directory
----@return table A list of files with their metadata
-local function scanWorkspace(workspace)
-	local files = {}
-	local scan = require("plenary.scandir")
-	local results = scan.scan_dir(workspace_path, {
-		hidden = false,
-		add_dirs = false,
-		respect_gitignore = true,
-		depth = 1,
-		search_pattern = "%.md$"
-	})
-
-	for _, file_path in ipairs(results) do
-		local file = vim.fn.fnamemodify(file_path, ":t")
-		local content = readFile(file_path)
-		local metadata = parseMetadata(content)
-		table.insert(files, { name = file, metadata = metadata })
-	end
-	return files
 end
 
 local function markdown_headings()
@@ -568,145 +529,16 @@ local query = ts.query.parse('markdown', [[
   ) @block
 ]])
 
-local function is_dataview_block(lines)
-	-- Check if the block starts and ends with triple backticks and contains 'dataview' keyword
-	return lines[1]:match("```") and
-	    lines[#lines]:match("```") and
-	    vim.fn.join(lines, " "):match("dataview")
-end
 
----@param type string The parameter name
----@return string # Return value description
-local function type_of_display(type)
-	return type
-end
 
 local dataview_query = ""
-local function display_virtual_dataview_output()
-	local bufnr = vim.api.nvim_get_current_buf()
-	local parser = ts.get_parser(bufnr, "markdown")
-	local tree = parser:parse()[1]
-	local root = tree:root()
-	local ns_id = vim.api.nvim_create_namespace("dataview_output_namespace")
-
-	for pattern_id, match, metadata in query:iter_matches(root, bufnr, 0, -1, { all = true }) do
-		for capture_id, nodes in pairs(match) do
-			for _, node in ipairs(nodes) do
-				local start_row, start_col, end_row, end_col = node:range()
-
-				-- Get all lines from the buffer
-				local all_lines = vim.api.nvim_buf_get_lines(bufnr, start_row, -1, false)
-				local block_end = nil
-
-				-- Find the closing backticks
-				for i, line in ipairs(all_lines) do
-					if line:match("^```%s*$") then
-						block_end = start_row + i - 1
-						break
-					end
-				end
-
-				if block_end then
-					-- Get just the content between the backticks (excluding them)
-					local content_lines = vim.api.nvim_buf_get_lines(bufnr, start_row + 1, block_end, false)
-					dataview_query = table.concat(content_lines, " ")
-
-					if is_dataview_block(content_lines) then
-						local bloc_type = type_of_display("table")
-						local dataview_output = { bloc_type }
-
-						vim.api.nvim_buf_clear_namespace(bufnr, ns_id, 0, -1)
-						for idx, text in ipairs(dataview_output) do
-							vim.api.nvim_buf_set_extmark(bufnr, ns_id, block_end + idx, 0, {
-								virt_text = { { text, "inline" } },
-								virt_text_pos = "inline"
-							})
-						end
-						return
-					end
-				end
-			end
-		end
-	end
-	-- print("No dataview block found.")
-end
 
 local table_dataview_query = {}
 
----@param query_string string The query string to parse
----@return table Parsed query components (request type, condition, assignment)
-local function parseDataViewQuery(query_string)
-	-- Clean up the input string by trimming extra spaces and newlines
-	query_string = query_string:gsub("\n", " "):gsub("%s+", " "):trim()
-
-	-- Split the query string into words
-	local words = {}
-	for word in query_string:gmatch("%S+") do
-		table.insert(words, word)
-	end
-
-	-- Initialize the parsed components
-	local parsed_query = {
-		request_type = words[1],         -- First word is the request type (e.g., 'table')
-		condition = words[2],            -- Second word is the condition (e.g., 'where')
-		assignment = table.concat(words, " ", 3) -- The rest is the assignment (e.g., 'created = this.created')
-	}
-
-	-- Print parsed components for debugging
-	-- print("Request Type:", parsed_query.request_type)
-	-- print("Condition:", parsed_query.condition)
-	-- print("Assignment:", parsed_query.assignment)
-
-	return parsed_query
-end
 
 -- Helper function to trim spaces
 function string.trim(s)
 	return s:match("^%s*(.-)%s*$")
-end
-
--- Function to execute the query and filter files based on metadata
----@param query_string string The query string to parse
----@param files table A list of files with metadata to search through
----@return table A list of files matching the query
-local function executeQuery(query_string, files)
-	local parsed_query = parseDataViewQuery(query_string)
-
-	-- Initialize result table
-	local results = {}
-
-	-- Check the condition (e.g., 'where')
-	if parsed_query.condition == "where" then
-		-- Match the assignment (e.g., 'created = this.created')
-		local field, value = parsed_query.assignment:match("(%w+) = (.+)")
-
-		-- If we matched the assignment, filter files based on the field and value
-		if field and value then
-			for _, file in ipairs(files) do
-				-- Check if the field exists in the metadata
-				if file.metadata[field] then
-					-- Compare the field value with the query value
-					if type(file.metadata[field]) == "table" then
-						-- For tags (which can be a list), check if the value exists in the list
-						for _, tag in ipairs(file.metadata[field]) do
-							if tag == value then
-								table.insert(results, file)
-								break
-							end
-						end
-					else
-						-- For non-list fields (like created), directly compare the values
-						if file.metadata[field] == value then
-							table.insert(results, file)
-						end
-					end
-				end
-			end
-		end
-	end
-
-	-- Return the filtered results
-	return results
 end
 
 local function find_next_daily()
@@ -1170,8 +1002,8 @@ vim.api.nvim_create_user_command("ObsdianDaily", function()
 	local day_str = string.format("%02d", day)
 
 	-- Create filename
-	local daily_folder = "Daily/" -- Adjust this path as needed
-	local filename = daily_folder .. month_str .. "-" .. day_str .. "-" .. year .. ".md"
+	local prefix_daily_folder = "Daily/"
+	local filename = prefix_daily_folder .. month_str .. "-" .. day_str .. "-" .. year .. ".md"
 
 	-- Check if the folder exists
 	local folder_exists = vim.fn.isdirectory(daily_folder)
@@ -1183,6 +1015,149 @@ vim.api.nvim_create_user_command("ObsdianDaily", function()
 	-- Open or create the file in Neovim
 	vim.cmd("edit " .. filename)
 end, {})
+
+vim.api.nvim_create_user_command("ObsidianPreviousWeekly", function()
+	find_previous_weekly()
+end, {})
+
+vim.api.nvim_create_user_command("ObsidianCurrentWeekly", function()
+	find_current_weekly()
+end, {})
+
+vim.api.nvim_create_user_command("ObsidianNextWeekly", function()
+	find_next_weekly()
+end, {})
+
+vim.api.nvim_create_user_command("ObsidianFindWeekly", function()
+	find_weekly()
+end, {})
+vim.api.nvim_create_user_command("WeeklyCreate", function()
+	create_weekly_note()
+end, {})
+
+vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
+	pattern = "*.md",
+	callback = function()
+		apply_template_by_folder()
+	end
+})
+
+vim.api.nvim_create_autocmd({ "BufWritePre" }, {
+	pattern = "*.md",
+	callback = function()
+		check_metadata()
+		if is_current_buffer_under_path(daily_folder) then
+			TODOSort()
+		end
+	end
+})
+
+vim.api.nvim_create_user_command("ToggleCheckboxWithTimestamp", function()
+	toggle_checkbox_with_timestamp()
+end, {})
+
+vim.api.nvim_create_user_command("TmuxNavigateSecondBrain", function()
+	-- Use vim.fn.system() for better handling of shell commands in Neovim
+	vim.fn.system("tmux-navigate.sh Second_Brain")
+end, {})
+
+
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = "markdown",
+	callback = function()
+		vim.opt_local.autoindent = true
+		vim.api.nvim_set_keymap("n", "<leader>ts", "<cmd>TODOSort<CR>", {})
+		vim.api.nvim_set_keymap("n", "gd", "<cmd>ObsidianFollowLink<CR>", {})
+
+		vim.keymap.set('n', '<leader>fh', ':Headings<CR>',
+			{ noremap = true, silent = true, desc = "Find headings" })
+		vim.api.nvim_set_keymap("n", "[h", "?^#\\+\\s<CR>",
+			{ noremap = true, silent = true, desc = "Go to previous heading" })
+		vim.api.nvim_set_keymap("n", "]h", "/^#\\+\\s<CR>",
+			{ noremap = true, silent = true, desc = "Go to next heading" })
+		-- Weekly
+		vim.api.nvim_set_keymap("n", "<leader>ww", "<cmd>ObsidianCurrentWeekly<cr>",
+			{ noremap = true, silent = true, desc = "Current Weekly Note" })
+		vim.api.nvim_set_keymap("n", "<leader>wa", "<cmd>ObsidianFindWeekly<CR>",
+			{ noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>wn", "<cmd>WeeklyCreate<CR>",
+			{ noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>wp", "<cmd>ObsidianPreviousWeekly<cr>",
+			{ noremap = true, silent = true, desc = "Previous Weekly Note" })
+		vim.api.nvim_set_keymap("n", "<leader>wn", "<cmd>ObsidianNextWeekly<cr>",
+			{ noremap = true, silent = true, desc = "Next Weekly Note" })
+		-- Daily
+		vim.api.nvim_set_keymap("n", "<leader>da", "<cmd>ObsidianDailies<cr>",
+			{ noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>dd", "<cmd>ObsidianToday<cr>",
+			{ noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>dp", "<cmd>ObsidianPreviousDaily<cr>",
+			{ noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>dn", "<cmd>ObsidianNextDaily<cr>",
+			{ noremap = true, silent = true })
+		-- Commands
+		vim.api.nvim_set_keymap("n", "ch", "<cmd>ToggleCheckboxWithTimestamp<cr>",
+			{ noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>bl", "<cmd>ObsidianBacklinks<cr>",
+			{ noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>ot", "<cmd>ObsidianTags<cr>",
+			{ noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>of", "<cmd>ObsidianTags<cr>",
+			{ noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>nt", "<cmd>ObsidianNewFromTemplate<cr>",
+			{ noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>it", "<cmd>ObsidianTemplate<cr>",
+			{ noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>ef", ":ObsidianEditFrontmatter ",
+			{ noremap = true })
+		-- Add keymap for finding completed todos
+		vim.api.nvim_set_keymap("n", "<leader>td", "<cmd>CompletedTodos<cr>",
+			{ noremap = true, silent = true, desc = "Find completed TODOs" })
+		-- Create command to check metadata
+		vim.api.nvim_create_user_command("ObsidianCheckMetadata", function()
+			check_metadata()
+		end, {})
+
+		-- local files_in_workspace = scanWorkspace(workspace_path)
+		-- local result_files = executeQuery(dataview_query, files_in_workspace)
+	end
+})
+
+vim.api.nvim_create_user_command("ObsidianEditFrontmatter", function(args)
+	if #args.fargs < 2 then
+		return
+	end
+	local key = args.fargs[1]
+	local value = table.concat({ select(2, unpack(args.fargs)) }, " ")
+end, {
+	nargs = "+",
+	complete = function(ArgLead, CmdLine, CursorPos)
+		return { "tags", "alias", "date", "title", "status", "type" }
+	end
+})
+
+vim.api.nvim_create_user_command("ObsidianPreviousDaily", function()
+	find_previous_daily()
+end, {})
+
+vim.api.nvim_create_user_command("ObsidianNextDaily", function()
+	find_next_daily()
+end, {})
+
+vim.api.nvim_create_user_command("Headings", markdown_headings, {})
+
+vim.api.nvim_create_autocmd("BufReadPost", {
+	pattern = "*.md",
+	callback = function()
+		local current_file = vim.fn.expand('%:t:r')
+		local date_pattern = "(%d+)%-(%d+)%-(%d+)"
+		local month, day, year = current_file:match(date_pattern)
+
+		if month and day and year then
+			import_todos_from_previous_daily()
+		end
+	end,
+})
 
 return {
 	"epwalsh/obsidian.nvim",
@@ -1196,7 +1171,7 @@ return {
 		workspaces = {
 			{
 				name = "personal",
-				path = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/",
+				path = workspace_path,
 			},
 		},
 		date_format = date_format,
@@ -1230,157 +1205,5 @@ return {
 	config = function(_, opts)
 		vim.cmd("set conceallevel=1")
 		require("obsidian").setup(opts)
-
-		vim.api.nvim_create_user_command("ObsidianPreviousWeekly", function()
-			find_previous_weekly()
-		end, {})
-
-		vim.api.nvim_create_user_command("ObsidianCurrentWeekly", function()
-			find_current_weekly()
-		end, {})
-
-		vim.api.nvim_create_user_command("ObsidianNextWeekly", function()
-			find_next_weekly()
-		end, {})
-
-		vim.api.nvim_create_user_command("ObsidianFindWeekly", function()
-			find_weekly()
-		end, {})
-		vim.api.nvim_create_user_command("WeeklyCreate", function()
-			create_weekly_note()
-		end, {})
-
-		vim.api.nvim_create_user_command("ObsidianEditFrontmatter", function(args)
-			if #args.fargs < 2 then
-				-- print("Usage: ObsidianEditFrontmatter <key> <value>")
-				return
-			end
-			local key = args.fargs[1]
-			local value = table.concat({ select(2, unpack(args.fargs)) }, " ")
-		end, {
-			nargs = "+",
-			complete = function(ArgLead, CmdLine, CursorPos)
-				return { "tags", "alias", "date", "title", "status", "type" }
-			end
-		})
-
-
-		vim.api.nvim_create_user_command("ObsidianPreviousDaily", function()
-			find_previous_daily()
-		end, {})
-
-		vim.api.nvim_create_user_command("ObsidianNextDaily", function()
-			find_next_daily()
-		end, {})
-
-		vim.api.nvim_create_user_command("Headings", markdown_headings, {})
-
-		vim.api.nvim_create_autocmd("BufReadPost", {
-			pattern = "*.md",
-			callback = function()
-				local current_file = vim.fn.expand('%:t:r')
-				local date_pattern = "(%d+)%-(%d+)%-(%d+)"
-				local month, day, year = current_file:match(date_pattern)
-
-				if month and day and year then
-					import_todos_from_previous_daily()
-				end
-			end,
-		})
-
-
-		vim.api.nvim_create_autocmd("FileType", {
-			pattern = "markdown",
-			callback = function()
-				vim.api.nvim_set_keymap("n", "<leader>ts", "<cmd>TODOSort<CR>", {})
-
-				vim.keymap.set('n', '<leader>fh', ':Headings<CR>',
-					{ noremap = true, silent = true, desc = "Find headings" })
-				vim.api.nvim_set_keymap("n", "[h", "?^#\\+\\s<CR>",
-					{ noremap = true, silent = true, desc = "Go to previous heading" })
-				vim.api.nvim_set_keymap("n", "]h", "/^#\\+\\s<CR>",
-					{ noremap = true, silent = true, desc = "Go to next heading" })
-				-- Weekly
-				vim.api.nvim_set_keymap("n", "<leader>ww", "<cmd>ObsidianCurrentWeekly<cr>",
-					{ noremap = true, silent = true, desc = "Current Weekly Note" })
-				vim.api.nvim_set_keymap("n", "<leader>wa", "<cmd>ObsidianFindWeekly<CR>",
-					{ noremap = true, silent = true })
-				vim.api.nvim_set_keymap("n", "<leader>wn", "<cmd>WeeklyCreate<CR>",
-					{ noremap = true, silent = true })
-				vim.api.nvim_set_keymap("n", "<leader>wp", "<cmd>ObsidianPreviousWeekly<cr>",
-					{ noremap = true, silent = true, desc = "Previous Weekly Note" })
-				vim.api.nvim_set_keymap("n", "<leader>wn", "<cmd>ObsidianNextWeekly<cr>",
-					{ noremap = true, silent = true, desc = "Next Weekly Note" })
-				-- Daily
-				vim.api.nvim_set_keymap("n", "<leader>da", "<cmd>ObsidianDailies<cr>",
-					{ noremap = true, silent = true })
-				vim.api.nvim_set_keymap("n", "<leader>dd", "<cmd>ObsidianToday<cr>",
-					{ noremap = true, silent = true })
-				vim.api.nvim_set_keymap("n", "<leader>dp", "<cmd>ObsidianPreviousDaily<cr>",
-					{ noremap = true, silent = true })
-				vim.api.nvim_set_keymap("n", "<leader>dn", "<cmd>ObsidianNextDaily<cr>",
-					{ noremap = true, silent = true })
-				-- Commands
-				vim.api.nvim_set_keymap("n", "gf", "<cmd>ObsidianFollowLink<cr>",
-					{ noremap = true, silent = true })
-				vim.api.nvim_set_keymap("n", "ch", "<cmd>ToggleCheckboxWithTimestamp<cr>",
-					{ noremap = true, silent = true })
-				vim.api.nvim_set_keymap("n", "<leader>bl", "<cmd>ObsidianBacklinks<cr>",
-					{ noremap = true, silent = true })
-				vim.api.nvim_set_keymap("n", "<leader>ot", "<cmd>ObsidianTags<cr>",
-					{ noremap = true, silent = true })
-				vim.api.nvim_set_keymap("n", "<leader>of", "<cmd>ObsidianTags<cr>",
-					{ noremap = true, silent = true })
-				vim.api.nvim_set_keymap("n", "<leader>nt", "<cmd>ObsidianNewFromTemplate<cr>",
-					{ noremap = true, silent = true })
-				vim.api.nvim_set_keymap("n", "<leader>it", "<cmd>ObsidianTemplate<cr>",
-					{ noremap = true, silent = true })
-				vim.api.nvim_set_keymap("n", "<leader>ef", ":ObsidianEditFrontmatter ",
-					{ noremap = true })
-				-- Add keymap for finding completed todos
-				vim.api.nvim_set_keymap("n", "<leader>td", "<cmd>CompletedTodos<cr>",
-					{ noremap = true, silent = true, desc = "Find completed TODOs" })
-				-- Create command to check metadata
-				vim.api.nvim_create_user_command("ObsidianCheckMetadata", function()
-					check_metadata()
-				end, {})
-
-				check_metadata()
-				display_virtual_dataview_output()
-				local files_in_workspace = scanWorkspace(workspace_path)
-				local result_files = executeQuery(dataview_query, files_in_workspace)
-				-- print(result_files)
-			end
-		})
-
-		-- Autocmd to apply template based on folder
-		vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
-			pattern = "*.md",
-			callback = function()
-				apply_template_by_folder()
-			end
-		})
-
-		vim.api.nvim_create_autocmd({ "BufWritePre" }, {
-			pattern = "*.md",
-			callback = function()
-				TODOSort()
-			end
-		})
-
-		vim.api.nvim_create_user_command("ToggleCheckboxWithTimestamp", function()
-			toggle_checkbox_with_timestamp()
-		end, {})
-
-		vim.api.nvim_create_user_command("TmuxNavigateSecondBrain", function()
-			-- Use vim.fn.system() for better handling of shell commands in Neovim
-			vim.fn.system("tmux-navigate.sh Second_Brain")
-		end, {})
-
-		-- Set the keymap with proper options
-		vim.keymap.set("n", "<leader>sb", ":TmuxNavigateSecondBrain<CR>", {
-			noremap = true, -- Prevent recursive mapping
-			silent = true -- Prevent command from being echoed
-		})
 	end,
 }
