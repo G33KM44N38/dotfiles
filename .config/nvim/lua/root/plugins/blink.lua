@@ -20,7 +20,7 @@ return {
 			preset      = 'none',
 			['<C-j>']   = { 'select_next', 'fallback' },
 			['<C-k>']   = { 'select_prev', 'fallback' },
-			['<CR>']    = { 'accept' },
+			['<CR>']    = { 'accept', 'fallback' },
 			['<Tab>']   = { 'select_next', 'fallback' },
 			['<S-Tab>'] = { 'select_prev', 'fallback' },
 			['<C-b>']   = { 'scroll_documentation_up' },
