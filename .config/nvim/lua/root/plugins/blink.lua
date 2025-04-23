@@ -1,9 +1,13 @@
+:
 return {
 	'saghen/blink.cmp',
 	version = '1.*',
 	dependencies = {
 		'L3MON4D3/LuaSnip',
 		'rafamadriz/friendly-snippets',
+		"moyiz/blink-emoji.nvim",
+
+        { 'disrupted/blink-cmp-conventional-commits' },
 	},
 	opts = {
 		cmdline = {
@@ -28,7 +32,35 @@ return {
 			['<C-e>']   = { 'hide' },
 		},
 		sources = {
-			default = { 'lsp', 'path', 'snippets', 'buffer' },
+			default = {
+                'conventional_commits', 
+				'lsp', 'path', 'snippets', 'buffer', "emoji" },
+			providers = {
+				emoji = {
+					module = "blink-emoji",
+					name = "Emoji",
+					score_offset = 15, -- Tune by preference
+					opts = { insert = true }, -- Insert emoji (default) or complete its name
+					should_show_items = function()
+						return vim.tbl_contains(
+						-- Enable emoji completion only for git commits and markdown.
+						-- By default, enabled for all file-types.
+							{ "gitcommit", "markdown" },
+							vim.o.filetype
+						)
+					end,
+				},
+                conventional_commits = {
+                    name = 'Conventional Commits',
+                    module = 'blink-cmp-conventional-commits',
+                    enabled = function()
+                        return vim.bo.filetype == 'gitcommit'
+                    end,
+                    ---@module 'blink-cmp-conventional-commits'
+                    ---@type blink-cmp-conventional-commits.Options
+                    opts = {}, -- none so far
+                },
+			}
 		},
 		snippets = { preset = 'luasnip' },
 
