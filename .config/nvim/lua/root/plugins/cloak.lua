@@ -17,7 +17,7 @@ return {
 			cloak_on_leave = false,
 			patterns = {
 				{
-					file_pattern = '.env*',
+					file_pattern = '*.env*',
 					cloak_pattern = '=.+',
 					replace = nil,
 				}, {

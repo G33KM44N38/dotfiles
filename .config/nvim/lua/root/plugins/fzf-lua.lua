@@ -10,5 +10,7 @@ return {
 		vim.api.nvim_set_keymap("n", "<C-s>", "<cmd>FzfLua live_grep<CR>", Opts)
 		vim.api.nvim_set_keymap("n", "<leader>ke", "<cmd>FzfLua keymaps<CR>",
 			{ noremap = true, silent = true })
+		vim.keymap.set({ "n", "v" }, '<leader>c', "<cmd>FzfLua lsp_code_actions<CR>",
+			{ desc = 'Go to next [D]iagnostic message' })
 	end
 }

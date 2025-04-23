@@ -31,6 +31,18 @@ return {
 		})
 
 		local typescript_snip = {
+			s('ci', {
+				t("console.info("), i(1), t(")")
+			}),
+			s('cg', {
+				t("console.log("), i(1), t(")")
+			}),
+			s('cw', {
+				t("console.warn("), i(1), t(")")
+			}),
+			s('ce', {
+				t("console.error("), i(1), t(")")
+			}),
 			s('fu', {
 				t("function "), i(1), t("("), i(2), t(")")
 			}),

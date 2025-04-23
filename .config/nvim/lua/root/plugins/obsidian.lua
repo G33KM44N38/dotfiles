@@ -988,7 +988,7 @@ vim.api.nvim_create_user_command("CompletedTodos", function()
 	find_completed_todos_with_timestamps()
 end, {})
 
-vim.api.nvim_create_user_command("ObsdianDaily", function()
+vim.api.nvim_create_user_command("ObsidianDaily", function()
 	-- Get current date
 	local date_time = os.date("*t")
 	local year = date_time.year

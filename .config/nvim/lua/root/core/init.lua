@@ -63,9 +63,9 @@ vim.opt.swapfile = false
 vim.g.ft_man_open_mode = 'vert'
 vim.g.cmake_link_compile_commands = 1
 vim.g.rnvimr_ex_enable = 1
-vim.g.netrw_liststyle = 3
-vim.g.netrw_banner = 0
-vim.g.netrw_winsize = 20
+-- vim.g.netrw_liststyle = 3
+-- vim.g.netrw_banner = 0
+-- vim.g.netrw_winsize = 20
 
 -- Airline_Vim
 vim.g.airline_powerline_fonts = 1
