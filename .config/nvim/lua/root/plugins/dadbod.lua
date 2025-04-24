@@ -1,62 +1,49 @@
-local username = "Re0A4ua8hc"
-local password = "*?u6^IY8#OrU$d:[oKb?"
-local instanceId = "46fcc609-ed63-45b8-a012-f0b149651b14"
-local region = "fr-par"
-
 return {
 	'tpope/vim-dadbod',
 	'kristijanhusak/vim-dadbod-completion',
 	{
 		'kristijanhusak/vim-dadbod-ui',
-		lazy = true,
 		cmd = { 'DBUIToggle', 'DBUI' },
 		dependencies = { 'tpope/vim-dadbod' },
-		config = function()
-			local Opts = { noremap = true, silent = true }
-			vim.api.nvim_set_keymap("n", "<leader>DB", "<cmd>DBUIToggle<CR>", Opts)
+		init = function()
+			local username = os.getenv("BABACOIFFURE_DB_USERNAME")
+			local password = os.getenv("BABACOIFFURE_DB_PASSWORD")
+			local instanceId = os.getenv("BABACOIFFURE_DB_INSTANCEID")
+			local region = os.getenv("BABACOIFFURE_DB_REGION")
+
+			vim.keymap.set("n", "<leader>DB", "<cmd>DBUIToggle<CR>", {})
+
+			local function log_error(msg)
+				vim.notify(msg, vim.log.levels.ERROR)
+			end
+
+			if not username then log_error("Username is missing!") end
+			if not password then log_error("Password is missing!") end
+			if not instanceId then log_error("Instance ID is missing!") end
+			if not region then log_error("Region is missing!") end
 
 			local function urlencode(str)
-				if str then
-					str = string.gsub(str, "\n", "\r\n")
-					str = string.gsub(str, "([^%w%-%.%_%~])", function(c)
-						return string.format("%%%02X", string.byte(c))
-					end)
-					str = string.gsub(str, " ", " ")
-				end
-				return str
+				if not str then return "" end
+				return string.gsub(str, "([^%w%-%.%_%~])", function(c)
+					return string.format("%%%02X", string.byte(c))
+				end)
 			end
 
-			-- Debugging variables
-			vim.notify("Setting up DB config...")
 
-			if not username then
-				vim.notify("Warning: 'username' is nil")
-			end
-			if not password then
-				vim.notify("Warning: 'password' is nil")
-			end
-			if not instanceId then
-				vim.notify("Warning: 'instanceId' is nil")
-			end
-			if not region then
-				vim.notify("Warning: 'region' is nil")
-			end
-
-			local encoded_password = urlencode(password or "")
-			local db_url = 'mongodb://' ..
-			    (username or "user") ..
-			    ':' ..
-			    encoded_password ..
-			    '@' .. (instanceId or "instance") .. '.mgdb.' .. (region or "region") .. '.scw.cloud?tls=false'
-
-			vim.notify("Generated DB URL: " .. db_url)
+			local babacoiffure_preprod = string.format(
+				'mongodb+srv://%s:%s@%s.mgdb.%s.scw.cloud?retryWrites=true&w=majority&authSource=admin&tlsInsecure=true',
+				urlencode(username),
+				urlencode(password),
+				instanceId,
+				region
+			)
 
 			vim.g.dbs = {
 				{
 					name = 'babacoiffure_preprod',
-					url = db_url,
+					url = babacoiffure_preprod
 				},
 			}
-		end,
+		end
 	},
 }
