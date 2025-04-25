@@ -14,5 +14,6 @@
 #
 
 pkill -f "mouseless" 
+sleep 2
 open -a "mouseless"
 # vi:ft=sh:
