@@ -6,7 +6,7 @@ local function update_tmux_windows()
 end
 
 return {
-	"ThePrimeagen/git-worktree.nvim",
+	"G33KM44N38/git-worktree.nvim",
 	dependencies = {
 		"nvim-telescope/telescope.nvim",
 		{
@@ -37,21 +37,9 @@ return {
 			end
 		end)
 
-		-- vim.api.nvim_create_user_command("CreateGitWorktree", function()
-		--   vim.ui.input({ prompt = "Path: " }, function(path)
-		--     if not path then return end
-		--     vim.ui.input({ prompt = "Branch: " }, function(branch)
-		--       if not branch then return end
-		--       Worktree.create_worktree(path, branch, branch)
-		--     end)
-		--   end)
-		-- end, {})
-
 		vim.api.nvim_set_keymap("n", "<leader>ws",
 			":lua require('telescope').extensions.git_worktree.git_worktrees()<CR>", Opts)
 		vim.api.nvim_set_keymap("n", "<leader>wc",
 			":lua require('telescope').extensions.git_worktree.create_git_worktree()<CR>", Opts)
-		vim.api.nvim_set_keymap("n", "<leader>wt",
-			":lua require('telescope').extensions.git_worktree.git_worktrees()<CR>", Opts)
 	end
 }
