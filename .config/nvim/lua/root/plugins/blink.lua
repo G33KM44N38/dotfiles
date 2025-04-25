@@ -1,4 +1,3 @@
-:
 return {
 	'saghen/blink.cmp',
 	version = '1.*',
@@ -7,7 +6,7 @@ return {
 		'rafamadriz/friendly-snippets',
 		"moyiz/blink-emoji.nvim",
 
-        { 'disrupted/blink-cmp-conventional-commits' },
+		{ 'disrupted/blink-cmp-conventional-commits' },
 	},
 	opts = {
 		cmdline = {
@@ -22,8 +21,8 @@ return {
 		},
 		keymap = {
 			preset      = 'none',
-			['<C-j>']   = { 'select_next', 'fallback' },
-			['<C-k>']   = { 'select_prev', 'fallback' },
+			['<C-j>']   = { 'select_next' },
+			['<C-k>']   = { 'select_prev' },
 			['<CR>']    = { 'accept', 'fallback' },
 			['<Tab>']   = { 'select_next', 'fallback' },
 			['<S-Tab>'] = { 'select_prev', 'fallback' },
@@ -32,9 +31,7 @@ return {
 			['<C-e>']   = { 'hide' },
 		},
 		sources = {
-			default = {
-                'conventional_commits', 
-				'lsp', 'path', 'snippets', 'buffer', "emoji" },
+			default = { 'conventional_commits', 'lsp', 'path', 'snippets', 'buffer', "emoji" },
 			providers = {
 				emoji = {
 					module = "blink-emoji",
@@ -50,16 +47,16 @@ return {
 						)
 					end,
 				},
-                conventional_commits = {
-                    name = 'Conventional Commits',
-                    module = 'blink-cmp-conventional-commits',
-                    enabled = function()
-                        return vim.bo.filetype == 'gitcommit'
-                    end,
-                    ---@module 'blink-cmp-conventional-commits'
-                    ---@type blink-cmp-conventional-commits.Options
-                    opts = {}, -- none so far
-                },
+				conventional_commits = {
+					name = 'Conventional Commits',
+					module = 'blink-cmp-conventional-commits',
+					enabled = function()
+						return vim.bo.filetype == 'gitcommit'
+					end,
+					---@module 'blink-cmp-conventional-commits'
+					---@type blink-cmp-conventional-commits.Options
+					opts = {}, -- none so far
+				},
 			}
 		},
 		snippets = { preset = 'luasnip' },

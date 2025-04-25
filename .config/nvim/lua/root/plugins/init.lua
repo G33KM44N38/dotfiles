@@ -6,17 +6,16 @@ return {
 			require('mini.indentscope').setup()
 		end
 	},
+	'nvim-lua/plenary.nvim',
 	"tpope/vim-unimpaired",
 	"ThePrimeagen/vim-be-good",
 	"cdelledonne/vim-cmake",
 	"junegunn/fzf.vim",
 	"tpope/vim-surround",
-	-- "kabouzeid/nvim-lspinstall",
 	"rafi/awesome-vim-colorschemes",
 	"tpope/vim-commentary",
 	"tpope/vim-repeat",
 	"tpope/vim-sensible",
-	-- "tpope/vim-unimpaired",
 	"voldikss/vim-floaterm",
 	{
 		'fatih/vim-go',

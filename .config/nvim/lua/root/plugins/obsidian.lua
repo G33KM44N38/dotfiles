@@ -1102,7 +1102,7 @@ vim.api.nvim_create_autocmd("FileType", {
 			{ noremap = true, silent = true })
 		vim.api.nvim_set_keymap("n", "<leader>of", "<cmd>ObsidianTags<cr>",
 			{ noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>nt", "<cmd>ObsidianNewFromTemplate<cr>",
+		vim.api.nvim_set_keymap("n", "<leader>nt", "<cmd>ObsidianNew<cr>",
 			{ noremap = true, silent = true })
 		vim.api.nvim_set_keymap("n", "<leader>it", "<cmd>ObsidianTemplate<cr>",
 			{ noremap = true, silent = true })
@@ -1164,6 +1164,15 @@ return {
 	ft = "markdown",
 	dependencies = {
 		"nvim-lua/plenary.nvim",
+		-- {
+		-- 	'MeanderingProgrammer/render-markdown.nvim',
+		-- 	dependencies = { 'nvim-treesitter/nvim-treesitter', 'echasnovski/mini.nvim' }, -- if you use the mini.nvim suite
+		-- 	-- dependencies = { 'nvim-treesitter/nvim-treesitter', 'echasnovski/mini.icons' }, -- if you use standalone mini plugins
+		-- 	-- dependencies = { 'nvim-treesitter/nvim-treesitter', 'nvim-tree/nvim-web-devicons' }, -- if you prefer nvim-web-devicons
+		-- 	---@module 'render-markdown'
+		-- 	---@type render.md.UserConfig
+		-- 	opts = {},
+		-- }
 	},
 	opts = {
 		workspaces = {
@@ -1202,6 +1211,12 @@ return {
 	},
 	config = function(_, opts)
 		vim.cmd("set conceallevel=1")
+		vim.api.nvim_create_autocmd("FileType", {
+			pattern = "markdown",
+			callback = function()
+				vim.opt.spell = true
+			end,
+		})
 		require("obsidian").setup(opts)
 	end,
 }
