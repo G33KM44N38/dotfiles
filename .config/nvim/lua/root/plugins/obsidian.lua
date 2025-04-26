@@ -5,6 +5,25 @@ local weekly_folder = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/D
 local date_format = "%m-%d-%Y"
 local time_format = "%H:%M"
 
+local function normalize_path(path)
+  if path:sub(-1) ~= "/" then
+    path = path .. "/"
+  end
+  return path
+end
+
+local function in_workspace()
+  local handle = io.popen("pwd")
+  if not handle then
+    return false
+  end
+
+  local cwd = handle:read("*l")
+  handle:close()
+
+  return normalize_path(cwd) == normalize_path(workspace_path)
+end
+
 local function find_todos_line()
 	-- Iterate through all lines in the current buffer
 	for i, line in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
@@ -1063,6 +1082,11 @@ end, {})
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = "markdown",
 	callback = function()
+if in_workspace() then
+  print("✅ You are in your workspace!")
+else
+	return
+end
 		vim.opt_local.autoindent = true
 		vim.api.nvim_set_keymap("n", "<leader>ts", "<cmd>TODOSort<CR>", {})
 		vim.api.nvim_set_keymap("n", "gd", "<cmd>ObsidianFollowLink<CR>", {})
