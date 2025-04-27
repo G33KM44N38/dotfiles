@@ -12,6 +12,7 @@ local function normalize_path(path)
   return path
 end
 
+
 local function in_workspace()
   local handle = io.popen("pwd")
   if not handle then
@@ -23,6 +24,11 @@ local function in_workspace()
 
   return normalize_path(cwd) == normalize_path(workspace_path)
 end
+
+vim.api.nvim_create_user_command("IsInWorkspace",function ()
+	local in_workspace = in_workspace()
+	print(in_workspace)
+end,{})
 
 local function find_todos_line()
 	-- Iterate through all lines in the current buffer
@@ -1082,11 +1088,10 @@ end, {})
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = "markdown",
 	callback = function()
-if in_workspace() then
-  print("✅ You are in your workspace!")
-else
-	return
-end
+		if not in_workspace() then
+			return
+		end
+		  print("✅ You are in your workspace!")
 		vim.opt_local.autoindent = true
 		vim.api.nvim_set_keymap("n", "<leader>ts", "<cmd>TODOSort<CR>", {})
 		vim.api.nvim_set_keymap("n", "gd", "<cmd>ObsidianFollowLink<CR>", {})
