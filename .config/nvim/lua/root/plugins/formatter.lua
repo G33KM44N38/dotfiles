@@ -1,3 +1,7 @@
+local javascript_formatter= {
+	"prettier",
+	"ts_ls"
+}
 return {
 	"stevearc/conform.nvim",
 	dependencies = { "mason.nvim" },
@@ -7,19 +11,19 @@ return {
 		local conform = require("conform")
 		conform.setup({
 			formatters_by_ft = {
-				javascript = { "prettier" },
-				typescript = { "prettier" },
-				javascriptreact = { "prettier" },
-				typescriptreact = { "prettier" },
-				svelte = { "prettier" },
-				css = { "prettier" },
-				html = { "prettier" },
-				json = { "prettier" },
-				yaml = { "prettier" },
-				markdown = { "prettier" },
-				graphql = { "prettier" },
+				javascript = javascript_formatter,
+				typescript = javascript_formatter,
+				javascriptreact = javascript_formatter,
+				typescriptreact = javascript_formatter,
+				svelte = javascript_formatter,
+				-- css = { "prettier" },
+				-- html = { "prettier" },
+				-- json = { "prettier" },
+				-- yaml = { "prettier" },
+				-- markdown = { "prettier" },
+				-- graphql = { "prettier" },
 				lua = { "stylua" },
-				python = { "isort", "black" },
+				-- python = { "isort", "black" },
 			},
 			format_after_save = {
 				lsp_fallback = true,
@@ -52,4 +56,14 @@ return {
 			desc = "Re-enable autoformat-on-save",
 		})
 	end,
+	{
+		"zapling/mason-conform.nvim",
+		dependencies = { "williamboman/mason.nvim", "stevearc/conform.nvim" },
+		config = function()
+			require("mason-conform").setup({
+				-- Optionally, specify formatters to ignore during installation
+				-- ignore_install = { "prettier" },
+			})
+		end,
+	},
 }
