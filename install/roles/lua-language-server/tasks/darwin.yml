@@ -1,0 +1,7 @@
+---
+- name: Install lua-language-server on macos
+  community.general.homebrew_cask:
+    name: lua-language-server
+    state: present
+    update_homebrew: yes
+
