@@ -4,21 +4,21 @@ local function escape_json_string(str)
 	    :gsub('\n', '\\n')
 	    :gsub('\r', '\\r')
 	    :gsub('\t', '\\t')
-	    :gsub('\b', '\\b') -- Backspace
-	    :gsub('\f', '\\f') -- Form feed
+	    :gsub('\b', '\\b') 
+	    :gsub('\f', '\\f') 
 end
 
 local function parse_json(json_string)
-	-- Replace JSON syntax with Lua syntax
-	json_string = json_string:gsub('"([^"]+)"%s*:', "%1 =") -- Convert keys
-	json_string = json_string:gsub('"%s*', "'")            -- Convert string values
-	json_string = json_string:gsub('"%s*', "'")            -- Convert string values
-	json_string = json_string:gsub('"%s*', "'")            -- Convert string values
-	json_string = json_string:gsub('false', "false")       -- Convert boolean false
-	json_string = json_string:gsub('true', "true")         -- Convert boolean true
-	json_string = json_string:gsub('null', "nil")          -- Convert null to nil
+	
+	json_string = json_string:gsub('"([^"]+)"%s*:', "%1 =") 
+	json_string = json_string:gsub('"%s*', "'")            
+	json_string = json_string:gsub('"%s*', "'")            
+	json_string = json_string:gsub('"%s*', "'")            
+	json_string = json_string:gsub('false', "false")       
+	json_string = json_string:gsub('true', "true")         
+	json_string = json_string:gsub('null', "nil")          
 
-	-- Return the Lua table
+	
 	local func, err = load("return {" .. json_string .. "}")
 	if not func then
 		error("Error loading JSON: " .. err)
@@ -101,14 +101,14 @@ Motivation:
 ]]
 
 local function commit()
-	-- Get all staged files content into a string
+	
 	local staged_files = vim.fn.systemlist("git diff --staged --name-only")
 	if #staged_files == 0 then
 		print("No staged files to commit.")
 		return
 	end
 
-	-- Prepare the commit message from staged files
+	
 	local prompt = "Write a commit message for the following files:\n\n"
 	local file_prompts = {}
 	for _, file in ipairs(staged_files) do
@@ -116,13 +116,13 @@ local function commit()
 	end
 	prompt = prompt .. table.concat(file_prompts, "\n") .. "\n"
 
-	-- Prepare the JSON payload
+	
 	local json_payload = string.format(
 		'{"model": "deepseek-r1:1.5b", "prompt": "%s", "system": "%s", "max_tokens": 100}',
 		escape_json_string(prompt), escape_json_string(preprompt)
 	)
 
-	-- Make the API call
+	
 	local api_endpoint = "http://localhost:11434/api/generate"
 	local response = vim.fn.system("curl -X POST -H 'Content-Type: application/json' -d '" ..
 		json_payload .. "' " .. api_endpoint)
@@ -146,20 +146,20 @@ local function commit()
 		return
 	end
 
-	-- Check if the decoded response has an error field
+	
 	if decoded_response.error then
 		print("API Error: " .. decoded_response.error)
 		return
 	end
 
-	-- Print the decoded response (assuming it's a string)
-	print(decoded_response.response or "No response received.") -- Adjust according to expected response structure
+	
+	print(decoded_response.response or "No response received.") 
 end
 
--- Create a user command in Neovim
+
 vim.api.nvim_create_user_command("Commiter", function()
 	commit()
 end, {})
 
--- Set a key mapping to trigger the commit function
+
 vim.api.nvim_set_keymap("n", "<leader>co", ":Commiter<CR>", { noremap = true, silent = true })
