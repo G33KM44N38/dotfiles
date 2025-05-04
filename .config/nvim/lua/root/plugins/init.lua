@@ -1,12 +1,12 @@
 return {
 	{
-		'echasnovski/mini.indentscope',
+		"echasnovski/mini.indentscope",
 		version = false,
 		config = function()
-			require('mini.indentscope').setup()
-		end
+			require("mini.indentscope").setup()
+		end,
 	},
-	'nvim-lua/plenary.nvim',
+	"nvim-lua/plenary.nvim",
 	"tpope/vim-unimpaired",
 	"ThePrimeagen/vim-be-good",
 	"cdelledonne/vim-cmake",
@@ -18,9 +18,9 @@ return {
 	"tpope/vim-sensible",
 	"voldikss/vim-floaterm",
 	{
-		'fatih/vim-go',
+		"fatih/vim-go",
 		keys = false,
-		build = ':GoUpdateBinaries',
+		build = ":GoUpdateBinaries",
 		config = function()
 			vim.g.go_def_mapping_enabled = 0
 			vim.g.go_doc_keywordprg_enabled = 0

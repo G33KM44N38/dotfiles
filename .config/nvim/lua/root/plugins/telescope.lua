@@ -15,9 +15,8 @@ return {
 
 		local actions = require("telescope.actions")
 
-		telescope.setup {
-			picker = {
-			},
+		telescope.setup({
+			picker = {},
 			defaults = {
 				vimgrep_arguments = {
 					"rg",
@@ -52,7 +51,17 @@ return {
 					preview_cutoff = 120,
 				},
 				file_sorter = require("telescope.sorters").get_fuzzy_file,
-				file_ignore_patterns = { "node_modules/", ".git/", "dist/", "go.sum", "package-lock.json", "lazy-lock.json", "target", "Cargo.lock", ".next/" },
+				file_ignore_patterns = {
+					"node_modules/",
+					".git/",
+					"dist/",
+					"go.sum",
+					"package-lock.json",
+					"lazy-lock.json",
+					"target",
+					"Cargo.lock",
+					".next/",
+				},
 				generic_sorter = require("telescope.sorters").get_generic_fuzzy_sorter,
 				path_display = { "absolute" },
 				winblend = 0,
@@ -74,11 +83,14 @@ return {
 					},
 				},
 			},
-		}
+		})
 
 		vim.api.nvim_set_keymap("n", "gi", "<cmd>Telescope lsp_implementations<CR>", { noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>hi",
+		vim.api.nvim_set_keymap(
+			"n",
+			"<leader>hi",
 			":lua require('telescope.builtin').find_files({ hidden = true, no_ignore = true, file_ignore_patterns = {'.git/'} })<CR>",
-			{ noremap = true, silent = true })
-	end
+			{ noremap = true, silent = true }
+		)
+	end,
 }

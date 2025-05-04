@@ -7,6 +7,5 @@ return {
 				disabled_filetypes = { "text", "markdown" },
 			},
 		})
-	end
-
+	end,
 }

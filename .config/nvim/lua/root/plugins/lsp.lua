@@ -1,143 +1,199 @@
 return {
-  {
-    "williamboman/mason.nvim",
-    dependencies = {
-      "williamboman/mason-lspconfig.nvim",
-      {
-        "folke/lazydev.nvim",
-        ft = "lua",
-        opts = {
-          library = {
-            { path = "${3rd}/luv/library", words = { "vim%.uv" } },
-          },
-        },
-      },
-    },
-    config = function()
-      local mason = require("mason")
-      local mason_lspconfig = require("mason-lspconfig")
+	{
+		"williamboman/mason.nvim",
+		dependencies = {
+			"williamboman/mason-lspconfig.nvim",
+			{
+				"folke/lazydev.nvim",
+				ft = "lua",
+				opts = {
+					library = {
+						{ path = "${3rd}/luv/library", words = { "vim%.uv" } },
+					},
+				},
+			},
+		},
+		config = function()
+			require("mason").setup({
+				ui = {
+					icons = {
+						package_installed = "✓",
+						package_pending = "➜",
+						package_uninstalled = "✗",
+					},
+				},
+			})
 
-      mason.setup({
-        ui = {
-          icons = {
-            package_installed = "✓",
-            package_pending = "➜",
-            package_uninstalled = "✗",
-          },
-        },
-      })
+			require("mason-lspconfig").setup({
+				ensure_installed = {
+					"lua_ls",
+					"tailwindcss",
+					"ts_ls",
+					"html",
+					"cssls",
+					"jsonls",
+					"dockerls",
+					"clangd",
+					"bashls",
+					"yamlls",
+					"eslint",
+					"gopls",
+					"pyright",
+					"volar",
+					"prismals",
+					"graphql",
+					"rust_analyzer",
+				},
+				automatic_installation = true,
+			})
+		end,
+	},
 
-      mason_lspconfig.setup({
-        ensure_installed = {
-          "tailwindcss",
-          "ts_ls",
-          "html",
-          "cssls",
-          "harper_ls",
-          "jsonls",
-          "dockerls",
-          "docker_compose_language_service",
-          "clangd",
-          "bashls",
-          "yamlls",
-          "eslint",
-          "gopls",
-          "pyright",
-          "volar",
-          "solang",
-          "solidity",
-          "prismals",
-          "graphql",
-          "rust_analyzer",
-        },
-        automatic_installation = true,
-      })
-    end,
-  },
+	{
+		"neovim/nvim-lspconfig",
+		event = { "BufReadPre", "BufNewFile" },
+		dependencies = {
+			"hrsh7th/cmp-nvim-lsp",
+			{ "antosha417/nvim-lsp-file-operations", config = true },
+		},
+		config = function()
+			local lspconfig = require("lspconfig")
+			local cmp_nvim_lsp = require("cmp_nvim_lsp")
 
-  {
-    "neovim/nvim-lspconfig",
-    event = { "BufReadPre", "BufNewFile" },
-    dependencies = {
-      "hrsh7th/cmp-nvim-lsp",
-      { "antosha417/nvim-lsp-file-operations", config = true },
-    },
-    config = function()
-      local lspconfig = require("lspconfig")
-      local cmp_nvim_lsp = require("cmp_nvim_lsp")
+			local on_attach = function(client, bufnr)
+				local opts = { buffer = bufnr }
 
-      local list_lsp = {
-		 "lua_ls",
-        "tailwindcss",
-        "ts_ls",
-        "html",
-        "cssls",
-        "harper_ls",
-        "jsonls",
-        "dockerls",
-        "docker_compose_language_service",
-        "clangd",
-        "bashls",
-        "yamlls",
-        "eslint",
-        "gopls",
-        "pyright",
-        "volar",
-        "solang",
-        "solidity",
-        "prismals",
-        "graphql",
-        "rust_analyzer",
-      }
+				vim.keymap.set("n", "gD", "<cmd>Lspsaga finder<CR>", opts)
+				vim.keymap.set("n", "gR", vim.lsp.buf.declaration, opts)
+				vim.keymap.set("n", "gi", "<cmd>Telescope lsp_implementations<CR>", opts)
+				vim.keymap.set("n", "gt", "<cmd>Telescope lsp_type_definitions<CR>", opts)
+				vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
+				vim.keymap.set("n", "<leader>D", "<cmd>Telescope diagnostics bufnr=0<CR>", opts)
+				vim.keymap.set("n", "<leader>d", vim.diagnostic.open_float, opts)
+				vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
+				vim.keymap.set("n", "<leader>rs", ":LspRestart<CR>", opts)
+			end
 
-      local keymap = vim.keymap -- for conciseness
+			local capabilities = cmp_nvim_lsp.default_capabilities()
 
-      local on_attach = function(client, bufnr)
-        local opts = { buffer = bufnr }
+			local signs = { Error = " ", Warn = " ", Hint = "󰠠 ", Info = " " }
+			for type, icon in pairs(signs) do
+				local hl = "DiagnosticSign" .. type
+				-- vim.fn.sign_define(hl, { text = icon, texthl = hl, numhl = "" })
+			end
 
-        opts.desc = "Show LSP references"
-        keymap.set("n", "gD", "<cmd>Lspsaga finder<CR>", opts)
+			vim.diagnostic.config({
+				virtual_text = false,
+				signs = true,
+				underline = true,
+				update_in_insert = false,
+				severity_sort = true,
+			})
 
-        opts.desc = "Go to declaration"
-        keymap.set("n", "gR", vim.lsp.buf.declaration, opts)
+			-- Configuration par serveur
+			lspconfig.lua_ls.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+			})
 
-        opts.desc = "Show LSP implementations"
-        keymap.set("n", "gi", "<cmd>Telescope lsp_implementations<CR>", opts)
+			lspconfig.ts_ls.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+				root_dir = require("lspconfig.util").root_pattern("tsconfig.json", "package.json", ".git"),
+			})
 
-        opts.desc = "Show LSP type definitions"
-        keymap.set("n", "gt", "<cmd>Telescope lsp_type_definitions<CR>", opts)
+			lspconfig.eslint.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+			})
 
-        opts.desc = "Smart rename"
-        keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
+			lspconfig.volar.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+				filetypes = { "vue" },
+			})
 
-        opts.desc = "Show buffer diagnostics"
-        keymap.set("n", "<leader>D", "<cmd>Telescope diagnostics bufnr=0<CR>", opts)
+			lspconfig.tailwindcss.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+			})
 
-        opts.desc = "Show line diagnostics"
-        keymap.set("n", "<leader>d", vim.diagnostic.open_float, opts)
+			lspconfig.html.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+			})
 
-        opts.desc = "Show documentation for what is under cursor"
-        keymap.set("n", "K", vim.lsp.buf.hover, opts)
+			lspconfig.cssls.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+			})
 
-        opts.desc = "Restart LSP"
-        keymap.set("n", "<leader>rs", ":LspRestart<CR>", opts)
-      end
+			lspconfig.jsonls.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+			})
 
-      local capabilities = cmp_nvim_lsp.default_capabilities()
+			lspconfig.dockerls.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+			})
 
-      local signs = { Error = " ", Warn = " ", Hint = "󰠠 ", Info = " " }
-      for type, icon in pairs(signs) do
-        local hl = "DiagnosticSign" .. type
-        -- You might want to enable this if you want custom sign icons
-        vim.diagnostic.config({virtual_text=true,signs= signs})
-      end
+			lspconfig.docker_compose_language_service = nil -- pas toujours stable
 
-      for _, lsp in ipairs(list_lsp) do
-        lspconfig[lsp].setup({
-          capabilities = capabilities,
-          on_attach = on_attach,
-        })
-      end
-    end,
-  },
+			lspconfig.clangd.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+			})
+
+			lspconfig.bashls.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+			})
+
+			lspconfig.yamlls.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+			})
+
+			lspconfig.gopls.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+				settings = {
+					gopls = {
+						analyses = {
+							unusedparams = true,
+						},
+						staticcheck = true,
+					},
+				},
+			})
+
+			lspconfig.pyright.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+			})
+
+			lspconfig.rust_analyzer.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+				settings = {
+					["rust-analyzer"] = {
+						cargo = { allFeatures = false },
+						procMacro = { enable = false },
+						checkOnSave = { command = "clippy" },
+					},
+				},
+			})
+
+			lspconfig.graphql.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+			})
+
+			lspconfig.prismals.setup({
+				capabilities = capabilities,
+				on_attach = on_attach,
+			})
+		end,
+	},
 }

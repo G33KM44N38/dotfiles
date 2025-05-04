@@ -20,6 +20,5 @@ return {
 	keys = {
 		{ "td", "<cmd>Trouble todo<cr>", desc = "Search todo comments" },
 		{ "tq", "<cmd>TodoQuickFix<cr>", desc = "Search todo comments" },
-
 	},
 }

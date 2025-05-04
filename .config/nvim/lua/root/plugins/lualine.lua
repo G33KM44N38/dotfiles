@@ -52,18 +52,18 @@ return {
 			options = {
 				theme = my_lualine_theme,
 				disabled_filetypes = {
-					statusline = { 'NERD_tree_1' }
-				}
+					statusline = { "NERD_tree_1" },
+				},
 			},
 			sections = {
-				lualine_a = { 'mode' },
-				lualine_b = { 'filename' },
+				lualine_a = { "mode" },
+				lualine_b = { "filename" },
 				lualine_c = { "diagnostics" },
 				lualine_x = {},
-				lualine_y = { 'filetype' },
-				lualine_z = { 'branch' },
+				lualine_y = { "filetype" },
+				lualine_z = { "branch" },
 			},
-			extensions = { 'fugitive', 'fzf', 'quickfix' }
+			extensions = { "fugitive", "fzf", "quickfix" },
 		})
 	end,
 }

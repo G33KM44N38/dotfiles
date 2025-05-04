@@ -47,3 +47,4 @@ default_roles:
   - beeper
   - dbeaver
   - notion
+  - lua-language-server

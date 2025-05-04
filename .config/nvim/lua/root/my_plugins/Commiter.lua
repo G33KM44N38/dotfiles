@@ -1,24 +1,22 @@
 local function escape_json_string(str)
 	return str:gsub('"', '\\"')
-	    :gsub('\\', '\\\\')
-	    :gsub('\n', '\\n')
-	    :gsub('\r', '\\r')
-	    :gsub('\t', '\\t')
-	    :gsub('\b', '\\b') 
-	    :gsub('\f', '\\f') 
+		:gsub("\\", "\\\\")
+		:gsub("\n", "\\n")
+		:gsub("\r", "\\r")
+		:gsub("\t", "\\t")
+		:gsub("\b", "\\b")
+		:gsub("\f", "\\f")
 end
 
 local function parse_json(json_string)
-	
-	json_string = json_string:gsub('"([^"]+)"%s*:', "%1 =") 
-	json_string = json_string:gsub('"%s*', "'")            
-	json_string = json_string:gsub('"%s*', "'")            
-	json_string = json_string:gsub('"%s*', "'")            
-	json_string = json_string:gsub('false', "false")       
-	json_string = json_string:gsub('true', "true")         
-	json_string = json_string:gsub('null', "nil")          
+	json_string = json_string:gsub('"([^"]+)"%s*:', "%1 =")
+	json_string = json_string:gsub('"%s*', "'")
+	json_string = json_string:gsub('"%s*', "'")
+	json_string = json_string:gsub('"%s*', "'")
+	json_string = json_string:gsub("false", "false")
+	json_string = json_string:gsub("true", "true")
+	json_string = json_string:gsub("null", "nil")
 
-	
 	local func, err = load("return {" .. json_string .. "}")
 	if not func then
 		error("Error loading JSON: " .. err)
@@ -101,14 +99,12 @@ Motivation:
 ]]
 
 local function commit()
-	
 	local staged_files = vim.fn.systemlist("git diff --staged --name-only")
 	if #staged_files == 0 then
 		print("No staged files to commit.")
 		return
 	end
 
-	
 	local prompt = "Write a commit message for the following files:\n\n"
 	local file_prompts = {}
 	for _, file in ipairs(staged_files) do
@@ -116,16 +112,15 @@ local function commit()
 	end
 	prompt = prompt .. table.concat(file_prompts, "\n") .. "\n"
 
-	
 	local json_payload = string.format(
 		'{"model": "deepseek-r1:1.5b", "prompt": "%s", "system": "%s", "max_tokens": 100}',
-		escape_json_string(prompt), escape_json_string(preprompt)
+		escape_json_string(prompt),
+		escape_json_string(preprompt)
 	)
 
-	
 	local api_endpoint = "http://localhost:11434/api/generate"
-	local response = vim.fn.system("curl -X POST -H 'Content-Type: application/json' -d '" ..
-		json_payload .. "' " .. api_endpoint)
+	local response =
+		vim.fn.system("curl -X POST -H 'Content-Type: application/json' -d '" .. json_payload .. "' " .. api_endpoint)
 
 	if vim.v.shell_error ~= 0 then
 		print("Error calling API: " .. response)
@@ -146,20 +141,16 @@ local function commit()
 		return
 	end
 
-	
 	if decoded_response.error then
 		print("API Error: " .. decoded_response.error)
 		return
 	end
 
-	
-	print(decoded_response.response or "No response received.") 
+	print(decoded_response.response or "No response received.")
 end
-
 
 vim.api.nvim_create_user_command("Commiter", function()
 	commit()
 end, {})
-
 
 vim.api.nvim_set_keymap("n", "<leader>co", ":Commiter<CR>", { noremap = true, silent = true })

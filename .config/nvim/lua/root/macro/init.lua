@@ -6,5 +6,5 @@ vim.api.nvim_create_autocmd("FileType", {
 	pattern = { "javascript", "javascriptreact", "typescript", "typescriptreact" },
 	callback = function()
 		vim.fn.setreg("l", "console.log('" .. esc .. "pa:" .. esc .. "la, " .. esc .. "pl')")
-	end
+	end,
 })

@@ -1,34 +1,32 @@
 local workspace_path = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/"
-local daily_folder =
-"/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Daily/"
+local daily_folder = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Daily/"
 local weekly_folder = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Weekly/"
 local date_format = "%m-%d-%Y"
 local time_format = "%H:%M"
 
 local function normalize_path(path)
-  if path:sub(-1) ~= "/" then
-    path = path .. "/"
-  end
-  return path
+	if path:sub(-1) ~= "/" then
+		path = path .. "/"
+	end
+	return path
 end
-
 
 local function in_workspace()
-  local handle = io.popen("pwd")
-  if not handle then
-    return false
-  end
+	local handle = io.popen("pwd")
+	if not handle then
+		return false
+	end
 
-  local cwd = handle:read("*l")
-  handle:close()
+	local cwd = handle:read("*l")
+	handle:close()
 
-  return normalize_path(cwd) == normalize_path(workspace_path)
+	return normalize_path(cwd) == normalize_path(workspace_path)
 end
 
-vim.api.nvim_create_user_command("IsInWorkspace",function ()
+vim.api.nvim_create_user_command("IsInWorkspace", function()
 	local in_workspace = in_workspace()
 	print(in_workspace)
-end,{})
+end, {})
 
 local function find_todos_line()
 	-- Iterate through all lines in the current buffer
@@ -85,7 +83,7 @@ local function sort_with_nested_children(start_line, end_line)
 		table.insert(lines_info, {
 			line_num = line,
 			indent = indent,
-			content = line_content
+			content = line_content,
 		})
 	end
 
@@ -100,7 +98,7 @@ local function sort_with_nested_children(start_line, end_line)
 			local node = {
 				line_info = line_info,
 				children = {},
-				parent = nil
+				parent = nil,
 			}
 
 			-- Find the appropriate parent for this node based on indentation
@@ -196,12 +194,12 @@ end
 
 local function get_indent_group()
 	-- Get current line's indent
-	local current_line = vim.fn.line('.')
+	local current_line = vim.fn.line(".")
 	local current_indent = vim.fn.indent(current_line)
 
 	-- Start from next line
 	local next_line = current_line + 1
-	local total_lines = vim.fn.line('$')
+	local total_lines = vim.fn.line("$")
 
 	while next_line <= total_lines do
 		if not line_has_content(next_line) then
@@ -251,34 +249,36 @@ local function markdown_headings()
 			table.insert(headings, {
 				line = i,
 				text = line:gsub("^#+%s*", ""), -- Remove #s from display
-				raw = line
+				raw = line,
 			})
 		end
 	end
 
-	pickers.new({}, {
-		prompt_title = "Markdown Headings",
-		finder = finders.new_table({
-			results = headings,
-			entry_maker = function(entry)
-				return {
-					value = entry,
-					display = string.format("%d: %s", entry.line, entry.text),
-					ordinal = string.format("%d %s", entry.line, entry.text),
-					lnum = entry.line
-				}
-			end
-		}),
-		sorter = conf.generic_sorter({}),
-		attach_mappings = function(prompt_bufnr)
-			actions.select_default:replace(function()
-				actions.close(prompt_bufnr)
-				local selection = action_state.get_selected_entry()
-				vim.api.nvim_win_set_cursor(0, { selection.lnum, 0 })
-			end)
-			return true
-		end,
-	}):find()
+	pickers
+		.new({}, {
+			prompt_title = "Markdown Headings",
+			finder = finders.new_table({
+				results = headings,
+				entry_maker = function(entry)
+					return {
+						value = entry,
+						display = string.format("%d: %s", entry.line, entry.text),
+						ordinal = string.format("%d %s", entry.line, entry.text),
+						lnum = entry.line,
+					}
+				end,
+			}),
+			sorter = conf.generic_sorter({}),
+			attach_mappings = function(prompt_bufnr)
+				actions.select_default:replace(function()
+					actions.close(prompt_bufnr)
+					local selection = action_state.get_selected_entry()
+					vim.api.nvim_win_set_cursor(0, { selection.lnum, 0 })
+				end)
+				return true
+			end,
+		})
+		:find()
 end
 
 local function extract_frontmatter()
@@ -303,10 +303,7 @@ local function extract_frontmatter()
 
 	-- If we found both markers, extract and return the content
 	if start_index and end_index then
-		local content = table.concat(
-			vim.api.nvim_buf_get_lines(0, start_index, end_index - 1, false),
-			"\n"
-		)
+		local content = table.concat(vim.api.nvim_buf_get_lines(0, start_index, end_index - 1, false), "\n")
 		return content
 	end
 	return nil
@@ -356,8 +353,8 @@ end
 
 local function check_metadata()
 	-- Get the current file's full path and name
-	local current_file_path = vim.fn.expand('%:p')
-	local current_file = vim.fn.expand('%:t:r') -- Get current file name without extension
+	local current_file_path = vim.fn.expand("%:p")
+	local current_file = vim.fn.expand("%:t:r") -- Get current file name without extension
 
 	-- Skip files in the Templates folder
 	if current_file_path:match("Templates/") then
@@ -402,17 +399,15 @@ local function check_metadata()
 end
 
 local function import_todos_from_previous_daily()
-	local current_file = vim.fn.expand('%:t:r') -- Get current file name without extension
+	local current_file = vim.fn.expand("%:t:r") -- Get current file name without extension
 	local date_pattern = "(%d+)%-(%d+)%-(%d+)"
 	local month, day, year = current_file:match(date_pattern)
-
 
 	if not (month and day and year) then
 		return false
 	end
 
 	local current_date = os.time({ year = year, month = month, day = day })
-
 
 	-- Find previous daily note
 	local i = 1
@@ -421,12 +416,10 @@ local function import_todos_from_previous_daily()
 		local prev_file = string.format("%02d-%02d-%04d.md", prev_date.month, prev_date.day, prev_date.year)
 		local full_path = daily_folder .. prev_file
 
-
 		-- Check if file exists
 		local f = io.open(full_path, "r")
 		if f then
 			f:close()
-
 
 			-- Read the previous daily note
 			local content = {}
@@ -507,7 +500,7 @@ local function import_todos_from_previous_daily()
 end
 
 local function find_previous_daily()
-	local current_file = vim.fn.expand('%:t:r') -- Get current file name without extension
+	local current_file = vim.fn.expand("%:t:r") -- Get current file name without extension
 	local date_pattern = "(%d+)%-(%d+)%-(%d+)"
 	local month, day, year = current_file:match(date_pattern)
 
@@ -526,7 +519,7 @@ local function find_previous_daily()
 			if f then
 				f:close()
 				-- File exists, open it
-				vim.cmd('edit ' .. vim.fn.fnameescape(full_path))
+				vim.cmd("edit " .. vim.fn.fnameescape(full_path))
 				return true
 			end
 
@@ -545,19 +538,19 @@ local function find_previous_daily()
 end
 
 local ts = vim.treesitter
-local query = ts.query.parse('markdown', [[
+local query = ts.query.parse(
+	"markdown",
+	[[
   (fenced_code_block
     (info_string) @language
     (#eq? @language "dataview")
   ) @block
-]])
-
-
+]]
+)
 
 local dataview_query = ""
 
 local table_dataview_query = {}
-
 
 -- Helper function to trim spaces
 function string.trim(s)
@@ -565,7 +558,7 @@ function string.trim(s)
 end
 
 local function find_next_daily()
-	local current_file = vim.fn.expand('%:t:r')
+	local current_file = vim.fn.expand("%:t:r")
 	local date_pattern = "(%d+)%-(%d+)%-(%d+)"
 	local month, day, year = current_file:match(date_pattern)
 
@@ -581,7 +574,7 @@ local function find_next_daily()
 			local f = io.open(full_path, "r")
 			if f then
 				f:close()
-				vim.cmd('edit ' .. vim.fn.fnameescape(full_path))
+				vim.cmd("edit " .. vim.fn.fnameescape(full_path))
 				return true
 			end
 
@@ -600,15 +593,15 @@ end
 
 local function find_weekly()
 	-- Use Telescope to find files, but with custom sorting
-	require('telescope.builtin').find_files({
+	require("telescope.builtin").find_files({
 		prompt_title = "Find Weekly Notes",
 		cwd = weekly_folder,
 		hidden = true,
 		find_command = { "fd", "--type", "f", "--strip-cwd-prefix" },
-		sorter = require('telescope.sorters').get_generic_fuzzy_sorter(),
+		sorter = require("telescope.sorters").get_generic_fuzzy_sorter(),
 		attach_mappings = function(prompt_bufnr, map)
 			-- Override default sorting to sort files chronologically
-			local custom_sorter = require('telescope.sorters').get_generic_fuzzy_sorter()
+			local custom_sorter = require("telescope.sorters").get_generic_fuzzy_sorter()
 
 			-- Custom function to sort files
 			custom_sorter.scoring_function = function(_, prompt, entry)
@@ -617,8 +610,18 @@ local function find_weekly()
 
 				-- Convert month to number
 				local month_names = {
-					"January", "February", "March", "April", "May", "June",
-					"July", "August", "September", "October", "November", "December"
+					"January",
+					"February",
+					"March",
+					"April",
+					"May",
+					"June",
+					"July",
+					"August",
+					"September",
+					"October",
+					"November",
+					"December",
 				}
 				local month_num = 0
 				for i, m in ipairs(month_names) do
@@ -635,17 +638,17 @@ local function find_weekly()
 			end
 
 			return true
-		end
+		end,
 	})
 end
 
 local function apply_template_by_folder()
-	local current_file_path = vim.fn.expand('%:p')
+	local current_file_path = vim.fn.expand("%:p")
 	local relative_path = current_file_path:sub(#workspace_path + 1)
 
 	local template_mappings = {
 		["Daily/"] = "Daily Template.md",
-		["Weekly/"] = "Weekly Template.md"
+		["Weekly/"] = "Weekly Template.md",
 	}
 
 	for folder, template in pairs(template_mappings) do
@@ -676,8 +679,18 @@ local function create_weekly_note()
 	local current_date = os.date("*t", current_time)
 
 	local month_names = {
-		"January", "February", "March", "April", "May", "June",
-		"July", "August", "September", "October", "November", "December"
+		"January",
+		"February",
+		"March",
+		"April",
+		"May",
+		"June",
+		"July",
+		"August",
+		"September",
+		"October",
+		"November",
+		"December",
 	}
 	local month_name = month_names[current_date.month]
 
@@ -693,30 +706,38 @@ local function create_weekly_note()
 		week_suffix = "th"
 	end
 
-	local filename = string.format("%d-%s %d%s.md",
-		current_date.year, month_name, week_number, week_suffix)
+	local filename = string.format("%d-%s %d%s.md", current_date.year, month_name, week_number, week_suffix)
 	local full_path = weekly_folder .. filename
 
 	local f = io.open(full_path, "a")
 	if f then
 		f:close()
-		vim.cmd('edit ' .. vim.fn.fnameescape(full_path))
+		vim.cmd("edit " .. vim.fn.fnameescape(full_path))
 	else
 		print("Failed to create weekly note")
 	end
 end
 
-
 local function find_previous_weekly()
-	local current_file = vim.fn.expand('%:t:r')
+	local current_file = vim.fn.expand("%:t:r")
 
 	-- Parse the current weekly note filename (e.g., "2025-January 1st")
 	local year, month, week_number = current_file:match("(%d+)%-([%a]+) (%d+)%a+")
 
 	if year and month and week_number then
 		local month_names = {
-			"January", "February", "March", "April", "May", "June",
-			"July", "August", "September", "October", "November", "December"
+			"January",
+			"February",
+			"March",
+			"April",
+			"May",
+			"June",
+			"July",
+			"August",
+			"September",
+			"October",
+			"November",
+			"December",
 		}
 
 		-- Convert month name to number
@@ -766,7 +787,7 @@ local function find_previous_weekly()
 			local f = io.open(full_path, "r")
 			if f then
 				f:close()
-				vim.cmd('edit ' .. vim.fn.fnameescape(full_path))
+				vim.cmd("edit " .. vim.fn.fnameescape(full_path))
 				return true
 			end
 
@@ -785,15 +806,25 @@ local function find_previous_weekly()
 end
 
 local function find_next_weekly()
-	local current_file = vim.fn.expand('%:t:r')
+	local current_file = vim.fn.expand("%:t:r")
 
 	-- Parse the current weekly note filename (e.g., "2025-January 1st")
 	local year, month, week_number = current_file:match("(%d+)%-([%a]+) (%d+)%a+")
 
 	if year and month and week_number then
 		local month_names = {
-			"January", "February", "March", "April", "May", "June",
-			"July", "August", "September", "October", "November", "December"
+			"January",
+			"February",
+			"March",
+			"April",
+			"May",
+			"June",
+			"July",
+			"August",
+			"September",
+			"October",
+			"November",
+			"December",
 		}
 
 		-- Convert month name to number
@@ -843,7 +874,7 @@ local function find_next_weekly()
 			local f = io.open(full_path, "r")
 			if f then
 				f:close()
-				vim.cmd('edit ' .. vim.fn.fnameescape(full_path))
+				vim.cmd("edit " .. vim.fn.fnameescape(full_path))
 				return true
 			end
 
@@ -866,8 +897,18 @@ local function find_current_weekly()
 	local current_date = os.date("*t", current_time)
 
 	local month_names = {
-		"January", "February", "March", "April", "May", "June",
-		"July", "August", "September", "October", "November", "December"
+		"January",
+		"February",
+		"March",
+		"April",
+		"May",
+		"June",
+		"July",
+		"August",
+		"September",
+		"October",
+		"November",
+		"December",
 	}
 	local month_name = month_names[current_date.month]
 
@@ -883,14 +924,13 @@ local function find_current_weekly()
 		week_suffix = "th"
 	end
 
-	local filename = string.format("%d-%s %d%s.md",
-		current_date.year, month_name, week_number, week_suffix)
+	local filename = string.format("%d-%s %d%s.md", current_date.year, month_name, week_number, week_suffix)
 	local full_path = weekly_folder .. filename
 
 	local f = io.open(full_path, "r")
 	if f then
 		f:close()
-		vim.cmd('edit ' .. vim.fn.fnameescape(full_path))
+		vim.cmd("edit " .. vim.fn.fnameescape(full_path))
 		return true
 	else
 		vim.cmd("WeeklyCreate")
@@ -938,7 +978,7 @@ local function find_completed_todos_with_timestamps()
 		add_dirs = false,
 		respect_gitignore = true,
 		depth = 1,
-		search_pattern = "%.md$"
+		search_pattern = "%.md$",
 	})
 
 	-- Sort files by date (most recent first)
@@ -968,7 +1008,7 @@ local function find_completed_todos_with_timestamps()
 						line = line_num,
 						text = todo_text,
 						timestamp = timestamp,
-						raw = line
+						raw = line,
 					})
 				end
 				line_num = line_num + 1
@@ -981,32 +1021,34 @@ local function find_completed_todos_with_timestamps()
 		return a.timestamp > b.timestamp
 	end)
 
-	pickers.new({}, {
-		prompt_title = "Completed TODOs Across All Daily Notes",
-		finder = finders.new_table({
-			results = completed_todos,
-			entry_maker = function(entry)
-				return {
-					value = entry,
-					display = string.format("[%s] [%s] %s", entry.timestamp, entry.filename, entry.text),
-					ordinal = entry.timestamp .. " " .. entry.filename .. " " .. entry.text,
-					filename = entry.file_path,
-					lnum = entry.line
-				}
-			end
-		}),
-		sorter = conf.generic_sorter({}),
-		attach_mappings = function(prompt_bufnr)
-			actions.select_default:replace(function()
-				actions.close(prompt_bufnr)
-				local selection = action_state.get_selected_entry()
-				-- Open the file and go to that line
-				vim.cmd("edit " .. vim.fn.fnameescape(selection.filename))
-				vim.api.nvim_win_set_cursor(0, { selection.lnum, 0 })
-			end)
-			return true
-		end,
-	}):find()
+	pickers
+		.new({}, {
+			prompt_title = "Completed TODOs Across All Daily Notes",
+			finder = finders.new_table({
+				results = completed_todos,
+				entry_maker = function(entry)
+					return {
+						value = entry,
+						display = string.format("[%s] [%s] %s", entry.timestamp, entry.filename, entry.text),
+						ordinal = entry.timestamp .. " " .. entry.filename .. " " .. entry.text,
+						filename = entry.file_path,
+						lnum = entry.line,
+					}
+				end,
+			}),
+			sorter = conf.generic_sorter({}),
+			attach_mappings = function(prompt_bufnr)
+				actions.select_default:replace(function()
+					actions.close(prompt_bufnr)
+					local selection = action_state.get_selected_entry()
+					-- Open the file and go to that line
+					vim.cmd("edit " .. vim.fn.fnameescape(selection.filename))
+					vim.api.nvim_win_set_cursor(0, { selection.lnum, 0 })
+				end)
+				return true
+			end,
+		})
+		:find()
 end
 
 vim.api.nvim_create_user_command("CompletedTodos", function()
@@ -1062,7 +1104,7 @@ vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
 	pattern = "*.md",
 	callback = function()
 		apply_template_by_folder()
-	end
+	end,
 })
 
 vim.api.nvim_create_autocmd({ "BufWritePre" }, {
@@ -1072,7 +1114,7 @@ vim.api.nvim_create_autocmd({ "BufWritePre" }, {
 		if is_current_buffer_under_path(daily_folder) then
 			TODOSort()
 		end
-	end
+	end,
 })
 
 vim.api.nvim_create_user_command("ToggleCheckboxWithTimestamp", function()
@@ -1084,62 +1126,71 @@ vim.api.nvim_create_user_command("TmuxNavigateSecondBrain", function()
 	vim.fn.system("tmux-navigate.sh Second_Brain")
 end, {})
 
-
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = "markdown",
 	callback = function()
 		if not in_workspace() then
 			return
 		end
-		  print("✅ You are in your workspace!")
+		print("✅ You are in your workspace!")
 		vim.opt_local.autoindent = true
 		vim.api.nvim_set_keymap("n", "<leader>ts", "<cmd>TODOSort<CR>", {})
 		vim.api.nvim_set_keymap("n", "gd", "<cmd>ObsidianFollowLink<CR>", {})
 
-		vim.keymap.set('n', '<leader>fh', ':Headings<CR>',
-			{ noremap = true, silent = true, desc = "Find headings" })
-		vim.api.nvim_set_keymap("n", "[h", "?^#\\+\\s<CR>",
-			{ noremap = true, silent = true, desc = "Go to previous heading" })
-		vim.api.nvim_set_keymap("n", "]h", "/^#\\+\\s<CR>",
-			{ noremap = true, silent = true, desc = "Go to next heading" })
+		vim.keymap.set("n", "<leader>fh", ":Headings<CR>", { noremap = true, silent = true, desc = "Find headings" })
+		vim.api.nvim_set_keymap(
+			"n",
+			"[h",
+			"?^#\\+\\s<CR>",
+			{ noremap = true, silent = true, desc = "Go to previous heading" }
+		)
+		vim.api.nvim_set_keymap(
+			"n",
+			"]h",
+			"/^#\\+\\s<CR>",
+			{ noremap = true, silent = true, desc = "Go to next heading" }
+		)
 		-- Weekly
-		vim.api.nvim_set_keymap("n", "<leader>ww", "<cmd>ObsidianCurrentWeekly<cr>",
-			{ noremap = true, silent = true, desc = "Current Weekly Note" })
-		vim.api.nvim_set_keymap("n", "<leader>wa", "<cmd>ObsidianFindWeekly<CR>",
-			{ noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>wn", "<cmd>WeeklyCreate<CR>",
-			{ noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>wp", "<cmd>ObsidianPreviousWeekly<cr>",
-			{ noremap = true, silent = true, desc = "Previous Weekly Note" })
-		vim.api.nvim_set_keymap("n", "<leader>wn", "<cmd>ObsidianNextWeekly<cr>",
-			{ noremap = true, silent = true, desc = "Next Weekly Note" })
+		vim.api.nvim_set_keymap(
+			"n",
+			"<leader>ww",
+			"<cmd>ObsidianCurrentWeekly<cr>",
+			{ noremap = true, silent = true, desc = "Current Weekly Note" }
+		)
+		vim.api.nvim_set_keymap("n", "<leader>wa", "<cmd>ObsidianFindWeekly<CR>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>wn", "<cmd>WeeklyCreate<CR>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap(
+			"n",
+			"<leader>wp",
+			"<cmd>ObsidianPreviousWeekly<cr>",
+			{ noremap = true, silent = true, desc = "Previous Weekly Note" }
+		)
+		vim.api.nvim_set_keymap(
+			"n",
+			"<leader>wn",
+			"<cmd>ObsidianNextWeekly<cr>",
+			{ noremap = true, silent = true, desc = "Next Weekly Note" }
+		)
 		-- Daily
-		vim.api.nvim_set_keymap("n", "<leader>da", "<cmd>ObsidianDailies<cr>",
-			{ noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>dd", "<cmd>ObsidianToday<cr>",
-			{ noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>dp", "<cmd>ObsidianPreviousDaily<cr>",
-			{ noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>dn", "<cmd>ObsidianNextDaily<cr>",
-			{ noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>da", "<cmd>ObsidianDailies<cr>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>dd", "<cmd>ObsidianToday<cr>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>dp", "<cmd>ObsidianPreviousDaily<cr>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>dn", "<cmd>ObsidianNextDaily<cr>", { noremap = true, silent = true })
 		-- Commands
-		vim.api.nvim_set_keymap("n", "ch", "<cmd>ToggleCheckboxWithTimestamp<cr>",
-			{ noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>bl", "<cmd>ObsidianBacklinks<cr>",
-			{ noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>ot", "<cmd>ObsidianTags<cr>",
-			{ noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>of", "<cmd>ObsidianTags<cr>",
-			{ noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>nt", "<cmd>ObsidianNew<cr>",
-			{ noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>it", "<cmd>ObsidianTemplate<cr>",
-			{ noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>ef", ":ObsidianEditFrontmatter ",
-			{ noremap = true })
+		vim.api.nvim_set_keymap("n", "ch", "<cmd>ToggleCheckboxWithTimestamp<cr>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>bl", "<cmd>ObsidianBacklinks<cr>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>ot", "<cmd>ObsidianTags<cr>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>of", "<cmd>ObsidianTags<cr>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>nt", "<cmd>ObsidianNew<cr>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>it", "<cmd>ObsidianTemplate<cr>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>ef", ":ObsidianEditFrontmatter ", { noremap = true })
 		-- Add keymap for finding completed todos
-		vim.api.nvim_set_keymap("n", "<leader>td", "<cmd>CompletedTodos<cr>",
-			{ noremap = true, silent = true, desc = "Find completed TODOs" })
+		vim.api.nvim_set_keymap(
+			"n",
+			"<leader>td",
+			"<cmd>CompletedTodos<cr>",
+			{ noremap = true, silent = true, desc = "Find completed TODOs" }
+		)
 		-- Create command to check metadata
 		vim.api.nvim_create_user_command("ObsidianCheckMetadata", function()
 			check_metadata()
@@ -1147,7 +1198,7 @@ vim.api.nvim_create_autocmd("FileType", {
 
 		-- local files_in_workspace = scanWorkspace(workspace_path)
 		-- local result_files = executeQuery(dataview_query, files_in_workspace)
-	end
+	end,
 })
 
 vim.api.nvim_create_user_command("ObsidianEditFrontmatter", function(args)
@@ -1160,7 +1211,7 @@ end, {
 	nargs = "+",
 	complete = function(ArgLead, CmdLine, CursorPos)
 		return { "tags", "alias", "date", "title", "status", "type" }
-	end
+	end,
 })
 
 vim.api.nvim_create_user_command("ObsidianPreviousDaily", function()
@@ -1176,7 +1227,7 @@ vim.api.nvim_create_user_command("Headings", markdown_headings, {})
 vim.api.nvim_create_autocmd("BufReadPost", {
 	pattern = "*.md",
 	callback = function()
-		local current_file = vim.fn.expand('%:t:r')
+		local current_file = vim.fn.expand("%:t:r")
 		local date_pattern = "(%d+)%-(%d+)%-(%d+)"
 		local month, day, year = current_file:match(date_pattern)
 
@@ -1223,7 +1274,7 @@ return {
 		daily_notes = {
 			folder = "Daily/",
 			date_format = date_format,
-			template = "Daily Template.md"
+			template = "Daily Template.md",
 		},
 		use_advanced_uri = true,
 		mappings = {},
@@ -1236,7 +1287,7 @@ return {
 		},
 		follow_url_func = function(url)
 			vim.fn.jobstart({ "open", url })
-		end
+		end,
 	},
 	config = function(_, opts)
 		vim.cmd("set conceallevel=1")

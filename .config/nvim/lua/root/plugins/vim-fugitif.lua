@@ -98,15 +98,16 @@ local function GenerateCommitMessageWithAI(provider)
 	provider = provider or "openai"
 
 	-- Check if in a commit message buffer
-	if vim.bo.filetype ~= 'gitcommit' or
-	    not (vim.fn.expand('%:t') == 'COMMIT_EDITMSG' or
-		    vim.fn.expand('%:t'):match('%.git/COMMIT_EDITMSG$')) then
+	if
+		vim.bo.filetype ~= "gitcommit"
+		or not (vim.fn.expand("%:t") == "COMMIT_EDITMSG" or vim.fn.expand("%:t"):match("%.git/COMMIT_EDITMSG$"))
+	then
 		vim.notify("Not in a commit message buffer", vim.log.levels.ERROR)
 		return
 	end
 
 	-- Get staged changes (files)
-	local staged_changes = vim.fn.systemlist('git diff --staged --name-status')
+	local staged_changes = vim.fn.systemlist("git diff --staged --name-status")
 
 	if #staged_changes == 0 then
 		vim.notify("No staged changes found.", vim.log.levels.INFO)
@@ -114,9 +115,8 @@ local function GenerateCommitMessageWithAI(provider)
 	end
 
 	-- Get detailed diff
-	local staged_diff = vim.fn.systemlist('git diff --staged')
+	local staged_diff = vim.fn.systemlist("git diff --staged")
 	-- vim.notify(table.concat(staged_diff), vim.log.levels.INFO, {})
-
 
 	local diff_content = table.concat(staged_diff, "\n")
 
@@ -134,11 +134,11 @@ local function GenerateCommitMessageWithAI(provider)
 			if loading_notification then
 				loading_notification.close()
 			end
-		end
+		end,
 	})
 
 	-- Curl library
-	local curl = require('plenary.curl')
+	local curl = require("plenary.curl")
 
 	-- Function to generate commit message
 	local function process_ai_response(commit_message)
@@ -154,7 +154,7 @@ local function GenerateCommitMessageWithAI(provider)
 
 		-- Notify success
 		vim.notify("Commit message generated successfully", vim.log.levels.INFO, {
-			title = "AI Commit Message"
+			title = "AI Commit Message",
 		})
 	end
 
@@ -171,22 +171,22 @@ local function GenerateCommitMessageWithAI(provider)
 			url = "https://api.openai.com/v1/chat/completions",
 			headers = {
 				Authorization = "Bearer " .. api_key,
-				["Content-Type"] = "application/json"
+				["Content-Type"] = "application/json",
 			},
 			body = vim.fn.json_encode({
 				model = "gpt-4o-mini",
 				messages = {
 					{
 						role = "system",
-						content = PREPROMPT
+						content = PREPROMPT,
 					},
 					{
 						role = "user",
-						content = prompt
-					}
+						content = prompt,
+					},
 				},
 				max_tokens = 300,
-				temperature = 0.7
+				temperature = 0.7,
 			}),
 			callback = vim.schedule_wrap(function(response)
 				if response.status ~= 200 then
@@ -197,33 +197,35 @@ local function GenerateCommitMessageWithAI(provider)
 				local result = vim.fn.json_decode(response.body)
 				local commit_message = result.choices[1].message.content:gsub("^%s+", ""):gsub("%s+$", "")
 				process_ai_response(commit_message)
-			end)
+			end),
 		})
 	elseif provider == "ollama" then
 		-- Ollama local API endpoint
 		curl.post({
 			url = "http://localhost:11434/api/chat",
 			headers = {
-				["Content-Type"] = "application/json"
+				["Content-Type"] = "application/json",
 			},
 			body = vim.fn.json_encode({
 				model = "deepseek-r1:1.5b", -- You can change this to your preferred model
 				messages = {
 					{
 						role = "system",
-						content = PREPROMPT
+						content = PREPROMPT,
 					},
 					{
 						role = "user",
-						content = prompt
-					}
+						content = prompt,
+					},
 				},
-				stream = false
+				stream = false,
 			}),
 			callback = vim.schedule_wrap(function(response)
 				if response.status ~= 200 then
-					vim.notify("Error generating commit message from Ollama: " .. vim.inspect(response),
-						vim.log.levels.ERROR)
+					vim.notify(
+						"Error generating commit message from Ollama: " .. vim.inspect(response),
+						vim.log.levels.ERROR
+					)
 					return
 				end
 
@@ -234,7 +236,7 @@ local function GenerateCommitMessageWithAI(provider)
 				process_ai_response(commit_message)
 				-- local commit_message = result.message.content:gsub("^%s+", ""):gsub("%s+$", ""):gsub("%s+", " ")
 				-- process_ai_response(commit_message)
-			end)
+			end),
 		})
 	else
 		vim.notify("Unsupported AI provider: " .. provider, vim.log.levels.ERROR)
@@ -242,20 +244,20 @@ local function GenerateCommitMessageWithAI(provider)
 end
 
 local menu_options = {
-	{ key = 'build', desc = 'Build', emoji = '🏗️' },
-	{ key = 'ci', desc = 'Continuous Integration', emoji = '🤖' },
-	{ key = 'docs', desc = 'Documentation', emoji = '📚' },
-	{ key = 'feat', desc = 'Feature', emoji = '✨' },
-	{ key = 'fix', desc = 'Bug Fix', emoji = '🐛' },
-	{ key = 'perf', desc = 'Performance Improvement', emoji = '⚡' },
-	{ key = 'refactor', desc = 'Code Refactoring', emoji = '🛠️' },
-	{ key = 'test', desc = 'Testing', emoji = '🧪' }
+	{ key = "build", desc = "Build", emoji = "🏗️" },
+	{ key = "ci", desc = "Continuous Integration", emoji = "🤖" },
+	{ key = "docs", desc = "Documentation", emoji = "📚" },
+	{ key = "feat", desc = "Feature", emoji = "✨" },
+	{ key = "fix", desc = "Bug Fix", emoji = "🐛" },
+	{ key = "perf", desc = "Performance Improvement", emoji = "⚡" },
+	{ key = "refactor", desc = "Code Refactoring", emoji = "🛠️" },
+	{ key = "test", desc = "Testing", emoji = "🧪" },
 }
 
 function ShowMenu()
-	local menu_items = { 'Select a commit type:' }
+	local menu_items = { "Select a commit type:" }
 	for index, option in ipairs(menu_options) do
-		table.insert(menu_items, index .. '. ' .. option.emoji .. ' ' .. option.desc)
+		table.insert(menu_items, index .. ". " .. option.emoji .. " " .. option.desc)
 	end
 	local choice = vim.fn.inputlist(menu_items)
 	return choice > 0 and menu_options[choice] or nil
@@ -264,46 +266,46 @@ end
 function InputArgs()
 	local selected_option = ShowMenu()
 	if selected_option then
-		vim.cmd('redraw')
-		vim.cmd('echo "You selected: ' .. selected_option.emoji .. ' - ' .. selected_option.key .. '"')
-		local message = vim.fn.input('Message: ')
-		if message ~= '' then
-			vim.cmd('redraw') -- Optionally redraw again if needed
+		vim.cmd("redraw")
+		vim.cmd('echo "You selected: ' .. selected_option.emoji .. " - " .. selected_option.key .. '"')
+		local message = vim.fn.input("Message: ")
+		if message ~= "" then
+			vim.cmd("redraw") -- Optionally redraw again if needed
 			vim.cmd('echo "Message entered: "')
 			vim.cmd('echo "' .. message .. '"')
-			local commitMessage = selected_option.key .. ': ' .. message .. ' ' .. selected_option.emoji
+			local commitMessage = selected_option.key .. ": " .. message .. " " .. selected_option.emoji
 			vim.cmd('G commit -v -m "' .. commitMessage .. '"')
 		else
-			vim.cmd('redraw') -- Clear the screen before showing the message
+			vim.cmd("redraw") -- Clear the screen before showing the message
 			vim.cmd('echo "No message entered. Action canceled"')
 		end
 	else
-		vim.cmd('redraw') -- Clear the screen before showing the message
+		vim.cmd("redraw") -- Clear the screen before showing the message
 		vim.cmd('echo "No commit type selected. Action canceled"')
 	end
 end
 
 function QuitMenu()
-	vim.cmd('redraw')
+	vim.cmd("redraw")
 	vim.cmd('echo "Menu closed. Action canceled"')
 end
 
 return {
-	'tpope/vim-fugitive',
+	"tpope/vim-fugitive",
 	config = function()
-		vim.api.nvim_set_keymap('n', '<leader>q', ':lua QuitMenu()<CR>', { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>q", ":lua QuitMenu()<CR>", { noremap = true, silent = true })
 
-		vim.cmd('command -bar -bang -nargs=* Gcommit lua InputArgs()')
-		vim.keymap.set('n', 'gj', '<cmd>diffget //3<CR>')
-		vim.keymap.set('n', 'gf', '<cmd>diffget //2<CR>')
+		vim.cmd("command -bar -bang -nargs=* Gcommit lua InputArgs()")
+		vim.keymap.set("n", "gj", "<cmd>diffget //3<CR>")
+		vim.keymap.set("n", "gf", "<cmd>diffget //2<CR>")
 		vim.api.nvim_set_keymap("n", "<leader>g", ":G<CR>", { noremap = true, silent = true })
 
-		vim.api.nvim_create_user_command('AICommitMessage', function()
-			GenerateCommitMessageWithAI('openai')
+		vim.api.nvim_create_user_command("AICommitMessage", function()
+			GenerateCommitMessageWithAI("openai")
 		end, {})
 
-		vim.api.nvim_create_user_command('OllamaCommitMessage', function()
-			GenerateCommitMessageWithAI('ollama')
+		vim.api.nvim_create_user_command("OllamaCommitMessage", function()
+			GenerateCommitMessageWithAI("ollama")
 		end, {})
 
 		-- vim.api.nvim_create_autocmd('BufReadPost', {
@@ -316,14 +318,24 @@ return {
 		-- 	end
 		-- })
 
-		vim.api.nvim_create_autocmd('FileType', {
-			pattern = 'gitcommit',
+		vim.api.nvim_create_autocmd("FileType", {
+			pattern = "gitcommit",
 			callback = function()
-				vim.api.nvim_buf_set_keymap(0, 'n', '<leader>ai', ':AICommitMessage<CR>',
-					{ noremap = true, silent = true })
-				vim.api.nvim_buf_set_keymap(0, 'n', '<leader>oi', ':OllamaCommitMessage<CR>',
-					{ noremap = true, silent = true })
-			end
+				vim.api.nvim_buf_set_keymap(
+					0,
+					"n",
+					"<leader>ai",
+					":AICommitMessage<CR>",
+					{ noremap = true, silent = true }
+				)
+				vim.api.nvim_buf_set_keymap(
+					0,
+					"n",
+					"<leader>oi",
+					":OllamaCommitMessage<CR>",
+					{ noremap = true, silent = true }
+				)
+			end,
 		})
-	end
+	end,
 }

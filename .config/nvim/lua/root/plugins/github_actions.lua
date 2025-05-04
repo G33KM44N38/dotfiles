@@ -1,14 +1,14 @@
 return {
-	'topaxi/gh-actions.nvim',
-	cmd = 'GhActions',
+	"topaxi/gh-actions.nvim",
+	cmd = "GhActions",
 	keys = {
-		{ '<leader>gh', '<cmd>GhActions<cr>', desc = 'Open Github Actions' },
+		{ "<leader>gh", "<cmd>GhActions<cr>", desc = "Open Github Actions" },
 	},
 	-- optional, you can also install and use `yq` instead.
 	-- build = 'make',
-	dependencies = { 'nvim-lua/plenary.nvim', 'MunifTanjim/nui.nvim' },
+	dependencies = { "nvim-lua/plenary.nvim", "MunifTanjim/nui.nvim" },
 	opts = {},
 	config = function(_, opts)
-		require('gh-actions').setup(opts)
-	end
+		require("gh-actions").setup(opts)
+	end,
 }
