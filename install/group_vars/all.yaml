@@ -48,3 +48,4 @@ default_roles:
   - dbeaver
   - notion
   - lua-language-server
+  - config

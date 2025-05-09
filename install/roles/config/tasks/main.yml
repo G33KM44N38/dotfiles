@@ -1,0 +1,4 @@
+---
+- name: Run CONFIG MACOS
+  ansible.builtin.import_tasks: darwin.yaml
+  when: ansible_system == 'Darwin'
