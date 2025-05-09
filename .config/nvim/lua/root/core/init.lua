@@ -1,4 +1,5 @@
 require("root.core.keymap")
+require("root.core.command")
 require("root.my_plugins.Commiter")
 -- require("root.my_plugins.git-worktree.lua.git-worktree")
 
