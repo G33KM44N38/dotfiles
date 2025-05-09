@@ -13,7 +13,7 @@ after-login-command = []
 # You can use it to add commands that run after AeroSpace startup.
 # 'after-startup-command' is run after 'after-login-command'
 # Available commands : https://nikitabobko.github.io/AeroSpace/commands
-after-startup-command = ["toggle off"]
+# after-startup-command = ["toggle off"]
 
 # Start AeroSpace at login
 start-at-login = true
@@ -131,9 +131,9 @@ alt-shift-n = 'move-node-to-monitor  next'
 alt-shift-s = 'move-node-to-monitor  secondary'
 
 
-
 # See: https://nikitabobko.github.io/AeroSpace/commands#mode
 alt-shift-semicolon = 'mode service'
+alt-shift-enter = 'mode apps'
 
 # 'service' binding mode declaration.
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes
@@ -144,6 +144,31 @@ f = ['layout floating tiling', 'mode main'] # Toggle between floating and tiling
 backspace = ['close-all-windows-but-current', 'mode main']
 k = 'resize smart +50'
 j = 'resize smart -50'
+
+[mode.apps.binding]
+# Open apps
+a = ['exec-and-forget open -a "Arc"', 'mode main']
+b = ['exec-and-forget open -a "Beeper"', 'mode main']
+c = ['exec-and-forget open -a "Calendar"', 'mode main']
+d = ['exec-and-forget open -a "DBeaver"', 'mode main']
+e = ['exec-and-forget open -a "Mail"', 'mode main']
+f = ['exec-and-forget open -a "Figma"', 'mode main']
+g = ['exec-and-forget open -a "Simulator"', 'mode main']
+h = ['exec-and-forget open -a "Home"', 'mode main']
+i = ['exec-and-forget open -a "Messages"', 'mode main']
+j = ['exec-and-forget open -a "FaceTime"', 'mode main']
+k = ['exec-and-forget open -a "Ledger Live"', 'mode main']
+m = ['exec-and-forget open -a "Music"', 'mode main']
+n = ['exec-and-forget open -a "Notion"', 'mode main']
+p = ['exec-and-forget open -a "Obsidian"', 'mode main']
+r = ['exec-and-forget open -a "Reader"', 'mode main']
+s = ['exec-and-forget open -a "OBS Studio"', 'mode main']
+semicolon = ['exec-and-forget open -a "Cursor"', 'mode main']
+t = ['exec-and-forget open -a "Ghostty"', 'mode main']
+v = ['exec-and-forget open -a "Visual Studio Code"', 'mode main']
+w = ['exec-and-forget open -a "Brave Browser"', 'mode main']
+x = ['exec-and-forget open -a "Discord"', 'mode main']
+y = ['exec-and-forget open -a "Notes"', 'mode main']
 
 # alt-shift-h = ['join-with left', 'mode main']
 # alt-shift-j = ['join-with down', 'mode main']
