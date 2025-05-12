@@ -68,13 +68,11 @@ return {
 				t(")"),
 			}),
 			s("afu", {
-				t("const "),
+				t("async function "),
 				i(1),
-				t(" = ("),
+				t("("),
 				i(2),
-				t(") => {"),
-				i(3),
-				t("}"),
+				t(")"),
 			}),
 			s("imr", {
 				t('import React from "react";'),

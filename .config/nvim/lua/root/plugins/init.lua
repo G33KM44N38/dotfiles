@@ -6,6 +6,7 @@ return {
 			require("mini.indentscope").setup()
 		end,
 	},
+	"ThePrimeagen/refactoring.nvim",
 	"nvim-lua/plenary.nvim",
 	"tpope/vim-unimpaired",
 	"ThePrimeagen/vim-be-good",
