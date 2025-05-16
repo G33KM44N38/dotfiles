@@ -52,6 +52,11 @@ return {
 					name = "babacoiffure_preprod",
 					url = babacoiffure_preprod,
 				},
+
+				{
+					name = "babacoiffure_local",
+					url = "mongodb://localhost:27017/my_local_db",
+				},
 			}
 		end,
 	},

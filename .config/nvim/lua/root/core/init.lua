@@ -158,3 +158,9 @@ vim.api.nvim_create_autocmd("TermOpen", {
 		vim.api.nvim_set_keymap("i", "<C-\\><C-n>", "<Esc>", { noremap = true, silent = true })
 	end,
 })
+
+vim.api.nvim_create_augroup("dotenv", { clear = true })
+vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
+	pattern = { ".env", ".env.*" },
+	command = "setfiletype dotenv",
+})
