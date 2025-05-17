@@ -72,6 +72,14 @@ return {
 				vim.keymap.set("n", "<leader>d", vim.diagnostic.open_float, opts)
 				vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
 				vim.keymap.set("n", "<leader>rs", ":LspRestart<CR>", opts)
+
+				-- Auto-fix on save for ESLint
+				if client.name == "eslint" then
+					vim.api.nvim_create_autocmd("BufWritePre", {
+						buffer = bufnr,
+						command = "EslintFixAll",
+					})
+				end
 			end
 
 			local capabilities = cmp_nvim_lsp.default_capabilities()
