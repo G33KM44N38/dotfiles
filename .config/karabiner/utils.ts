@@ -256,6 +256,30 @@ export function createBasicManipulator(
   };
 }
 
+export function createModifierManipulator(
+  from_key: KeyCode,
+  description: string,
+  modifers: string[] | undefined
+): Manipulator {
+  return {
+    description,
+    type: "basic",
+    conditions: [BuiltinKeyboardCondition],
+    from: {
+      key_code: from_key,
+      modifiers: {
+        optional: ["any"],
+      },
+    },
+    to: [
+      {
+        key_code: "spacebar",
+        modifiers: modifers,
+      },
+    ],
+  };
+}
+
 export function DisableKeyConfig(keyToDisable: KeyCode): KarabinerRules {
   return {
     description: `Disable ${keyToDisable} key`,

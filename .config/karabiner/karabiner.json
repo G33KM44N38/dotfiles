@@ -1909,6 +1909,42 @@
             ]
           },
           {
+            "description": "open_bracket to cmd space ",
+            "manipulators": [
+              {
+                "description": "spacebar",
+                "type": "basic",
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1452
+                      }
+                    ],
+                    "description": "MacBook Pro built-in keyboard"
+                  }
+                ],
+                "from": {
+                  "key_code": "open_bracket",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "key_code": "spacebar",
+                    "modifiers": [
+                      "right_gui"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
             "description": "Disable grave_accent_and_tilde key",
             "manipulators": [
               {
@@ -2139,38 +2175,6 @@
                 "type": "basic",
                 "from": {
                   "key_code": "return_or_enter",
-                  "modifiers": {
-                    "optional": [
-                      "any"
-                    ]
-                  }
-                },
-                "to": [
-                  {
-                    "key_code": "out"
-                  }
-                ],
-                "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "description": "Disable open_bracket key",
-            "manipulators": [
-              {
-                "type": "basic",
-                "from": {
-                  "key_code": "open_bracket",
                   "modifiers": {
                     "optional": [
                       "any"

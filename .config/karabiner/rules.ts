@@ -8,6 +8,7 @@ import {
   createHomeRowMod,
   DisableKeyConfig,
   createKeyLayer,
+  createModifierManipulator,
 } from "./utils";
 
 const hyperSubLayers = createHyperSubLayers({
@@ -203,6 +204,13 @@ const rules: KarabinerRules[] = [
     description: "caps lock to escape",
     manipulators: [createBasicManipulator("caps_lock", "escape", "")],
   },
+  {
+    description: "open_bracket to cmd space ",
+    manipulators: [
+      createModifierManipulator("open_bracket", "spacebar", ["right_gui"]),
+    ],
+  },
+
   DisableKeyConfig("grave_accent_and_tilde"),
   DisableKeyConfig("tab"),
   DisableKeyConfig("caps_lock"),
@@ -211,7 +219,7 @@ const rules: KarabinerRules[] = [
   DisableKeyConfig("right_shift"),
   DisableKeyConfig("left_shift"),
   DisableKeyConfig("return_or_enter"),
-  DisableKeyConfig("open_bracket"),
+  // DisableKeyConfig("open_bracket"),
   DisableKeyConfig("close_bracket"),
   DisableKeyConfig("0"),
   DisableKeyConfig("1"),
