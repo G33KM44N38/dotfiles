@@ -1224,7 +1224,7 @@ end, {})
 
 vim.api.nvim_create_user_command("Headings", markdown_headings, {})
 
-vim.api.nvim_create_autocmd("BufReadPost", {
+vim.api.nvim_create_autocmd({ "BufReadPost", "BufWritePre" }, {
 	pattern = "*.md",
 	callback = function()
 		local current_file = vim.fn.expand("%:t:r")
