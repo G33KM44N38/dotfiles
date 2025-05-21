@@ -943,6 +943,60 @@ local function toggle_checkbox_with_timestamp()
 	-- Get the current line
 	local line = vim.api.nvim_get_current_line()
 
+	-- Match checkbox pattern
+	local checkbox_pattern = "(%s*-%s*%[)([%s%a%d])(])(.*)"
+	local indent, prefix, mark, suffix = line:match(checkbox_pattern)
+
+	if indent and prefix and mark and suffix then
+		local new_line
+
+		-- Get current timestamp
+		local completed_timestamp = os.date(date_format .. " " .. time_format)
+
+		-- Try to find existing start timestamp
+		local start_time_str = suffix:match("%[start:%s*(.-)%]")
+
+		local duration_str = ""
+		if start_time_str then
+			-- Parse it back into a timestamp
+			local sm, sd, sy, hh, mm = start_time_str:match("^(%d+)%-(%d+)%-(%d+)%s+(%d+):(%d+)$")
+			if sm and sd and sy and hh and mm then
+				local parsed_time = os.time({
+					year = assert(tonumber(sy), "Invalid year"),
+					month = assert(tonumber(sm), "Invalid month"),
+					day = assert(tonumber(sd), "Invalid day"),
+					hour = assert(tonumber(hh), "Invalid hour"),
+					min = assert(tonumber(mm), "Invalid minute"),
+					sec = 0,
+				})
+
+				local now = os.time()
+				local diff = now - parsed_time
+
+				local hours = math.floor(diff / 3600)
+				local minutes = math.floor((diff % 3600) / 60)
+				if hours > 0 then
+					duration_str = string.format(" [duration: %dh %dm]", hours, minutes)
+				else
+					duration_str = string.format(" [duration: %dm]", minutes)
+				end
+			end
+		end
+
+		-- Replace line with checkbox marked as completed
+		new_line = indent .. "x" .. "] " .. suffix .. " [completed: " .. completed_timestamp .. "]" .. duration_str
+
+		-- Update the line
+		vim.api.nvim_set_current_line(new_line)
+	else
+		vim.cmd("ObsidianToggleCheckbox")
+	end
+end
+
+local function todoStart()
+	-- Get the current line
+	local line = vim.api.nvim_get_current_line()
+
 	-- Check if the line has a checkbox
 	local checkbox_pattern = "(%s*-%s*%[)([%s%a%d])(])(.*)"
 	local indent, prefix, mark, suffix = line:match(checkbox_pattern)
@@ -952,7 +1006,7 @@ local function toggle_checkbox_with_timestamp()
 
 		-- Use the date_format variable
 		local timestamp = os.date(date_format .. " " .. time_format)
-		new_line = indent .. "x" .. "] " .. suffix .. " [completed: " .. timestamp .. "]"
+		new_line = indent .. " " .. "] " .. suffix .. " [start: " .. timestamp .. "]"
 
 		-- Update the line
 		vim.api.nvim_set_current_line(new_line)
@@ -1121,6 +1175,10 @@ vim.api.nvim_create_user_command("ToggleCheckboxWithTimestamp", function()
 	toggle_checkbox_with_timestamp()
 end, {})
 
+vim.api.nvim_create_user_command("TODOSTart", function()
+	todoStart()
+end, {})
+
 vim.api.nvim_create_user_command("TmuxNavigateSecondBrain", function()
 	-- Use vim.fn.system() for better handling of shell commands in Neovim
 	vim.fn.system("tmux-navigate.sh Second_Brain")
@@ -1132,7 +1190,6 @@ vim.api.nvim_create_autocmd("FileType", {
 		if not in_workspace() then
 			return
 		end
-		print("✅ You are in your workspace!")
 		vim.opt_local.autoindent = true
 		vim.api.nvim_set_keymap("n", "<leader>ts", "<cmd>TODOSort<CR>", {})
 		vim.api.nvim_set_keymap("n", "gd", "<cmd>ObsidianFollowLink<CR>", {})
@@ -1177,7 +1234,13 @@ vim.api.nvim_create_autocmd("FileType", {
 		vim.api.nvim_set_keymap("n", "<leader>dp", "<cmd>ObsidianPreviousDaily<cr>", { noremap = true, silent = true })
 		vim.api.nvim_set_keymap("n", "<leader>dn", "<cmd>ObsidianNextDaily<cr>", { noremap = true, silent = true })
 		-- Commands
-		vim.api.nvim_set_keymap("n", "ch", "<cmd>ToggleCheckboxWithTimestamp<cr>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap(
+			"n",
+			"<leader>ch",
+			"<cmd>ToggleCheckboxWithTimestamp<cr>",
+			{ noremap = true, silent = true }
+		)
+		vim.api.nvim_set_keymap("n", "<leader>ts", "<cmd>TODOSTart<cr>", { noremap = true, silent = true })
 		vim.api.nvim_set_keymap("n", "<leader>bl", "<cmd>ObsidianBacklinks<cr>", { noremap = true, silent = true })
 		vim.api.nvim_set_keymap("n", "<leader>ot", "<cmd>ObsidianTags<cr>", { noremap = true, silent = true })
 		vim.api.nvim_set_keymap("n", "<leader>of", "<cmd>ObsidianTags<cr>", { noremap = true, silent = true })
