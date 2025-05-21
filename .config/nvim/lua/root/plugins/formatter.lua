@@ -27,6 +27,8 @@ return {
 				typescriptreact = javascript_formatter,
 				svelte = javascript_formatter,
 				lua = { "stylua" },
+				yaml = { "prettier" }, -- <--- add this line for YAML formatting
+				yml = { "prettier" }, -- <--- also add this to catch `.yml` files
 			},
 			format_after_save = {
 				lsp_fallback = true,
