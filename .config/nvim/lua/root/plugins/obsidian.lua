@@ -1164,9 +1164,11 @@ vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
 vim.api.nvim_create_autocmd({ "BufWritePre" }, {
 	pattern = "*.md",
 	callback = function()
-		check_metadata()
-		if is_current_buffer_under_path(daily_folder) then
-			TODOSort()
+		if in_workspace() then
+			check_metadata()
+			if is_current_buffer_under_path(daily_folder) then
+				TODOSort()
+			end
 		end
 	end,
 })
@@ -1300,66 +1302,75 @@ vim.api.nvim_create_autocmd({ "BufReadPost", "BufWritePre" }, {
 	end,
 })
 
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = "markdown",
+	callback = function()
+		vim.opt_local.conceallevel = 1
+	end,
+})
+
 return {
-	"epwalsh/obsidian.nvim",
-	version = "*",
-	lazy = true,
-	ft = "markdown",
-	dependencies = {
-		"nvim-lua/plenary.nvim",
-		-- {
-		-- 	'MeanderingProgrammer/render-markdown.nvim',
-		-- 	dependencies = { 'nvim-treesitter/nvim-treesitter', 'echasnovski/mini.nvim' }, -- if you use the mini.nvim suite
-		-- 	-- dependencies = { 'nvim-treesitter/nvim-treesitter', 'echasnovski/mini.icons' }, -- if you use standalone mini plugins
-		-- 	-- dependencies = { 'nvim-treesitter/nvim-treesitter', 'nvim-tree/nvim-web-devicons' }, -- if you prefer nvim-web-devicons
-		-- 	---@module 'render-markdown'
-		-- 	---@type render.md.UserConfig
-		-- 	opts = {},
-		-- }
-	},
-	opts = {
-		workspaces = {
-			{
-				name = "personal",
-				path = workspace_path,
+	{
+		"MeanderingProgrammer/render-markdown.nvim",
+		opts = {
+			file_types = { "markdown" },
+			checkbox = {
+				enabled = false,
 			},
 		},
-		date_format = date_format,
-		templates = {
-			folder = "Templates",
-			date_format = date_format,
-			time_format = time_format,
+		ft = { "markdown" },
+	},
+	{
+		"epwalsh/obsidian.nvim",
+		version = "*",
+		lazy = true,
+		ft = "markdown",
+		dependencies = {
+			"nvim-lua/plenary.nvim",
 		},
-		disable_frontmatter = true,
-		note_id_func = function(title)
-			return title
-		end,
-		daily_notes = {
-			folder = "Daily/",
+		opts = {
+			workspaces = {
+				{
+					name = "personal",
+					path = workspace_path,
+				},
+			},
 			date_format = date_format,
-			template = "Daily Template.md",
-		},
-		use_advanced_uri = true,
-		mappings = {},
-		attachments = {
-			img_folder = "Attachments/",
-			---@return string
-			img_name_func = function()
-				return string.format("%s-", os.time())
+			templates = {
+				folder = "Templates",
+				date_format = date_format,
+				time_format = time_format,
+			},
+			disable_frontmatter = true,
+			note_id_func = function(title)
+				return title
+			end,
+			daily_notes = {
+				folder = "Daily/",
+				date_format = date_format,
+				template = "Daily Template.md",
+			},
+			use_advanced_uri = true,
+			mappings = {},
+			attachments = {
+				img_folder = "Attachments/",
+				---@return string
+				img_name_func = function()
+					return string.format("%s-", os.time())
+				end,
+			},
+			follow_url_func = function(url)
+				vim.fn.jobstart({ "open", url })
 			end,
 		},
-		follow_url_func = function(url)
-			vim.fn.jobstart({ "open", url })
+		config = function(_, opts)
+			vim.api.nvim_create_autocmd("FileType", {
+				pattern = "markdown",
+				callback = function()
+					vim.opt.spell = true
+				end,
+			})
+			require("obsidian").setup(opts)
 		end,
 	},
-	config = function(_, opts)
-		vim.cmd("set conceallevel=1")
-		vim.api.nvim_create_autocmd("FileType", {
-			pattern = "markdown",
-			callback = function()
-				vim.opt.spell = true
-			end,
-		})
-		require("obsidian").setup(opts)
-	end,
 }
