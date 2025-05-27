@@ -25,6 +25,25 @@ return {
 			})
 
 			require("mason-lspconfig").setup({
+				automatic_enable = {
+					"lua_ls",
+					"tailwindcss",
+					"ts_ls",
+					"html",
+					"cssls",
+					"jsonls",
+					"dockerls",
+					"clangd",
+					"bashls",
+					"yamlls",
+					"eslint",
+					"gopls",
+					"pyright",
+					"volar",
+					"prismals",
+					"graphql",
+					"rust_analyzer",
+				},
 				ensure_installed = {
 					"lua_ls",
 					"tailwindcss",
@@ -104,22 +123,22 @@ return {
 				on_attach = on_attach,
 			})
 
-			lspconfig.ts_ls.setup({
-				capabilities = capabilities,
-				on_attach = on_attach,
-				root_dir = require("lspconfig.util").root_pattern("tsconfig.json", "package.json", ".git"),
-			})
+			-- lspconfig.ts_ls.setup({
+			-- 	capabilities = capabilities,
+			-- 	on_attach = on_attach,
+			-- 	root_dir = require("lspconfig.util").root_pattern("tsconfig.json", "package.json", ".git"),
+			-- })
 
 			lspconfig.eslint.setup({
 				capabilities = capabilities,
 				on_attach = on_attach,
 			})
 
-			lspconfig.volar.setup({
-				capabilities = capabilities,
-				on_attach = on_attach,
-				filetypes = { "vue" },
-			})
+			-- lspconfig.volar.setup({
+			-- 	capabilities = capabilities,
+			-- 	on_attach = on_attach,
+			-- 	filetypes = { "vue" },
+			-- })
 
 			lspconfig.tailwindcss.setup({
 				capabilities = capabilities,
