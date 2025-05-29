@@ -1,5 +1,18 @@
 #!/bin/bash
 
+# Required parameters:
+# @raycast.schemaVersion 1
+# @raycast.title babacoiffure check and restart  services
+# @raycast.mode compact
+
+# Optional parameters:
+# @raycast.icon 🛠️
+
+# Documentation:
+# @raycast.description Vérifie l'état des services BABACOIFFURE (API & WEBSITE) en PROD et PREPROD via des appels API, 
+#                      et redémarre automatiquement les services qui ne répondent pas avec un code 200.
+# @raycast.author toi
+
 # Liste des environnements et services à checker
 ENVS=("PROD" "PREPROD")
 SERVICES=("API" "WEBSITE")
