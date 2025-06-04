@@ -1161,6 +1161,22 @@ vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
 	end,
 })
 
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = "markdown",
+	callback = function()
+		-- Enable syntax highlighting if not already
+		vim.cmd("syntax enable")
+
+		-- Highlight undone todos: bold and white
+		vim.cmd([[syntax match TodoOpen /^.*-\s\[\s\].*/]])
+		vim.cmd([[highlight TodoOpen guifg=#ffffff gui=bold]])
+
+		-- Dim done todos: gray
+		vim.cmd([[syntax match TodoDone /^.*-\s\[x\].*/]])
+		vim.cmd([[highlight TodoDone guifg=#666666 gui=italic]])
+	end,
+})
+
 vim.api.nvim_create_autocmd({ "BufWritePre" }, {
 	pattern = "*.md",
 	callback = function()
