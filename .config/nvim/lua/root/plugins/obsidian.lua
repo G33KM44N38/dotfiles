@@ -1167,13 +1167,13 @@ vim.api.nvim_create_autocmd("FileType", {
 		-- Enable syntax highlighting if not already
 		vim.cmd("syntax enable")
 
-		-- Highlight undone todos: bold and white
-		vim.cmd([[syntax match TodoOpen /^.*-\s\[\s\].*/]])
-		vim.cmd([[highlight TodoOpen guifg=#ffffff gui=bold]])
-
 		-- Dim done todos: gray
 		vim.cmd([[syntax match TodoDone /^.*-\s\[x\].*/]])
 		vim.cmd([[highlight TodoDone guifg=#666666 gui=italic]])
+
+		-- Highlight [start: ...] in green (escaped correctly)
+		vim.cmd('syntax match TodoStart "\\[start: [^]]*\\]"')
+		vim.cmd("highlight TodoStart guifg=#22c55e gui=bold")
 	end,
 })
 
