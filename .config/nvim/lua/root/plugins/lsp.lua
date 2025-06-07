@@ -39,7 +39,7 @@ return {
 					"eslint",
 					"gopls",
 					"pyright",
-					"volar",
+					-- "volar",
 					"prismals",
 					"graphql",
 					"rust_analyzer",
@@ -58,7 +58,7 @@ return {
 					"eslint",
 					"gopls",
 					"pyright",
-					"volar",
+					-- "volar",
 					"prismals",
 					"graphql",
 					"rust_analyzer",
@@ -93,10 +93,15 @@ return {
 				vim.keymap.set("n", "<leader>rs", ":LspRestart<CR>", opts)
 
 				-- Auto-fix on save for ESLint
-				if client.name == "eslint" then
+				-- Only create autocmd for actual ESLint clients
+				if client.name == "eslint" or client.name == "eslint_d" then
 					vim.api.nvim_create_autocmd("BufWritePre", {
 						buffer = bufnr,
-						command = "EslintFixAll",
+						callback = function()
+							if vim.fn.exists(":EslintFixAll") > 0 then
+								vim.cmd("EslintFixAll")
+							end
+						end,
 					})
 				end
 			end
@@ -118,10 +123,10 @@ return {
 			})
 
 			-- Configuration par serveur
-			lspconfig.lua_ls.setup({
-				capabilities = capabilities,
-				on_attach = on_attach,
-			})
+			-- lspconfig.lua_ls.setup({
+			-- 	capabilities = capabilities,
+			-- 	on_attach = on_attach,
+			-- })
 
 			-- lspconfig.ts_ls.setup({
 			-- 	capabilities = capabilities,
@@ -129,10 +134,10 @@ return {
 			-- 	root_dir = require("lspconfig.util").root_pattern("tsconfig.json", "package.json", ".git"),
 			-- })
 
-			lspconfig.eslint.setup({
-				capabilities = capabilities,
-				on_attach = on_attach,
-			})
+			-- lspconfig.eslint.setup({
+			-- 	capabilities = capabilities,
+			-- 	on_attach = on_attach,
+			-- })
 
 			-- lspconfig.volar.setup({
 			-- 	capabilities = capabilities,
@@ -140,87 +145,87 @@ return {
 			-- 	filetypes = { "vue" },
 			-- })
 
-			lspconfig.tailwindcss.setup({
-				capabilities = capabilities,
-				on_attach = on_attach,
-			})
+			-- lspconfig.tailwindcss.setup({
+			-- 	capabilities = capabilities,
+			-- 	on_attach = on_attach,
+			-- })
 
-			lspconfig.html.setup({
-				capabilities = capabilities,
-				on_attach = on_attach,
-			})
+			-- lspconfig.html.setup({
+			-- 	capabilities = capabilities,
+			-- 	on_attach = on_attach,
+			-- })
 
-			lspconfig.cssls.setup({
-				capabilities = capabilities,
-				on_attach = on_attach,
-			})
+			-- lspconfig.cssls.setup({
+			-- 	capabilities = capabilities,
+			-- 	on_attach = on_attach,
+			-- })
 
-			lspconfig.jsonls.setup({
-				capabilities = capabilities,
-				on_attach = on_attach,
-			})
+			-- lspconfig.jsonls.setup({
+			-- 	capabilities = capabilities,
+			-- 	on_attach = on_attach,
+			-- })
 
-			lspconfig.dockerls.setup({
-				capabilities = capabilities,
-				on_attach = on_attach,
-			})
+			-- lspconfig.dockerls.setup({
+			-- 	capabilities = capabilities,
+			-- 	on_attach = on_attach,
+			-- })
 
-			lspconfig.docker_compose_language_service = nil -- pas toujours stable
+			-- lspconfig.docker_compose_language_service = nil -- pas toujours stable
 
-			lspconfig.clangd.setup({
-				capabilities = capabilities,
-				on_attach = on_attach,
-			})
+			-- lspconfig.clangd.setup({
+			-- 	capabilities = capabilities,
+			-- 	on_attach = on_attach,
+			-- })
 
-			lspconfig.bashls.setup({
-				capabilities = capabilities,
-				on_attach = on_attach,
-			})
+			-- lspconfig.bashls.setup({
+			-- 	capabilities = capabilities,
+			-- 	on_attach = on_attach,
+			-- })
 
-			lspconfig.yamlls.setup({
-				capabilities = capabilities,
-				on_attach = on_attach,
-			})
+			-- lspconfig.yamlls.setup({
+			-- 	capabilities = capabilities,
+			-- 	on_attach = on_attach,
+			-- })
 
-			lspconfig.gopls.setup({
-				capabilities = capabilities,
-				on_attach = on_attach,
-				settings = {
-					gopls = {
-						analyses = {
-							unusedparams = true,
-						},
-						staticcheck = true,
-					},
-				},
-			})
+			-- lspconfig.gopls.setup({
+			-- 	capabilities = capabilities,
+			-- 	on_attach = on_attach,
+			-- 	settings = {
+			-- 		gopls = {
+			-- 			analyses = {
+			-- 				unusedparams = true,
+			-- 			},
+			-- 			staticcheck = true,
+			-- 		},
+			-- 	},
+			-- })
 
-			lspconfig.pyright.setup({
-				capabilities = capabilities,
-				on_attach = on_attach,
-			})
+			-- lspconfig.pyright.setup({
+			-- 	capabilities = capabilities,
+			-- 	on_attach = on_attach,
+			-- })
 
-			lspconfig.rust_analyzer.setup({
-				capabilities = capabilities,
-				on_attach = on_attach,
-				settings = {
-					["rust-analyzer"] = {
-						cargo = { allFeatures = false },
-						procMacro = { enable = false },
-						checkOnSave = { command = "clippy" },
-					},
-				},
-			})
+			-- lspconfig.rust_analyzer.setup({
+			-- 	capabilities = capabilities,
+			-- 	on_attach = on_attach,
+			-- 	settings = {
+			-- 		["rust-analyzer"] = {
+			-- 			cargo = { allFeatures = false },
+			-- 			procMacro = { enable = false },
+			-- 			checkOnSave = { command = "clippy" },
+			-- 		},
+			-- 	},
+			-- })
 
-			lspconfig.graphql.setup({
-				capabilities = capabilities,
-				on_attach = on_attach,
-			})
+			-- lspconfig.graphql.setup({
+			-- 	capabilities = capabilities,
+			-- 	on_attach = on_attach,
+			-- })
 
-			lspconfig.prismals.setup({
-				capabilities = capabilities,
-				on_attach = on_attach,
-			})
+			-- lspconfig.prismals.setup({
+			-- 	capabilities = capabilities,
+			-- 	on_attach = on_attach,
+			-- })
 		end,
 	},
 }

@@ -1164,6 +1164,9 @@ vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = "markdown",
 	callback = function()
+		if not in_workspace() then
+			return
+		end
 		-- Enable syntax highlighting if not already
 		vim.cmd("syntax enable")
 

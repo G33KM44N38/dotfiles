@@ -12,6 +12,7 @@ alias c="cursor ."
 alias ocr="open_current_repo"
 alias odn="daily_open.sh"
 alias me="manage_env.sh"
+alias bch="babacoiffure_checkhealth.sh"
 
 # Git command
 alias gs="git status"

@@ -86,6 +86,7 @@ return {
 		})
 
 		vim.api.nvim_set_keymap("n", "gi", "<cmd>Telescope lsp_implementations<CR>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "gi", "<cmd>Telescope lsp_definitions<CR>", { noremap = true, silent = true })
 		vim.api.nvim_set_keymap(
 			"n",
 			"<leader>hi",
