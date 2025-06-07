@@ -7,16 +7,8 @@ end
 
 return {
 	"ThePrimeagen/git-worktree.nvim",
-	dependencies = {
-		"nvim-telescope/telescope.nvim",
-		{
-			"ThePrimeagen/harpoon",
-			branch = "harpoon2",
-		},
-	},
 
 	config = function()
-		local harpoon = require("harpoon")
 		local Worktree = require("git-worktree")
 
 		Worktree.setup({
@@ -26,11 +18,17 @@ return {
 		Worktree.on_tree_change(function(op, metadata)
 			if op == Worktree.Operations.Switch then
 				vim.defer_fn(function()
-					vim.api.nvim_command("LspRestart")
+					-- Check if we're in a Neovim window/buffer context
+					local buf = vim.api.nvim_get_current_buf()
+					if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype ~= "nofile" then
+						-- Additional check to ensure we have active LSP clients
+						local clients = vim.lsp.get_clients()
+						if #clients > 0 then
+							vim.cmd("LspRestart")
+						end
+					end
 				end, 500)
-
 				update_tmux_windows()
-
 				print("Switched to worktree: " .. metadata.path)
 			end
 		end)
