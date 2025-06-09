@@ -1,14 +1,15 @@
 return {
 	"topaxi/pipeline.nvim",
-	cmd = "GhActions",
+	cmd = "Pipeline",
 	keys = {
 		{ "<leader>gh", "<cmd>Pipeline<cr>", desc = "Open Github Actions" },
 	},
-	-- optional, you can also install and use `yq` instead.
-	-- build = 'make',
-	dependencies = { "nvim-lua/plenary.nvim", "MunifTanjim/nui.nvim" },
-	opts = {},
+	dependencies = {
+		"nvim-lua/plenary.nvim",
+		"MunifTanjim/nui.nvim",
+	},
+	opts = {}, -- Ajoute ici les options si besoin
 	config = function(_, opts)
-		require("gh-actions").setup(opts)
+		require("pipeline").setup(opts)
 	end,
 }
