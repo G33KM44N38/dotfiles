@@ -5,16 +5,12 @@ return {
 		"nvim-lua/plenary.nvim",
 		"nvim-tree/nvim-web-devicons",
 	},
-
 	config = function()
 		local ok, telescope = pcall(require, "telescope")
-
 		if not ok then
 			return
 		end
-
 		local actions = require("telescope.actions")
-
 		telescope.setup({
 			picker = {},
 			defaults = {
@@ -29,7 +25,6 @@ return {
 					"--smart-case",
 					"--hidden",
 				},
-
 				prompt_prefix = "",
 				selection_caret = "  ",
 				entry_prefix = "  ",
@@ -50,7 +45,6 @@ return {
 					height = 0.85,
 					preview_cutoff = 120,
 				},
-				file_sorter = require("telescope.sorters").get_fuzzy_file,
 				file_ignore_patterns = {
 					"node_modules/",
 					".git/",
@@ -62,7 +56,6 @@ return {
 					"Cargo.lock",
 					".next/",
 				},
-				generic_sorter = require("telescope.sorters").get_generic_fuzzy_sorter,
 				path_display = { "absolute" },
 				winblend = 0,
 				color_devicons = true,
@@ -83,10 +76,23 @@ return {
 					},
 				},
 			},
+			pickers = {
+				-- You can also configure specific pickers to have different sorting behavior
+				find_files = {
+					-- For even more exact matching on find_files specifically
+					sorter = require("telescope.sorters").get_substr_matcher,
+				},
+				live_grep = {
+					-- Keep fuzzy for live_grep since it's useful for search
+					sorter = require("telescope.sorters").get_generic_fuzzy_sorter,
+				},
+			},
 		})
 
-		vim.api.nvim_set_keymap("n", "gi", "<cmd>Telescope lsp_implementations<CR>", { noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "gi", "<cmd>Telescope lsp_definitions<CR>", { noremap = true, silent = true })
+		-- Note: You have duplicate "gi" mappings - the second one overwrites the first
+		-- Fixed to use different keys:
+		vim.api.nvim_set_keymap("n", "gI", "<cmd>Telescope lsp_implementations<CR>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "gd", "<cmd>Telescope lsp_definitions<CR>", { noremap = true, silent = true })
 		vim.api.nvim_set_keymap(
 			"n",
 			"<leader>hi",
