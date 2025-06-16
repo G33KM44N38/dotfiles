@@ -993,28 +993,50 @@ local function toggle_checkbox_with_timestamp()
 	end
 end
 
+-- This function starts a task:
+-- 1. It changes the checkbox to `[ ]` to indicate it's the active task.
+-- 2. It adds or updates a `[start: ...]` timestamp.
+-- 3. It only works on non-completed tasks (anything but `[x]`).
 local function todoStart()
-	-- Get the current line
+	-- Define your desired date and time formats.
+	local date_format = "%Y-%m-%d"
+	local time_format = "%H:%M"
+
 	local line = vim.api.nvim_get_current_line()
 
-	-- Check if the line has a checkbox
-	local checkbox_pattern = "(%s*-%s*%[)([%s%a%d])(])(.*)"
-	local indent, prefix, mark, suffix = line:match(checkbox_pattern)
+	-- MODIFIED Regex: Correctly captures multi-character marks like "A1".
+	-- `[^x%]]+` means "one or more characters that are not 'x' and not ']'".
+	local pattern = "^(%s*-%s*%[)([^x%]]+)(%].*)"
+	local prefix, mark, rest_of_line = line:match(pattern)
 
-	if indent and prefix and mark and suffix then
+	if prefix and mark and rest_of_line then
+		-- Get the current timestamp. Based on your system's time, it is:
+		local timestamp = os.date(date_format .. " " .. time_format) -- e.g., "2025-06-16 12:34"
 		local new_line
 
-		-- Use the date_format variable
-		local timestamp = os.date(date_format .. " " .. time_format)
-		new_line = indent .. " " .. "] " .. suffix .. " [start: " .. timestamp .. "]"
+		-- MODIFIED Logic: We now hardcode the new mark to be a space.
+		local new_mark = " "
 
-		-- Update the line
+		if rest_of_line:match("%[start:[^%]]*%]") then
+			-- If a [start] tag exists, update it and set the checkbox to `[ ]`.
+			local updated_rest = rest_of_line:gsub("%[start:[^%]]*%]", "[start: " .. timestamp .. "]")
+			new_line = prefix .. new_mark .. updated_rest
+		else
+			-- If no [start] tag exists, add one and set the checkbox to `[ ]`.
+			local full_original_line = prefix .. new_mark .. rest_of_line
+			new_line = full_original_line:gsub("%s*$", "") .. " [start: " .. timestamp .. "]"
+		end
+
 		vim.api.nvim_set_current_line(new_line)
 	else
-		-- If no checkbox pattern found, use the built-in toggle function
-		vim.cmd("ObsidianToggleCheckbox")
+		-- Fallback for lines that are not valid todos (or are already completed).
+		print("Not a valid, non-completed todo item.")
+		-- optional: vim.cmd("ObsidianToggleCheckbox")
 	end
 end
+
+-- You would then map this function to a key, for example:
+-- vim.keymap.set("n", "<leader>ts", todoStart, { desc = "Add/Update [start] time for todo" })
 
 local function find_completed_todos_with_timestamps()
 	local pickers = require("telescope.pickers")
