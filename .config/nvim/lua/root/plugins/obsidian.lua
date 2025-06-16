@@ -1178,6 +1178,8 @@ vim.api.nvim_create_autocmd("FileType", {
 		-- Highlight [today] in orange
 		vim.cmd('syntax match TodoToday "\\[today\\]"')
 		vim.cmd("highlight TodoToday guifg=#ff9900 gui=bold")
+		-- ADDED: Highlight for the In Progress section title
+		vim.cmd("highlight TodoInProgress guifg=#38bdf8 gui=bold") -- A nice blue color
 
 		-- Create namespace for virtual text
 		local ns_id = vim.api.nvim_create_namespace("markdown_today")
@@ -1193,33 +1195,42 @@ vim.api.nvim_create_autocmd("FileType", {
 			local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 			local today_lines = {}
 			local completed_lines = {}
+			local in_progress_lines = {} -- ADDED: Table for in-progress tasks
 			local todos_line = nil
 
-			-- Find TODOS section and collect [today] items and completed tasks
+			-- Find TODOS section and collect tasks
 			for i, line in ipairs(lines) do
 				-- Find ## TODOS heading
 				if line:match("^##%s+TODOS") then
 					todos_line = i - 1 -- Convert to 0-based indexing
 				end
 
-				-- Find all lines containing [today]
-				if line:match("%[today%]") then
-					-- Clean up the line: remove leading whitespace and dashes, keep the task
+				-- MODIFIED: Logic to correctly categorize tasks
+
+				-- Find in-progress tasks: [ ] with a [start: ...] tag and [today]
+				if line:match("^%s*-%s*%[ %]") and line:match("%[start: ") and line:match("%[today%]") then
+					local cleaned_line = line:gsub("^%s*-%s*%[ %]%s*", "")
+						:gsub("%s*%[today%]", "")
+						:gsub("%s*%[start:[^%]]*%]%s*", "")
+						:gsub("%s*%[completed:[^%]]*%]%s*", "")
+						:gsub("%s*%[duration:[^%]]*%]%s*", "")
+					if cleaned_line:match("%S") then -- Only add if not empty after cleaning
+						table.insert(in_progress_lines, cleaned_line)
+					end
+				-- Find other [today] tasks (that are NOT in-progress and NOT completed)
+				elseif line:match("%[today%]") and not line:match("^%s*-%s*%[x%]") then
 					local cleaned_line = line:gsub("^%s*-%s*%[[^%]]*%]%s*", ""):gsub("%s*%[today%]", "")
 					if cleaned_line:match("%S") then -- Only add if not empty after cleaning
 						table.insert(today_lines, cleaned_line)
 					end
-				end
-
 				-- Find completed tasks [x]
-				if line:match("^%s*-%s*%[x%]") then
-					-- Extract task name and duration info
+				elseif line:match("^%s*-%s*%[x%]") then
 					local task_part = line:gsub("^%s*-%s*%[x%]%s*", "")
 					local duration_match = task_part:match("%[duration:%s*([^%]]+)%]")
 					local task_name = task_part
-						:gsub("%s*%[start:.-$", "")
-						:gsub("%s*%[completed:.-$", "")
-						:gsub("%s*%[duration:.-$", "")
+						:gsub("%s*%[start:.-%]", "") -- Use non-greedy match
+						:gsub("%s*%[completed:.-%]", "")
+						:gsub("%s*%[duration:.-%]", "")
 
 					if task_name:match("%S") then
 						local display_text = task_name
@@ -1231,18 +1242,27 @@ vim.api.nvim_create_autocmd("FileType", {
 				end
 			end
 
-			-- Add virtual text under TODOS section if found
-			if todos_line and (#today_lines > 0 or #completed_lines > 0) then
+			-- MODIFIED: Add virtual text under TODOS section if any category has items
+			if todos_line and (#today_lines > 0 or #completed_lines > 0 or #in_progress_lines > 0) then
 				local all_virt_lines = {}
 
 				-- Add empty line after TODOS
 				table.insert(all_virt_lines, { { "", "Normal" } })
 
+				-- ADDED: In Progress section (at the top)
+				if #in_progress_lines > 0 then
+					table.insert(all_virt_lines, { { "⏳ In Progress:", "TodoInProgress" } })
+					for _, task in ipairs(in_progress_lines) do
+						table.insert(all_virt_lines, { { "  • " .. task, "Comment" } })
+					end
+					table.insert(all_virt_lines, { { "", "Normal" } })
+				end
+
 				-- Add Today's Focus section if there are today items
 				if #today_lines > 0 then
 					table.insert(all_virt_lines, { { "📅 Today's Focus:", "TodoToday" } })
 					for _, task in ipairs(today_lines) do
-						table.insert(all_virt_lines, { { "  • " .. task, "Comment" } })
+						table.insert(all_virt_lines, { { "  • " .. task, "Comment" } })
 					end
 					table.insert(all_virt_lines, { { "", "Normal" } })
 				end
@@ -1251,7 +1271,7 @@ vim.api.nvim_create_autocmd("FileType", {
 				if #completed_lines > 0 then
 					table.insert(all_virt_lines, { { "✅ Completed Today:", "TodoStart" } })
 					for _, task in ipairs(completed_lines) do
-						table.insert(all_virt_lines, { { "  ✓ " .. task, "TodoDone" } })
+						table.insert(all_virt_lines, { { "  ✓ " .. task, "TodoDone" } })
 					end
 					table.insert(all_virt_lines, { { "", "Normal" } })
 				end
