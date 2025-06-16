@@ -1169,14 +1169,109 @@ vim.api.nvim_create_autocmd("FileType", {
 		end
 		-- Enable syntax highlighting if not already
 		vim.cmd("syntax enable")
-
 		-- Dim done todos: gray
 		vim.cmd([[syntax match TodoDone /^.*-\s\[x\].*/]])
 		vim.cmd([[highlight TodoDone guifg=#666666 gui=italic]])
-
 		-- Highlight [start: ...] in green (escaped correctly)
 		vim.cmd('syntax match TodoStart "\\[start: [^]]*\\]"')
 		vim.cmd("highlight TodoStart guifg=#22c55e gui=bold")
+		-- Highlight [today] in orange
+		vim.cmd('syntax match TodoToday "\\[today\\]"')
+		vim.cmd("highlight TodoToday guifg=#ff9900 gui=bold")
+
+		-- Create namespace for virtual text
+		local ns_id = vim.api.nvim_create_namespace("markdown_today")
+
+		-- Function to add/update virtual text
+		local function update_virtual_text()
+			local bufnr = vim.api.nvim_get_current_buf()
+
+			-- Clear existing virtual text
+			vim.api.nvim_buf_clear_namespace(bufnr, ns_id, 0, -1)
+
+			-- Get all lines in the buffer
+			local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+			local today_lines = {}
+			local completed_lines = {}
+			local todos_line = nil
+
+			-- Find TODOS section and collect [today] items and completed tasks
+			for i, line in ipairs(lines) do
+				-- Find ## TODOS heading
+				if line:match("^##%s+TODOS") then
+					todos_line = i - 1 -- Convert to 0-based indexing
+				end
+
+				-- Find all lines containing [today]
+				if line:match("%[today%]") then
+					-- Clean up the line: remove leading whitespace and dashes, keep the task
+					local cleaned_line = line:gsub("^%s*-%s*%[[^%]]*%]%s*", ""):gsub("%s*%[today%]", "")
+					if cleaned_line:match("%S") then -- Only add if not empty after cleaning
+						table.insert(today_lines, cleaned_line)
+					end
+				end
+
+				-- Find completed tasks [x]
+				if line:match("^%s*-%s*%[x%]") then
+					-- Extract task name and duration info
+					local task_part = line:gsub("^%s*-%s*%[x%]%s*", "")
+					local duration_match = task_part:match("%[duration:%s*([^%]]+)%]")
+					local task_name = task_part
+						:gsub("%s*%[start:.-$", "")
+						:gsub("%s*%[completed:.-$", "")
+						:gsub("%s*%[duration:.-$", "")
+
+					if task_name:match("%S") then
+						local display_text = task_name
+						if duration_match then
+							display_text = display_text .. " (" .. duration_match .. ")"
+						end
+						table.insert(completed_lines, display_text)
+					end
+				end
+			end
+
+			-- Add virtual text under TODOS section if found
+			if todos_line and (#today_lines > 0 or #completed_lines > 0) then
+				local all_virt_lines = {}
+
+				-- Add empty line after TODOS
+				table.insert(all_virt_lines, { { "", "Normal" } })
+
+				-- Add Today's Focus section if there are today items
+				if #today_lines > 0 then
+					table.insert(all_virt_lines, { { "📅 Today's Focus:", "TodoToday" } })
+					for _, task in ipairs(today_lines) do
+						table.insert(all_virt_lines, { { "  • " .. task, "Comment" } })
+					end
+					table.insert(all_virt_lines, { { "", "Normal" } })
+				end
+
+				-- Add Completed section if there are completed items
+				if #completed_lines > 0 then
+					table.insert(all_virt_lines, { { "✅ Completed Today:", "TodoStart" } })
+					for _, task in ipairs(completed_lines) do
+						table.insert(all_virt_lines, { { "  ✓ " .. task, "TodoDone" } })
+					end
+					table.insert(all_virt_lines, { { "", "Normal" } })
+				end
+
+				-- Add all virtual lines at once
+				vim.api.nvim_buf_set_extmark(bufnr, ns_id, todos_line + 1, 0, {
+					virt_lines = all_virt_lines,
+					hl_mode = "combine",
+				})
+			end
+		end
+
+		-- Set up autocmds for virtual text updates
+		vim.api.nvim_create_autocmd({ "BufReadPost", "BufWritePost", "TextChanged", "TextChangedI" }, {
+			buffer = 0, -- Current buffer only
+			callback = update_virtual_text,
+		})
+
+		-- Initial virtual text setup
+		vim.schedule(update_virtual_text)
 	end,
 })
 
