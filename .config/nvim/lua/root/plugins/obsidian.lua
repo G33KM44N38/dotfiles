@@ -415,6 +415,7 @@ local function import_todos_from_previous_daily()
 		local prev_date = os.date("*t", current_date - (i * 86400)) -- 86400 seconds = 1 day
 		local prev_file = string.format("%02d-%02d-%04d.md", prev_date.month, prev_date.day, prev_date.year)
 		local full_path = daily_folder .. prev_file
+		local pattern = "^(%s*-%s*%[)([^x%]]+)(%].*)"
 
 		-- Check if file exists
 		local f = io.open(full_path, "r")
@@ -436,7 +437,7 @@ local function import_todos_from_previous_daily()
 				elseif in_todos_section and line:match("^##") then
 					-- Stop when next section starts
 					break
-				elseif in_todos_section and line:match("%s*-%s*%[%s*[^xX]%s*%]") then
+				elseif in_todos_section and line:match(pattern) then
 					-- Unchecked todo item
 					table.insert(todos, line)
 				end
