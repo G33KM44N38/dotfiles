@@ -1,3 +1,4 @@
+local options = require("vim.filetype.options")
 return {
 	{
 		"williamboman/mason.nvim",
@@ -14,6 +15,9 @@ return {
 			},
 		},
 		config = function()
+			if vim.g.vscode then
+				return
+			end
 			require("mason").setup({
 				ui = {
 					icons = {
@@ -58,7 +62,6 @@ return {
 					"eslint",
 					"gopls",
 					"pyright",
-					-- "volar",
 					"prismals",
 					"graphql",
 					"rust_analyzer",
@@ -78,41 +81,29 @@ return {
 		config = function()
 			local lspconfig = require("lspconfig")
 			local cmp_nvim_lsp = require("cmp_nvim_lsp")
-
-			local on_attach = function(client, bufnr)
-				local opts = { buffer = bufnr }
-
-				vim.keymap.set("n", "gD", "<cmd>Lspsaga finder<CR>", opts)
-				vim.keymap.set("n", "gR", vim.lsp.buf.declaration, opts)
-				vim.keymap.set("n", "gi", "<cmd>Telescope lsp_implementations<CR>", opts)
-				vim.keymap.set("n", "gt", "<cmd>Telescope lsp_type_definitions<CR>", opts)
-				vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
-				vim.keymap.set("n", "<leader>D", "<cmd>Telescope diagnostics bufnr=0<CR>", opts)
-				vim.keymap.set("n", "<leader>d", vim.diagnostic.open_float, opts)
-				vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
-				vim.keymap.set("n", "<leader>rs", ":LspRestart<CR>", opts)
-
-				-- Auto-fix on save for ESLint
-				-- Only create autocmd for actual ESLint clients
-				if client.name == "eslint" or client.name == "eslint_d" then
-					vim.api.nvim_create_autocmd("BufWritePre", {
-						buffer = bufnr,
-						callback = function()
-							if vim.fn.exists(":EslintFixAll") > 0 then
-								vim.cmd("EslintFixAll")
-							end
-						end,
-					})
-				end
-			end
+			local opts = { buffer = bufnr }
 
 			local capabilities = cmp_nvim_lsp.default_capabilities()
 
 			local signs = { Error = " ", Warn = " ", Hint = "󰠠 ", Info = " " }
 			for type, icon in pairs(signs) do
 				local hl = "DiagnosticSign" .. type
-				-- vim.fn.sign_define(hl, { text = icon, texthl = hl, numhl = "" })
 			end
+
+			vim.api.nvim_create_autocmd("LspAttach", {
+				group = vim.api.nvim_create_augroup("UserLspConfig", {}),
+				callback = function(args)
+					local client = vim.lsp.get_client_by_id(args.data.client_id)
+					if client and (client.name == "eslint" or client.name == "eslint_d") then
+						vim.api.nvim_create_autocmd("BufWritePre", {
+							buffer = args.buf,
+							callback = function()
+								vim.lsp.buf.format({ async = true, filter = function(client) return client.name == "eslint" or client.name == "eslint_d" end })
+							end,
+						})
+					end
+				end,
+			})
 
 			vim.diagnostic.config({
 				virtual_text = false,
@@ -121,111 +112,6 @@ return {
 				update_in_insert = false,
 				severity_sort = true,
 			})
-
-			-- Configuration par serveur
-			-- lspconfig.lua_ls.setup({
-			-- 	capabilities = capabilities,
-			-- 	on_attach = on_attach,
-			-- })
-
-			-- lspconfig.ts_ls.setup({
-			-- 	capabilities = capabilities,
-			-- 	on_attach = on_attach,
-			-- 	root_dir = require("lspconfig.util").root_pattern("tsconfig.json", "package.json", ".git"),
-			-- })
-
-			-- lspconfig.eslint.setup({
-			-- 	capabilities = capabilities,
-			-- 	on_attach = on_attach,
-			-- })
-
-			-- lspconfig.volar.setup({
-			-- 	capabilities = capabilities,
-			-- 	on_attach = on_attach,
-			-- 	filetypes = { "vue" },
-			-- })
-
-			-- lspconfig.tailwindcss.setup({
-			-- 	capabilities = capabilities,
-			-- 	on_attach = on_attach,
-			-- })
-
-			-- lspconfig.html.setup({
-			-- 	capabilities = capabilities,
-			-- 	on_attach = on_attach,
-			-- })
-
-			-- lspconfig.cssls.setup({
-			-- 	capabilities = capabilities,
-			-- 	on_attach = on_attach,
-			-- })
-
-			-- lspconfig.jsonls.setup({
-			-- 	capabilities = capabilities,
-			-- 	on_attach = on_attach,
-			-- })
-
-			-- lspconfig.dockerls.setup({
-			-- 	capabilities = capabilities,
-			-- 	on_attach = on_attach,
-			-- })
-
-			-- lspconfig.docker_compose_language_service = nil -- pas toujours stable
-
-			-- lspconfig.clangd.setup({
-			-- 	capabilities = capabilities,
-			-- 	on_attach = on_attach,
-			-- })
-
-			-- lspconfig.bashls.setup({
-			-- 	capabilities = capabilities,
-			-- 	on_attach = on_attach,
-			-- })
-
-			-- lspconfig.yamlls.setup({
-			-- 	capabilities = capabilities,
-			-- 	on_attach = on_attach,
-			-- })
-
-			-- lspconfig.gopls.setup({
-			-- 	capabilities = capabilities,
-			-- 	on_attach = on_attach,
-			-- 	settings = {
-			-- 		gopls = {
-			-- 			analyses = {
-			-- 				unusedparams = true,
-			-- 			},
-			-- 			staticcheck = true,
-			-- 		},
-			-- 	},
-			-- })
-
-			-- lspconfig.pyright.setup({
-			-- 	capabilities = capabilities,
-			-- 	on_attach = on_attach,
-			-- })
-
-			-- lspconfig.rust_analyzer.setup({
-			-- 	capabilities = capabilities,
-			-- 	on_attach = on_attach,
-			-- 	settings = {
-			-- 		["rust-analyzer"] = {
-			-- 			cargo = { allFeatures = false },
-			-- 			procMacro = { enable = false },
-			-- 			checkOnSave = { command = "clippy" },
-			-- 		},
-			-- 	},
-			-- })
-
-			-- lspconfig.graphql.setup({
-			-- 	capabilities = capabilities,
-			-- 	on_attach = on_attach,
-			-- })
-
-			-- lspconfig.prismals.setup({
-			-- 	capabilities = capabilities,
-			-- 	on_attach = on_attach,
-			-- })
 		end,
 	},
 }
