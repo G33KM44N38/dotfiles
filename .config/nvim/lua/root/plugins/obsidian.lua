@@ -1203,6 +1203,7 @@ vim.api.nvim_create_autocmd("FileType", {
 			local today_lines = {}
 			local completed_lines = {}
 			local in_progress_lines = {} -- ADDED: Table for in-progress tasks
+			local eisenhower_a, eisenhower_b, eisenhower_c, eisenhower_d = {}, {}, {}, {}
 			local todos_line = nil
 
 			-- Find TODOS section and collect tasks
@@ -1212,7 +1213,26 @@ vim.api.nvim_create_autocmd("FileType", {
 					todos_line = i - 1 -- Convert to 0-based indexing
 				end
 
-				-- MODIFIED: Logic to correctly categorize tasks
+				if line:match("%[([A-D])%]") and not line:match("%[today%]") then
+					local category = line:match("%[([A-D])%]")
+					local content = line:gsub("^%s*-%s*%[ %]%s*", "")
+						:gsub("%s*%[[A-D]%]", "")
+						:gsub("%s*%[today%]", "")
+						:gsub("%s*%[start:[^%]]*%]%s*", "")
+						:gsub("%s*%[completed:[^%]]*%]%s*", "")
+						:gsub("%s*%[duration:[^%]]*%]%s*", "")
+					if content:match("%S") then
+						if category == "A" then
+							table.insert(eisenhower_a, content)
+						elseif category == "B" then
+							table.insert(eisenhower_b, content)
+						elseif category == "C" then
+							table.insert(eisenhower_c, content)
+						elseif category == "D" then
+							table.insert(eisenhower_d, content)
+						end
+					end
+				end
 
 				-- Find in-progress tasks: [ ] with a [start: ...] tag and [today]
 				if line:match("^%s*-%s*%[ %]") and line:match("%[start: ") and line:match("%[today%]") then
@@ -1273,6 +1293,42 @@ vim.api.nvim_create_autocmd("FileType", {
 					end
 					table.insert(all_virt_lines, { { "", "Normal" } })
 				end
+
+				-- Add Eisenhower Matrix section if there are tasks [A], [B], [C], or [D]
+				if #eisenhower_a > 0 or #eisenhower_b > 0 or #eisenhower_c > 0 or #eisenhower_d > 0 then
+					-- table.insert(all_virt_lines, { { "⚖️ Eisenhower Matrix:", "TodoEisenhower" } })
+
+					local function add_category(label, tasks, hl)
+						if #tasks > 0 then
+							table.insert(all_virt_lines, { { label, hl } })
+							for _, task in ipairs(tasks) do
+								local trimmed = vim.trim(task)
+								if #trimmed > 0 then
+									table.insert(all_virt_lines, { { trimmed, "Comment" } })
+								end
+							end
+							table.insert(all_virt_lines, { { "", "Normal" } })
+						end
+					end
+
+					vim.cmd("highlight TodoEisenhowerA guifg=#f38ba8 gui=bold") -- A = Urgent & Important (red)
+					vim.cmd("highlight TodoEisenhowerB guifg=#f9e2af gui=bold") -- B = Not Urgent but Important (yellow)
+					vim.cmd("highlight TodoEisenhowerC guifg=#89dceb gui=bold") -- C = Urgent but Not Important (blue)
+					vim.cmd("highlight TodoEisenhowerD guifg=#cdd6f4 gui=italic") -- D = Not Urgent & Not Important (grayish)
+
+					add_category("DO NOW (Urgent & Important)", eisenhower_a, "TodoEisenhowerA")
+					add_category("SCHEDULE (Not Urgent but Important)", eisenhower_b, "TodoEisenhowerB")
+					add_category("DELEGATE (Urgent but Not Important)", eisenhower_c, "TodoEisenhowerC")
+					add_category("REMOVE (Not Urgent & Not Important)", eisenhower_d, "TodoEisenhowerD")
+				end
+
+				-- if #today_lines > 0 then
+				-- 	table.insert(all_virt_lines, { { "📅 Today's Focus:", "TodoToday" } })
+				-- 	for _, task in ipairs(today_lines) do
+				-- 		table.insert(all_virt_lines, { { "  • " .. task, "Comment" } })
+				-- 	end
+				-- 	table.insert(all_virt_lines, { { "", "Normal" } })
+				-- end
 
 				-- Add Completed section if there are completed items
 				if #completed_lines > 0 then

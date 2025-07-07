@@ -1,10 +1,24 @@
 return {
 	"ThePrimeagen/harpoon",
 	branch = "harpoon2",
-	dependencies = { "nvim-lua/plenary.nvim" },
+	dependencies = {
+		"nvim-lua/plenary.nvim",
+		"ThePrimeagen/git-worktree.nvim", -- Ensure this is listed as a dependency
+	},
 	settings = {
 		save_on_toggle = false,
 		sync_on_ui_close = true,
+		-- IMPORTANT: Updated 'key' function to use get_current_worktree_path()
+		key = function()
+			local git_worktree = require("git-worktree")
+			local current_worktree = git_worktree.get_current_worktree_path()
+			if current_worktree then
+				return current_worktree
+			else
+				-- Fallback to vim.fn.getcwd() for robustness
+				return vim.fn.getcwd()
+			end
+		end,
 	},
 	config = function()
 		local harpoon = require("harpoon")
