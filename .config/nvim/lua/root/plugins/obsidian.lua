@@ -1213,14 +1213,9 @@ vim.api.nvim_create_autocmd("FileType", {
 					todos_line = i - 1 -- Convert to 0-based indexing
 				end
 
-				if line:match("%[([A-D])%]") and not line:match("%[today%]") then
+				if line:match("%[([A-D])%]") then
 					local category = line:match("%[([A-D])%]")
-					local content = line:gsub("^%s*-%s*%[ %]%s*", "")
-						:gsub("%s*%[[A-D]%]", "")
-						:gsub("%s*%[today%]", "")
-						:gsub("%s*%[start:[^%]]*%]%s*", "")
-						:gsub("%s*%[completed:[^%]]*%]%s*", "")
-						:gsub("%s*%[duration:[^%]]*%]%s*", "")
+					local content = line:gsub("^%s*-%s*%[ %]%s*", ""):gsub("%s*%[[A-D]%]", ""):gsub("%s*%[today%]", "")
 					if content:match("%S") then
 						if category == "A" then
 							table.insert(eisenhower_a, content)
@@ -1234,7 +1229,6 @@ vim.api.nvim_create_autocmd("FileType", {
 					end
 				end
 
-				-- Find in-progress tasks: [ ] with a [start: ...] tag and [today]
 				if line:match("^%s*-%s*%[ %]") and line:match("%[start: ") and line:match("%[today%]") then
 					local cleaned_line = line:gsub("^%s*-%s*%[ %]%s*", "")
 						:gsub("%s*%[today%]", "")
@@ -1270,7 +1264,18 @@ vim.api.nvim_create_autocmd("FileType", {
 			end
 
 			-- MODIFIED: Add virtual text under TODOS section if any category has items
-			if todos_line and (#today_lines > 0 or #completed_lines > 0 or #in_progress_lines > 0) then
+			if
+				todos_line
+				and (
+					#today_lines > 0
+					or #completed_lines > 0
+					or #in_progress_lines > 0
+					or #eisenhower_a > 0
+					or #eisenhower_b > 0
+					or #eisenhower_c > 0
+					or #eisenhower_d > 0
+				)
+			then
 				local all_virt_lines = {}
 
 				-- Add empty line after TODOS
@@ -1321,14 +1326,6 @@ vim.api.nvim_create_autocmd("FileType", {
 					add_category("DELEGATE (Urgent but Not Important)", eisenhower_c, "TodoEisenhowerC")
 					add_category("REMOVE (Not Urgent & Not Important)", eisenhower_d, "TodoEisenhowerD")
 				end
-
-				-- if #today_lines > 0 then
-				-- 	table.insert(all_virt_lines, { { "📅 Today's Focus:", "TodoToday" } })
-				-- 	for _, task in ipairs(today_lines) do
-				-- 		table.insert(all_virt_lines, { { "  • " .. task, "Comment" } })
-				-- 	end
-				-- 	table.insert(all_virt_lines, { { "", "Normal" } })
-				-- end
 
 				-- Add Completed section if there are completed items
 				if #completed_lines > 0 then
