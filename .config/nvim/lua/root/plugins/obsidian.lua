@@ -1,7 +1,7 @@
 local workspace_path = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/"
 local daily_folder = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Daily/"
 local weekly_folder = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Weekly/"
-local date_format = "%m-%d-%Y"
+local date_format = "%Y-%m-%d"
 local time_format = "%H:%M"
 
 local function normalize_path(path)
@@ -369,7 +369,7 @@ local function check_metadata()
 	end
 
 	-- Convert file modification time to a formatted date string
-	local file_date = os.date("%m-%d-%Y", file_stats.mtime.sec)
+	local file_date = os.date("%Y-%m-%d", file_stats.mtime.sec)
 
 	-- Extract frontmatter
 	local frontmatter = extract_frontmatter()
@@ -400,10 +400,10 @@ end
 
 local function import_todos_from_previous_daily()
 	local current_file = vim.fn.expand("%:t:r") -- Get current file name without extension
-	local date_pattern = "(%d+)%-(%d+)%-(%d+)"
-	local month, day, year = current_file:match(date_pattern)
+	local date_pattern = "(%d%d%d%d)%-(%d%d)%-(%d%d)"
+	local year, month, day = current_file:match(date_pattern)
 
-	if not (month and day and year) then
+	if not (year and month and day) then
 		return false
 	end
 
@@ -413,7 +413,7 @@ local function import_todos_from_previous_daily()
 	local i = 1
 	while true do
 		local prev_date = os.date("*t", current_date - (i * 86400)) -- 86400 seconds = 1 day
-		local prev_file = string.format("%02d-%02d-%04d.md", prev_date.month, prev_date.day, prev_date.year)
+		local prev_file = string.format("%04d-%02d-%02d.md", prev_date.year, prev_date.month, prev_date.day)
 		local full_path = daily_folder .. prev_file
 		local pattern = "^(%s*-%s*%[)([^x%]]+)(%].*)"
 
@@ -502,17 +502,17 @@ end
 
 local function find_previous_daily()
 	local current_file = vim.fn.expand("%:t:r") -- Get current file name without extension
-	local date_pattern = "(%d+)%-(%d+)%-(%d+)"
-	local month, day, year = current_file:match(date_pattern)
+	local date_pattern = "(%d%d%d%d)%-(%d%d)%-(%d%d)"
+	local year, month, day = current_file:match(date_pattern)
 
-	if month and day and year then
+	if year and month and day then
 		local current_date = os.time({ year = year, month = month, day = day })
 
 		-- Start checking from yesterday, going backwards
 		local i = 1
 		while true do
 			local prev_date = os.date("*t", current_date - (i * 86400)) -- 86400 seconds = 1 day
-			local prev_file = string.format("%02d-%02d-%04d.md", prev_date.month, prev_date.day, prev_date.year)
+			local prev_file = string.format("%04d-%02d-%02d.md", prev_date.year, prev_date.month, prev_date.day)
 			local full_path = daily_folder .. prev_file
 
 			-- Check if file exists
@@ -560,16 +560,16 @@ end
 
 local function find_next_daily()
 	local current_file = vim.fn.expand("%:t:r")
-	local date_pattern = "(%d+)%-(%d+)%-(%d+)"
-	local month, day, year = current_file:match(date_pattern)
+	local date_pattern = "(%d%d%d%d)%-(%d%d)%-(%d%d)"
+	local year, month, day = current_file:match(date_pattern)
 
-	if month and day and year then
+	if year and month and day then
 		local current_date = os.time({ year = year, month = month, day = day })
 
 		local i = 1
 		while true do
 			local next_date = os.date("*t", current_date + (i * 86400))
-			local prev_file = string.format("%02d-%02d-%04d.md", next_date.month, next_date.day, next_date.year)
+			local prev_file = string.format("%04d-%02d-%02d.md", next_date.year, next_date.month, next_date.day)
 			local full_path = daily_folder .. prev_file
 
 			local f = io.open(full_path, "r")
@@ -660,7 +660,7 @@ local function apply_template_by_folder()
 			if #lines <= 1 and (lines[1] == "" or lines[1]:match("^%s*$")) then
 				local template_content = {}
 				for line in io.lines(template_path) do
-					line = line:gsub("%%DATE%%", os.date("%m-%d-%Y"))
+					line = line:gsub("%%DATE%%", os.date("%Y-%m-%d"))
 					table.insert(template_content, line)
 				end
 
@@ -960,7 +960,7 @@ local function toggle_checkbox_with_timestamp()
 		local duration_str = ""
 		if start_time_str then
 			-- Parse it back into a timestamp
-			local sm, sd, sy, hh, mm = start_time_str:match("^(%d+)%-(%d+)%-(%d+)%s+(%d+):(%d+)$")
+			local sy, sm, sd, hh, mm = start_time_str:match("^(%d+)%-(%d+)%-(%d+)%s+(%d+):(%d+)$")
 			if sm and sd and sy and hh and mm then
 				local parsed_time = os.time({
 					year = assert(tonumber(sy), "Invalid year"),
@@ -1129,7 +1129,7 @@ vim.api.nvim_create_user_command("ObsidianDaily", function()
 
 	-- Create filename
 	local prefix_daily_folder = "Daily/"
-	local filename = prefix_daily_folder .. month_str .. "-" .. day_str .. "-" .. year .. ".md"
+	local filename = prefix_daily_folder .. year .. "-" .. month_str .. "-" .. day_str .. ".md"
 
 	-- Check if the folder exists
 	local folder_exists = vim.fn.isdirectory(daily_folder)
@@ -1213,7 +1213,7 @@ vim.api.nvim_create_autocmd("FileType", {
 					todos_line = i - 1 -- Convert to 0-based indexing
 				end
 
-				if line:match("%[([A-D])%]") then
+				if line:match("%[([A-D])%]") and not line:match("%[today%]") then
 					local category = line:match("%[([A-D])%]")
 					local content = line:gsub("^%s*-%s*%[ %]%s*", ""):gsub("%s*%[[A-D]%]", ""):gsub("%s*%[today%]", "")
 					if content:match("%S") then
@@ -1252,6 +1252,7 @@ vim.api.nvim_create_autocmd("FileType", {
 						:gsub("%s*%[start:.-%]", "") -- Use non-greedy match
 						:gsub("%s*%[completed:.-%]", "")
 						:gsub("%s*%[duration:.-%]", "")
+						:gsub("%s*%[today%]", "")
 
 					if task_name:match("%S") then
 						local display_text = task_name
@@ -1263,7 +1264,6 @@ vim.api.nvim_create_autocmd("FileType", {
 				end
 			end
 
-			-- MODIFIED: Add virtual text under TODOS section if any category has items
 			if
 				todos_line
 				and (
@@ -1487,10 +1487,10 @@ vim.api.nvim_create_autocmd({ "BufReadPost", "BufWritePre" }, {
 	pattern = "*.md",
 	callback = function()
 		local current_file = vim.fn.expand("%:t:r")
-		local date_pattern = "(%d+)%-(%d+)%-(%d+)"
-		local month, day, year = current_file:match(date_pattern)
+		local date_pattern = "(%d%d%d%d)%-(%d%d)%-(%d%d)"
+		local year, month, day = current_file:match(date_pattern)
 
-		if month and day and year then
+		if year and month and day then
 			import_todos_from_previous_daily()
 		end
 	end,
