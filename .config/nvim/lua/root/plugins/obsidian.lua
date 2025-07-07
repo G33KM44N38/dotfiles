@@ -221,7 +221,19 @@ end
 function TODOSort()
 	local cursor_position = vim.api.nvim_win_get_cursor(0)
 	local todo_line = find_todos_line()
+
+	if not todo_line then
+		-- If no TODOS section is found, do nothing
+		return
+	end
+
 	local start_of_todo_list = find_next_non_empty_line(todo_line)
+
+	-- It's possible that the TODOS section exists but there are no items after it.
+	-- In that case, find_next_non_empty_line might return nil.
+	if not start_of_todo_list then
+		return
+	end
 
 	vim.api.nvim_win_set_cursor(0, { start_of_todo_list, 0 })
 
