@@ -94,7 +94,7 @@ export function createHyperSubLayer(
         },
         // Only trigger this command if the variable is 1 (i.e., if Hyper + sublayer is held)
         conditions: [
-          BuiltinKeyboardCondition,
+          // BuiltinKeyboardCondition,
           {
             type: "variable_if",
             name: subLayerVariableName,
@@ -377,4 +377,15 @@ const BuiltinKeyboardCondition: DeviceCondition = {
     },
   ],
   description: "MacBook Pro built-in keyboard",
+};
+
+export const CrkdbKeyboardCondition: DeviceCondition = {
+  type: "device_if",
+  identifiers: [
+    {
+      vendor_id: 7504,
+      product_id: 24926,
+    },
+  ],
+  description: "Kylian's crkdb (ZMK Project)",
 };

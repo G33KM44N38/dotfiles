@@ -257,6 +257,23 @@ const rules: KarabinerRules[] = [
       },
     ],
   },
+  {
+    description: "crkdb",
+    manipulators: [
+      {
+        description: "crkdb -> Hyper Key",
+        type: "basic",
+        from: {
+          key_code: "left_command",
+          modifiers: {
+            optional: ["left_shift", "left_control", "left_option"],
+          },
+        },
+        to: [{ set_variable: { name: "hyper", value: 1 } }],
+        to_after_key_up: [{ set_variable: { name: "hyper", value: 0 } }],
+      },
+    ],
+  },
   ...hyperSubLayers,
 ];
 

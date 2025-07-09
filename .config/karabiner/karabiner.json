@@ -2656,6 +2656,41 @@
             ]
           },
           {
+            "description": "crkdb",
+            "manipulators": [
+              {
+                "description": "crkdb -> Hyper Key",
+                "type": "basic",
+                "from": {
+                  "key_code": "left_command",
+                  "modifiers": {
+                    "optional": [
+                      "left_shift",
+                      "left_control",
+                      "left_option"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "set_variable": {
+                      "name": "hyper",
+                      "value": 1
+                    }
+                  }
+                ],
+                "to_after_key_up": [
+                  {
+                    "set_variable": {
+                      "name": "hyper",
+                      "value": 0
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
             "description": "Hyper Key + spacebar",
             "manipulators": [
               {
@@ -2805,15 +2840,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_b",
                     "value": 1
@@ -2837,15 +2863,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_b",
@@ -2871,15 +2888,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_b",
                     "value": 1
@@ -2903,15 +2911,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_b",
@@ -2937,15 +2936,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_b",
                     "value": 1
@@ -2969,15 +2959,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_b",
@@ -3003,15 +2984,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_b",
                     "value": 1
@@ -3035,15 +3007,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_b",
@@ -3139,15 +3102,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
                     "value": 1
@@ -3171,15 +3125,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
@@ -3205,15 +3150,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
                     "value": 1
@@ -3237,15 +3173,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
@@ -3271,15 +3198,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
                     "value": 1
@@ -3303,15 +3221,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
@@ -3337,15 +3246,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
                     "value": 1
@@ -3369,15 +3269,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
@@ -3403,15 +3294,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
                     "value": 1
@@ -3435,15 +3317,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
@@ -3469,15 +3342,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
                     "value": 1
@@ -3501,15 +3365,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
@@ -3535,15 +3390,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
                     "value": 1
@@ -3567,15 +3413,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
@@ -3601,15 +3438,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
                     "value": 1
@@ -3633,15 +3461,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
@@ -3667,15 +3486,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
                     "value": 1
@@ -3699,15 +3509,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
@@ -3733,15 +3534,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
                     "value": 1
@@ -3765,15 +3557,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
@@ -3799,15 +3582,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
                     "value": 1
@@ -3831,15 +3605,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_o",
@@ -3934,15 +3699,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_s",
                     "value": 1
@@ -3965,15 +3721,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_s",
@@ -3998,15 +3745,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_s",
                     "value": 1
@@ -4029,15 +3767,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_s",
@@ -4066,15 +3795,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_s",
                     "value": 1
@@ -4098,15 +3818,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_s",
@@ -4132,15 +3843,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_s",
                     "value": 1
@@ -4165,15 +3867,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_s",
                     "value": 1
@@ -4197,15 +3890,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_s",
@@ -4300,15 +3984,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_v",
                     "value": 1
@@ -4331,15 +4006,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_v",
@@ -4364,15 +4030,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_v",
                     "value": 1
@@ -4395,15 +4052,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_v",
@@ -4428,15 +4076,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_v",
                     "value": 1
@@ -4459,15 +4098,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_v",
@@ -4562,15 +4192,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_c",
                     "value": 1
@@ -4594,15 +4215,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_c",
                     "value": 1
@@ -4625,15 +4237,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_c",
@@ -4729,15 +4332,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_r",
                     "value": 1
@@ -4761,15 +4355,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_r",
@@ -4795,15 +4380,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_r",
                     "value": 1
@@ -4827,15 +4403,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_r",
@@ -4861,15 +4428,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_r",
                     "value": 1
@@ -4893,15 +4451,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_r",
@@ -4927,15 +4476,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_r",
                     "value": 1
@@ -4959,15 +4499,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_r",
@@ -4993,15 +4524,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_r",
                     "value": 1
@@ -5026,15 +4548,6 @@
                 },
                 "conditions": [
                   {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
-                  {
                     "type": "variable_if",
                     "name": "hyper_sublayer_r",
                     "value": 1
@@ -5058,15 +4571,6 @@
                   }
                 },
                 "conditions": [
-                  {
-                    "type": "device_if",
-                    "identifiers": [
-                      {
-                        "vendor_id": 1452
-                      }
-                    ],
-                    "description": "MacBook Pro built-in keyboard"
-                  },
                   {
                     "type": "variable_if",
                     "name": "hyper_sublayer_r",
