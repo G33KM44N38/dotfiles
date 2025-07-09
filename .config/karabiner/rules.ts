@@ -264,9 +264,14 @@ const rules: KarabinerRules[] = [
         description: "crkdb -> Hyper Key",
         type: "basic",
         from: {
-          key_code: "left_command",
+          key_code: "left_control",
           modifiers: {
-            optional: ["left_shift", "left_control", "left_option"],
+            optional: [
+              "left_command",
+              "left_shift",
+              "left_control",
+              "left_option",
+            ],
           },
         },
         to: [{ set_variable: { name: "hyper", value: 1 } }],
