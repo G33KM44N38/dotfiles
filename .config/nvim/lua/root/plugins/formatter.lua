@@ -20,6 +20,13 @@ return {
 	config = function()
 		local conform = require("conform")
 		conform.setup({
+			formatters = {
+				prettier = {
+					-- This tells conform to run prettier from the project root directory,
+					-- which helps it find the project-specific prettier config and executable.
+					require_cwd = true,
+				},
+			},
 			formatters_by_ft = {
 				javascript = javascript_formatter,
 				typescript = javascript_formatter,
