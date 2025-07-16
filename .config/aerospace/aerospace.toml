@@ -1,6 +1,5 @@
 after-login-command = ['exec-and-forget sketchybar']
 
-
 start-at-login = true
 
 enable-normalization-flatten-containers = true
@@ -25,6 +24,7 @@ outer.right =      0
 [mode.main.binding]
 
 alt-slash = 'layout tiles horizontal vertical'
+alt-comma = 'layout accordion'
 
 alt-h = 'focus left'
 alt-j = 'focus down'
@@ -66,9 +66,6 @@ alt-shift-n = 'move-node-to-monitor  next'
 alt-shift-s = 'move-node-to-monitor  secondary'
 
 alt-shift-semicolon = 'mode service'
-alt-shift-enter = 'mode apps'
-alt-shift-b = 'mode browse'
-alt-shift-r = 'mode raycast'
 
 [mode.service.binding]
 esc = ['reload-config', 'mode main']
@@ -79,57 +76,17 @@ k = 'resize smart +50'
 j = 'resize smart -50'
 u = 	'exec-and-forget /bin/bash -c "aerospace resize width 1025"'
 
-[mode.apps.binding]
-esc = [ 'mode main']
-a = ['exec-and-forget open -a "Arc"', 'mode main']
-b = ['exec-and-forget open -a "Beeper"', 'mode main']
-c = ['exec-and-forget open -a "Calendar"', 'mode main']
-d = ['exec-and-forget open -a "DBeaver"', 'mode main']
-e = ['exec-and-forget open -a "Mail"', 'mode main']
-f = ['exec-and-forget open -a "Figma"', 'mode main']
-g = ['exec-and-forget open -a "Simulator"', 'mode main']
-h = ['exec-and-forget open -a "Home"', 'mode main']
-i = ['exec-and-forget open -a "Messages"', 'mode main']
-j = ['exec-and-forget open -a "FaceTime"', 'mode main']
-k = ['exec-and-forget open -a "Ledger Live"', 'mode main']
-m = ['exec-and-forget open -a "Music"', 'mode main']
-n = ['exec-and-forget open -a "Notion"', 'mode main']
-p = ['exec-and-forget open -a "Obsidian"', 'mode main']
-r = ['exec-and-forget open -a "Reader"', 'mode main']
-s = ['exec-and-forget open -a "OBS Studio"', 'mode main']
-semicolon = ['exec-and-forget open -a "Cursor"', 'mode main']
-t = ['exec-and-forget open -a "Ghostty"', 'mode main']
-v = ['exec-and-forget open -a "Visual Studio Code"', 'mode main']
-w = ['exec-and-forget open -a "Brave Browser"', 'mode main']
-x = ['exec-and-forget open -a "Discord"', 'mode main']
-y = ['exec-and-forget open -a "Notes"', 'mode main']
-
-[mode.browse.binding]
-esc = [ 'mode main']
-y = ['exec-and-forget open "https://youtube.com"', 'mode main']
-r = ['exec-and-forget open "https://reddit.com"', 'mode main']
-c = ['exec-and-forget open "https://claude.ai/recents"', 'mode main']
-i = ['exec-and-forget open "https://instagram.com"', 'mode main']
-d = ['exec-and-forget open "http://localhost:3000"', 'mode main']
-t = ['exec-and-forget open "https://www.twitch.tv/"', 'mode main']
-x = ['exec-and-forget open "https://www.x.com/"', 'mode main']
-f = ['exec-and-forget open "https://www.netflix.com/"', 'mode main']
-
-[mode.raycast.binding]
-esc = [ 'mode main']
-b = ['exec-and-forget open "raycast://extensions/VladCuciureanu/toothpick/manage-bluetooth-connections"', 'mode main']
-k = ['exec-and-forget open "raycast://extensions/rolandleth/kill-process/index"', 'mode main']
-u = ['exec-and-forget open "raycast://extensions/raycast/screenshots/search-screenshots"', 'mode main']
-e = ['exec-and-forget open "raycast://extensions/raycast/emoji-symbols/search-emoji-symbols"', 'mode main']
-h = ['exec-and-forget open "raycast://extensions/raycast/clipboard-history/clipboard-history"', 'mode main']
-i = ['exec-and-forget open "raycast://extensions/benvp/audio-device/set-input-device"', 'mode main']
-o = ['exec-and-forget open "raycast://extensions/benvp/audio-device/set-output-device"', 'mode main']
-p = ['exec-and-forget open "raycast://extensions/raycast/raycast/confetti"', 'mode main']
-s = ['exec-and-forget open "raycast://extensions/raycast/snippets/search-snippets"', 'mode main']
+[workspaces."1"]
+layout = "accordion"
 
 [[on-window-detected]]
 if.app-id = 'company.thebrowser.Browser'
 run = ['move-node-to-workspace 1'] 
+
+[[on-window-detected]]
+if.app-id = 'company.thebrowser.dia'
+run = ['move-node-to-workspace 1'] 
+
 
 [[on-window-detected]]
 if.app-id = 'com.googlecode.iterm2'
@@ -230,8 +187,16 @@ if.app-id = 'md.obsidian'
 run = ['move-node-to-workspace 13']  
 
 [[on-window-detected]]
+if.app-id = 'com.ea.mac.eaapp'
+run = ['move-node-to-workspace 14']  
+
+[[on-window-detected]]
+if.app-id = 'com.ea.mac.thesims4'
+run = ['move-node-to-workspace 14']  
+
+[[on-window-detected]]
 if.app-id = 'com.brave.Browser'
-run = ['move-node-to-workspace 9']  
+run = ['move-node-to-workspace 1']  
 
 [[on-window-detected]]
 if.app-id = 'com.raycast.macos'
@@ -259,3 +224,4 @@ run = ['layout floating']
 11 = 'secondary'                       
 12 = 'secondary'                       
 13 = 'secondary'                       
+14 = 'main'                       
