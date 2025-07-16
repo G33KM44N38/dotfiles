@@ -16,6 +16,7 @@ const hyperSubLayers = createHyperSubLayers({
     "raycast://extensions/stellate/mxstbr-commands/create-notion-todo"
   ),
   b: {
+    a: open("https://chatgpt.com"),
     y: open("https://youtube.com"),
     r: open("https://reddit.com"),
     c: open("https://claude.ai/recents"),
@@ -29,7 +30,7 @@ const hyperSubLayers = createHyperSubLayers({
     a: app("Arc"),
     b: app("Beeper"),
     c: app("Calendar"),
-    d: app("Dbeaver"),
+    d: app("Dia"),
     e: app("Mail"),
     f: app("Figma"),
     g: app("Simulator"),
@@ -41,13 +42,14 @@ const hyperSubLayers = createHyperSubLayers({
     n: app("Notion"),
     p: app("Obsidian"),
     r: app("Reader"),
-    s: app("OBS"),
+    s: app("The Sims 4"),
     semicolon: app("Cursor"),
     t: app("Ghostty"),
     v: app("Visual Studio Code"),
     w: app("Brave Browser"),
     x: app("Discord"),
     y: app("Notes"),
+    z: app("Safari"),
   },
   s: {
     u: { to: [{ key_code: "volume_increment" }] },
@@ -78,9 +80,8 @@ const hyperSubLayers = createHyperSubLayers({
     j: { to: [{ key_code: "rewind" }] },
   },
   r: {
-    l: open("raycast://extensions/kaanrkaraman/twitter-video-downloader/index"),
-    a: open("raycast://extensions/abielzulio/chatgpt/ask"),
-    b: open(
+    a: open("raycast://extensions/raycast/window-management/maximize"),
+    c: open(
       "raycast://extensions/VladCuciureanu/toothpick/manage-bluetooth-connections"
     ),
     k: open("raycast://extensions/rolandleth/kill-process/index"),
@@ -91,6 +92,7 @@ const hyperSubLayers = createHyperSubLayers({
     o: open("raycast://extensions/benvp/audio-device/set-output-device"),
     p: open("raycast://extensions/raycast/raycast/confetti"),
     s: open("raycast://extensions/raycast/snippets/search-snippets"),
+    m: open("raycast://extensions/raycast/navigation/search-menu-items"),
   },
 });
 
@@ -264,14 +266,9 @@ const rules: KarabinerRules[] = [
         description: "crkdb -> Hyper Key",
         type: "basic",
         from: {
-          key_code: "left_control",
+          key_code: "f24",
           modifiers: {
-            optional: [
-              "left_command",
-              "left_shift",
-              "left_control",
-              "left_option",
-            ],
+            optional: ["any"],
           },
         },
         to: [{ set_variable: { name: "hyper", value: 1 } }],
