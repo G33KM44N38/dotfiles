@@ -1515,6 +1515,116 @@ vim.api.nvim_create_autocmd("FileType", {
 	end,
 })
 
+local curl = require("plenary.curl")
+local rss_parser = require("root.my_plugins.rss_parser")
+
+local function show_rss_items(feed)
+    local ok, telescope = pcall(require, "telescope.pickers")
+    if ok then
+        local finders = require("telescope.finders")
+        local conf = require("telescope.config").values
+        local actions = require("telescope.actions")
+        local action_state = require("telescope.actions.state")
+        telescope.new({}, {
+            prompt_title = feed.title or "RSS Feed",
+            finder = finders.new_table({
+                results = feed.items,
+                entry_maker = function(entry)
+                    return {
+                        value = entry,
+                        display = entry.title or entry.link,
+                        ordinal = (entry.title or "") .. (entry.link or ""),
+                    }
+                end,
+            }),
+            sorter = conf.generic_sorter({}),
+            attach_mappings = function(prompt_bufnr)
+                actions.select_default:replace(function()
+                    actions.close(prompt_bufnr)
+                    local selection = action_state.get_selected_entry()
+                    if selection and selection.value and selection.value.link then
+                        vim.fn.jobstart({ "open", selection.value.link })
+                    end
+                end)
+                return true
+            end,
+        }):find()
+    else
+        print("Feed: " .. (feed.title or "(no title)"))
+        for i, item in ipairs(feed.items or {}) do
+            print(string.format("%d. %s", i, item.title or item.link or "(no title)"))
+        end
+    end
+end
+
+local function read_lines_from_file(path)
+    local lines = {}
+    local f = io.open(path, "r")
+    if not f then return nil end
+    for line in f:lines() do
+        local trimmed = line:match("^%s*(.-)%s*$")
+        if trimmed ~= '' and not trimmed:match('^#') then
+            table.insert(lines, trimmed)
+        end
+    end
+    f:close()
+    return lines
+end
+
+local function obsidian_rss_pull_multi(urls)
+    local feeds = {}
+    local done = 0
+    local total = #urls
+    local all_items = {}
+    for _, url in ipairs(urls) do
+        curl.get(url, {
+            callback = vim.schedule_wrap(function(response)
+                done = done + 1
+                if response.status == 200 then
+                    local feed = rss_parser.parse(response.body)
+                    if feed and feed.items then
+                        for _, item in ipairs(feed.items) do
+                            item.__feed_title = feed.title or url
+                            table.insert(all_items, item)
+                        end
+                    end
+                else
+                    vim.notify("Failed to fetch RSS feed: " .. url, vim.log.levels.ERROR)
+                end
+                if done == total then
+                    if #all_items == 0 then
+                        vim.notify("No items found in any RSS feed.", vim.log.levels.WARN)
+                        return
+                    end
+                    -- Sort by pubDate if available
+                    table.sort(all_items, function(a, b)
+                        return (a.pubDate or "") > (b.pubDate or "")
+                    end)
+                    show_rss_items({ title = "All Feeds", items = all_items })
+                end
+            end),
+        })
+    end
+end
+
+vim.api.nvim_create_user_command("ObsidianRssPull", function(args)
+    if not args.args or args.args == "" then
+        print("Usage: :ObsidianRssPull <url> or <file_with_urls>")
+        return
+    end
+    local arg = args.args
+    if vim.fn.filereadable(arg) == 1 then
+        local urls = read_lines_from_file(arg)
+        if not urls or #urls == 0 then
+            vim.notify("No URLs found in file: " .. arg, vim.log.levels.WARN)
+            return
+        end
+        obsidian_rss_pull_multi(urls)
+    else
+        obsidian_rss_pull(arg)
+    end
+end, { nargs = 1, complete = "file" })
+
 return {
 	{
 		"MeanderingProgrammer/render-markdown.nvim",
@@ -1580,3 +1690,4 @@ return {
 		end,
 	},
 }
+
