@@ -18,7 +18,7 @@ inner.horizontal = 0
 inner.vertical =   0
 outer.left =       0
 outer.bottom =     0
-outer.top =        50
+outer.top =        0
 outer.right =      0
 
 [mode.main.binding]
@@ -76,8 +76,8 @@ k = 'resize smart +50'
 j = 'resize smart -50'
 u = 	'exec-and-forget /bin/bash -c "aerospace resize width 1025"'
 
-[workspaces."1"]
-layout = "accordion"
+# [workspaces."1"]
+# layout = "layout accordion"
 
 [[on-window-detected]]
 if.app-id = 'company.thebrowser.Browser'
