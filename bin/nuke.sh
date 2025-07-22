@@ -6,8 +6,9 @@
 # @raycast.icon 💣
 # @raycast.description Force quit user processes, restart Mouseless, AeroSpace, and relaunch Raycast.
 # @raycast.author Kylian
-
-ESSENTIAL_APPS=("Mouseless" "AeroSpace" "Raycast" "$0" "$SHELL")
+#
+# "AeroSpace"
+ESSENTIAL_APPS=("Mouseless"  "Raycast" "$0" "$SHELL")
 
 echo "🧨 Killing all non-essential user processes..."
 

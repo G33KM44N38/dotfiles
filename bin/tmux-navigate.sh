@@ -15,6 +15,7 @@ else
         "~/backup/"
         "~/coding/"
         "~/coding/work/"
+        "~/coding/perso/"
         "~/goinfre/"
         "~/.dotfiles/"
         ~/.dotfiles/* # This will expand by the shell

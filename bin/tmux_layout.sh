@@ -26,7 +26,7 @@ if [[ "$should_exclude" == false ]]; then
   tmux new-window -n 'run'
   tmux new-window -n 'process'
   tmux new-window -n 'AI'
-  tmux send-keys -R "npx https://github.com/google-gemini/gemini-cli" C-m
+  tmux send-keys -R "gemini" C-m
 fi
 
 tmux select-window -t 1

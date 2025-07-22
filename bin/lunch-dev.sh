@@ -13,5 +13,5 @@
 # @raycast.author me
 
 open -a "Docker"
-open https://google.com
-open -a "iTerm"
+open https://www.youtube.com/playlist?list=PLpatcLkBHFDXmfbHEkTYH4RIEUq3PU8us
+open -a "Ghostty"
