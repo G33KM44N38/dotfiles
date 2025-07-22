@@ -1,6 +1,6 @@
 ---
 - name: TMUX | Run tmux task
-  ansible.builtin.import_tasks: darwin.yaml
+  ansible.builtin.import_tasks: tasks/darwin.yaml
   when: ansible_system == 'Darwin'
 
 - name: TMUX | Run tmux task

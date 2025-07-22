@@ -4,6 +4,7 @@
       ansible.builtin.file:
         path: "{{ ansible_env.HOME }}/.local/share/nvim/lazy"
         state: absent
+      changed_when: false
 
     - name: NVIM | Install nvim
       homebrew:

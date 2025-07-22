@@ -3,5 +3,18 @@
   ansible.builtin.import_tasks: ubuntu.yml
   when: ansible_system == 'Linux' and ansible_distribution == 'Ubuntu'
 
-- name: ZSH | Set zsh as default
-  ansible.builtin.shell: rm -rf ~/.zshrc
+- name: ZSH | Run darwin task
+  ansible.builtin.import_tasks: darwin.yaml
+  when: ansible_system == 'Darwin'
+
+- name: ZSH | Include environment variables task
+  ansible.builtin.import_tasks: env_vars.yaml
+
+- name: ZSH | Source custom environment variables in .zshrc
+  ansible.builtin.lineinfile:
+    path: "{{ ansible_env.HOME }}/.zshrc"
+    line: 'source "{{ ansible_env.HOME }}/.group_env/env.zsh"'
+    state: present
+    insertafter: EOF
+
+

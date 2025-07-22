@@ -6,3 +6,4 @@
 
 - name: FZF | set keybinding
   ansible.builtin.shell:  yes | $(brew --prefix)/opt/fzf/install
+  changed_when: false

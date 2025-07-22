@@ -5,8 +5,19 @@
     repo: https://github.com/G33KM44N38/dotfiles
     dest: ~/.dotfiles
     update: false
+
+- name: Delete ~/.zshrc
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.zshrc"
+    state: absent
+
 - name: STOW | install
   homebrew:
     name: stow
     state: present
     update_homebrew: yes
+
+- name: Run stow in ~/.dotfiles
+  ansible.builtin.command: stow .
+  args:
+    chdir: "{{ ansible_env.HOME }}/.dotfiles"

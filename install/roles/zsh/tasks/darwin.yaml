@@ -4,3 +4,4 @@
     path: "{{ ansible_env.HOME }}/.zshrc"
     state: touch
     mode: '0644'
+  changed_when: false
