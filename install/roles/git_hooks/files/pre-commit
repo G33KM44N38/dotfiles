@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# This pre-commit hook ensures sensitive files are encrypted before commit.
+# It executes the encrypt-sensitive-files.sh script.
+
+# Get the absolute path to the dotfiles directory
+DOTFILES_DIR="$(git rev-parse --show-toplevel)"
+
+# Execute the encryption script
+"$DOTFILES_DIR/encrypt-sensitive-files.sh"
+
+# Exit with the status of the encryption script
+exit $?

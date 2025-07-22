@@ -1,0 +1,18 @@
+---
+- name: GIT_HOOKS | Ensure .git/hooks directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.dotfiles/.git/hooks"
+    state: directory
+    mode: '0755'
+
+- name: GIT_HOOKS | Copy pre-commit hook
+  ansible.builtin.copy:
+    src: pre-commit
+    dest: "{{ ansible_env.HOME }}/.dotfiles/.git/hooks/pre-commit"
+    mode: '0755'
+
+- name: GIT_HOOKS | Copy post-commit hook
+  ansible.builtin.copy:
+    src: post-commit
+    dest: "{{ ansible_env.HOME }}/.dotfiles/.git/hooks/post-commit"
+    mode: '0755'

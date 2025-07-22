@@ -12,7 +12,6 @@ fish/functions/__fzf_complete_preview.fish
 fish/functions/__fzf_find_file.fish
 fish/functions/__fzf_get_dir.fish
 fish/functions/__fzf_open.fish
-fish/functions/__fzf_parse_commandline.fish
 fish/functions/__fzf_reverse_isearch.fish
 fish/functions/__fzfcmd.fish
 fish/functions/__scheme_get_definition.fish
@@ -59,3 +58,5 @@ raycast
 .vault-password
 node_modules/
 .DS_Store
+
+.config/simple-update-notifier/

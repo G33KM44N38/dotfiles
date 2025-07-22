@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# This post-commit hook decrypts sensitive files after a successful commit.
+# It executes the decrypt-sensitive-files.sh script.
+
+# Get the absolute path to the dotfiles directory
+DOTFILES_DIR="$(git rev-parse --show-toplevel)"
+
+# Execute the decryption script
+"$DOTFILES_DIR/decrypt-sensitive-files.sh"
+
+# Exit with the status of the decryption script
+exit $?
