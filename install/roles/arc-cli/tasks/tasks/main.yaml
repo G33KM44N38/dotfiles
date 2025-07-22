@@ -1,4 +1,4 @@
 ---
 - name: Run arc-cli tasks
-  ansible.builtin.import_tasks: darwin.yaml
+  ansible.builtin.import_tasks: tasks/darwin.yaml
   when: ansible_system == 'Darwin'

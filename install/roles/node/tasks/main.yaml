@@ -1,8 +1,8 @@
 ---
 - name: Run node task
-  ansible.builtin.import_tasks: darwin.yaml
+  ansible.builtin.import_tasks: tasks/darwin.yaml
   when: ansible_system == 'Darwin'
 
 - name: Run node task
-  ansible.builtin.import_tasks: darwin.yaml
+  ansible.builtin.import_tasks: tasks/darwin.yaml
   when: ansible_system == 'Linux' and ansible_distribution == 'Ubuntu'

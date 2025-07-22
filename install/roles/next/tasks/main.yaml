@@ -1,4 +1,0 @@
----
-- name: Run Nodemon
-  ansible.builtin.import_tasks: darwin.yaml
-  when: ansible_system == 'Darwin'

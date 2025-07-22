@@ -30,7 +30,6 @@ default_roles:
   - figma
   - karabiner
   - yarn
-  - next
   - sops
   # - gitspeak
   - aerospace

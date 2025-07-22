@@ -1,7 +1,6 @@
+- name: Run notion task
+  ansible.builtin.import_tasks: tasks/darwin.yaml
 - name: Install Notion
   community.general.homebrew_cask:
     name: notion
     state: present
----
-- name: Run notion task
-  ansible.builtin.import_tasks: darwin.yaml

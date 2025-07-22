@@ -1,7 +1,5 @@
-- name:  Disable macOS auto space rearrangement and restart Dock
-  tasks:
-    - name: Disable auto rearrangement of Spaces
-      ansible.builtin.command: defaults write com.apple.dock workspaces-auto-swoosh -bool NO
+- name: Disable auto rearrangement of Spaces
+  ansible.builtin.command: defaults write com.apple.dock workspaces-auto-swoosh -bool NO
 
-    - name: Restart the Dock
-      ansible.builtin.command: killall Dock
+- name: Restart the Dock
+  ansible.builtin.command: killall Dock

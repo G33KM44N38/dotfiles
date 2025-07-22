@@ -1,3 +1,3 @@
 ---
 - name: Run python tasks for darwin
-  ansible.builtin.import_tasks: darwin.yaml
+  ansible.builtin.import_tasks: tasks/darwin.yaml

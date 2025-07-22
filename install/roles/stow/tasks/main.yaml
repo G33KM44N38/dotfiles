@@ -3,7 +3,7 @@
   ansible.builtin.shell: rm -rf ~/.zshrc
 
 - name: Run Stow task
-  ansible.builtin.import_tasks: darwin.yaml
+  ansible.builtin.import_tasks: tasks/darwin.yaml
   when: ansible_system == 'Darwin'
 
 - name: Run Stow task

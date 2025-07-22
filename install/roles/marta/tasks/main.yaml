@@ -1,5 +1,5 @@
 ---
 - name: Run Marta task
-  ansible.builtin.import_tasks: darwin.yaml
+  ansible.builtin.import_tasks: tasks/darwin.yaml
   when: ansible_system == 'Darwin'
   ignore_errors: true

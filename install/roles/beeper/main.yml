@@ -1,4 +1,4 @@
 ---
 - name: Run beeper task
-  ansible.builtin.import_tasks: darwin.yaml
+  ansible.builtin.import_tasks: tasks/darwin.yaml
 

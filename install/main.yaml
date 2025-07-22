@@ -3,28 +3,128 @@
 - name: DOTFILES config
   hosts: localhost
   connection: local
+  gather_facts: true
+  gather_subset: 
+    - min
 
   tasks:
-    - name: Set roles
-      ansible.builtin.set_fact:
-        run_roles: "{{ ansible_run_tags != ['all'] and ansible_run_tags or default_roles | difference(exclude_roles | default([])) }}"
-      tags:
-        - always
-
-    - name: Display roles
-      ansible.builtin.debug:
-        var: run_roles
-      tags:
-        - always
-
     - name: Run roles
       ansible.builtin.include_role:
-        apply:
-          tags:
-            - "{{ roles_item }}"
-        name: "{{ roles_item }}"
-      loop_control:
-        loop_var: roles_item
-      with_items: "{{ run_roles }}"
-      tags:
-        - always
+        name: nvim
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: go
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: stow
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: lazygit
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: lazydocker
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: ripgrep
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: tmux
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: node
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: fzf
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: stripe
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: shortcat
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: dir
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: appcleaner
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: raycast
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: nerd_font
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: arc
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: work
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: zsh
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: age
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: dock
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: figma
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: karabiner
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: yarn
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: sops
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: aerospace
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: python
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: arc-cli
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: solana
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: pnpm
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: ghostty
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: cron
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: mouseless
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: backup
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: discord
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: rust
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: beeper
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: dbeaver
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: notion
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: lua-language-server
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: config
