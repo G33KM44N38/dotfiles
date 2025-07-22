@@ -46,7 +46,6 @@ const hyperSubLayers = createHyperSubLayers({
     semicolon: app("Cursor"),
     t: app("Ghostty"),
     v: app("Visual Studio Code"),
-    w: app("Brave Browser"),
     x: app("Discord"),
     y: app("Notes"),
     z: app("Safari"),
@@ -207,6 +206,10 @@ const rules: KarabinerRules[] = [
     manipulators: [createBasicManipulator("caps_lock", "escape", "")],
   },
   {
+    description: "caps lock to escape",
+    manipulators: [createBasicManipulator("close_bracket", "escape", "")],
+  },
+  {
     description: "open_bracket to cmd space ",
     manipulators: [
       createModifierManipulator("open_bracket", "spacebar", ["right_gui"]),
@@ -222,7 +225,7 @@ const rules: KarabinerRules[] = [
   DisableKeyConfig("left_shift"),
   DisableKeyConfig("return_or_enter"),
   // DisableKeyConfig("open_bracket"),
-  DisableKeyConfig("close_bracket"),
+  // DisableKeyConfig("close_bracket"),
   DisableKeyConfig("0"),
   DisableKeyConfig("1"),
   DisableKeyConfig("2"),
