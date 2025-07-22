@@ -92,16 +92,11 @@ return {
 
 			vim.api.nvim_create_autocmd("LspAttach", {
 				group = vim.api.nvim_create_augroup("UserLspConfig", {}),
-				callback = function(args)
-					local client = vim.lsp.get_client_by_id(args.data.client_id)
-					if client and (client.name == "eslint" or client.name == "eslint_d") then
-						vim.api.nvim_create_autocmd("BufWritePre", {
-							buffer = args.buf,
-							callback = function()
-								vim.lsp.buf.format({ async = true, filter = function(client) return client.name == "eslint" or client.name == "eslint_d" end })
-							end,
-						})
-					end
+				callback = function()
+					vim.lsp.buf.code_action({
+						context = { only = { "source.fixAll.eslint" } },
+						apply = true,
+					})
 				end,
 			})
 

@@ -76,28 +76,6 @@ return {
 					},
 				},
 			},
-			pickers = {
-				-- You can also configure specific pickers to have different sorting behavior
-				find_files = {
-					-- For even more exact matching on find_files specifically
-					sorter = require("telescope.sorters").get_substr_matcher,
-				},
-				live_grep = {
-					-- Keep fuzzy for live_grep since it's useful for search
-					sorter = require("telescope.sorters").get_generic_fuzzy_sorter,
-				},
-			},
 		})
-
-		-- Note: You have duplicate "gi" mappings - the second one overwrites the first
-		-- Fixed to use different keys:
-		vim.api.nvim_set_keymap("n", "gI", "<cmd>Telescope lsp_implementations<CR>", { noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "gd", "<cmd>Telescope lsp_definitions<CR>", { noremap = true, silent = true })
-		vim.api.nvim_set_keymap(
-			"n",
-			"<leader>hi",
-			":lua require('telescope.builtin').find_files({ hidden = true, no_ignore = true, file_ignore_patterns = {'.git/'} })<CR>",
-			{ noremap = true, silent = true }
-		)
 	end,
 }

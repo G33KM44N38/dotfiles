@@ -1019,8 +1019,8 @@ local function todoStart()
 		local new_mark = " "
 
 		if rest_of_line:match("%[start:[^%]]*%]") then
-			local updated_rest = rest_of_line:gsub("%[start:[^%]]*%]", "[start: " .. timestamp .. "]")
-			new_line = prefix .. new_mark .. updated_rest
+			-- If start timestamp already exists, do nothing
+			return
 		else
 			local full_original_line = prefix .. new_mark .. rest_of_line
 			new_line = full_original_line:gsub("%s*$", "") .. " [start: " .. timestamp .. "]"
@@ -1031,9 +1031,6 @@ local function todoStart()
 		print("Not a valid, non-completed todo item.")
 	end
 end
-
--- You would then map this function to a key, for example:
--- vim.keymap.set("n", "<leader>ts", todoStart, { desc = "Add/Update [start] time for todo" })
 
 local function find_completed_todos_with_timestamps()
 	local pickers = require("telescope.pickers")
@@ -1519,111 +1516,364 @@ local curl = require("plenary.curl")
 local rss_parser = require("root.my_plugins.rss_parser")
 
 local function show_rss_items(feed)
-    local ok, telescope = pcall(require, "telescope.pickers")
-    if ok then
-        local finders = require("telescope.finders")
-        local conf = require("telescope.config").values
-        local actions = require("telescope.actions")
-        local action_state = require("telescope.actions.state")
-        telescope.new({}, {
-            prompt_title = feed.title or "RSS Feed",
-            finder = finders.new_table({
-                results = feed.items,
-                entry_maker = function(entry)
-                    return {
-                        value = entry,
-                        display = entry.title or entry.link,
-                        ordinal = (entry.title or "") .. (entry.link or ""),
-                    }
-                end,
-            }),
-            sorter = conf.generic_sorter({}),
-            attach_mappings = function(prompt_bufnr)
-                actions.select_default:replace(function()
-                    actions.close(prompt_bufnr)
-                    local selection = action_state.get_selected_entry()
-                    if selection and selection.value and selection.value.link then
-                        vim.fn.jobstart({ "open", selection.value.link })
-                    end
-                end)
-                return true
-            end,
-        }):find()
-    else
-        print("Feed: " .. (feed.title or "(no title)"))
-        for i, item in ipairs(feed.items or {}) do
-            print(string.format("%d. %s", i, item.title or item.link or "(no title)"))
-        end
-    end
+	local ok, telescope = pcall(require, "telescope.pickers")
+	if ok then
+		local finders = require("telescope.finders")
+		local conf = require("telescope.config").values
+		local actions = require("telescope.actions")
+		local action_state = require("telescope.actions.state")
+		telescope
+			.new({}, {
+				prompt_title = feed.title or "RSS Feed",
+				finder = finders.new_table({
+					results = feed.items,
+					entry_maker = function(entry)
+						return {
+							value = entry,
+							display = entry.title or entry.link,
+							ordinal = (entry.title or "") .. (entry.link or ""),
+						}
+					end,
+				}),
+				sorter = conf.generic_sorter({}),
+				attach_mappings = function(prompt_bufnr)
+					actions.select_default:replace(function()
+						actions.close(prompt_bufnr)
+						local selection = action_state.get_selected_entry()
+						if selection and selection.value and selection.value.link then
+							vim.fn.jobstart({ "open", selection.value.link })
+						end
+					end)
+					return true
+				end,
+			})
+			:find()
+	else
+		print("Feed: " .. (feed.title or "(no title)"))
+		for i, item in ipairs(feed.items or {}) do
+			print(string.format("%d. %s", i, item.title or item.link or "(no title)"))
+		end
+	end
 end
 
 local function read_lines_from_file(path)
-    local lines = {}
-    local f = io.open(path, "r")
-    if not f then return nil end
-    for line in f:lines() do
-        local trimmed = line:match("^%s*(.-)%s*$")
-        if trimmed ~= '' and not trimmed:match('^#') then
-            table.insert(lines, trimmed)
-        end
-    end
-    f:close()
-    return lines
+	local lines = {}
+	local f = io.open(path, "r")
+	if not f then
+		return nil
+	end
+	for line in f:lines() do
+		local trimmed = line:match("^%s*(.-)%s*$")
+		if trimmed ~= "" and not trimmed:match("^#") then
+			table.insert(lines, trimmed)
+		end
+	end
+	f:close()
+	return lines
 end
 
 local function obsidian_rss_pull_multi(urls)
-    local feeds = {}
-    local done = 0
-    local total = #urls
-    local all_items = {}
-    for _, url in ipairs(urls) do
-        curl.get(url, {
-            callback = vim.schedule_wrap(function(response)
-                done = done + 1
-                if response.status == 200 then
-                    local feed = rss_parser.parse(response.body)
-                    if feed and feed.items then
-                        for _, item in ipairs(feed.items) do
-                            item.__feed_title = feed.title or url
-                            table.insert(all_items, item)
-                        end
-                    end
-                else
-                    vim.notify("Failed to fetch RSS feed: " .. url, vim.log.levels.ERROR)
-                end
-                if done == total then
-                    if #all_items == 0 then
-                        vim.notify("No items found in any RSS feed.", vim.log.levels.WARN)
-                        return
-                    end
-                    -- Sort by pubDate if available
-                    table.sort(all_items, function(a, b)
-                        return (a.pubDate or "") > (b.pubDate or "")
-                    end)
-                    show_rss_items({ title = "All Feeds", items = all_items })
-                end
-            end),
-        })
-    end
+	local feeds = {}
+	local done = 0
+	local total = #urls
+	local all_items = {}
+	for _, url in ipairs(urls) do
+		curl.get(url, {
+			callback = vim.schedule_wrap(function(response)
+				done = done + 1
+				if response.status == 200 then
+					local feed = rss_parser.parse(response.body)
+					if feed and feed.items then
+						for _, item in ipairs(feed.items) do
+							item.__feed_title = feed.title or url
+							table.insert(all_items, item)
+						end
+					end
+				else
+					vim.notify("Failed to fetch RSS feed: " .. url, vim.log.levels.ERROR)
+				end
+				if done == total then
+					if #all_items == 0 then
+						vim.notify("No items found in any RSS feed.", vim.log.levels.WARN)
+						return
+					end
+					-- Sort by pubDate if available
+					table.sort(all_items, function(a, b)
+						return (a.pubDate or "") > (b.pubDate or "")
+					end)
+					show_rss_items({ title = "All Feeds", items = all_items })
+				end
+			end),
+		})
+	end
 end
 
 vim.api.nvim_create_user_command("ObsidianRssPull", function(args)
-    if not args.args or args.args == "" then
-        print("Usage: :ObsidianRssPull <url> or <file_with_urls>")
-        return
-    end
-    local arg = args.args
-    if vim.fn.filereadable(arg) == 1 then
-        local urls = read_lines_from_file(arg)
-        if not urls or #urls == 0 then
-            vim.notify("No URLs found in file: " .. arg, vim.log.levels.WARN)
-            return
-        end
-        obsidian_rss_pull_multi(urls)
-    else
-        obsidian_rss_pull(arg)
-    end
+	if not args.args or args.args == "" then
+		print("Usage: :ObsidianRssPull <url> or <file_with_urls>")
+		return
+	end
+	local arg = args.args
+	if vim.fn.filereadable(arg) == 1 then
+		local urls = read_lines_from_file(arg)
+		if not urls or #urls == 0 then
+			vim.notify("No URLs found in file: " .. arg, vim.log.levels.WARN)
+			return
+		end
+		obsidian_rss_pull_multi(urls)
+	else
+		obsidian_rss_pull(arg)
+	end
 end, { nargs = 1, complete = "file" })
+
+local function create_note_from_rss_item(item)
+	local input = vim.fn.input("New note title: ", item.title or "", "file")
+	if not input or input == "" then
+		vim.notify("Note creation cancelled.", vim.log.levels.INFO)
+		return
+	end
+	local note_path = workspace_path .. input .. ".md"
+	local f = io.open(note_path, "w")
+	if not f then
+		vim.notify("Failed to create note: " .. note_path, vim.log.levels.ERROR)
+		return
+	end
+	f:write("# " .. (item.title or input) .. "\n\n")
+	f:write("**Group:** " .. (item.__group or "") .. "\n\n")
+	f:write("**Link:** [" .. (item.link or "") .. "](" .. (item.link or "") .. ")\n\n")
+	if item.description and item.description ~= "" then
+		f:write("**Description:**\n" .. item.description .. "\n\n")
+	end
+	f:close()
+	vim.cmd("edit " .. vim.fn.fnameescape(note_path))
+end
+
+-- Update show_grouped_rss_items to add this action
+local function show_grouped_rss_items(groups)
+	local ok, telescope = pcall(require, "telescope.pickers")
+	if ok then
+		local finders = require("telescope.finders")
+		local conf = require("telescope.config").values
+		local actions = require("telescope.actions")
+		local action_state = require("telescope.actions.state")
+		local all = {}
+		for group, items in pairs(groups) do
+			for _, item in ipairs(items) do
+				item.__group = group
+				table.insert(all, item)
+			end
+		end
+		telescope
+			.new({}, {
+				prompt_title = "RSS Feeds (Grouped)",
+				finder = finders.new_table({
+					results = all,
+					entry_maker = function(entry)
+						return {
+							value = entry,
+							display = string.format("[%s] %s", entry.__group, entry.title or entry.link),
+							ordinal = (entry.title or "") .. (entry.link or "") .. (entry.__group or ""),
+						}
+					end,
+				}),
+				sorter = conf.generic_sorter({}),
+				attach_mappings = function(prompt_bufnr, map)
+					actions.select_default:replace(function()
+						actions.close(prompt_bufnr)
+						local selection = action_state.get_selected_entry()
+						if selection and selection.value and selection.value.link then
+							vim.fn.jobstart({ "open", selection.value.link })
+						end
+					end)
+					map("i", "<C-n>", function()
+						local selection = action_state.get_selected_entry()
+						if selection and selection.value then
+							actions.close(prompt_bufnr)
+							create_note_from_rss_item(selection.value)
+						end
+					end)
+					map("n", "<C-n>", function()
+						local selection = action_state.get_selected_entry()
+						if selection and selection.value then
+							actions.close(prompt_bufnr)
+							create_note_from_rss_item(selection.value)
+						end
+					end)
+					return true
+				end,
+			})
+			:find()
+	else
+		for group, items in pairs(groups) do
+			print("== " .. group .. " ==")
+			for i, item in ipairs(items) do
+				print(string.format("%d. %s", i, item.title or item.link or "(no title)"))
+			end
+		end
+	end
+end
+
+local function parse_rss_md_groups(path)
+	local groups = {}
+	local current_group = nil
+	local f = io.open(path, "r")
+	if not f then
+		return groups
+	end
+	for line in f:lines() do
+		local trimmed = line:match("^%s*(.-)%s*$")
+		local group = trimmed:match("^#%s*(.+)$")
+		if group then
+			current_group = group:lower():gsub("^%s+", ""):gsub("%s+$", "")
+			groups[current_group] = groups[current_group] or {}
+		elseif current_group and trimmed ~= "" and not trimmed:match("^#") then
+			table.insert(groups[current_group], trimmed)
+		end
+	end
+	f:close()
+	return groups
+end
+
+local function obsidian_rss_from_md_grouped()
+	local rss_md = workspace_path .. "RSS.md"
+	local url_groups = parse_rss_md_groups(rss_md)
+	local item_groups = {}
+	local total = 0
+	for _, urls in pairs(url_groups) do
+		total = total + #urls
+	end
+	if total == 0 then
+		vim.notify("No RSS URLs found in RSS.md.", vim.log.levels.WARN)
+		return
+	end
+	local done = 0
+	local function check_done()
+		done = done + 1
+		if done == total then
+			show_grouped_rss_items(item_groups)
+		end
+	end
+	for group, urls in pairs(url_groups) do
+		item_groups[group] = {}
+		for _, url in ipairs(urls) do
+			curl.get(url, {
+				callback = vim.schedule_wrap(function(response)
+					if response.status == 200 then
+						local feed = rss_parser.parse(response.body)
+						if feed and feed.items then
+							for _, item in ipairs(feed.items) do
+								item.__feed_title = feed.title or url
+								table.insert(item_groups[group], item)
+							end
+						end
+					else
+						vim.notify("Failed to fetch RSS: " .. url, vim.log.levels.ERROR)
+					end
+					check_done()
+				end),
+			})
+		end
+	end
+end
+
+local function insert_rss_section_in_daily(groups)
+	-- Find the current buffer (assume daily note is open)
+	local bufnr = vim.api.nvim_get_current_buf()
+	local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+	local rss_start, rss_end = nil, nil
+	-- Find # RSS section
+	for i, line in ipairs(lines) do
+		if line:match("^#%s*RSS%s*$") then
+			rss_start = i
+			-- Find where the section ends (next heading or end of file)
+			for j = i + 1, #lines do
+				if lines[j]:match("^#%s*") then
+					rss_end = j - 1
+					break
+				end
+			end
+			if not rss_end then
+				rss_end = #lines
+			end
+			break
+		end
+	end
+	-- Prepare new RSS section content
+	local new_section = { "# RSS" }
+	for group, items in pairs(groups) do
+		table.insert(new_section, "")
+		table.insert(new_section, "## " .. group:gsub("^%l", string.upper))
+		for _, item in ipairs(items) do
+			local title = item.title or item.link or "(no title)"
+			local link = item.link or ""
+			table.insert(new_section, string.format("- [%s](%s)", title, link))
+		end
+	end
+	-- Insert or replace the section
+	if rss_start then
+		vim.api.nvim_buf_set_lines(bufnr, rss_start - 1, rss_end, false, new_section)
+	else
+		-- Add at end, with a blank line before
+		if #lines > 0 and lines[#lines]:match("%S") then
+			table.insert(new_section, 1, "")
+		end
+		vim.api.nvim_buf_set_lines(bufnr, #lines, #lines, false, new_section)
+	end
+end
+
+local function rssimport_and_insert()
+	local rss_md = workspace_path .. "RSS.md"
+	local url_groups = parse_rss_md_groups(rss_md)
+	local item_groups = {}
+	local total = 0
+	for _, urls in pairs(url_groups) do
+		total = total + #urls
+	end
+	if total == 0 then
+		vim.notify("No RSS URLs found in RSS.md.", vim.log.levels.WARN)
+		return
+	end
+	local done = 0
+	local function check_done()
+		done = done + 1
+		if done == total then
+			insert_rss_section_in_daily(item_groups)
+			show_grouped_rss_items(item_groups)
+		end
+	end
+	for group, urls in pairs(url_groups) do
+		item_groups[group] = {}
+		for _, url in ipairs(urls) do
+			curl.get(url, {
+				callback = vim.schedule_wrap(function(response)
+					if response.status == 200 then
+						local feed = rss_parser.parse(response.body)
+						if feed and feed.items then
+							for _, item in ipairs(feed.items) do
+								item.__feed_title = feed.title or url
+								table.insert(item_groups[group], item)
+							end
+						end
+					else
+						vim.notify("Failed to fetch RSS: " .. url, vim.log.levels.ERROR)
+					end
+					check_done()
+				end),
+			})
+		end
+	end
+end
+
+vim.api.nvim_create_user_command("RSSImport", function()
+	rssimport_and_insert()
+end, {})
+
+vim.api.nvim_set_keymap(
+	"n",
+	"<leader>ri",
+	":RSSImport<CR>",
+	{ noremap = true, silent = true, desc = "Import RSS from RSS.md" }
+)
 
 return {
 	{
@@ -1690,4 +1940,3 @@ return {
 		end,
 	},
 }
-

@@ -2,6 +2,7 @@ require("root.core.keymap")
 require("root.core.command")
 require("root.my_plugins.Commiter")
 -- require("root.my_plugins.git-worktree.lua.git-worktree")
+vim.cmd("let g:netrw_preview= 1")
 
 vim.opt.scrolloff = 1
 -- Required to be compatible with Neovim

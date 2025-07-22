@@ -1,3 +1,5 @@
+local workspace_path = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/"
+
 return {
 	"supermaven-inc/supermaven-nvim",
 	config = function()
@@ -9,20 +11,28 @@ return {
 			},
 		})
 
-		-- Stop Supermaven in markdown buffers
-		vim.api.nvim_create_autocmd("FileType", {
-			pattern = "markdown",
+		-- Function to check if current buffer is in the workspace
+		local function is_in_workspace()
+			local bufname = vim.api.nvim_buf_get_name(0)
+			return string.match(bufname, "^" .. workspace_path:gsub("([^%w])", "%%%1"))
+		end
+
+		-- Stop Supermaven when entering files in the workspace
+		vim.api.nvim_create_autocmd("BufEnter", {
 			callback = function()
-				vim.cmd("silent! SupermavenStop")
+				if is_in_workspace() then
+					vim.cmd("silent! SupermavenStop")
+				else
+					vim.cmd("silent! SupermavenStart")
+				end
 			end,
 		})
 
-		-- Start Supermaven in other filetypes
-		vim.api.nvim_create_autocmd("BufEnter", {
+		-- Also check on file type changes (for good measure)
+		vim.api.nvim_create_autocmd("FileType", {
 			callback = function()
-				local ft = vim.bo.filetype
-				if ft ~= "markdown" then
-					vim.cmd("silent! SupermavenStart")
+				if is_in_workspace() then
+					vim.cmd("silent! SupermavenStop")
 				end
 			end,
 		})

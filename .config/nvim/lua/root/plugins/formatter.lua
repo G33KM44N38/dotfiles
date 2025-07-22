@@ -1,6 +1,6 @@
 local javascript_formatter = {
+	"eslint_d",
 	"prettier",
-	-- "ts_ls",
 }
 
 return {
