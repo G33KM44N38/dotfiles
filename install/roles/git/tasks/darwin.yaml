@@ -1,7 +1,6 @@
 ---
 - name: clone baba_coiffure repo
   ansible.builtin.git:
-    version: develop
     clone: true
     repo: https://github.com/babacoiffure/babacoiffure_monorepo
     dest: ~/coding/work/baba_coiffure
@@ -10,7 +9,6 @@
 
 - name: clone baba_coiffure repo
   ansible.builtin.git:
-    version: develop
     clone: true
     repo: https://github.com/babacoiffure/landing
     dest: ~/coding/work/baba_coiffure
