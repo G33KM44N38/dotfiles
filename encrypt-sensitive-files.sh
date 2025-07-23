@@ -8,6 +8,7 @@ NC='\033[0m' # No Color
 FILES_TO_CHECK=(
   ".ssh"
   ".zshrc"
+  ".group_env"
 )
 
 # Path to the Ansible Vault password file

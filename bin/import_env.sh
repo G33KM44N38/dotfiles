@@ -7,7 +7,7 @@ if ! command -v fzf &> /dev/null; then
 fi
 
 # Define source directory
-SOURCE_DIR="$HOME/.group_env"
+SOURCE_DIR="$HOME/.dotfiles/.group_env"
 
 # Check if the directory exists
 if [ ! -d "$SOURCE_DIR" ]; then

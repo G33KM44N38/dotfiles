@@ -1,2 +1,2 @@
 #!/bin/bash
-find "$HOME/.group_env" -type f -print | fzf | xargs -r nvim
+find "$HOME/.dotfiles/.group_env" -type f -print | fzf | xargs -r nvim
