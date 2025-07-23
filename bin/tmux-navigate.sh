@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env basH
 
 # # Enable debug output
 # set -x
@@ -18,7 +18,6 @@ else
         "~/coding/perso/"
         "~/goinfre/"
         "~/.dotfiles/"
-        ~/.dotfiles/* # This will expand by the shell
         "~/.dotfiles/.config/"
     )
 
@@ -52,7 +51,7 @@ else
         else
             fzf_input+="$dir_name	$dir\n" # Display: dir_name, Value: /full/path
         fi
-    done < <(find "${search_paths[@]}" -mindepth 1 -maxdepth 1 -type d)
+    done < <(find "${search_paths[@]}" -mindepth 0 -maxdepth 1 -type d)
 
     # Check if fzf_input is empty
     if [[ -z "$fzf_input" ]]; then
