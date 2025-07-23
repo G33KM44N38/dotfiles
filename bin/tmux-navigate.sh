@@ -11,7 +11,6 @@ else
     # Use a temporary array for the raw paths to handle glob expansion
     raw_paths=(
         "$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents/"
-        "/Volumes/LAB/"
         "~/backup/"
         "~/coding/"
         "~/coding/work/"

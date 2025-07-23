@@ -1,7 +1,7 @@
 ---
 - name: Creates goinfre directory
   ansible.builtin.file:
-    path: ~/goinfre
+    path: ~/.dotfiles/goinfre/
     state: directory
 
 - name: Creates work directory
@@ -12,4 +12,9 @@
 - name: Creates work directory
   ansible.builtin.file:
     path: ~/coding/work/
+    state: directory
+
+- name: Creates perso directory
+  ansible.builtin.file:
+    path: ~/coding/perso/
     state: directory
