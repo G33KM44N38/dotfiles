@@ -7,3 +7,12 @@
     dest: ~/coding/work/baba_coiffure
     update: false
     bare: true
+
+- name: clone baba_coiffure repo
+  ansible.builtin.git:
+    version: develop
+    clone: true
+    repo: https://github.com/babacoiffure/landing
+    dest: ~/coding/work/baba_coiffure
+    update: false
+    bare: true
