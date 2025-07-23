@@ -1,8 +1,3 @@
 #!/bin/bash
 
-# Specify the directory to clean up
-TARGET_DIR="$HOME/coding/goinfre/"
-
-# Find and delete files and directories not modified in the last 24 hours
-find "$TARGET_DIR" -type f -mtime +1 -exec rm -f {} \;  # Remove files
-find "$TARGET_DIR" -type d -mtime +1 -exec rm -rf {} \; # Remove directories
+rm -rf ~/coding/goinfre/*
