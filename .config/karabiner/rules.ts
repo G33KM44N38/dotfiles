@@ -57,7 +57,7 @@ const hyperSubLayers = createHyperSubLayers({
     },
     h: app("Home"),
     d: open(
-      `raycast://extensions/yakitrak/do-not-disturb/toggle?launchType=background`,
+      `raycast://extensions/yakitrak/do-not-disturb/toggle?launchType=background`
     ),
     t: open(`raycast://extensions/raycast/system/toggle-system-appearance`),
     c: open("raycast://extensions/raycast/system/open-camera"),
@@ -78,7 +78,7 @@ const hyperSubLayers = createHyperSubLayers({
   r: {
     a: open("raycast://extensions/raycast/window-management/maximize"),
     c: open(
-      "raycast://extensions/VladCuciureanu/toothpick/manage-bluetooth-connections",
+      "raycast://extensions/VladCuciureanu/toothpick/manage-bluetooth-connections"
     ),
     k: open("raycast://extensions/rolandleth/kill-process/index"),
     u: open("raycast://extensions/raycast/screenshots/search-screenshots"),
@@ -89,7 +89,11 @@ const hyperSubLayers = createHyperSubLayers({
     p: open("raycast://extensions/raycast/raycast/confetti"),
     s: open("raycast://extensions/raycast/snippets/search-snippets"),
     m: open("raycast://extensions/raycast/navigation/search-menu-items"),
-    n: open("raycast://extensions/notion/notion/search-page"),
+    l: open("raycast://extensions/eluce2/displayplacer/displayplacer"),
+  },
+  n: {
+    s: open("raycast://extensions/notion/notion/search-page"),
+    c: open("raycast://extensions/notion/notion/create-database-page"),
   },
 });
 
@@ -119,7 +123,7 @@ const leftGuiLayer = createKeyLayer(
     d: { to: [{ key_code: "keypad_plus" }] },
     f: { to: [{ key_code: "keypad_equal_sign" }] },
   },
-  "return_or_enter",
+  "return_or_enter"
 );
 
 const left_option_layer = createKeyLayer(
@@ -136,7 +140,7 @@ const left_option_layer = createKeyLayer(
     l: { to: [{ key_code: "f9" }] },
     p: { to: [{ key_code: "f10" }] },
   },
-  "delete_or_backspace",
+  "delete_or_backspace"
 );
 
 const rightGuiLayer = createKeyLayer(
@@ -165,7 +169,7 @@ const rightGuiLayer = createKeyLayer(
     k: { to: [{ key_code: "backslash" }] },
     l: { to: [{ key_code: "grave_accent_and_tilde" }] },
   },
-  "spacebar",
+  "spacebar"
 );
 
 const homeRowMods: Manipulator[] = [
@@ -241,7 +245,7 @@ const rules: KarabinerRules[] = [
       createBasicManipulator(
         "left_option",
         "delete_or_backspace",
-        "alt to backspace",
+        "alt to backspace"
       ),
     ],
   },
@@ -288,6 +292,6 @@ fs.writeFileSync(
       profiles: [{ name: "Default", complex_modifications: { rules } }],
     },
     null,
-    2,
-  ),
+    2
+  )
 );
