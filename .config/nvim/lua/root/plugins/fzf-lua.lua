@@ -102,6 +102,7 @@ return {
 		vim.api.nvim_set_keymap("n", "gr", "<cmd>FzfLua lsp_references<CR>", opts)
 		vim.api.nvim_set_keymap("n", "<C-p>", "<cmd>FzfLua files<CR>", opts)
 		vim.api.nvim_set_keymap("n", "<C-s>", "<cmd>FzfLua grep<CR>", opts)
+		vim.api.nvim_set_keymap("n", "<leader>fb", "<cmd>FzfLua buffers<CR>", opts)
 		vim.api.nvim_set_keymap("n", "<leader>ke", "<cmd>FzfLua keymaps<CR>", opts)
 		vim.keymap.set({ "n", "v" }, "<leader>c", "<cmd>FzfLua lsp_code_actions<CR>", { desc = "Code Actions" })
 	end,

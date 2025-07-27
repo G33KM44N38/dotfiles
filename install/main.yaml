@@ -131,9 +131,12 @@
     - name: Run roles
       ansible.builtin.include_role:
         name: git_hooks
-     - name: Run roles
-       ansible.builtin.include_role:
-         name: git
-     - name: Run roles
-       ansible.builtin.include_role:
-         name: opencode
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: git
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: opencode
+    - name: Run roles
+      ansible.builtin.include_role:
+        name: ollama

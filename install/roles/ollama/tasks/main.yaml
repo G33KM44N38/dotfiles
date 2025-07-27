@@ -1,0 +1,4 @@
+---
+- name: Install Ollama
+  ansible.builtin.include_tasks: "{{ ansible_os_family | lower }}.yaml"
+  when: ansible_os_family | lower == 'darwin'
