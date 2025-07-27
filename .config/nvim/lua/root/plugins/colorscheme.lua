@@ -3,6 +3,7 @@ return {
 	priority = 1000,
 	config = function()
 		-- Lua initialization file
+		vim.g.nightflyTransparent = true
 		vim.g.nightflyVirtualTextColor = true
 		vim.cmd([[colorscheme nightfly]])
 
