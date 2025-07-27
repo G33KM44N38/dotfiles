@@ -2,10 +2,13 @@ local function update_tmux_windows()
 	os.execute("tmux kill-window -t 2")
 	os.execute("tmux kill-window -t 3")
 	os.execute("tmux kill-window -t 4")
+	-- os.execute("tmux kill-window -t 5")
 	os.execute("tmux new-window -dn run")
 	os.execute("tmux new-window -dn process")
-	os.execute("tmux new-window -dn AI")
-	os.execute('tmux send-keys -t AI -R "gemini" C-m')
+	-- os.execute("tmux new-window -dn AI")
+	-- os.execute('tmux send-keys -t AI -R "gemini" C-m')
+	os.execute("tmux new-window -dn opencode")
+	os.execute('tmux send-keys -t opencode -R "opencode" C-m')
 end
 
 return {

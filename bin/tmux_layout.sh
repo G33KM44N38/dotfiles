@@ -25,8 +25,10 @@ done
 if [[ "$should_exclude" == false ]]; then
   tmux new-window -n 'run'
   tmux new-window -n 'process'
-  tmux new-window -n 'AI'
-  tmux send-keys -R "gemini" C-m
+  # tmux new-window -n 'AI'
+  # tmux send-keys -R "gemini" C-m
+  tmux new-window -n 'opencode'
+  tmux send-keys -R "opencode" C-m
 fi
 
 tmux select-window -t 1
