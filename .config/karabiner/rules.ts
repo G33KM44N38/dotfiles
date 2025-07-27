@@ -44,7 +44,7 @@ const hyperSubLayers = createHyperSubLayers({
     t: app("Ghostty"),
     v: app("Visual Studio Code"),
     x: app("Discord"),
-    y: app("Notes"),
+    y: app("Telegram"),
     z: app("Safari"),
   },
   s: {
