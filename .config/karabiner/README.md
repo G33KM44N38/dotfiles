@@ -1,49 +1,125 @@
-# @mxstbr's Karabiner Elements configuration
+# Karabiner-Elements Configuration
 
-If you like TypeScript and want your Karabiner configuration maintainable & type-safe, you probably want to use the custom configuration DSL / generator I created in `rules.ts` and `utils.ts`!
+This project provides a custom configuration for Karabiner-Elements on macOS, designed to enhance keyboard productivity through advanced key remappings, hyper key sublayers, and application launchers.
 
-> “This repo is incredible - thanks so much for putting it together! I always avoided Karabiner mostly because of its complicated configuration. **Your project makes it so much easier to work with and so much more powerful. I'm geeking out on how much faster I'm going to be now.**”
->
-> — @jhanstra ([source](https://github.com/mxstbr/karabiner/pull/4))
+## Technical Aspects
 
-Watch the video about this repo:
+### Purpose
+The primary goal of this configuration is to optimize keyboard workflows by creating intuitive shortcuts and layers for launching applications, opening websites, controlling system settings, and executing Raycast commands.
 
-[<img width="772" alt="CleanShot 2024-04-17 at 17 47 16@2x" src="https://github.com/mxstbr/karabiner/assets/7525670/c8565c48-10ad-4479-b690-ddc35d1ca8ce">](https://www.youtube.com/watch?v=j4b_uQX3Vu0)
+### Technologies
+*   **TypeScript**: The configuration is written in TypeScript, providing type safety and improved code organization.
+*   **Node.js**: Used as the runtime environment for building and watching the configuration files.
+*   **Karabiner-Elements**: The core application that interprets and applies the defined keyboard modifications.
+*   **`run-applescript`**: A Node.js library used to execute AppleScript commands, enabling interaction with macOS applications like Arc browser for specific functionalities.
 
-Watch my interview with Raycast for a deeper dive into how I connect this with Raycast as my personal productivity system:
+### Key Features
 
-[![](https://github.com/mxstbr/karabiner/assets/7525670/f974cee3-ac92-4f80-8bf7-9efdf81f78b5)](https://www.youtube.com/watch?v=m5MDv9qwhU8)
+#### Hyper Key Sublayers
+A central feature is the "Hyper Key" (configured to be the `spacebar` or `f24` key), which, when held down, activates various sublayers for quick access to:
 
-You probably don't want to use my exact configuration, as it's optimized for my personal style & usage. Best way to go about using this if you want to? Probably delete all the sublayers in `rules.ts` and add your own based on your own needs!
+*   **Websites**:
+    *   `Hyper + B + A`: ChatGPT
+    *   `Hyper + B + Y`: YouTube
+    *   `Hyper + B + R`: Reddit
+    *   `Hyper + B + C`: Claude AI
+    *   `Hyper + B + I`: Instagram
+    *   `Hyper + B + D`: Localhost (http://localhost:3000)
+    *   `Hyper + B + T`: Twitch
+    *   `Hyper + B + X`: X (formerly Twitter)
+    *   `Hyper + B + F`: Netflix
+*   **Applications**:
+    *   `Hyper + O + A`: Arc
+    *   `Hyper + O + B`: Beeper
+    *   `Hyper + O + C`: Calendar
+    *   `Hyper + O + D`: DaVinci Resolve
+    *   `Hyper + O + E`: Mail
+    *   `Hyper + O + F`: Figma
+    *   `Hyper + O + G`: Simulator
+    *   `Hyper + O + H`: Home
+    *   `Hyper + O + I`: Messages
+    *   `Hyper + O + J`: FaceTime
+    *   `Hyper + O + K`: Ledger Live
+    *   `Hyper + O + M`: Music
+    *   `Hyper + O + N`: Notion
+    *   `Hyper + O + P`: Obsidian
+    *   `Hyper + O + R`: Reader
+    *   `Hyper + O + S`: The Sims 4
+    *   `Hyper + O + Semicolon`: Cursor
+    *   `Hyper + O + T`: Ghostty
+    *   `Hyper + O + V`: Visual Studio Code
+    *   `Hyper + O + X`: Discord
+    *   `Hyper + O + Y`: Telegram
+    *   `Hyper + O + Z`: Safari
+*   **System Controls**:
+    *   `Hyper + S + U`: Volume Up
+    *   `Hyper + S + J`: Volume Down
+    *   `Hyper + S + I`: Display Brightness Up
+    *   `Hyper + S + K`: Display Brightness Down
+    *   `Hyper + S + L`: Lock Screen (`Control + Command + Q`)
+    *   `Hyper + S + H`: Home
+    *   `Hyper + S + D`: Toggle Do Not Disturb (via Raycast)
+    *   `Hyper + S + T`: Toggle System Appearance (via Raycast)
+    *   `Hyper + S + C`: Open Camera (via Raycast)
+*   **Raycast Commands**:
+    *   `Hyper + R + A`: Maximize Window
+    *   `Hyper + R + C`: Manage Bluetooth Connections
+    *   `Hyper + R + K`: Kill Process
+    *   `Hyper + R + U`: Search Screenshots
+    *   `Hyper + R + E`: Search Emoji Symbols
+    *   `Hyper + R + H`: Clipboard History
+    *   `Hyper + R + I`: Set Audio Input Device
+    *   `Hyper + R + O`: Set Audio Output Device
+    *   `Hyper + R + P`: Confetti
+    *   `Hyper + R + S`: Search Snippets
+    *   `Hyper + R + M`: Search Menu Items
+    *   `Hyper + R + L`: Display Placer
+*   **Notion Commands**:
+    *   `Hyper + N + S`: Search Notion Page
+    *   `Hyper + N + C`: Create Notion Database Page
 
-## Installation
+#### Key Layers
+Additional key layers provide further remappings:
 
-1. Install & start [Karabiner Elements](https://karabiner-elements.pqrs.org/)
-1. Clone this repository
-1. Delete the default `~/.config/karabiner` folder
-1. Create a symlink with `ln -s ~/github/mxstbr/karabiner ~/.config` (where `~/github/mxstbr/karabiner` is your local path to where you cloned the repository)
-1. [Restart karabiner_console_user_server](https://karabiner-elements.pqrs.org/docs/manual/misc/configuration-file-path/) with `` launchctl kickstart -k gui/`id -u`/org.pqrs.karabiner.karabiner_console_user_server ``
+*   **Left GUI Layer (Left Command held)**:
+    *   `QWERTY` row maps to `1234567890`
+    *   `HJKL` maps to `Left, Down, Up, Right Arrow`
+    *   `S, D, F` map to `Keypad Hyphen, Keypad Plus, Keypad Equal Sign`
+*   **Left Option Layer (Left Option held)**:
+    *   `ASDFGHJKLP` maps to `F1-F10`
+*   **Right GUI Layer (Right Command held)**:
+    *   Various keys map to symbols like `\`, `[`, `]`, `(`, `~`, `/`, `'`, `{`, `}`, `)`, `_`, `` ` ``.
 
-## Development
+#### Homerow Mods
+The home row keys (`A`, `S`, `D`, `F`, `J`, `K`, `L`, `Semicolon`) function as standard modifier keys (`left_gui`, `left_option`, `left_shift`, `left_control`, `right_control`, `right_shift`, `right_option`, `right_gui`) when held down, but produce their original character when tapped. This is optimized for fast typing.
 
-```
-yarn install
-```
+#### Basic Key Remappings
+*   `right_option` remapped to `tab`
+*   `caps_lock` remapped to `escape`
+*   `close_bracket` remapped to `escape`
+*   `open_bracket` remapped to `command + spacebar`
+*   `left_option` remapped to `delete_or_backspace`
 
-to install the dependencies. (one-time only)
+#### Key Disabling
+Several keys are explicitly disabled to prevent accidental presses or to free them up for custom mappings within the Karabiner-Elements configuration. These include: `grave_accent_and_tilde`, `tab`, `caps_lock`, `delete_or_backspace`, `escape`, `right_shift`, `left_shift`, `return_or_enter`, and number keys (`0-9`), and `hyphen`.
 
-```
-yarn run build
-```
+### Build Process
+The `karabiner.json` configuration file is generated from TypeScript source files:
 
-builds the `karabiner.json` from the `rules.ts`.
+*   **Build Command**: `yarn build` or `npm run build` executes `tsm rules.ts`. This command compiles the `rules.ts` file and generates the `karabiner.json` file in the project root.
+*   **Watch Command**: `yarn watch` or `npm run watch` uses `nodemon` to monitor changes in `.ts` files. Any modification automatically triggers a rebuild of `karabiner.json`, streamlining the development process.
 
-```
-yarn run watch
-```
+### Code Structure
+*   `rules.ts`: The main TypeScript file where the Karabiner-Elements rules are defined and assembled. It imports utilities and types to construct the complex modifications.
+*   `utils.ts`: Contains a collection of helper functions that simplify the creation of Karabiner-Elements manipulators and conditions. This includes functions for creating hyper sublayers, application launchers, opening URLs, defining home row modifiers, and disabling keys.
+*   `types.ts`: Defines the TypeScript interfaces and types that mirror the Karabiner-Elements JSON schema, ensuring type safety and consistency throughout the configuration.
+*   `scripts/arc.ts`: A dedicated script containing the `openArcWebsite` function. This function leverages AppleScript to intelligently open URLs in the Arc browser, checking if Arc is already running or if the tab already exists to optimize user experience.
 
-watches the TypeScript files and rebuilds whenever they change.
+### Dependencies
+The project relies on the following development and runtime dependencies, managed via `package.json`:
 
-## License
-
-Copyright (c) 2022 Maximilian Stoiber, licensed under the [MIT license](./LICENSE.md).
+*   `@types/node`: TypeScript type definitions for Node.js.
+*   `nodemon`: A utility that monitors for changes in source files and automatically restarts the build process.
+*   `prettier`: An opinionated code formatter used to maintain consistent code style.
+*   `tsm`: A TypeScript module loader that allows direct execution of TypeScript files without prior compilation.
+*   `run-applescript`: A utility for running AppleScript commands from Node.js, crucial for interacting with macOS applications.
