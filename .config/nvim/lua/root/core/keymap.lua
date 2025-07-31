@@ -49,6 +49,8 @@ keymap("x", "K", ":move '<-2<CR>gv-gv", Opts)
 -- allow search term to be in the middle
 keymap("n", "n", "nzzzv", Opts)
 keymap("n", "N", "Nzzzv", Opts)
+keymap("n", "<C-d>", "<C-d>zzzv", Opts)
+keymap("n", "<C-u>", "<C-u>zzzv", Opts)
 
 keymap("n", "<leader>tb", "<cmd>tabnext<CR>", Opts)
 keymap("n", "<leader>tp", "<cmd>tabprev<CR>", Opts)
