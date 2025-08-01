@@ -23,7 +23,7 @@ outer.right =      0
 
 [mode.main.binding]
 
-alt-slash = 'layout tiles horizontal vertical'
+# alt-slash = 'layout tiles horizontal vertical'
 alt-comma = 'layout accordion'
 
 alt-h = 'focus left'
@@ -151,6 +151,10 @@ run = ['move-node-to-workspace 5']
 [[on-window-detected]]
 if.app-id = 'com.tdesktop.Telegram'
 run = ['move-node-to-workspace 5']  
+[[on-window-detected]]
+if.app-id = 'com.superhuman.electron'
+run = ['move-node-to-workspace 5']  
+
 
 [[on-window-detected]]
 if.app-id = 'com.figma.Desktop'
