@@ -38,6 +38,7 @@ const hyperSubLayers = createHyperSubLayers({
     m: app("Music"),
     n: app("Notion"),
     p: app("Obsidian"),
+    q: app("Superhuman"),
     r: app("Reader"),
     s: app("The Sims 4"),
     semicolon: app("Cursor"),
