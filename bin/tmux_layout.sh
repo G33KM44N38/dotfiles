@@ -3,23 +3,34 @@
 # Absolute path to skip
 WORKSPACE_PATH="/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain"
 
-tmux rename-window 'nvim'
-tmux send-keys -R "nvim ." C-m
-
 # Get current directory full path
 CURRENT_DIR="$PWD"
 
 # List of full paths where we skip creating extra tmux windows
-EXCLUDED_PATHS=("$WORKSPACE_PATH")
+EXCLUDED_PATHS=(
+  "$WORKSPACE_PATH|odn"
+)
 
 # Check if current path is in the excluded list
+# To add a new excluded path and its custom command, add a new line like:
+# EXCLUDED_PATHS["/path/to/your/project"]="your_custom_command"
+# To remove an entry, simply delete the corresponding line.
 should_exclude=false
-for path in "${EXCLUDED_PATHS[@]}"; do
-  if [[ "$CURRENT_DIR" == "$path" ]]; then
+for entry in "${EXCLUDED_PATHS[@]}"; do
+  IFS='|' read -r excluded_path command_to_run <<< "$entry"
+  if [[ "$CURRENT_DIR" == "$excluded_path" ]]; then
     should_exclude=true
+    SPECIFIC_COMMAND="$command_to_run"
     break
   fi
 done
+
+tmux rename-window 'nvim'
+if [[ "$should_exclude" == true ]]; then
+  tmux send-keys -R "$SPECIFIC_COMMAND" C-m
+else
+  tmux send-keys -R "nvim ." C-m
+fi
 
 # Only create extra windows if not excluded
 if [[ "$should_exclude" == false ]]; then
