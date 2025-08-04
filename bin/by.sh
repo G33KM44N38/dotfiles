@@ -17,6 +17,7 @@ arc-cli select-space-name master
 pkill -TERM "Brave Browser"
 pkill -TERM "QuickTime Player"
 pkill -TERM "Telegram"
+pkill -TERM "Safari"
 open raycast://extensions/raycast/system/eject-all-disks
 
 # vi:ft=sh:

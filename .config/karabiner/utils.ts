@@ -231,8 +231,8 @@ export function createHomeRowMod(key_code: KeyCode, mod: KeyCode): Manipulator {
       BuiltinKeyboardCondition,
     ],
     parameters: {
-      "basic.to_if_alone_timeout_milliseconds": 1000,
-      "basic.to_if_held_down_threshold_milliseconds": 300,
+      "basic.to_if_alone_timeout_milliseconds": 2000,
+      "basic.to_if_held_down_threshold_milliseconds": 500,
     },
   };
 }

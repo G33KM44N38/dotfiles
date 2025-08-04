@@ -1,3 +1,4 @@
+-- require("root.core.background")
 require("root.core.keymap")
 require("root.core.command")
 require("root.my_plugins.Commiter")

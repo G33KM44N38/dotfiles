@@ -1,5 +1,4 @@
 return {
-	"xiyaowong/transparent.nvim",
 	{
 		"echasnovski/mini.indentscope",
 		version = false,

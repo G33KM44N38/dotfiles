@@ -7,6 +7,8 @@ return {
 		vim.g.nightflyVirtualTextColor = true
 		vim.cmd([[colorscheme nightfly]])
 
+		vim.api.nvim_set_hl(0, "LineNr", { fg = "white" })
+
 		-- vim.o.background = "light"
 		-- vim.cmd('colorscheme gruvbox')
 

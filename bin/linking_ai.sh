@@ -4,7 +4,7 @@ set -e
 
 # Define source paths
 ROOT="$HOME/.config/AI/GEMINI"
-FILES_TO_LINK=("GEMINI.md" ".gemini")
+FILES_TO_LINK=(".ai")
 
 # Get the .git/info path, even in worktrees
 get_git_info_dir() {

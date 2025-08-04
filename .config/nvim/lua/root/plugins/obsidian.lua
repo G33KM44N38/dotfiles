@@ -1933,7 +1933,9 @@ return {
 			vim.api.nvim_create_autocmd("FileType", {
 				pattern = "markdown",
 				callback = function()
-					vim.opt.spell = true
+					if in_workspace() then
+						vim.opt.spell = true
+					end
 				end,
 			})
 			require("obsidian").setup(opts)

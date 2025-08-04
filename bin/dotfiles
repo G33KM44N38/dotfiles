@@ -69,8 +69,73 @@ function _clear_task {
 }
 
 function _task_done {
-    printf "${OVERWRITE}${LGREEN} [✓]  ${LGREEN}${TASK}\n"
+    printf "${OVERWRITE}${LGREEN} [✓]  ${LGREEN}${TASK}
+"
     _clear_task
+}
+
+function _check_git_status_and_prompt_commit {
+    local uncommitted_changes=$(git status --porcelain)
+    local unpushed_commits=$(git rev-list @{u}..HEAD 2>/dev/null || true) # Handle no upstream branch
+
+    if [[ -n "$uncommitted_changes" || -n "$unpushed_commits" ]]; then
+        echo -e "${YELLOW}You have pending Git changes:${NC}"
+        if [[ -n "$uncommitted_changes" ]]; then
+            echo -e "${YELLOW}  - Uncommitted changes detected.${NC}"
+        fi
+        if [[ -n "$unpushed_commits" ]]; then
+            echo -e "${YELLOW}  - Unpushed commits detected.${NC}"
+        fi
+
+        read -p "${CYAN}Do you want to commit and/or push these changes now? (y/N) ${NC}" -n 1 -r
+        echo # Newline after read
+
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            if [[ -n "$uncommitted_changes" ]]; then
+                _task "Staging all changes..."
+                git add -A
+                _task_done
+
+                read -p "${CYAN}Enter commit message: ${NC}" commit_message
+                if [[ -z "$commit_message" ]]; then
+                    commit_message="Automated commit by dotfiles script"
+                fi
+                _task "Committing changes..."
+                if git commit -m "$commit_message"; then
+                    _task_done
+                else
+                    printf "${OVERWRITE}${LRED} [X]  ${TASK}${LRED}
+"
+                    echo -e "${RED}Commit failed. Please resolve manually.${NC}"
+                    exit 1 # Exit if commit fails
+                fi
+            fi
+
+            # Re-check unpushed commits after potential new commit
+            unpushed_commits=$(git rev-list @{u}..HEAD 2>/dev/null || true)
+            if [[ -n "$unpushed_commits" ]]; then
+                read -p "${CYAN}Do you want to push these changes now? (y/N) ${NC}" -n 1 -r
+                echo # Newline after read
+                if [[ $REPLY =~ ^[Yy]$ ]]; then
+                    _task "Pushing changes..."
+                    if git push; then
+                        _task_done
+                    else
+                        printf "${OVERWRITE}${LRED} [X]  ${TASK}${LRED}
+"
+                        echo -e "${RED}Push failed. Please resolve manually.${NC}"
+                        exit 1 # Exit if push fails
+                    fi
+                else
+                    echo -e "${YELLOW}Skipping push.${NC}"
+                fi
+            else
+                echo -e "${GREEN}No unpushed commits after commit.${NC}"
+            fi
+        else
+            echo -e "${YELLOW}Skipping commit and push.${NC}"
+        fi
+    fi
 }
 
 set -e
@@ -102,6 +167,7 @@ else
         _cmd "git stash"
     fi
 
+    _check_git_status_and_prompt_commit
     _cmd "git pull --rebase --quiet"
     
     if git stash list | grep -q 'stash@{0}'; then
