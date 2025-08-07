@@ -84,11 +84,6 @@ if.app-id = 'company.thebrowser.Browser'
 run = ['move-node-to-workspace 1'] 
 
 [[on-window-detected]]
-if.app-id = 'company.thebrowser.dia'
-run = ['move-node-to-workspace 1'] 
-
-
-[[on-window-detected]]
 if.app-id = 'com.googlecode.iterm2'
 run = ['move-node-to-workspace 2']  
 
@@ -111,25 +106,15 @@ run = [ 'move-node-to-workspace 2' ]
 [[on-window-detected]]
 if.app-id = 'notion.id'
 run = ['move-node-to-workspace 3']  
-
 [[on-window-detected]]
 if.app-id = 'com.ledger.live'
 run = ['move-node-to-workspace 3']  
-
 [[on-window-detected]]
 if.app-id = 'com.apple.iCal'
 run = ['move-node-to-workspace 3']  
-
 [[on-window-detected]]
 if.app-id = 'io.rize'
 run = ['move-node-to-workspace 3']  
-
-
-[[on-window-detected]]
-if.app-id = 'com.electron.motion'
-run = ['move-node-to-workspace 3']  
-
-
 [[on-window-detected]]
 if.app-id = 'com.apple.reminders'
 run = ['move-node-to-workspace 3']  
@@ -173,34 +158,24 @@ run = ['move-node-to-workspace 8']
 if.app-id = 'com.apple.Music'
 run = ['move-node-to-workspace 8']  
 
+[[on-window-detected]]
+if.app-id = 'com.brave.Browser'
+run = ['move-node-to-workspace 9']  
+
+[[on-window-detected]]
+if.app-id = 'com.apple.FaceTime'
+run = ['move-node-to-workspace 10']  
+[[on-window-detected]]
+if.app-id = 'com.hnc.Discord'
+run = ['move-node-to-workspace 10']  
 
 [[on-window-detected]]
 if.app-id = 'com.electron.dockerdesktop'
 run = ['move-node-to-workspace 12']  
 
 [[on-window-detected]]
-if.app-id = 'com.apple.FaceTime'
-run = ['move-node-to-workspace 10']  
-
-[[on-window-detected]]
-if.app-id = 'com.hnc.Discord'
-run = ['move-node-to-workspace 10']  
-
-[[on-window-detected]]
 if.app-id = 'md.obsidian'
 run = ['move-node-to-workspace 13']  
-
-[[on-window-detected]]
-if.app-id = 'com.ea.mac.eaapp'
-run = ['move-node-to-workspace 14']  
-
-[[on-window-detected]]
-if.app-id = 'com.ea.mac.thesims4'
-run = ['move-node-to-workspace 14']  
-
-[[on-window-detected]]
-if.app-id = 'com.brave.Browser'
-run = ['move-node-to-workspace 1']  
 
 [[on-window-detected]]
 if.app-id = 'com.raycast.macos'
@@ -217,9 +192,9 @@ run = ['layout floating']
 [workspace-to-monitor-force-assignment]
 1 = 'main'                       
 2 = 'main'                       
-3 = 'main'                       
+3 = 'secondary'                       
 4 = 'main'                       
-5 = 'main'                       
+5 = 'secondary'                       
 6 = 'main'                       
 7 = 'main'                       
 8 = 'main'                       
@@ -228,4 +203,3 @@ run = ['layout floating']
 11 = 'secondary'                       
 12 = 'secondary'                       
 13 = 'secondary'                       
-14 = 'main'                       
