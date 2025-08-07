@@ -13,15 +13,15 @@ import {
 
 const hyperSubLayers = createHyperSubLayers({
   b: {
-    a: open("https://chatgpt.com"),
-    y: open("https://youtube.com"),
+    a: open("https://chatgpt.com?_perso"),
+    y: open("https://youtube.com?_perso"),
     r: open("https://reddit.com"),
     c: open("https://claude.ai/recents"),
-    i: open("https://instagram.com"),
+    i: open("https://instagram.com?_perso"),
     d: open("http://localhost:3000"),
-    t: open("https://www.twitch.tv/"),
-    x: open("https://www.x.com/"),
-    f: open("https://www.netflix.com/"),
+    t: open("https://www.twitch.tv/?_perso"),
+    x: open("https://www.x.com/?_perso"),
+    f: open("https://www.netflix.com/?_perso"),
   },
   o: {
     a: app("Arc"),
@@ -40,6 +40,7 @@ const hyperSubLayers = createHyperSubLayers({
     q: app("Superhuman"),
     semicolon: app("Cursor"),
     t: app("Ghostty"),
+    w: app("Brave Browser"),
     x: app("Discord"),
     y: app("Telegram"),
     z: app("Safari"),
