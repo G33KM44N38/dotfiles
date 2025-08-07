@@ -259,7 +259,7 @@ export function createBasicManipulator(
 export function createModifierManipulator(
   from_key: KeyCode,
   description: string,
-  modifers: string[] | undefined
+  to: To[] | undefined
 ): Manipulator {
   return {
     description,
@@ -271,12 +271,7 @@ export function createModifierManipulator(
         optional: ["any"],
       },
     },
-    to: [
-      {
-        key_code: "spacebar",
-        modifiers: modifers,
-      },
-    ],
+    to: to,
   };
 }
 

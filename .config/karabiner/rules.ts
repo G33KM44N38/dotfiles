@@ -209,13 +209,25 @@ const rules: KarabinerRules[] = [
     manipulators: [createBasicManipulator("caps_lock", "escape", "")],
   },
   {
-    description: "caps lock to escape",
-    manipulators: [createBasicManipulator("close_bracket", "escape", "")],
+    description: "close backet to alt-enter",
+    manipulators: [
+      createModifierManipulator("close_bracket", "right_option", [
+        {
+          key_code: "return_or_enter",
+          modifiers: ["right_option"],
+        },
+      ]),
+    ],
   },
   {
     description: "open_bracket to cmd space ",
     manipulators: [
-      createModifierManipulator("open_bracket", "spacebar", ["right_gui"]),
+      createModifierManipulator("open_bracket", "spacebar", [
+        {
+          key_code: "spacebar",
+          modifiers: ["right_gui"],
+        },
+      ]),
     ],
   },
 
