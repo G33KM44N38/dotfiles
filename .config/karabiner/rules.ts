@@ -29,7 +29,6 @@ const hyperSubLayers = createHyperSubLayers({
     c: app("Calendar"),
     d: app("DaVinci Resolve"),
     e: app("Mail"),
-    f: app("Figma"),
     g: app("Simulator"),
     h: app("Home"),
     i: app("Messages"),
@@ -39,11 +38,8 @@ const hyperSubLayers = createHyperSubLayers({
     n: app("Notion"),
     p: app("Obsidian"),
     q: app("Superhuman"),
-    r: app("Reader"),
-    s: app("The Sims 4"),
     semicolon: app("Cursor"),
     t: app("Ghostty"),
-    v: app("Visual Studio Code"),
     x: app("Discord"),
     y: app("Telegram"),
     z: app("Safari"),
@@ -209,13 +205,25 @@ const rules: KarabinerRules[] = [
     manipulators: [createBasicManipulator("caps_lock", "escape", "")],
   },
   {
-    description: "caps lock to escape",
-    manipulators: [createBasicManipulator("close_bracket", "escape", "")],
+    description: "close backet to alt-enter",
+    manipulators: [
+      createModifierManipulator("close_bracket", "right_option", [
+        {
+          key_code: "return_or_enter",
+          modifiers: ["right_option"],
+        },
+      ]),
+    ],
   },
   {
     description: "open_bracket to cmd space ",
     manipulators: [
-      createModifierManipulator("open_bracket", "spacebar", ["right_gui"]),
+      createModifierManipulator("open_bracket", "spacebar", [
+        {
+          key_code: "spacebar",
+          modifiers: ["right_gui"],
+        },
+      ]),
     ],
   },
 
