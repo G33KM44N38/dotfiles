@@ -1268,7 +1268,7 @@
                         ]
                     },
                     {
-                        "description": "caps lock to escape",
+                        "description": "close backet to alt-enter",
                         "manipulators": [
                             {
                                 "conditions": [
@@ -1278,12 +1278,17 @@
                                         "type": "device_if"
                                     }
                                 ],
-                                "description": "close_bracket -> escape",
+                                "description": "right_option",
                                 "from": {
                                     "key_code": "close_bracket",
                                     "modifiers": { "optional": ["any"] }
                                 },
-                                "to": [{ "key_code": "escape" }],
+                                "to": [
+                                    {
+                                        "key_code": "return_or_enter",
+                                        "modifiers": ["right_option"]
+                                    }
+                                ],
                                 "type": "basic"
                             }
                         ]
@@ -1846,12 +1851,12 @@
                                         "value": 1
                                     }
                                 ],
-                                "description": "Open https://chatgpt.com",
+                                "description": "Open https://chatgpt.com?_perso",
                                 "from": {
                                     "key_code": "a",
                                     "modifiers": { "optional": ["any"] }
                                 },
-                                "to": [{ "shell_command": "open https://chatgpt.com" }],
+                                "to": [{ "shell_command": "open https://chatgpt.com?_perso" }],
                                 "type": "basic"
                             },
                             {
@@ -1862,12 +1867,12 @@
                                         "value": 1
                                     }
                                 ],
-                                "description": "Open https://youtube.com",
+                                "description": "Open https://youtube.com?_perso",
                                 "from": {
                                     "key_code": "y",
                                     "modifiers": { "optional": ["any"] }
                                 },
-                                "to": [{ "shell_command": "open https://youtube.com" }],
+                                "to": [{ "shell_command": "open https://youtube.com?_perso" }],
                                 "type": "basic"
                             },
                             {
@@ -1910,12 +1915,12 @@
                                         "value": 1
                                     }
                                 ],
-                                "description": "Open https://instagram.com",
+                                "description": "Open https://instagram.com?_perso",
                                 "from": {
                                     "key_code": "i",
                                     "modifiers": { "optional": ["any"] }
                                 },
-                                "to": [{ "shell_command": "open https://instagram.com" }],
+                                "to": [{ "shell_command": "open https://instagram.com?_perso" }],
                                 "type": "basic"
                             },
                             {
@@ -1942,12 +1947,12 @@
                                         "value": 1
                                     }
                                 ],
-                                "description": "Open https://www.twitch.tv/",
+                                "description": "Open https://www.twitch.tv/?_perso",
                                 "from": {
                                     "key_code": "t",
                                     "modifiers": { "optional": ["any"] }
                                 },
-                                "to": [{ "shell_command": "open https://www.twitch.tv/" }],
+                                "to": [{ "shell_command": "open https://www.twitch.tv/?_perso" }],
                                 "type": "basic"
                             },
                             {
@@ -1958,12 +1963,12 @@
                                         "value": 1
                                     }
                                 ],
-                                "description": "Open https://www.x.com/",
+                                "description": "Open https://www.x.com/?_perso",
                                 "from": {
                                     "key_code": "x",
                                     "modifiers": { "optional": ["any"] }
                                 },
-                                "to": [{ "shell_command": "open https://www.x.com/" }],
+                                "to": [{ "shell_command": "open https://www.x.com/?_perso" }],
                                 "type": "basic"
                             },
                             {
@@ -1974,12 +1979,12 @@
                                         "value": 1
                                     }
                                 ],
-                                "description": "Open https://www.netflix.com/",
+                                "description": "Open https://www.netflix.com/?_perso",
                                 "from": {
                                     "key_code": "f",
                                     "modifiers": { "optional": ["any"] }
                                 },
-                                "to": [{ "shell_command": "open https://www.netflix.com/" }],
+                                "to": [{ "shell_command": "open https://www.netflix.com/?_perso" }],
                                 "type": "basic"
                             }
                         ]
@@ -2136,22 +2141,6 @@
                                         "value": 1
                                     }
                                 ],
-                                "description": "Open -a 'Figma.app'",
-                                "from": {
-                                    "key_code": "f",
-                                    "modifiers": { "optional": ["any"] }
-                                },
-                                "to": [{ "shell_command": "open -a 'Figma.app'" }],
-                                "type": "basic"
-                            },
-                            {
-                                "conditions": [
-                                    {
-                                        "name": "hyper_sublayer_o",
-                                        "type": "variable_if",
-                                        "value": 1
-                                    }
-                                ],
                                 "description": "Open -a 'Simulator.app'",
                                 "from": {
                                     "key_code": "g",
@@ -2296,38 +2285,6 @@
                                         "value": 1
                                     }
                                 ],
-                                "description": "Open -a 'Reader.app'",
-                                "from": {
-                                    "key_code": "r",
-                                    "modifiers": { "optional": ["any"] }
-                                },
-                                "to": [{ "shell_command": "open -a 'Reader.app'" }],
-                                "type": "basic"
-                            },
-                            {
-                                "conditions": [
-                                    {
-                                        "name": "hyper_sublayer_o",
-                                        "type": "variable_if",
-                                        "value": 1
-                                    }
-                                ],
-                                "description": "Open -a 'The Sims 4.app'",
-                                "from": {
-                                    "key_code": "s",
-                                    "modifiers": { "optional": ["any"] }
-                                },
-                                "to": [{ "shell_command": "open -a 'The Sims 4.app'" }],
-                                "type": "basic"
-                            },
-                            {
-                                "conditions": [
-                                    {
-                                        "name": "hyper_sublayer_o",
-                                        "type": "variable_if",
-                                        "value": 1
-                                    }
-                                ],
                                 "description": "Open -a 'Cursor.app'",
                                 "from": {
                                     "key_code": "semicolon",
@@ -2360,12 +2317,12 @@
                                         "value": 1
                                     }
                                 ],
-                                "description": "Open -a 'Visual Studio Code.app'",
+                                "description": "Open -a 'Brave Browser.app'",
                                 "from": {
-                                    "key_code": "v",
+                                    "key_code": "w",
                                     "modifiers": { "optional": ["any"] }
                                 },
-                                "to": [{ "shell_command": "open -a 'Visual Studio Code.app'" }],
+                                "to": [{ "shell_command": "open -a 'Brave Browser.app'" }],
                                 "type": "basic"
                             },
                             {
