@@ -61,8 +61,6 @@ alt-shift-f = 'fullscreen'
 alt-shift-t = ['layout floating tiling'] 
 
 alt-shift-m = 'move-node-to-monitor main'
-alt-shift-p = 'move-node-to-monitor prev'
-alt-shift-n = 'move-node-to-monitor  next'
 alt-shift-s = 'move-node-to-monitor  secondary'
 
 alt-shift-semicolon = 'mode service'
@@ -121,7 +119,9 @@ run = ['move-node-to-workspace 3']
 [[on-window-detected]]
 if.app-id = 'com.apple.reminders'
 run = ['move-node-to-workspace 3']  
-
+[[on-window-detected]]
+if.app-id = 'md.obsidian'
+run = ['move-node-to-workspace 3']  
 
 [[on-window-detected]]
 if.app-id = 'org.jkiss.dbeaver.core.product'
@@ -131,18 +131,20 @@ run = ['move-node-to-workspace 4']
 if.app-id = 'im.beeper'
 run = ['move-node-to-workspace 5']  
 [[on-window-detected]]
+if.app-id = 'com.hnc.Discord'
+run = ['move-node-to-workspace 5']  
+[[on-window-detected]]
 if.app-id = 'com.apple.MobileSMS'
 run = ['move-node-to-workspace 5']  
 [[on-window-detected]]
 if.app-id = 'com.apple.mail'
 run = ['move-node-to-workspace 5']  
 [[on-window-detected]]
-if.app-id = 'com.tdesktop.Telegram'
+if.app-id = 'com.apple.FaceTime'
 run = ['move-node-to-workspace 5']  
 [[on-window-detected]]
 if.app-id = 'com.superhuman.electron'
 run = ['move-node-to-workspace 5']  
-
 
 [[on-window-detected]]
 if.app-id = 'com.figma.Desktop'
@@ -155,9 +157,6 @@ if.app-id = 'com.blackmagic-design.DaVinciResolve'
 run = ['move-node-to-workspace 7']  
 
 [[on-window-detected]]
-if.app-id = 'com.spotify.client'
-run = ['move-node-to-workspace 8']  
-[[on-window-detected]]
 if.app-id = 'com.apple.Music'
 run = ['move-node-to-workspace 8']  
 
@@ -169,23 +168,11 @@ if.app-id = 'com.apple.Safari'
 run = ['move-node-to-workspace 9']  
 
 [[on-window-detected]]
-if.app-id = 'com.apple.FaceTime'
-run = ['move-node-to-workspace 10']  
-[[on-window-detected]]
-if.app-id = 'com.hnc.Discord'
-run = ['move-node-to-workspace 10']  
-
-[[on-window-detected]]
 if.app-id = 'com.electron.dockerdesktop'
-run = ['move-node-to-workspace 12']  
-
+run = ['move-node-to-workspace 10']  
 [[on-window-detected]]
-if.app-id = 'md.obsidian'
-run = ['move-node-to-workspace 13']  
-
-[[on-window-detected]]
-if.app-id = 'com.raycast.macos'
-run = ['move-node-to-workspace 12']  
+if.app-id = 'com.tdesktop.Telegram'
+run = ['move-node-to-workspace 6']  
 
 [[on-window-detected]]
 if.app-id = 'com.apple.Passwords'
@@ -198,14 +185,11 @@ run = ['layout floating']
 [workspace-to-monitor-force-assignment]
 1 = 'main'                       
 2 = 'main'                       
-3 = 'secondary'                       
+3 = 'main'                       
 4 = 'main'                       
 5 = 'secondary'                       
-6 = 'main'                       
-7 = 'main'                       
-8 = 'main'                       
-9 = 'main'                       
-10 = 'secondary'
-11 = 'secondary'                       
-12 = 'secondary'                       
-13 = 'secondary'                       
+6 = 'secondary'                       
+7 = 'secondary'                       
+8 = 'secondary'                       
+9 = 'secondary'                       
+10 = 'secondary'                       
