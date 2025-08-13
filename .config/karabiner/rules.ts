@@ -59,6 +59,7 @@ const hyperSubLayers = createHyperSubLayers({
     ),
     t: open(`raycast://extensions/raycast/system/toggle-system-appearance`),
     c: open("raycast://extensions/raycast/system/open-camera"),
+    m: open("raycast://extensions/raycast/system/toggle-mute"),
   },
   v: {
     h: { to: [{ key_code: "left_arrow" }] },
