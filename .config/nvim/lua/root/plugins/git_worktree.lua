@@ -7,8 +7,8 @@ local function update_tmux_windows()
 	os.execute("tmux new-window -dn process")
 	-- os.execute("tmux new-window -dn AI")
 	-- os.execute('tmux send-keys -t AI -R "gemini" C-m')
-	os.execute("tmux new-window -dn opencode")
-	os.execute('tmux send-keys -t opencode -R "opencode" C-m')
+	os.execute("tmux new-window -dn coding-assistant")
+	os.execute('tmux send-keys -t opencode -R "coding-assistant" C-m')
 end
 
 return {

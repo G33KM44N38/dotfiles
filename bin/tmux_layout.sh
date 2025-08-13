@@ -9,6 +9,8 @@ CURRENT_DIR="$PWD"
 # List of full paths where we skip creating extra tmux windows
 EXCLUDED_PATHS=(
   "$WORKSPACE_PATH|odn"
+  "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain|odn"
+  "/Users/boss/.dotfiles/bin/create-todo|npm run dev"
 )
 
 # Check if current path is in the excluded list
@@ -38,8 +40,8 @@ if [[ "$should_exclude" == false ]]; then
   tmux new-window -n 'process'
   # tmux new-window -n 'AI'
   # tmux send-keys -R "gemini" C-m
-  tmux new-window -n 'opencode'
-  tmux send-keys -R "opencode" C-m
+  tmux new-window -n 'cursor-agent'
+  tmux send-keys -R "cursor-agent" C-m
 fi
 
 tmux select-window -t 1
