@@ -166,13 +166,13 @@ run = ['move-node-to-workspace 9']
 [[on-window-detected]]
 if.app-id = 'com.apple.Safari'
 run = ['move-node-to-workspace 9']  
+[[on-window-detected]]
+if.app-id = 'com.tdesktop.Telegram'
+run = ['move-node-to-workspace 9']  
 
 [[on-window-detected]]
 if.app-id = 'com.electron.dockerdesktop'
 run = ['move-node-to-workspace 10']  
-[[on-window-detected]]
-if.app-id = 'com.tdesktop.Telegram'
-run = ['move-node-to-workspace 6']  
 
 [[on-window-detected]]
 if.app-id = 'com.apple.Passwords'
@@ -191,5 +191,5 @@ run = ['layout floating']
 6 = 'secondary'                       
 7 = 'secondary'                       
 8 = 'secondary'                       
-9 = 'secondary'                       
+9 = 'main'                       
 10 = 'secondary'                       
