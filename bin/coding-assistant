@@ -1,3 +1,25 @@
 #!/bin/bash
+# cursor-agent (for use inside tmux)
 
-cursor-agent
+set -euo pipefail
+
+# Ensure commands exist
+for cmd in opencode claude; do
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "Error: $cmd not found in PATH" >&2
+    exit 1
+  fi
+done
+
+# Kill existing panes (keep only one)
+tmux kill-pane -a
+
+# Run opencode in the first (current) pane
+tmux send-keys -t 0 "opencode" C-m
+
+# Split horizontally and run claude in the new pane
+tmux split-window -h -c "$PWD"
+tmux send-keys -t 1 "claude" C-m
+
+# Focus back on the first pane
+tmux select-pane -t 0
