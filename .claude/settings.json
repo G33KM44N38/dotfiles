@@ -1,0 +1,24 @@
+{
+	"hooks": {
+		"Notification": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "ai_success.sh"
+					}
+				]
+			}
+		],
+		"Stop": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "ai_success.sh"
+					}
+				]
+			}
+		]
+	}
+}
