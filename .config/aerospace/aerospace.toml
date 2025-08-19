@@ -18,7 +18,7 @@ inner.horizontal = 0
 inner.vertical =   0
 outer.left =       0
 outer.bottom =     0
-outer.top =        50
+outer.top =        45
 outer.right =      0
 
 [mode.main.binding]
@@ -129,6 +129,9 @@ run = ['move-node-to-workspace 4']
 
 [[on-window-detected]]
 if.app-id = 'im.beeper'
+run = ['move-node-to-workspace 5']  
+[[on-window-detected]]
+if.app-id = 'com.automattic.beeper.desktop'
 run = ['move-node-to-workspace 5']  
 [[on-window-detected]]
 if.app-id = 'com.hnc.Discord'
