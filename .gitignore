@@ -60,3 +60,8 @@ node_modules/
 .DS_Store
 
 .config/simple-update-notifier/
+
+.claude/projects/
+.claude/shell-snapshots/
+.claude/statsig/
+.claude/todos/

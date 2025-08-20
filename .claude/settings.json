@@ -1,4 +1,10 @@
 {
+	"permissions": {
+		"allow": [
+			"Bash",
+			"pnpm"
+		]
+	},
 	"hooks": {
 		"Notification": [
 			{
@@ -16,6 +22,17 @@
 					{
 						"type": "command",
 						"command": "ai_success.sh"
+					}
+				]
+			}
+		],
+		"PreToolUse": [
+			{
+				"matcher": "Write|Edit|Bash",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "ai_tool_use.sh"
 					}
 				]
 			}
