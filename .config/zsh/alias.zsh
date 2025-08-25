@@ -14,6 +14,7 @@ alias odn="daily_open.sh"
 alias me="manage_env.sh"
 alias ie="import_env.sh"
 alias bch="babacoiffure_checkhealth.sh"
+alias ca="coding-assistant"
 
 # Git command
 alias gs="git status"
