@@ -1,7 +1,7 @@
 #!/bin/zsh
 set -euo pipefail # Exit on error, unset variables, and pipefail
 
-AUDIO_FILE="$HOME/.sound/beep.mp3"
+AUDIO_FILE="$HOME/.sound/finish.wav"
 
 # === Vérifie que le fichier audio existe ===
 if [[ ! -f "$AUDIO_FILE" ]]; then
