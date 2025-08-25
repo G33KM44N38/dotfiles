@@ -1,53 +1,54 @@
 {
-	"permissions": {
-		"allow": [
-			"Bash",
-			"Read",
-			"Edit",
-			"Write",
-			"WebFetch",
-			"Grep",
-			"Glob",
-			"LS",
-			"MultiEdit",
-			"NotebookRead",
-			"NotebookEdit",
-			"TodoRead",
-			"TodoWrite",
-			"WebSearch"
-		]
-	},
-	"hooks": {
-		"Notification": [
-			{
-				"hooks": [
-					{
-						"type": "command",
-						"command": "ai_success.sh"
-					}
-				]
-			}
-		],
-		"Stop": [
-			{
-				"hooks": [
-					{
-						"type": "command",
-						"command": "ai_success.sh"
-					}
-				]
-			}
-		],
-		"PreToolUse": [
-			{
-				"matcher": "Write|Edit|Bash",
-				"hooks": [
-					{
-						"type": "command",
-						"command": "ai_tool_use.sh"
-					}
-				]
-			}
-		]
-	}
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Read",
+      "Edit",
+      "Write",
+      "WebFetch",
+      "Grep",
+      "Glob",
+      "LS",
+      "MultiEdit",
+      "NotebookRead",
+      "NotebookEdit",
+      "TodoRead",
+      "TodoWrite",
+      "WebSearch"
+    ]
+  },
+  "hooks": {
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ai_success.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ai_success.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ai_tool_use.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "model": "sonnet"
 }
