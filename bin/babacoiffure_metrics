@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Required parameters:
+# @raycast.schemaVersion 1
+# @raycast.title  babacoiffure metrics
+# @raycast.mode compact
+
+# Optional parameters:
+# @raycast.icon 📊
+
+# Documentation:
+# @raycast.description  open the metrics of babacoiffure
+# @raycast.author me
+
+open https://www.tiktok.com/@babacoiffure?lang=en
+open https://analytics.google.com/analytics/web/#/p497656035/reports/reportinghub?params=_u..nav%3Dmaui%26_u..built_comparisons_enabled%3Dtrue%26_u..comparisons%3D%5B%7B%22name%22:%22Hostname%20exactly%20matches%20link.babacoiffure.com%22,%22isEnabled%22:true,%22filters%22:%5B%7B%22fieldName%22:%22hostname%22,%22expressionList%22:%5B%22link.babacoiffure.com%22%5D,%22isCaseSensitive%22:true%7D%5D%7D,%7B%22name%22:%22Hostname%20exactly%20matches%20babacoiffure.com%22,%22isEnabled%22:true,%22filters%22:%5B%7B%22fieldName%22:%22hostname%22,%22expressionList%22:%5B%22babacoiffure.com%22%5D,%22isCaseSensitive%22:true%7D%5D%7D%5D%26_u.dateOption%3Dtoday%26_u.comparisonOption%3Ddisabled&babacoiffure=&restoreUserState=true
+open https://eu.aptabase.com/gsMr1mh0Hn9P7XUNwPlwVF/live?babacoiffure
+open https://studio.youtube.com/channel/UCtV5FeRIngFv2SFEH3k1gEA?babacoiffure
+open https://business.facebook.com/latest/home?business_id=738916391837625&asset_id=693949577138264&should_open_edit_fb_profile=false&mio=false&launch_notifications=false&babacoiffure
+
+# vi:ft=sh:
