@@ -17,5 +17,6 @@ open https://analytics.google.com/analytics/web/#/p497656035/reports/reportinghu
 open https://eu.aptabase.com/gsMr1mh0Hn9P7XUNwPlwVF/live?babacoiffure
 open https://studio.youtube.com/channel/UCtV5FeRIngFv2SFEH3k1gEA/videos/short?filter=%5B%5D&sort=%7B%22columnType%22%3A%22date%22%2C%22sortOrder%22%3A%22DESCENDING%22%7D
 open https://business.facebook.com/latest/posts/published_posts/?business_id=738916391837625&asset_id=693949577138264
+open https://dashboard.stripe.com/billing/revenue?babacoiffure
 
 # vi:ft=sh:
