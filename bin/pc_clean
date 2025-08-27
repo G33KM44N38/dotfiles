@@ -381,6 +381,35 @@ clean_system_caches() {
   success "System caches cleaned"
 }
 
+clean_uninstalled_app_data() {
+  local app_support_dir="$HOME/Library/Application Support"
+  local app_locations=("/Applications" "$HOME/Applications")
+
+  print_header "Cleaning uninstalled app data in Application Support"
+
+  # Loop through each folder in Application Support
+  find "$app_support_dir" -mindepth 1 -maxdepth 1 -type d | while read -r app_folder; do
+    local app_name=$(basename "$app_folder")
+    local app_found=false
+
+    # Check if app exists in the common Applications folders
+    for loc in "${app_locations[@]}"; do
+      # Check for app bundles (.app) with matching name (case-insensitive)
+      if ls "$loc"/*.app 2>/dev/null | grep -iq "^$loc/$app_name\.app$"; then
+        app_found=true
+        break
+      fi
+    done
+
+    # If not found, delete the app data folder
+    if [ "$app_found" = false ]; then
+      info "Removing leftover data for uninstalled app: $app_name"
+      rm -rf "$app_folder"
+      success "Deleted $app_folder"
+    fi
+  done
+}
+
 # -------------------------
 # Main Execution
 # -------------------------
@@ -464,6 +493,7 @@ main() {
   show_progress $current_step $total_steps "Overall Progress"
   
   clean_system_caches
+  clean_uninstalled_app_data
   
   # Final cleanup message
   echo # Add newline after progress bar
