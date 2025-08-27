@@ -1,4 +1,9 @@
 ---
+- name: Check if baba_coiffure monorepo exists
+  ansible.builtin.stat:
+    path: ~/coding/work/
+  register: baba_monorepo_exists
+
 - name: clone baba_coiffure repo
   ansible.builtin.git:
     clone: true
@@ -6,6 +11,12 @@
     dest: ~/coding/work/
     update: false
     bare: true
+  when: not baba_monorepo_exists.stat.exists
+
+- name: Check if baba_coiffure landing exists
+  ansible.builtin.stat:
+    path: ~/coding/work/baba_coiffure
+  register: baba_landing_exists
 
 - name: clone baba_coiffure repo
   ansible.builtin.git:
@@ -14,3 +25,4 @@
     dest: ~/coding/work/baba_coiffure
     update: false
     bare: true
+  when: not baba_landing_exists.stat.exists

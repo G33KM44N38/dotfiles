@@ -1,10 +1,16 @@
 ---
+- name: Check if dotfiles repo exists
+  ansible.builtin.stat:
+    path: ~/.dotfiles
+  register: dotfiles_exists
+
 - name: Clone Dotfiles
   ansible.builtin.git:
     clone: true
     repo: https://github.com/G33KM44N38/dotfiles
     dest: ~/.dotfiles
     update: false
+  when: not dotfiles_exists.stat.exists
 
 - name: Delete ~/.zshrc
   ansible.builtin.file:
