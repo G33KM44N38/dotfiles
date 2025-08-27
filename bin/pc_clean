@@ -225,6 +225,11 @@ clean_dev_directories() {
     "clean_directory_if_needed '$HOME/.npm'" 
     "clean_directory_if_needed '$HOME/.gradle/caches'"
     "clean_directory_if_needed '$HOME/Library/Caches/CocoaPods'"
+    "clean_directory_if_needed '$HOME/Library/Messages/Attachments/'"
+    "clean_directory_if_needed '$HOME/Library/Developer/Xcode/DerivedData/'"
+    "clean_directory_if_needed '$HOME/Library/Developer/Xcode/Archives/'"
+    "clean_directory_if_needed '$HOME/Library/Developer/Xcode/iOS DeviceSupport/'"
+    "clean_directory_if_needed '$HOME/Library/Developer/CoreSimulator/'"
   )
   
   run_parallel "${parallel_tasks[@]}"
