@@ -1,0 +1,190 @@
+#!/bin/bash
+set -e  # Exit on any error
+
+# Raycast Import Script - Support for both native .rayconfig and fallback tar.gz
+# Handles Raycast's native import functionality and directory restoration
+
+# Configuration
+CONFIG_BASE="$HOME/.dotfiles/.config/raycast"
+LOG_FILE="$CONFIG_BASE/import.log"
+RAYCAST_IMPORT_URL="raycast://extensions/raycast/raycast/import-settings-data"
+
+# Function to log messages
+log_message() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+}
+
+# Function to find import file
+find_import_file() {
+    local file_pattern="$1"
+    
+    # Check if specific file provided as argument
+    if [[ -n "$file_pattern" ]] && [[ -f "$file_pattern" ]]; then
+        echo "$file_pattern"
+        return 0
+    fi
+    
+    # Look for latest .rayconfig file
+    local rayconfig_file
+    rayconfig_file=$(find "$CONFIG_BASE" -name "*.rayconfig" -type f 2>/dev/null | sort -r | head -1)
+    if [[ -n "$rayconfig_file" ]]; then
+        echo "$rayconfig_file"
+        return 0
+    fi
+    
+    # Look for symlink to latest
+    if [[ -L "$CONFIG_BASE/raycast_latest.rayconfig" ]]; then
+        echo "$(readlink -f "$CONFIG_BASE/raycast_latest.rayconfig")"
+        return 0
+    fi
+    
+    return 1
+}
+
+# Function to perform automated Raycast import
+perform_automated_import() {
+    local import_file="$1"
+    
+    log_message "Starting automated Raycast import for: $import_file"
+    
+    # Check if file is a .rayconfig file
+    if [[ ! "$import_file" =~ \.rayconfig$ ]]; then
+        log_message "ERROR: File is not a .rayconfig file: $import_file"
+        return 1
+    fi
+    
+    # Copy file to Downloads folder where Raycast expects it
+    local temp_file="$HOME/Downloads/raycast_import_$(basename "$import_file")"
+    cp "$import_file" "$temp_file"
+    
+    log_message "Copied import file to: $temp_file"
+    
+    # Open Raycast import dialog via deep link
+    log_message "Opening Raycast import dialog via deep link..."
+    if open "$RAYCAST_IMPORT_URL" 2>/dev/null; then
+        log_message "Successfully opened Raycast import dialog"
+        
+        # Wait for Raycast dialog to load
+        echo "Waiting for Raycast import dialog to load..."
+        sleep 2
+        
+        # Trigger Enter key to open file browser
+        log_message "Triggering Enter key to open file browser..."
+        osascript -e 'tell application "System Events" to key code 36' 2>/dev/null || {
+            log_message "Could not trigger Enter key automatically"
+            echo "Please press Enter in the Raycast dialog to open file browser"
+            echo "Then navigate to: $temp_file"
+            echo "Press Enter here when import is complete..."
+            read -r
+            # Clean up and return
+            if [[ -f "$temp_file" ]]; then
+                rm -f "$temp_file"
+                log_message "Cleaned up temporary import file"
+            fi
+            return 0
+        }
+        
+        # Wait for file browser to open
+        echo "Waiting for file browser to open..."
+        sleep 2
+        
+        # Navigate to Downloads folder using Cmd+Shift+G
+        log_message "Navigating to Downloads folder using Cmd+Shift+G..."
+        osascript -e 'tell application "System Events" to key code 5 using {command down, shift down}' 2>/dev/null || {
+            log_message "Could not trigger Cmd+Shift+G"
+            echo "Please manually navigate to: $temp_file"
+            echo "Press Enter here when import is complete..."
+            read -r
+            # Clean up and return
+            if [[ -f "$temp_file" ]]; then
+                rm -f "$temp_file"
+                log_message "Cleaned up temporary import file"
+            fi
+            return 0
+        }
+        
+        # Wait for "Go to folder" dialog
+        sleep 1
+        
+        # Type the Downloads path
+        log_message "Setting path to Downloads folder..."
+        osascript -e 'tell application "System Events" to keystroke "~/.dotfiles/.config/raycast/"' 2>/dev/null
+        
+        # Press Enter to navigate
+        sleep 0.5
+        log_message "Confirming navigation to Downloads..."
+        osascript -e 'tell application "System Events" to key code 36' 2>/dev/null
+        
+        # Wait for navigation
+        sleep 1
+        
+        # Type the filename to select it
+        log_message "Selecting import file: $(basename "$temp_file")"
+        osascript -e "tell application \"System Events\" to keystroke \"$(basename "$temp_file")\"" 2>/dev/null
+        
+        # Press Enter to select the file
+        sleep 0.5
+        log_message "Confirming file selection..."
+        osascript -e 'tell application "System Events" to key code 36' 2>/dev/null
+        
+        # Wait for import to process
+        echo ""
+        echo "Import process should now be running..."
+        echo "Please wait for the import to complete, then press Enter here..."
+        read -r
+        
+        # Verify import success (optional)
+        log_message "Import process completed"
+        
+    else
+        log_message "ERROR: Failed to open Raycast import URL"
+        echo "Error: Could not open Raycast import dialog."
+        echo "Please manually import: $temp_file"
+        echo "Press Enter when done..."
+        read -r
+    fi
+    
+    # Clean up temporary file
+    if [[ -f "$temp_file" ]]; then
+        rm -f "$temp_file"
+        log_message "Cleaned up temporary import file"
+    fi
+    
+    return 0
+}
+
+
+# Main execution
+log_message "=== Starting Raycast Import Process ==="
+
+# Find import file (use command line argument if provided)
+import_file=$(find_import_file "$1")
+
+if [[ -z "$import_file" ]]; then
+    log_message "ERROR: No import file found"
+    echo "Error: No .rayconfig or backup files found in $CONFIG_BASE"
+    echo "Available files:"
+    ls -la "$CONFIG_BASE"/ 2>/dev/null || echo "Directory is empty"
+    exit 1
+fi
+
+log_message "Found import file: $import_file"
+
+# Import the .rayconfig file using automated method
+if [[ "$import_file" =~ \.rayconfig$ ]]; then
+    log_message "Detected .rayconfig file, using automated import method"
+    if perform_automated_import "$import_file"; then
+        log_message "SUCCESS: Automated import process completed"
+    else
+        log_message "ERROR: Automated import failed"
+        exit 1
+    fi
+else
+    log_message "ERROR: Unsupported file format: $import_file"
+    echo "Error: Unsupported file format. Only .rayconfig files are supported."
+    echo "Expected .rayconfig file, found: $import_file"
+    exit 1
+fi
+
+log_message "=== Import Process Completed ==="
+# vi:ft=sh:

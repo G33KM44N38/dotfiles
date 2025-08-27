@@ -1,0 +1,198 @@
+#!/bin/bash
+set -e  # Exit on any error
+
+# Raycast Export Script - Native Export Automation
+# Uses Raycast's built-in export functionality via AppleScript automation
+
+# Configuration
+CONFIG_DIR="$HOME/.dotfiles/.config/raycast"
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+EXPORT_FILE="$CONFIG_DIR/raycast_export_$TIMESTAMP.rayconfig"
+LOG_FILE="$CONFIG_DIR/export.log"
+RAYCAST_EXPORT_URL="raycast://extensions/raycast/raycast/export-settings-data"
+
+# Create config directory if it doesn't exist
+mkdir -p "$CONFIG_DIR"
+
+# Function to log messages
+log_message() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+}
+
+
+# Function to trigger Raycast export via deep link
+trigger_raycast_export() {
+    log_message "Opening Raycast export dialog via deep link..."
+    
+    # Open the Raycast export command directly
+    if open "$RAYCAST_EXPORT_URL" 2>/dev/null; then
+        log_message "Successfully opened Raycast export dialog"
+        
+        # Wait a moment for Raycast to open and load the dialog
+        echo "Waiting for Raycast dialog to load..."
+        sleep 2
+        
+        # Trigger Enter key to start the export process
+        log_message "Triggering Enter key to start export..."
+        osascript -e 'tell application "System Events" to key code 36' 2>/dev/null || {
+            log_message "Could not trigger Enter key automatically"
+            echo "Please press Enter in the Raycast dialog to start export"
+            return 1
+        }
+        
+        # Wait for the save dialog to appear
+        echo "Waiting for save dialog to appear..."
+        sleep 3
+        
+        # Navigate to the desired save location using Cmd+Shift+G
+        log_message "Navigating to save location using Cmd+Shift+G..."
+        osascript -e 'tell application "System Events" to key code 5 using {command down, shift down}' 2>/dev/null || {
+            log_message "Could not trigger Cmd+Shift+G"
+            echo "Please manually navigate to ~/.dotfiles/.config/raycast/ and save the file"
+            echo "Then press Enter here..."
+            read -r
+            return 0
+        }
+        
+        # Wait for the "Go to folder" dialog to appear
+        sleep 1
+        
+        # Type the path to our config directory
+        log_message "Setting save path to ~/.dotfiles/.config/raycast/"
+        osascript -e 'tell application "System Events" to keystroke "~/.dotfiles/.config/raycast/"' 2>/dev/null || {
+            log_message "Could not type path automatically"
+            echo "Please manually enter the path: ~/.dotfiles/.config/raycast/"
+            echo "Then press Enter twice and save the file"
+            echo "Press Enter here when done..."
+            read -r
+            return 0
+        }
+        
+        # Press Enter to navigate to the folder
+        sleep 0.5
+        log_message "Confirming path navigation..."
+        osascript -e 'tell application "System Events" to key code 36' 2>/dev/null
+        
+        # Wait for navigation to complete
+        sleep 1
+        
+        # Press Enter again to save the file
+        log_message "Triggering save action..."
+        osascript -e 'tell application "System Events" to key code 36' 2>/dev/null
+        
+        echo ""
+        echo "Checking if file was saved automatically..."
+        
+        # Wait a moment for the save operation to complete
+        sleep 2
+        
+        # Check if a new .rayconfig file was created in the last minute
+        local new_file
+        new_file=$(find "$CONFIG_DIR" -name "*.rayconfig" -mtime -1m 2>/dev/null | head -1)
+        
+        if [[ -n "$new_file" ]] && [[ -f "$new_file" ]]; then
+            log_message "SUCCESS: File automatically saved at $new_file"
+            echo "✅ Export saved successfully: $(basename "$new_file")"
+            
+            # Update the EXPORT_FILE variable to point to the actual saved file
+            EXPORT_FILE="$new_file"
+            
+            # Create symlink to latest export
+            ln -sf "$(basename "$EXPORT_FILE")" "$CONFIG_DIR/raycast_latest.rayconfig"
+            log_message "Created symlink to latest export"
+            
+            return 0
+        else
+            log_message "WARNING: Could not detect automatically saved file"
+            echo "❌ Could not detect saved file automatically."
+            echo "Please check if the file was saved and press Enter to continue..."
+            read -r
+            return 0
+        fi
+    else
+        log_message "ERROR: Failed to open Raycast export URL"
+        return 1
+    fi
+}
+
+# Function to find and organize the exported file
+find_and_organize_export() {
+    log_message "Looking for exported .rayconfig file..."
+    
+    # Look for recently created .rayconfig files in common locations
+    local search_paths=("$HOME/Downloads" "$HOME/Desktop" "$HOME/Documents")
+    local exported_file=""
+    
+    for search_path in "${search_paths[@]}"; do
+        if [[ -d "$search_path" ]]; then
+            # Find .rayconfig files modified in the last 5 minutes
+            exported_file=$(find "$search_path" -name "*.rayconfig" -mtime -5m 2>/dev/null | head -1)
+            if [[ -n "$exported_file" ]]; then
+                log_message "Found exported file: $exported_file"
+                break
+            fi
+        fi
+    done
+    
+    if [[ -z "$exported_file" ]]; then
+        echo "Could not automatically find the exported file."
+        echo "Please enter the full path to your exported .rayconfig file:"
+        read -r exported_file
+        
+        if [[ ! -f "$exported_file" ]]; then
+            log_message "ERROR: File not found: $exported_file"
+            return 1
+        fi
+    fi
+    
+    # Copy the file to our config directory with timestamp
+    if cp "$exported_file" "$EXPORT_FILE"; then
+        log_message "Export file copied to: $EXPORT_FILE"
+        
+        # Create a symlink to the latest export
+        ln -sf "$(basename "$EXPORT_FILE")" "$CONFIG_DIR/raycast_latest.rayconfig"
+        log_message "Created symlink to latest export"
+        
+        # Validate the export file
+        if [[ -s "$EXPORT_FILE" ]]; then
+            local file_size
+            file_size=$(stat -f%z "$EXPORT_FILE" 2>/dev/null || echo "0")
+            log_message "Export file size: $file_size bytes"
+            echo "Export completed successfully: $EXPORT_FILE"
+            return 0
+        else
+            log_message "WARNING: Export file appears to be empty"
+            return 1
+        fi
+    else
+        log_message "ERROR: Failed to copy export file"
+        return 1
+    fi
+}
+
+
+# Main execution
+log_message "=== Starting Raycast Export Process ==="
+
+# Trigger the export process
+if trigger_raycast_export; then
+    log_message "SUCCESS: Export process completed"
+    
+    # Validate the final export file if it was set
+    if [[ -n "$EXPORT_FILE" ]] && [[ -f "$EXPORT_FILE" ]] && [[ -s "$EXPORT_FILE" ]]; then
+        file_size=$(stat -f%z "$EXPORT_FILE" 2>/dev/null || echo "0")
+        log_message "Export file size: $file_size bytes"
+        echo "✅ Final export file: $EXPORT_FILE"
+    else
+        log_message "Export completed but file validation skipped"
+        echo "Export process completed. Check $CONFIG_DIR for exported files."
+    fi
+else
+    log_message "ERROR: Failed to complete export process"
+    echo "Error: Export process failed."
+    echo "Please make sure Raycast is installed and try again."
+    exit 1
+fi
+
+log_message "=== Export Process Completed ==="
+# vi:ft=sh:
