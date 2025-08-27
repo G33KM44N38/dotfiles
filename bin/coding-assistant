@@ -1,27 +1,39 @@
 #!/bin/bash
-# cursor-agent (for use inside tmux)
-# opencode
-claude
-#
-# set -euo pipefail
-#
-# # Ensure commands exist
-# for cmd in opencode claude; do
-#   if ! command -v "$cmd" >/dev/null 2>&1; then
-#     echo "Error: $cmd not found in PATH" >&2
-#     exit 1
-#   fi
-# done
-#
-# # Kill existing panes (keep only one)
-# tmux kill-pane -a
-#
-# # Run opencode in the first (current) pane
-# tmux send-keys -t 0 "opencode" C-m
-#
-# # Split horizontally and run claude in the new pane
-# tmux split-window -h -c "$PWD"
-# tmux send-keys -t 4 "claude" C-m
-#
-# # Focus back on the first pane
-# tmux select-pane -t 0
+# coding-assistant - Sets up tmux window 4 'assistant' with opencode and claude in split panes
+
+set -euo pipefail
+
+# Ensure commands exist
+for cmd in opencode claude; do
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "Error: $cmd not found in PATH" >&2
+    exit 1
+  fi
+done
+
+# Check if we're already in a tmux session
+if [ -z "${TMUX:-}" ]; then
+  echo "Error: This script must be run inside a tmux session" >&2
+  exit 1
+fi
+
+# Store current window to return to it later
+current_window=$(tmux display-message -p '#I')
+
+# Create window 4 named 'assistant' (don't switch to it if it exists)
+if ! tmux list-windows | grep -q "^4:"; then
+  tmux new-window -t 4 -n assistant -c "$PWD" -d
+fi
+
+# Kill existing panes in the assistant window (keep only one)
+tmux kill-pane -a -t 4 2>/dev/null || true
+
+# Run opencode in the first pane of window 4
+tmux send-keys -t 4 "opencode" C-m
+
+# Split horizontally and run claude in the new pane
+tmux split-window -h -t 4 -c "$PWD"
+tmux send-keys -t 4 "claude" C-m
+
+# Return to the original window
+tmux select-window -t "$current_window"
