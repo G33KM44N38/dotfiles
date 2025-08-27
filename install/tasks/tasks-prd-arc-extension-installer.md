@@ -22,8 +22,8 @@ Based on the PRD for Arc Browser Extension Installer (Ansible Implementation)
 
 - [ ] 1.0 Create Ansible Role Directory Structure
   - [x] 1.1 Create `roles/arc-extensions/` directory *(Completed: 2025-08-27)*
-  - [ ] 1.2 Create `roles/arc-extensions/tasks/` subdirectory
-  - [ ] 1.3 Create `roles/arc-extensions/templates/` subdirectory
+  - [x] 1.2 Create `roles/arc-extensions/tasks/` subdirectory *(Completed: 2025-08-27)*
+  - [x] 1.3 Create `roles/arc-extensions/templates/` subdirectory *(Completed: 2025-08-27)*
   - [ ] 1.4 Create `roles/arc-extensions/defaults/` subdirectory
   - [ ] 1.5 Create `roles/arc-extensions/vars/` subdirectory
 
