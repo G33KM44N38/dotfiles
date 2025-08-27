@@ -96,6 +96,7 @@ return {
 
 		vim.api.nvim_set_keymap("n", "<leader>hi", "<cmd>lua require('fzf-lua').hidden_files_lua()<CR>", opts)
 
+		vim.keymap.set("n", "<leader>sw", "<cmd>FzfLua lsp_workspace_symbols<CR>", { desc = "Workspace Symbols" })
 		vim.api.nvim_set_keymap("n", "gi", "<cmd>FzfLua lsp_implementations<CR>", opts)
 		vim.api.nvim_set_keymap("n", "gt", "<cmd>FzfLua lsp_typedefs<CR>", opts) -- Go to type definition
 		vim.api.nvim_set_keymap("n", "gd", "<cmd>FzfLua lsp_definitions<CR>", opts)
