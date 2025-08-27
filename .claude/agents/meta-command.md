@@ -69,25 +69,42 @@ name: command-name
 description: Brief description
 version: 1.0.0
 type: command
+author: Claude Code Architect
+category: automation
+tags: [relevant, tags, here]
 ---
 
 # Command Name
 
 Brief description of what the command does.
 
+## Purpose
+
+Detailed explanation of the command's purpose and use case.
+
 ## Parameters
 
 ### Required
-- `param1`: Description of required parameter
+- `<param1>`: Description of required parameter
+- `<param2>`: Description of second required parameter (if applicable)
 
 ### Optional
-- `--flag`: Description of optional flag
-- `--option <value>`: Description of optional parameter with value
+- `--dry-run`: Preview execution without making changes
+- `--log-level <level>`: Set logging verbosity (debug, info, warn, error) [default: info]
+- `--output <file>`: Specify output file for execution log
+- `--continue-on-warning`: Continue execution even if warnings are encountered
+- `--max-retries <number>`: Maximum retry attempts for failed operations [default: 3]
+- `--backup`: Create backup copies of modified files
+- `--report <format>`: Generate completion report (json, markdown, text) [default: markdown]
 
 ## Usage
 
 ```bash
-command-name [options] <args>
+# Basic usage
+command-name <param1> <param2>
+
+# With options
+command-name [OPTIONS] <param1> <param2>
 ```
 
 ## Examples
@@ -96,9 +113,32 @@ command-name [options] <args>
 # Example 1: Basic usage
 command-name arg1 arg2
 
-# Example 2: With options
-command-name --flag --option value arg1
+# Example 2: Dry run with detailed output
+command-name --dry-run --log-level debug arg1 arg2
+
+# Example 3: With backup and custom retry count
+command-name --backup --max-retries 5 arg1 arg2
+
+# Example 4: Full automation with error recovery
+command-name --continue-on-warning --report json arg1 arg2
 ```
+
+## Workflow Process
+
+### 1. Validation
+- Validate input parameters and file formats
+- Check for required dependencies and prerequisites
+- Generate execution plan
+
+### 2. Processing
+- Execute main functionality
+- Maintain progress tracking and logging
+- Handle errors with retry mechanisms
+
+### 3. Validation & Reporting
+- Validate completion criteria
+- Generate completion reports
+- Provide final summary
 
 ## Implementation
 
@@ -106,12 +146,70 @@ command-name --flag --option value arg1
 #!/bin/bash
 set -euo pipefail
 
-# Command implementation goes here
+# Command Implementation
+# [Brief description of what this command does]
+
+# Default values
+LOG_LEVEL="info"
+MAX_RETRIES=3
+CONTINUE_ON_WARNING=false
+DRY_RUN=false
+BACKUP=false
+REPORT_FORMAT="markdown"
+OUTPUT_FILE=""
+
+# Color codes for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Logging functions
+log_debug() { [[ "$LOG_LEVEL" == "debug" ]] && echo -e "${BLUE}[DEBUG]${NC} $1" >&2; }
+log_info() { [[ "$LOG_LEVEL" =~ ^(debug|info)$ ]] && echo -e "${GREEN}[INFO]${NC} $1" >&2; }
+log_warn() { [[ "$LOG_LEVEL" =~ ^(debug|info|warn)$ ]] && echo -e "${YELLOW}[WARN]${NC} $1" >&2; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
+
+# Main execution function
+main() {
+    # Parse arguments and execute command logic
+    log_info "Starting command execution"
+    
+    # Implementation goes here
+    
+    log_info "Command completed successfully"
+}
+
+# Execute main function if script is run directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi
 ```
 
 ## Error Handling
 
-Description of error conditions and handling.
+### Common Error Conditions
+1. **Invalid Input Parameters**
+   - Missing required parameters
+   - Invalid file formats or paths
+   - **Solution:** Validate inputs and provide clear error messages
+
+2. **Execution Failures**
+   - Process errors during execution
+   - Network or file system issues
+   - **Solution:** Retry mechanism with exponential backoff, detailed logging
+
+3. **Resource Constraints**
+   - Permission denied
+   - Insufficient disk space
+   - **Solution:** Graceful degradation, backup and recovery options
+
+### Recovery Strategies
+- **Automatic Retry:** Up to `--max-retries` attempts with exponential backoff
+- **Backup and Rollback:** Optional backup creation before modifications
+- **Graceful Degradation:** Continue processing when possible
+- **Detailed Logging:** Comprehensive error reporting for debugging
 ```
 
 ## Report / Response

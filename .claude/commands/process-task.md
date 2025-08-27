@@ -9,6 +9,10 @@
 
 This command provides a structured approach to managing task lists in markdown files, specifically designed for tracking progress on Product Requirements Document (PRD) implementation. It enforces a disciplined workflow of completing one sub-task at a time while maintaining clear progress tracking.
 
+## additionnal features
+
+IMPORTANT: always see if there is an agent for the task you working on.
+
 ## Core Principles
 
 ### 1. Sequential Task Processing

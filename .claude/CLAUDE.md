@@ -1,1 +1,2 @@
 - after finishing updating the code always update the test related to it
+- always update the task file when you finish a task I've mentionned with the `/process-task`
