@@ -1,0 +1,10 @@
+---
+- name: Validate platform support
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family == 'Darwin'
+    fail_msg: "Arc browser extensions are only supported on macOS (Darwin). Current OS family: {{ ansible_os_family }}"
+
+- name: Run Arc extension installation tasks
+  ansible.builtin.import_tasks: tasks/darwin.yaml
+  when: ansible_os_family == 'Darwin'

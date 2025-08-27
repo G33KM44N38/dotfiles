@@ -1,0 +1,26 @@
+---
+- name: Set Arc extensions directory path
+  ansible.builtin.set_fact:
+    arc_extensions_path: "{{ user_home }}/Library/Application Support/Arc/User Data/External Extensions"
+
+- name: Create Arc extensions directory
+  ansible.builtin.file:
+    path: "{{ arc_extensions_path }}"
+    state: directory
+    owner: "{{ ansible_user_id }}"
+    group: staff
+    mode: '0755'
+
+- name: Install Arc extension configuration
+  ansible.builtin.template:
+    src: arc_extension.json.j2
+    dest: "{{ arc_extensions_path }}/{{ extension_id }}.json"
+    owner: "{{ ansible_user_id }}"
+    group: staff
+    mode: '0644'
+    backup: yes
+  when: extension_id is defined
+
+- name: Display completion message
+  ansible.builtin.debug:
+    msg: "Arc extension {{ extension_id }} has been installed. Please restart Arc browser to see the changes."

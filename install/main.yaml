@@ -4,7 +4,7 @@
   hosts: localhost
   connection: local
   gather_facts: true
-  gather_subset: 
+  gather_subset:
     - min
 
   tasks:
@@ -56,6 +56,14 @@
     - name: Run roles
       ansible.builtin.include_role:
         name: arc
+    - name: Install Arc extensions
+      ansible.builtin.include_role:
+        name: arc-extensions
+      vars:
+        extension_id: "{{ item }}"
+      loop:
+        - pejdijmoenmkgeppbflobdenhhabjlaj  # icloud passwords
+        - cjpalhdlnbpafiamejdnhcphjbkeiagm  # uBlock Origin
     - name: Run roles
       ansible.builtin.include_role:
         name: work

@@ -1,0 +1,14 @@
+---
+# Default variables for arc-extensions role
+# The extension_id must be provided when using this role
+
+# Extension ID - must be provided by user
+# extension_id: ""
+
+# Default file permissions
+file_mode: '0644'
+directory_mode: '0755'
+
+# Default ownership
+file_owner: "{{ ansible_user_id }}"
+file_group: staff

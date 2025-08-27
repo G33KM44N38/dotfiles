@@ -1,0 +1,11 @@
+---
+# Variables for arc-extensions role
+
+# User home directory
+user_home: "{{ ansible_env.HOME }}"
+
+# Arc browser external extensions directory
+arc_extensions_path: "{{ user_home }}/Library/Application Support/Arc/User Data/External Extensions"
+
+# Chrome Web Store update URL for external extensions
+chrome_webstore_update_url: "https://clients2.google.com/service/update2/crx"
