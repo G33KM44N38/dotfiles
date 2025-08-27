@@ -9,7 +9,8 @@ FILES_TO_CHECK=(
   ".ssh"
   ".zshrc"
   ".group_env"
-)
+  "settings.json"
+  "raycast/config.json")
 
 # Path to the Ansible Vault password file
 VAULT_PASSWORD_FILE="${VAULT_PASSWORD_FILE:-$HOME/.ansible-vault/vault.secret}"

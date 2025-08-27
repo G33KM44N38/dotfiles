@@ -4,3 +4,15 @@
     name: raycast
     state: present
     update_homebrew: yes
+
+- name: Copy Raycast config for import
+  ansible.builtin.copy:
+    src: "{{ ansible_env.HOME }}/.dotfiles/raycast/config.json"
+    dest: "{{ ansible_env.HOME }}/raycast-config.json"
+    mode: '0644'
+  when: ansible_system == 'Darwin'
+
+- name: Notify user to import Raycast config
+  ansible.builtin.debug:
+    msg: "Raycast config copied to ~/raycast-config.json. Please open Raycast > Preferences > Advanced > Import Data and select this file to import your configuration."
+  when: ansible_system == 'Darwin'
