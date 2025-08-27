@@ -57,13 +57,20 @@
       ansible.builtin.include_role:
         name: arc
     - name: Install Arc extensions
+      tags: arc-extensions
       ansible.builtin.include_role:
         name: arc-extensions
       vars:
         extension_id: "{{ item }}"
       loop:
+        - khncfooichmfjbepaaaebmommgaepoid  # Unhook
+        - mpbjkejclgfgadiemmefgebjfooflfhl  # Buster for the captcha
         - pejdijmoenmkgeppbflobdenhhabjlaj  # icloud passwords
         - cjpalhdlnbpafiamejdnhcphjbkeiagm  # uBlock Origin
+    - name: Configure Arc DevTools shortcuts
+      ansible.builtin.include_role:
+        name: arc-devtools-shortcuts
+      tags: ['arc-devtools-shortcuts', 'arc-shortcuts']
     - name: Run roles
       ansible.builtin.include_role:
         name: work
