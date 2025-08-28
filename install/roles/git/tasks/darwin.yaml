@@ -22,7 +22,7 @@
   ansible.builtin.git:
     clone: true
     repo: https://github.com/babacoiffure/landing
-    dest: ~/coding/work/baba_coiffure
+    dest: ~/coding/work/landing
     update: false
     bare: true
   when: not baba_landing_exists.stat.exists
