@@ -1,4 +1,4 @@
-#!/usr/bin/env basH
+#!/usr/bin/env bash
 
 # # Enable debug output
 # set -x
@@ -37,20 +37,60 @@ else
     # Get all existing tmux session names once
     existing_tmux_sessions=$(tmux list-sessions -F '#{session_name}' 2>/dev/null)
 
-    # Generate the list for fzf, prefixing existing tmux sessions
-    fzf_input=""
-    # Use process substitution to feed find output line by line
-    while IFS= read -r dir; do
+    # Collect unique directories using find with sort -u
+    all_dirs=$(find "${search_paths[@]}" -mindepth 0 -maxdepth 1 -type d | sort -u)
+
+    # Build arrays mapping basenames to paths
+    declare -a basenames
+    declare -a paths_strings
+    for dir in $all_dirs; do
         # Clean up the path by removing trailing slashes for basename
         clean_dir=$(echo "$dir" | sed 's:/*$::')
         dir_name=$(basename "$clean_dir" | tr . _)
-        # Check if the session name exists in the pre-fetched list
-        if echo "$existing_tmux_sessions" | grep -q -E "^${dir_name}$"; then
-            fzf_input+="[TMUX] $dir_name	$dir\n" # Display: [TMUX] dir_name, Value: /full/path
+        # Find if dir_name already exists
+        index=-1
+        for ((j=0; j<${#basenames[@]}; j++)); do
+            if [[ ${basenames[j]} == "$dir_name" ]]; then
+                index=$j
+                break
+            fi
+        done
+        if [[ $index -ge 0 ]]; then
+            paths_strings[index]+=" $clean_dir"
         else
-            fzf_input+="$dir_name	$dir\n" # Display: dir_name, Value: /full/path
+            basenames+=("$dir_name")
+            paths_strings+=("$clean_dir")
         fi
-    done < <(find "${search_paths[@]}" -mindepth 0 -maxdepth 1 -type d)
+    done
+
+    # Generate the list for fzf, prefixing existing tmux sessions
+    fzf_input=""
+    for ((i=0; i<${#basenames[@]}; i++)); do
+        basename=${basenames[i]}
+        # Remove trailing space and split into array
+        paths_str=${paths_strings[i]}
+        paths_str=${paths_str% }
+        IFS=' ' read -ra paths <<< "$paths_str"
+
+        if [[ ${#paths[@]} -gt 1 ]]; then
+            # Basename conflict: use full paths as display names
+            for path in "${paths[@]}"; do
+                if echo "$existing_tmux_sessions" | grep -q -E "^${basename}$"; then
+                    fzf_input+="[TMUX] $path	$path\n"
+                else
+                    fzf_input+="$path	$path\n"
+                fi
+            done
+        else
+            # Unique basename: use basename as display name
+            path=${paths[0]}
+            if echo "$existing_tmux_sessions" | grep -q -E "^${basename}$"; then
+                fzf_input+="[TMUX] $basename	$path\n"
+            else
+                fzf_input+="$basename	$path\n"
+            fi
+        fi
+    done
 
     # Check if fzf_input is empty
     if [[ -z "$fzf_input" ]]; then
@@ -77,7 +117,6 @@ if [[ -z $selected ]]; then
 fi
 
 selected_name=$(basename "$selected" | tr . _)
-tmux_running=$(pgrep tmux)
 
 # Clean up the path by removing trailing slashes
 selected=$(echo "$selected" | sed 's:/*$::')

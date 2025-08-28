@@ -54,9 +54,6 @@ const hyperSubLayers = createHyperSubLayers({
       to: [{ key_code: "q", modifiers: ["right_control", "right_command"] }],
     },
     h: app("Home"),
-    d: open(
-      `raycast://extensions/yakitrak/do-not-disturb/toggle?launchType=background`
-    ),
     t: open(`raycast://extensions/raycast/system/toggle-system-appearance`),
     c: open("raycast://extensions/raycast/system/open-camera"),
     m: open("raycast://extensions/raycast/system/toggle-mute"),
