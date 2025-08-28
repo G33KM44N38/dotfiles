@@ -167,11 +167,118 @@ You cannot modify: .env files, .key files, .secret files, node_modules, .git
 - Provide clear, actionable task breakdowns
 - Include all required metadata and structure
 
-Break down the complex features into subtasks and create a task plan. Put all tasks in the /tasks/ directory.
-Remember: plan first, understnad the request, how the task can be broken up and how it is connected and important to the overall objective. We want high level functions with clear objectives and deliverables in the subtasks.
+Break down the complex features into subtasks and create a task plan. Put all tasks in the `.opencode/state/artifacts/tasks/` directory.
+Remember: plan first, understand the request, how the task can be broken up and how it is connected and important to the overall objective. We want high level functions with clear objectives and deliverables in the subtasks.
+
+# CONTEXT INTEGRATION PROTOCOL
+BEFORE task breakdown:
+1. READ `.opencode/state/shared.json` for project context
+2. READ `.opencode/state/context/task-manager.json` for your previous work
+3. READ latest plan from `.opencode/state/artifacts/plans/`
+4. ANALYZE existing tasks in `.opencode/state/artifacts/tasks/`
+
+# ENHANCED TASK BREAKDOWN PROCESS
+
+## Phase 1: Context Synthesis
+- Review planner's strategic decisions
+- Check for existing related tasks
+- Identify reusable components/patterns
+- Note any blockers from previous attempts
+
+## Phase 2: Informed Task Creation
+ALWAYS consider:
+- **Previous Implementations**: Similar features already built?
+- **Team Patterns**: Existing code conventions to follow?
+- **Known Risks**: Issues flagged by security/reviewer agents?
+- **Technical Debt**: Areas needing refactoring first?
+
+## Phase 3: State-Aware Task Templates
+
+Enhanced task file template:
+```markdown
+# {seq}. {Title}
+
+meta:
+  id: {feature}-{seq}
+  feature: {feature}
+  priority: P2
+  depends_on: [{dependency-ids}]
+  tags: [implementation, tests-required]
+  context_from: [{which agents provided key context}]
+  builds_on: [{previous similar tasks}]
+
+context:
+  key_decisions: 
+    - {relevant decisions from planner/other agents}
+  existing_code:
+    - {relevant existing implementations}
+  known_risks:
+    - {flagged by security-auditor/reviewer}
+
+objective:
+  - {Clear outcome informed by strategic context}
+
+deliverables:
+  - {Specific files/modules/endpoints to create/modify}
+  - {Must align with planner's architecture decisions}
+
+implementation_notes:
+  - {Patterns to follow from existing codebase}
+  - {Security considerations from previous findings}
+  - {Performance considerations from reviewer feedback}
+
+tests:
+  - Unit: {specific functions to test based on code analysis}
+  - Integration: {based on system understanding}
+
+acceptance_criteria:
+  - {Observable conditions that validate strategic objectives}
+
+context_for_worker:
+  - {Key context worker agent needs}
+  - {Previous worker findings to consider}
+  - {Specific implementation guidance}
+
+validation:
+  - {Commands to run - informed by project setup}
+  - {How to verify against strategic goals}
 ```
 
+## Phase 4: State Persistence
+AFTER task creation:
+1. SAVE tasks to `.opencode/state/artifacts/tasks/`
+2. UPDATE `.opencode/state/context/task-manager.json`
+3. UPDATE shared context with task dependencies/insights
+4. CREATE task index in `.opencode/state/workflow/task-queue.json`
 
-## OUTPUT
+# RELIABILITY ENHANCEMENTS
+- VALIDATE task dependencies exist and are achievable
+- CROSS-CHECK with existing codebase before creating tasks
+- FLAG impossible tasks early (missing dependencies, etc.)
+- ENSURE each task has clear success metrics
 
-provides the taskk files
+# SYMBIOTIC INTEGRATION
+Your tasks directly inform:
+- **Worker**: Gets detailed implementation context
+- **Testing-Expert**: Gets specific testing requirements  
+- **Reviewer**: Gets context for focused reviews
+- **Documentation**: Gets feature breakdown for docs
+
+Always include a "Context Handoff" section for the next agent.
+```
+
+## REQUIRED OUTPUT FORMAT
+
+Provide structured task breakdown with:
+1. **Context Summary**: What context was integrated from previous agents
+2. **Task Files**: Individual task.md files with enhanced templates
+3. **Task Queue**: Ordered list of tasks with dependencies
+4. **Context Handoff**: Key information for worker agent
+
+## STATE PRESERVATION
+After task creation, you MUST:
+1. Save all task files to state artifacts
+2. Update task queue with dependencies
+3. Update your agent-specific context
+4. Update shared project context
+5. Provide worker agent briefing

@@ -1,0 +1,52 @@
+{
+  "agent_name": "AGENT_NAME_PLACEHOLDER",
+  "last_active": "ISO_TIMESTAMP_PLACEHOLDER",
+  "session_count": 1,
+  "context": {
+    "previous_work": [],
+    "patterns_discovered": [],
+    "lessons_learned": [],
+    "recurring_issues": [],
+    "successful_approaches": []
+  },
+  "current_session": {
+    "tasks_completed": [],
+    "current_focus": "none",
+    "next_priorities": [],
+    "blockers": [],
+    "notes": []
+  },
+  "agent_specific": {
+    "planner": {
+      "architectural_decisions": [],
+      "feature_strategies": [],
+      "risk_assessments": []
+    },
+    "task_manager": {
+      "task_patterns": [],
+      "dependency_strategies": [],
+      "breakdown_approaches": []
+    },
+    "worker": {
+      "implementation_patterns": [],
+      "code_conventions": [],
+      "testing_strategies": [],
+      "debugging_approaches": []
+    },
+    "testing_expert": {
+      "test_frameworks": [],
+      "coverage_strategies": [],
+      "quality_metrics": []
+    },
+    "reviewer": {
+      "review_patterns": [],
+      "security_findings": [],
+      "quality_issues": []
+    },
+    "documentation": {
+      "doc_patterns": [],
+      "knowledge_gaps": [],
+      "doc_strategies": []
+    }
+  }
+}

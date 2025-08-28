@@ -1,0 +1,30 @@
+{
+  "queue_metadata": {
+    "created": "ISO_TIMESTAMP_PLACEHOLDER",
+    "feature": "feature-name-placeholder",
+    "total_tasks": 0,
+    "last_updated": "ISO_TIMESTAMP_PLACEHOLDER"
+  },
+  "queue": [
+    {
+      "id": "feature-01",
+      "sequence": 1,
+      "title": "Task Title",
+      "file": "01-task-description.md",
+      "status": "pending|in_progress|completed|blocked|failed",
+      "priority": "P1|P2|P3",
+      "depends_on": [],
+      "blocks": [],
+      "estimated_complexity": "low|medium|high",
+      "assigned_agent": "worker",
+      "started": null,
+      "completed": null,
+      "attempts": 0,
+      "last_attempt": null,
+      "context_updates": []
+    }
+  ],
+  "completed": [],
+  "failed": [],
+  "blocked": []
+}
