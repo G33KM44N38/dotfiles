@@ -1,4 +1,4 @@
-after-login-command = ['exec-and-forget sketchybar']
+# after-login-command = ['exec-and-forget sketchybar']
 
 start-at-login = true
 
