@@ -1,8 +1,17 @@
 #!/bin/bash
 set -e  # Exit on any error
 
-# Raycast Export Script - Native Export Automation
-# Uses Raycast's built-in export functionality via AppleScript automation
+# Required parameters:
+# @raycast.schemaVersion 1
+# @raycast.title  Export Raycast Config 
+# @raycast.mode compact
+
+# Optional parameters:
+# @raycast.icon ⬆️
+
+# Documentation:
+# @raycast.description  Export Raycast settings
+# @raycast.author me
 
 # Configuration
 CONFIG_DIR="$HOME/.dotfiles/.config/raycast"
