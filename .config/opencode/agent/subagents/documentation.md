@@ -1,7 +1,7 @@
 ---
 description: Use when writing or maintaining project documentation
 mode: subagent
-model: grok-code-fast-1
+model: opencode/grok-code
 temperature: 0.3
 tools:
   write: true

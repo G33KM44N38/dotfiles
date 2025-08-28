@@ -1,6 +1,6 @@
 ---
 description: Performs security audits and identifies vulnerabilities
-model: grok-code-fast-1
+model: opencode/grok-code
 mode: subagent
 tools:
   write: false

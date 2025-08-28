@@ -1,6 +1,6 @@
 ---
 description: Use when conducting software testing including unit tests, integration tests, and end-to-end tests.
-model: grok-code-fast-1
+model: opencode/grok-code
 mode: subagent
 tools:
   webfetch: true

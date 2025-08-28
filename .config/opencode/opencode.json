@@ -1,6 +1,6 @@
 {
 	"$schema": "https://opencode.ai/config.json",
-	"model": "grok-code-fast-1",
+	"model": "opencode/grok-code",
 	"provider": {},
 	"mcp": {}
 }
