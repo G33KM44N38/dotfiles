@@ -63,14 +63,15 @@ export const NotificationPlugin: Plugin = async ({ client, $ }: PluginInput) => 
 
   return {
     event: async ({ event }: { event: Event }) => {
-      const stateInfo = getStateInfo()
-      const message = createDetailedMessage(stateInfo)
-      
-      // Voice notification with detailed context
-      await $`say "${message}"`
-      
-      // Send notification on session completion
+      // Only send notifications on session completion
       if (event.type === "session.idle") {
+        const stateInfo = getStateInfo()
+        const message = createDetailedMessage(stateInfo)
+        
+        // Voice notification with detailed context
+        await $`say "${message}"`
+        
+        // Send macOS notification
         const subtitle = stateInfo?.session?.current_phase || 'Development'
         await $`osascript -e 'display notification "${message}" with title "OpenCode" subtitle "${subtitle}"'`
       }
