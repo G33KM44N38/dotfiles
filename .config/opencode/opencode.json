@@ -1,18 +1,6 @@
 {
 	"$schema": "https://opencode.ai/config.json",
-	"provider": {
-		"ollama": {
-			"npm": "@ai-sdk/openai-compatible",
-			"name": "Ollama (local)",
-			"options": {
-				"baseURL": "http://127.0.0.1:11434/v1"
-			},
-			"models": {
-				"kirito1/qwen3-coder": {
-					"name": "Qwen3-Coder (local)"
-				}
-			}
-		}
-	},
+	"model": "grok-code-fast-1",
+	"provider": {},
 	"mcp": {}
 }
