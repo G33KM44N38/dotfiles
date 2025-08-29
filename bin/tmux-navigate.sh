@@ -38,12 +38,12 @@ else
     existing_tmux_sessions=$(tmux list-sessions -F '#{session_name}' 2>/dev/null)
 
     # Collect unique directories using find with sort -u
-    all_dirs=$(find "${search_paths[@]}" -mindepth 0 -maxdepth 1 -type d | sort -u)
+    all_dirs=$(find "${search_paths[@]}" -mindepth 1 -maxdepth 1 -type d | sort -u)
 
     # Build arrays mapping basenames to paths
     declare -a basenames
     declare -a paths_strings
-    for dir in $all_dirs; do
+    while IFS= read -r dir; do
         # Clean up the path by removing trailing slashes for basename
         clean_dir=$(echo "$dir" | sed 's:/*$::')
         dir_name=$(basename "$clean_dir" | tr . _)
@@ -56,21 +56,20 @@ else
             fi
         done
         if [[ $index -ge 0 ]]; then
-            paths_strings[index]+=" $clean_dir"
+            paths_strings[index]+=$'\n'"$clean_dir"
         else
             basenames+=("$dir_name")
             paths_strings+=("$clean_dir")
         fi
-    done
+    done <<< "$all_dirs"
 
     # Generate the list for fzf, prefixing existing tmux sessions
     fzf_input=""
     for ((i=0; i<${#basenames[@]}; i++)); do
         basename=${basenames[i]}
-        # Remove trailing space and split into array
+        # Split paths by newline instead of space
         paths_str=${paths_strings[i]}
-        paths_str=${paths_str% }
-        IFS=' ' read -ra paths <<< "$paths_str"
+        IFS=$'\n' read -ra paths <<< "$paths_str"
 
         if [[ ${#paths[@]} -gt 1 ]]; then
             # Basename conflict: use full paths as display names
