@@ -18,6 +18,7 @@ pkill -TERM "Brave Browser"
 pkill -TERM "QuickTime Player"
 pkill -TERM "Telegram"
 pkill -TERM "Safari"
+pkill -TERM "Finder"
 open raycast://extensions/raycast/system/eject-all-disks
 
 # vi:ft=sh:
