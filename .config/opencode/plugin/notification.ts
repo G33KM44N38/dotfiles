@@ -186,8 +186,8 @@ export const NotificationPlugin: Plugin = async ({ client, $ }: PluginInput) => 
         // await readLastResponse()
         
         // Send macOS notification
-        const subtitle = stateInfo?.session?.current_phase || 'Development'
-        await $`osascript -e 'display notification "${message}" with title "OpenCode" subtitle "${subtitle}"'`
+        // const subtitle = stateInfo?.session?.current_phase || 'Development'
+        // await $`osascript -e 'display notification "${message}" with title "OpenCode" subtitle "${subtitle}"'`
       }
     },
     

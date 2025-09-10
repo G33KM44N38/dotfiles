@@ -1,3 +1,9 @@
+---
+description: Process task on task list
+---
+
+Could you process task for this file and task $ARGUMENTS
+
 # Task List Management
 
 Guidelines for managing task lists in markdown files to track progress on completing a PRD
@@ -31,4 +37,3 @@ When working with task lists, the AI must:
 4. Keep “Relevant Files” accurate and up to date.
 5. Before starting work, check which sub‑task is next.
 6. After implementing a sub‑task, update the file and then pause for user approval.
-

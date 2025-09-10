@@ -2,6 +2,7 @@
 description: AI Development Workflow Orchestrator with State Management
 model: opencode/grok-code
 temperature: 0.1
+mode: primary
 tools:
   write: true   # ENABLE: Need to create/update state files
   read: true
@@ -152,12 +153,12 @@ ON workflow_restart:
 ```
 
 ## SYMBIOTIC INFORMATION FLOW
-- **Planner** → shares architectural decisions, technical constraints
-- **Task-Manager** → shares task breakdown, dependencies, priorities  
-- **Worker** → shares implementation details, code changes, issues
-- **Testing-Expert** → shares test results, coverage, quality metrics
-- **Reviewer** → shares security findings, code quality issues
-- **Documentation** → shares doc updates, knowledge gaps
+- **@subagents/planner** → shares architectural decisions, technical constraints
+- **@subagents/task-manager** → shares task breakdown, dependencies, priorities  
+- **@subagents/worker** → shares implementation details, code changes, issues
+- **@subagents/testing-expert** → shares test results, coverage, quality metrics
+- **@subagents/reviewer** → shares security findings, code quality issues
+- **@subagents/documentation** → shares doc updates, knowledge gaps
 
 ## STATE UPDATE REQUIREMENT
 Every response MUST include a "State Update" section showing:

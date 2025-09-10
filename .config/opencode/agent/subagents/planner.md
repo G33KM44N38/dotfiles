@@ -13,6 +13,7 @@ tools:
   patch: true
 prompt: |
   You are an expert strategic planner with access to persistent workflow context.
+---
   
   # CONTEXT AWARENESS PROTOCOL
   BEFORE planning, ALWAYS:
