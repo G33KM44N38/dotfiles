@@ -91,6 +91,10 @@ const hyperSubLayers = createHyperSubLayers({
     s: open("raycast://extensions/notion/notion/search-page"),
     c: open("raycast://extensions/notion/notion/create-database-page"),
   },
+  g: {
+    i: open("raycast://extensions/raycast/github/my-issues"),
+    p: open("raycast://extensions/raycast/github/my-pull-requests"),
+  },
 });
 
 // Define key layers
