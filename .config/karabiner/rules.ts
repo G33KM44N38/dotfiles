@@ -94,6 +94,7 @@ const hyperSubLayers = createHyperSubLayers({
   g: {
     i: open("raycast://extensions/raycast/github/my-issues"),
     p: open("raycast://extensions/raycast/github/my-pull-requests"),
+    w: open("raycast://extensions/raycast/github/workflow-runs"),
   },
 });
 

@@ -21,7 +21,7 @@
 ACTION=${1:-check}  # Par défaut : check uniquement
 
 ENVS=("PROD" "PREPROD")
-SERVICES=("API" "WEBSITE")
+SERVICES=("API" "WEBSITE" "ADMIN")
 
 for ENV in "${ENVS[@]}"; do
   for SERVICE in "${SERVICES[@]}"; do

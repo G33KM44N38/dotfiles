@@ -14,35 +14,6 @@ return {
 	config = function()
 		local opts = { noremap = true, silent = true }
 
-		if vim.g.vscode then
-			-- VS Code specific keymaps
-			vim.keymap.set("n", "<C-p>", function()
-				vim.fn.VSCodeNotify("extension.fuzzySearch")
-			end, opts)
-
-			vim.keymap.set("n", "<C-s>", function()
-				vim.fn.VSCodeNotify("workbench.action.findInFiles")
-			end, opts)
-
-			vim.keymap.set("n", "gi", function()
-				vim.fn.VSCodeNotify("editor.action.goToImplementation")
-			end, opts)
-
-			vim.keymap.set("n", "gd", function()
-				vim.fn.VSCodeNotify("editor.action.revealDefinition")
-			end, opts)
-
-			vim.keymap.set("n", "gr", function()
-				vim.fn.VSCodeNotify("editor.action.goToReferences")
-			end, opts)
-
-			vim.keymap.set({ "n", "v" }, "<leader>c", function()
-				vim.fn.VSCodeNotify("editor.action.quickFix")
-			end, { desc = "VSCode Code Actions" })
-
-			return
-		end
-
 		-- Neovim native (fzf-lua)
 		local fzf = require("fzf-lua")
 
@@ -103,6 +74,7 @@ return {
 		vim.api.nvim_set_keymap("n", "gr", "<cmd>FzfLua lsp_references<CR>", opts)
 		vim.api.nvim_set_keymap("n", "<C-p>", "<cmd>FzfLua files<CR>", opts)
 		vim.api.nvim_set_keymap("n", "<C-s>", "<cmd>FzfLua grep<CR>", opts)
+		vim.api.nvim_set_keymap("n", "<C-q>", "<cmd>FzfLua live_grep_glob<CR>", opts)
 		vim.api.nvim_set_keymap("n", "<leader>fb", "<cmd>FzfLua buffers<CR>", opts)
 		vim.api.nvim_set_keymap("n", "<leader>ke", "<cmd>FzfLua keymaps<CR>", opts)
 		vim.keymap.set({ "n", "v" }, "<leader>c", "<cmd>FzfLua lsp_code_actions<CR>", { desc = "Code Actions" })

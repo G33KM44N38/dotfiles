@@ -38,7 +38,7 @@ else
     existing_tmux_sessions=$(tmux list-sessions -F '#{session_name}' 2>/dev/null)
 
     # Collect unique directories using find with sort -u
-    all_dirs=$(find "${search_paths[@]}" -mindepth 1 -maxdepth 1 -type d | sort -u)
+    all_dirs=$(find "${search_paths[@]}" -mindepth 0 -maxdepth 1 -type d | sort -u)
 
     # Build arrays mapping basenames to paths
     declare -a basenames

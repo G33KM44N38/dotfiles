@@ -65,3 +65,5 @@ node_modules/
 .claude/shell-snapshots/
 .claude/statsig/
 .claude/todos/
+container-use/
+goinfre/
