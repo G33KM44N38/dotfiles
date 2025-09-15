@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+# Vérifie si un nvim tourne encore
+if pgrep -x nvim >/dev/null; then
+echo "❌ Neovim est encore actif. Ferme-le avec :qall pour cleanup."
+return 1
+fi
+
+# Kill LSP connus
+pkill -f vscode-json-language-server 2>/dev/null
+pkill -f typescript-language-server 2>/dev/null
+pkill -f pyright-langserver 2>/dev/null
+pkill -f lua-language-server 2>/dev/null
+
+# Kill tous les node orphelins liés à mason
+ps -o pid,ppid,command -ax \
+| grep ".local/share/nvim/mason/bin" \
+| grep node \
+| awk '{print $1}' \
+| xargs -r kill -9
+
+echo "✅ Cleanup terminé."
+
+# vi:ft=sh:

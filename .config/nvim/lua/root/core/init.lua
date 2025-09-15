@@ -166,3 +166,12 @@ vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
 	pattern = { ".env", ".env.*" },
 	command = "setfiletype dotenv",
 })
+
+-- Arrêter proprement tous les LSP quand Neovim se ferme
+vim.api.nvim_create_autocmd("VimLeavePre", {
+	callback = function()
+		for _, client in pairs(vim.lsp.get_clients()) do
+			client:stop()
+		end
+	end,
+})
