@@ -2,6 +2,7 @@
 
 # Absolute path to skip
 WORKSPACE_PATH="/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain"
+DATABASE_PATH="/Users/boss/coding/work/database"
 
 # Get current directory full path
 CURRENT_DIR="$PWD"
@@ -9,6 +10,7 @@ CURRENT_DIR="$PWD"
 # List of full paths where we skip creating extra tmux windows
 EXCLUDED_PATHS=(
   "$WORKSPACE_PATH|odn"
+  "$DATABASE_PATH| vi -c \":DBUIToggle\""
   "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain|odn"
   "/Users/boss/.dotfiles/bin/create-todo|npm run dev"
 )
