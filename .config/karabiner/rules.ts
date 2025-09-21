@@ -15,7 +15,7 @@ const hyperSubLayers = createHyperSubLayers({
   b: {
     a: open("https://chatgpt.com?_perso"),
     y: open("https://youtube.com?_perso"),
-    r: open("https://reddit.com"),
+    r: open("https://reddit.com?_perso"),
     c: open("https://claude.ai/recents"),
     i: open("https://instagram.com?_perso"),
     d: open("http://localhost:3000"),
@@ -37,7 +37,7 @@ const hyperSubLayers = createHyperSubLayers({
     m: app("Music"),
     n: app("Notion"),
     p: app("Obsidian"),
-    q: app("Superhuman"),
+    q: app("Comet"),
     semicolon: app("Cursor"),
     t: app("Ghostty"),
     w: app("Brave Browser"),

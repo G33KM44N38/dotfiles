@@ -16,7 +16,7 @@ inner.horizontal = 0
 inner.vertical =   0
 outer.left =       0
 outer.bottom =     0
-outer.top =        45
+outer.top =        0
 outer.right =      0
 
 [mode.main.binding]
@@ -160,6 +160,9 @@ run = ['move-node-to-workspace 7']
 [[on-window-detected]]
 if.app-id = 'com.obsproject.obs-studio'
 run = ['move-node-to-workspace 7']  
+[[on-window-detected]]
+if.app-id = 'com.electron.dockerdesktop'
+run = ['move-node-to-workspace 7']  
 
 [[on-window-detected]]
 if.app-id = 'com.apple.Music'
@@ -174,10 +177,6 @@ run = ['move-node-to-workspace 9']
 [[on-window-detected]]
 if.app-id = 'com.tdesktop.Telegram'
 run = ['move-node-to-workspace 9']  
-
-[[on-window-detected]]
-if.app-id = 'com.electron.dockerdesktop'
-run = ['move-node-to-workspace 10']  
 
 [[on-window-detected]]
 if.app-id = 'com.apple.Passwords'

@@ -1,6 +1,5 @@
 return {
 	"saghen/blink.cmp",
-	enabled = not vim.g.vscode, -- <== désactive si dans VS Code
 	version = "1.*",
 	dependencies = {
 		"L3MON4D3/LuaSnip",

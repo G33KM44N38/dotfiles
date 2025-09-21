@@ -2816,10 +2816,10 @@
               {
                 "to": [
                   {
-                    "shell_command": "open https://reddit.com"
+                    "shell_command": "open https://reddit.com?_perso"
                   }
                 ],
-                "description": "Open https://reddit.com",
+                "description": "Open https://reddit.com?_perso",
                 "type": "basic",
                 "from": {
                   "key_code": "r",
@@ -3371,10 +3371,10 @@
               {
                 "to": [
                   {
-                    "shell_command": "open -a 'Superhuman.app'"
+                    "shell_command": "open -a 'Comet.app'"
                   }
                 ],
-                "description": "Open -a 'Superhuman.app'",
+                "description": "Open -a 'Comet.app'",
                 "type": "basic",
                 "from": {
                   "key_code": "q",
