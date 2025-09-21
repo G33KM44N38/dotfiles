@@ -1,4 +1,0 @@
----
-- name: Run SOPS
-  ansible.builtin.import_tasks: tasks/darwin.yaml
-  when: ansible_system == 'Darwin'

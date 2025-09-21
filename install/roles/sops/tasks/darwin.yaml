@@ -1,5 +1,0 @@
-- name: SOPS | Download and install
-  homebrew:
-    name: sops
-    state: present
-    update_homebrew: yes

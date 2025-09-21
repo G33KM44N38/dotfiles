@@ -1,5 +1,0 @@
-- name: STRIPE | Install stripe
-  homebrew:
-    name: stripe/stripe-cli/stripe
-    state: present
-    update_homebrew: yes

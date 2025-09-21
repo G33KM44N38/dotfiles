@@ -87,9 +87,6 @@
         name: yarn
     - name: Run roles
       ansible.builtin.include_role:
-        name: sops
-    - name: Run roles
-      ansible.builtin.include_role:
         name: aerospace
     - name: Run roles
       ansible.builtin.include_role:
