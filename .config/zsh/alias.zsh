@@ -11,6 +11,7 @@ alias bch="babacoiffure_checkhealth.sh"
 alias ca="coding-assistant"
 
 # Git command
+alias gc="git commit"
 alias gs="git status"
 alias gp="git push"
 alias gaa="git add --all"
