@@ -18,7 +18,6 @@ alias gaa="git add --all"
 alias graph="git log --all --decorate --oneline --graph"
 alias gcg="git config --edit --global"
 alias gcl="git config --edit --local"
-alias gc="git clone"
 
 # Tmux
 alias tma="tmux a"
