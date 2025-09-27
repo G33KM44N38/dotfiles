@@ -12,8 +12,10 @@ alias ca="coding-assistant"
 
 # Git command
 alias gc="git commit"
+alias gcn="git commit -n"
 alias gs="git status"
 alias gp="git push"
+alias gpn="git push -n"
 alias gaa="git add --all"
 alias graph="git log --all --decorate --oneline --graph"
 alias gcg="git config --edit --global"
