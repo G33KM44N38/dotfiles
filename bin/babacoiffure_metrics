@@ -13,10 +13,10 @@
 # @raycast.author me
 
 open "https://www.tiktok.com/tiktokstudio/content?babacoiffure"
-# linkk.babacoiffure.com
-open "https://analytics.google.com/analytics/web/#/a362187793p497656035/reports/reportinghub?babacoiffure=&params=_u..built_comparisons_enabled%3Dtrue%26_u..comparisons%3D%5B%7B%22savedComparisonId%22:%2212202464148%22,%22name%22:%22Hostname%20exactly%20matches%20babacoiffure.com%22,%22isEnabled%22:true,%22filters%22:%5B%7B%22fieldName%22:%22hostname%22,%22expressionList%22:%5B%22babacoiffure.com%22%5D,%22isCaseSensitive%22:true%7D%5D,%22systemDefinedSavedComparisonType%22:0,%22isSystemDefined%22:false%7D%5D"
 # babacoiffure.com
-open "https://analytics.google.com/analytics/web/#/a362187793p497656035/reports/reportinghub?babacoiffure=&params=_u..built_comparisons_enabled%3Dtrue%26_u..comparisons%3D%5B%7B%22savedComparisonId%22:%2212202464148%22,%22name%22:%22Hostname%20exactly%20matches%20babacoiffure.com%22,%22isEnabled%22:true,%22filters%22:%5B%7B%22fieldName%22:%22hostname%22,%22expressionList%22:%5B%22babacoiffure.com%22%5D,%22isCaseSensitive%22:true%7D%5D,%22systemDefinedSavedComparisonType%22:0,%22isSystemDefined%22:false%7D%5D%26_u.dateOption%3Dlast7Days%26_u.comparisonOption%3Ddisabled"
+open "https://analytics.google.com/analytics/web/#/a362187793p497656035/reports/reportinghub?babacoiffure=&params=_u..built_comparisons_enabled%3Dtrue%26_u..comparisons%3D%5B%7B%22savedComparisonId%22:%2212202464148%22,%22name%22:%22Hostname%20exactly%20matches%20babacoiffure.com%22,%22isEnabled%22:true,%22filters%22:%5B%7B%22fieldName%22:%22hostname%22,%22expressionList%22:%5B%22babacoiffure.com%22%5D,%22isCaseSensitive%22:true%7D%5D,%22systemDefinedSavedComparisonType%22:0,%22isSystemDefined%22:false%7D%5D"
+# linkk.babacoiffure.com
+open "https://analytics.google.com/analytics/web/#/a362187793p497656035/reports/reportinghub?babacoiffure=&params=_u..built_comparisons_enabled%3Dtrue%26_u..comparisons%3D%5B%7B%22name%22:%22Hostname%20exactly%20matches%20link.babacoiffure.com%22,%22isEnabled%22:true,%22filters%22:%5B%7B%22fieldName%22:%22hostname%22,%22expressionList%22:%5B%22link.babacoiffure.com%22%5D,%22isCaseSensitive%22:true%7D%5D%7D%5D%26_u.dateOption%3Dlast7Days%26_u.comparisonOption%3Ddisabled"
 open "https://appstoreconnect.apple.com/analytics/app/d7/6482997794/overview?iaemeasure=totalDownloads"
 
 open "https://studio.youtube.com/channel/UCtV5FeRIngFv2SFEH3k1gEA/videos/short?filter=%5B%5D&sort=%7B%22columnType%22%3A%22date%22%2C%22sortOrder%22%3A%22DESCENDING%22%7D"
