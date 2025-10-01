@@ -493,7 +493,7 @@ main() {
   show_progress $current_step $total_steps "Overall Progress"
   
   clean_system_caches
-  clean_uninstalled_app_data
+  # clean_uninstalled_app_data
   
   # Final cleanup message
   echo # Add newline after progress bar
