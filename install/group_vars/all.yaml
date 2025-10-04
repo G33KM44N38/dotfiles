@@ -30,8 +30,6 @@ default_roles:
   - figma
   - karabiner
   - yarn
-  - sops
-  # - gitspeak
   - aerospace
   - python
   - arc-cli

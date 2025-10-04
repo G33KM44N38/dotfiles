@@ -1,3 +1,0 @@
----
-- name: Run z task
-  ansible.builtin.import_tasks: tasks/darwin.yaml

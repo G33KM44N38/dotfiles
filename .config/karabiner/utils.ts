@@ -368,7 +368,7 @@ const BuiltinKeyboardCondition: DeviceCondition = {
   type: "device_if",
   identifiers: [
     {
-      vendor_id: 1452,
+      is_built_in_keyboard: true,
     },
   ],
   description: "MacBook Pro built-in keyboard",
