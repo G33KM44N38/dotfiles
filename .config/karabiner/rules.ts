@@ -37,7 +37,7 @@ const hyperSubLayers = createHyperSubLayers({
     m: app("Music"),
     n: app("Notion"),
     p: app("Podcasts"),
-    q: app("Comet"),
+    q: app("Notes"),
     semicolon: app("Cursor"),
     t: app("Ghostty"),
     w: app("Brave Browser"),
@@ -85,6 +85,7 @@ const hyperSubLayers = createHyperSubLayers({
     p: open("raycast://extensions/raycast/raycast/confetti"),
     s: open("raycast://extensions/raycast/snippets/search-snippets"),
     m: open("raycast://extensions/raycast/navigation/search-menu-items"),
+    n: open("raycast://extensions/raycast/raycast-notes/raycast-notes"),
     l: open("raycast://extensions/eluce2/displayplacer/displayplacer"),
   },
   n: {
