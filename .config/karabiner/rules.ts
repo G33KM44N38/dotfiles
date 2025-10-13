@@ -23,6 +23,15 @@ const hyperSubLayers = createHyperSubLayers({
     x: open("https://www.x.com/?_perso"),
     f: open("https://www.netflix.com/?_perso"),
   },
+  q: {
+    s: open(
+      "https://dashboard.render.com/project/prj-d0ibijqdbo4c739c9tcg?babacoiffure"
+    ),
+    c: open(
+      "https://www.tiktok.com/@timal___ff/video/7450418795220356374?q=imagine%20t%27es%20mbappe%20et%20tu%20tombe%20sur%20cet%20edit&t=1737645862371"
+    ),
+    g: open("https://github.com/babacoiffure/babacoiffure_monorepo"),
+  },
   o: {
     a: app("Arc"),
     b: app("Beeper Desktop"),
@@ -58,20 +67,13 @@ const hyperSubLayers = createHyperSubLayers({
     c: open("raycast://extensions/raycast/system/open-camera"),
     m: open("raycast://extensions/raycast/system/toggle-mute"),
   },
-  v: {
-    h: { to: [{ key_code: "left_arrow" }] },
-    j: { to: [{ key_code: "down_arrow" }] },
-    k: { to: [{ key_code: "up_arrow" }] },
-    l: { to: [{ key_code: "right_arrow" }] },
-    d: { to: [{ key_code: "page_down" }] },
-    u: { to: [{ key_code: "page_up" }] },
-  },
   c: {
     h: { to: [{ key_code: "play_or_pause" }] },
     k: { to: [{ key_code: "fastforward" }] },
     j: { to: [{ key_code: "rewind" }] },
   },
   r: {
+    q: open("raycast://extensions/raycast/raycast/search-quicklinks"),
     a: open("raycast://extensions/raycast/window-management/maximize"),
     c: open(
       "raycast://extensions/VladCuciureanu/toothpick/manage-bluetooth-connections"
