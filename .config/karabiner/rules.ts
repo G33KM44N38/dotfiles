@@ -24,6 +24,7 @@ const hyperSubLayers = createHyperSubLayers({
     f: open("https://www.netflix.com/?_perso"),
   },
   q: {
+    a: open("https://babacoiffure-monorepo-bnj2.onrender.com"),
     s: open(
       "https://dashboard.render.com/project/prj-d0ibijqdbo4c739c9tcg?babacoiffure"
     ),
@@ -31,6 +32,10 @@ const hyperSubLayers = createHyperSubLayers({
       "https://www.tiktok.com/@timal___ff/video/7450418795220356374?q=imagine%20t%27es%20mbappe%20et%20tu%20tombe%20sur%20cet%20edit&t=1737645862371"
     ),
     g: open("https://github.com/babacoiffure/babacoiffure_monorepo"),
+    m: open("raycast://script-commands/babacoiffure-metrics"),
+    d: open(
+      "https://cloud.mongodb.com/v2/6823b121f0e64a2a9f745630#/explorer/6823b1742084b0561c1fb495?babacoiffure"
+    ),
   },
   o: {
     a: app("Arc"),
