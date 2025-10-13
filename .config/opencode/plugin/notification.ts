@@ -3,8 +3,6 @@ import type { Event } from "@opencode-ai/sdk"
 import { readFileSync, existsSync } from "fs"
 
 export const NotificationPlugin: Plugin = async ({ client, $ }: PluginInput) => {
-  console.log("Plugin initialized!")
-  
   const getStateInfo = () => {
     try {
       const sessionPath = '.opencode/state/session.json'
@@ -20,7 +18,6 @@ export const NotificationPlugin: Plugin = async ({ client, $ }: PluginInput) => 
         
       return { session, shared, taskQueue }
     } catch (error) {
-      console.log('Could not read state files:', error)
       return null
     }
   }
@@ -168,7 +165,7 @@ export const NotificationPlugin: Plugin = async ({ client, $ }: PluginInput) => 
         }
       }
     } catch (error) {
-      console.log('Could not read last response:', error)
+      // Error reading last response
     }
   }
 
@@ -200,7 +197,6 @@ export const NotificationPlugin: Plugin = async ({ client, $ }: PluginInput) => 
         const stateInfo = getStateInfo()
         const message = createDetailedMessage(stateInfo)
         await $`say "${message}"`
-        console.log(message)
       }
     }
   }
