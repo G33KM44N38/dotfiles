@@ -9,6 +9,7 @@ alias me="manage_env.sh"
 alias ie="import_env.sh"
 alias bch="babacoiffure_checkhealth.sh"
 alias ca="coding-assistant"
+alias bsetup="ie && pnpm i"
 
 # Git command
 alias gc="git commit"
