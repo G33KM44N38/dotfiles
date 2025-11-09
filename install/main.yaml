@@ -117,9 +117,9 @@
      - name: Run roles
        ansible.builtin.include_role:
          name: ollama
-     - name: Run roles
-       ansible.builtin.include_role:
-         name: opencode
+      - name: Run roles
+        ansible.builtin.include_role:
+          name: opencode
       - name: Run roles
         ansible.builtin.include_role:
           name: pnpm
