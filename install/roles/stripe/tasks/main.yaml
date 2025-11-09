@@ -1,3 +1,8 @@
 ---
 - name: Run STRIPE
   ansible.builtin.import_tasks: darwin.yaml
+  when: ansible_system == 'Darwin'
+
+- name: Run STRIPE
+  ansible.builtin.import_tasks: linux.yml
+  when: ansible_system == 'Linux'

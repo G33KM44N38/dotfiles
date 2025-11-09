@@ -1,0 +1,33 @@
+---
+- name: Install Python on Linux
+  block:
+    - name: Install Python via apt (Ubuntu/Debian)
+      ansible.builtin.apt:
+        name: python3
+        state: present
+        update_cache: true
+      when: ansible_distribution in ['Ubuntu', 'Debian']
+
+    - name: Install Python via dnf (Fedora/RHEL)
+      ansible.builtin.dnf:
+        name: python3
+        state: present
+      when: ansible_distribution in ['Fedora', 'RedHat', 'CentOS']
+
+    - name: Install Python via pacman (Arch)
+      community.general.pacman:
+        name: python
+        state: present
+      when: ansible_distribution == 'Archlinux'
+
+    - name: Install pip
+      ansible.builtin.package:
+        name: python3-pip
+        state: present
+
+    - name: Create python symlink
+      ansible.builtin.file:
+        src: /usr/bin/python3
+        dest: /usr/local/bin/python
+        state: link
+      become: true

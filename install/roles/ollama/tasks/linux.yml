@@ -1,0 +1,17 @@
+---
+- name: Install Ollama on Linux
+  block:
+    - name: Download Ollama installer
+      ansible.builtin.get_url:
+        url: https://ollama.ai/install.sh
+        dest: /tmp/ollama-install.sh
+        mode: '0755'
+
+    - name: Run Ollama installer
+      ansible.builtin.command: /tmp/ollama-install.sh
+      become: true
+
+    - name: Clean up installer
+      ansible.builtin.file:
+        path: /tmp/ollama-install.sh
+        state: absent

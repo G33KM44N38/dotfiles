@@ -1,3 +1,8 @@
 ---
 - name: Run python tasks for darwin
-  ansible.builtin.import_tasks: tasks/darwin.yaml
+  ansible.builtin.import_tasks: darwin.yaml
+  when: ansible_system == 'Darwin'
+
+- name: Run python tasks for linux
+  ansible.builtin.import_tasks: linux.yml
+  when: ansible_system == 'Linux'

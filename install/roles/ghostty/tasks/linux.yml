@@ -1,0 +1,28 @@
+---
+- name: Install ghostty on Linux
+  block:
+    - name: Download latest ghostty release
+      ansible.builtin.uri:
+        url: https://api.github.com/repos/ghostty-org/ghostty/releases/latest
+        return_content: true
+      register: ghostty_release
+
+    - name: Set ghostty download URL
+      ansible.builtin.set_fact:
+        ghostty_download_url: "{{ ghostty_release.json.assets | selectattr('name', 'match', '.*linux.*x86_64.*tar.gz$') | first | default({}) }}"
+
+    - name: Download and extract ghostty
+      ansible.builtin.unarchive:
+        src: "{{ ghostty_download_url.browser_download_url }}"
+        dest: "{{ ansible_env.HOME }}/.local"
+        remote_src: true
+        creates: "{{ ansible_env.HOME }}/.local/ghostty"
+      when: ghostty_download_url.browser_download_url is defined
+
+    - name: Add ghostty to PATH
+      ansible.builtin.lineinfile:
+        path: "{{ ansible_env.HOME }}/.zshrc"
+        line: 'export PATH="$HOME/.local/ghostty:$PATH"'
+        state: present
+        create: true
+      when: ghostty_download_url.browser_download_url is defined

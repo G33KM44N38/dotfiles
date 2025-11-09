@@ -1,0 +1,254 @@
+# sxhkd configuration - Linux equivalent of Karabiner rules
+# This provides similar functionality to the macOS Karabiner setup
+
+# =============================================================================
+# HYPER KEY FUNCTIONALITY (Spacebar as modifier)
+# =============================================================================
+
+# Hyper key setup - Spacebar acts as a modifier when held
+# Note: This requires xcape to be installed for proper hyper key functionality
+# Install: sudo apt install xcape (or equivalent for your distro)
+
+# Hyper + B layer (browsers/social)
+super + space ; {a,y,r,c,i,d,t,x,f}
+	{chromium --app="https://chatgpt.com?_perso",\
+	chromium --app="https://youtube.com?_perso",\
+	chromium --app="https://reddit.com?_perso",\
+	chromium --app="https://claude.ai/",\
+	chromium --app="https://instagram.com?_perso",\
+	chromium --app="http://localhost:3000",\
+	chromium --app="https://www.twitch.tv/?_renayam",\
+	chromium --app="https://www.x.com/?_perso",\
+	chromium --app="https://www.netflix.com/?_perso"}
+
+# Hyper + Q layer (work/babacoiffure)
+super + space ; {a,s,c,g,m,d}
+	{chromium --app="https://babacoiffure-monorepo-bnj2.onrender.com",\
+	x-terminal-emulator -e "chromium --app='https://dashboard.render.com/project/prj-d0ibijqdbo4c739c9tcg?babacoiffure'",\
+	x-terminal-emulator -e "chromium --app='https://www.tiktok.com/@timal___ff/video/7450418795220356374?q=imagine%20t%27es%20mbappe%20et%20tu%20tombe%20sur%20cet%20edit&t=1737645862371'",\
+	chromium --app="https://github.com/babacoiffure/babacoiffure_monorepo",\
+	x-terminal-emulator -e "echo 'Babacoiffure metrics - implement Linux equivalent'",\
+	x-terminal-emulator -e "chromium --app='https://cloud.mongodb.com/v2/6823b121f0e64a2a9f745630#/explorer/6823b1742084b0561c1fb495?babacoiffure'"}
+
+# Hyper + O layer (applications)
+super + space ; {a,b,c,d,e,g,h,i,j,k,m,n,p,q,semicolon,t,w,x,y,z}
+	{chromium,\
+	beeper,\
+	chromium --app="https://calendar.google.com",\
+	davinci-resolve,\
+	thunderbird,\
+	~/bin/open_sim,\
+	chromium --app="https://home.app",\
+	chromium --app="https://messages.google.com",\
+	chromium --app="https://facetime.apple.com",\
+	ledger-live,\
+	rhythmbox,\
+	notion,\
+	chromium --app="https://podcasts.google.com",\
+	chromium --app="https://keep.google.com",\
+	libreoffice,\
+	ghostty,\
+	chromium,\
+	discord,\
+	telegram-desktop,\
+	firefox}
+
+# Hyper + S layer (system controls)
+super + space ; {u,j,i,k,l,h,t,c,m}
+	{pactl set-sink-volume @DEFAULT_SINK@ +5%,\
+	pactl set-sink-volume @DEFAULT_SINK@ -5%,\
+	xbacklight -inc 10,\
+	xbacklight -dec 10,\
+	x-terminal-emulator -e "echo 'Lock screen - implement with your lock command'",\
+	chromium --app="https://home.app",\
+	cheese,\
+	pactl set-source-mute @DEFAULT_SOURCE@ toggle}
+
+# Hyper + C layer (media controls)
+super + space ; {h,k,j}
+	{playerctl play-pause,\
+	playerctl next,\
+	playerctl previous}
+
+# Hyper + R layer (raycast extensions - Linux equivalents)
+super + space ; {q,a,c,k,u,e,h,i,o,p,s,m,n,l}
+	{dmenu_run,\
+	wmctrl -r :ACTIVE: -b toggle,maximized_vert,maximized_horz,\
+	blueman-manager,\
+	xkill,\
+	flameshot gui,\
+	copyq show,\
+	pavucontrol,\
+	pavucontrol,\
+	x-terminal-emulator -e "notify-send 'Confetti!'",\
+	x-terminal-emulator -e "echo 'Snippets - implement with your snippet tool'",\
+	dmenu,\
+	x-terminal-emulator -e "echo 'Notes - implement with your notes app'",\
+	arandr}
+
+# Hyper + N layer (notion)
+super + space ; {s,c}
+	{x-terminal-emulator -e "echo 'Notion search - implement Linux equivalent'",\
+	x-terminal-emulator -e "echo 'Notion create page - implement Linux equivalent'"}
+
+# Hyper + G layer (github)
+super + space ; {i,p,w}
+	{chromium --app="https://github.com/issues",\
+	chromium --app="https://github.com/pulls",\
+	chromium --app="https://github.com/actions"}
+
+# =============================================================================
+# KEY LAYERS (Similar to Karabiner layers)
+# =============================================================================
+
+# Left GUI layer (numbers and navigation)
+super + q : {q,w,e,r,t,y,u,i,o,p}
+	{xdotool key 1,\
+	xdotool key 2,\
+	xdotool key 3,\
+	xdotool key 4,\
+	xdotool key 5,\
+	xdotool key 6,\
+	xdotool key 7,\
+	xdotool key 8,\
+	xdotool key 9,\
+	xdotool key 0}
+
+# Left GUI + navigation (arrow keys)
+super + {h,j,k,l}
+	{xdotool key Left,\
+	xdotool key Down,\
+	xdotool key Up,\
+	xdotool key Right}
+
+# Left GUI + signs
+super + {s,d,f}
+	{xdotool key minus,\
+	xdotool key plus,\
+	xdotool key equal}
+
+# Left Option layer (F keys)
+alt + {a,s,d,f,g,h,j,k,l,p}
+	{xdotool key F1,\
+	xdotool key F2,\
+	xdotool key F3,\
+	xdotool key F4,\
+	xdotool key F5,\
+	xdotool key F6,\
+	xdotool key F7,\
+	xdotool key F8,\
+	xdotool key F9,\
+	xdotool key F10}
+
+# Right GUI layer (symbols)
+super + {a,b,v,g,f,d,s,m,n,h,j,k,l}
+	{xdotool key shift+backslash,\
+	xdotool key shift+bracketleft,\
+	xdotool key bracketleft,\
+	xdotool key shift+9,\
+	xdotool key shift+grave,\
+	xdotool key slash,\
+	xdotool key apostrophe,\
+	xdotool key bracketright,\
+	xdotool key shift+bracketright,\
+	xdotool key shift+0,\
+	xdotool key shift+minus,\
+	xdotool key backslash,\
+	xdotool key grave}
+
+# =============================================================================
+# BASIC REMAPPINGS
+# =============================================================================
+
+# Right option to tab
+alt + Tab
+	xdotool key Tab
+
+# Caps lock to escape
+caps_lock
+	xdotool key Escape
+
+# Close bracket to alt-enter
+bracketright
+	xdotool key alt+Return
+
+# Open bracket to super-space (similar to cmd-space)
+bracketleft
+	xdotool key super+space
+
+# Alt to backspace
+alt
+	xdotool key BackSpace
+
+# =============================================================================
+# HOME ROW MODS (Advanced - requires separate configuration)
+# =============================================================================
+# Note: Home row mods are complex to implement in sxhkd.
+# Consider using a tool like kanata or qmk for full home row mod support.
+# For basic functionality, you can use xcape or similar tools.
+
+# Basic home row mod simulation (limited)
+# This is a simplified version - full home row mods require more advanced tools
+a ; {h,j,k,l,semicolon}
+	xdotool key super+{h,j,k,l,semicolon}
+
+s ; {h,j,k,l,semicolon}
+	xdotool key alt+{h,j,k,l,semicolon}
+
+d ; {h,j,k,l,semicolon}
+	xdotool key shift+{h,j,k,l,semicolon}
+
+f ; {h,j,k,l,semicolon}
+	xdotool key ctrl+{h,j,k,l,semicolon}
+
+# Right hand home row mods
+j ; {h,j,k,l,semicolon}
+	xdotool key ctrl+{h,j,k,l,semicolon}
+
+k ; {h,j,k,l,semicolon}
+	xdotool key shift+{h,j,k,l,semicolon}
+
+l ; {h,j,k,l,semicolon}
+	xdotool key alt+{h,j,k,l,semicolon}
+
+semicolon ; {h,j,k,l,semicolon}
+	xdotool key super+{h,j,k,l,semicolon}
+
+# =============================================================================
+# WINDOW MANAGER INTEGRATION (i3 specific)
+# =============================================================================
+
+# i3 window manager shortcuts (if using i3)
+super + Return
+	i3-msg exec "x-terminal-emulator"
+
+super + Shift + q
+	i3-msg kill
+
+super + d
+	dmenu_run
+
+# Reload sxhkd configuration
+super + Shift + r
+	pkill -USR1 -x sxhkd && notify-send "sxhkd" "Configuration reloaded"
+
+# =============================================================================
+# MEDIA KEYS
+# =============================================================================
+XF86AudioRaiseVolume
+	pactl set-sink-volume @DEFAULT_SINK@ +5%
+
+XF86AudioLowerVolume
+	pactl set-sink-volume @DEFAULT_SINK@ -5%
+
+XF86AudioMute
+	pactl set-sink @DEFAULT_SINK@ toggle
+
+XF86AudioPlay
+	playerctl play-pause
+
+XF86AudioNext
+	playerctl next
+
+XF86AudioPrev
+	playerctl previous

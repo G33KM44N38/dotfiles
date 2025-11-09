@@ -67,3 +67,6 @@ node_modules/
 .claude/todos/
 container-use/
 goinfre/
+.claude/debug/
+.claude/file-history/
+.claude/history.jsonl

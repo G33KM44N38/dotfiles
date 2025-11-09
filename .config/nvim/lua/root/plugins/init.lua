@@ -6,6 +6,10 @@ return {
 			require("mini.indentscope").setup()
 		end,
 	},
+	{
+		"windwp/nvim-ts-autotag",
+		opts = {},
+	},
 	"ThePrimeagen/refactoring.nvim",
 	"nvim-lua/plenary.nvim",
 	"tpope/vim-unimpaired",

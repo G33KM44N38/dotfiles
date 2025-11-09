@@ -1,0 +1,40 @@
+! Xmodmap configuration for Linux keymap compatibility
+! This provides basic key remappings similar to Karabiner functionality
+
+! Clear existing modifiers
+clear lock
+clear control
+clear mod1
+clear mod2
+clear mod3
+clear mod4
+clear mod5
+
+! Basic key remappings
+! Caps Lock -> Escape (similar to Karabiner)
+keycode 66 = Escape
+
+! Right Alt -> Tab (similar to Karabiner right_option -> tab)
+! Note: This may conflict with AltGr on international keyboards
+! keycode 108 = Tab
+
+! Set up modifiers
+add control = Control_L Control_R
+add mod1 = Alt_L Alt_R
+add mod4 = Super_L Super_R
+
+! Home row mods simulation (basic)
+! Note: Full home row mods require more advanced tools like kanata
+! This is a simplified version for basic functionality
+
+! A key acts as additional Super when held (basic home row mod)
+! S key acts as additional Alt when held
+! D key acts as additional Shift when held
+! F key acts as additional Control when held
+! J key acts as additional Control when held (right hand)
+! K key acts as additional Shift when held (right hand)
+! L key acts as additional Alt when held (right hand)
+! Semicolon acts as additional Super when held (right hand)
+
+! Note: These are basic remappings. For full home row mod functionality,
+! consider using tools like kanata, kmonad, or QMK firmware.

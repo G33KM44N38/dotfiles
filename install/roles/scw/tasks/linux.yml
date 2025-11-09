@@ -1,0 +1,21 @@
+---
+- name: Install scw on Linux
+  block:
+    - name: Download scw installer
+      ansible.builtin.get_url:
+        url: https://github.com/scaleway/scaleway-cli/releases/download/v2.25.0/scaleway-cli_2.25.0_linux_amd64
+        dest: /tmp/scw
+        mode: '0755'
+
+    - name: Install scw binary
+      ansible.builtin.copy:
+        src: /tmp/scw
+        dest: /usr/local/bin/scw
+        mode: '0755'
+        remote_src: true
+      become: true
+
+    - name: Clean up installer
+      ansible.builtin.file:
+        path: /tmp/scw
+        state: absent

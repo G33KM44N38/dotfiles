@@ -3,7 +3,7 @@ return {
 	branch = "harpoon2",
 	dependencies = {
 		"nvim-lua/plenary.nvim",
-		"ThePrimeagen/git-worktree.nvim", -- Ensure this is listed as a dependency
+		"G33KM44N38/git-worktree.nvim", -- Fork corrigé avec fix du bug autopush
 	},
 	settings = {
 		save_on_toggle = false,

@@ -6,10 +6,10 @@ return {
 		vim.g["test#strategy"] = "vimux"
 
 		-- Set runners for TypeScript and JavaScript
-		vim.g["test#typescript#runner"] = "npx jest"
-		vim.g["test#javascript#runner"] = "npx jest"
-		vim.g["test#typescriptreact#runner"] = "npx jest"
-		vim.g["test#javascriptreact#runner"] = "npx jest"
+		vim.g["test#typescript#runner"] = "pnpm jest"
+		vim.g["test#javascript#runner"] = "pnpm jest"
+		vim.g["test#typescriptreact#runner"] = "pnpm jest"
+		vim.g["test#javascriptreact#runner"] = "pnpm jest"
 
 		-- Define keymappings
 		local map = vim.api.nvim_set_keymap

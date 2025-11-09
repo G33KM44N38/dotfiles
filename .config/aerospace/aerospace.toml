@@ -16,7 +16,7 @@ inner.horizontal = 0
 inner.vertical =   0
 outer.left =       0
 outer.bottom =     0
-outer.top =        0
+outer.top =        45
 outer.right =      0
 
 [mode.main.binding]
@@ -187,7 +187,7 @@ if.app-id = 'com.apple.finder'
 run = ['layout floating']  
 
 [workspace-to-monitor-force-assignment]
-1 = 2
+1 = 1
 2 = 1
 3 = [3, 2]
 4 = 1
