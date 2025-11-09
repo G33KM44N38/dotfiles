@@ -132,15 +132,12 @@
      - name: Run roles
        ansible.builtin.include_role:
          name: rust
-     - name: Run roles
-       ansible.builtin.include_role:
-         name: scw
-     - name: Run roles
-       ansible.builtin.include_role:
-         name: solana
-     - name: Run roles
-       ansible.builtin.include_role:
-         name: stow
+      - name: Run roles
+        ansible.builtin.include_role:
+          name: scw
+      - name: Run roles
+        ansible.builtin.include_role:
+          name: stow
      - name: Run roles
        ansible.builtin.include_role:
          name: stripe

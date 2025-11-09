@@ -33,9 +33,8 @@ default_roles:
      # - gitspeak
      - aerospace
      - python
-     - arc-cli
-     - solana
-     - pnpm
+      - arc-cli
+      - pnpm
      - ghostty
      - cron
      - mouseless
