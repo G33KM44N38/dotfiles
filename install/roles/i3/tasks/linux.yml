@@ -187,21 +187,21 @@
         src: "{{ ansible_env.HOME }}/.dotfiles/.config/i3/config"
         dest: "{{ ansible_env.HOME }}/.config/i3/config"
         mode: '0644'
-      when: ansible_env.HOME + '/.dotfiles/.config/i3/config' is file
+      when: (ansible_env.HOME + '/.dotfiles/.config/i3/config') is file
 
     - name: Copy sxhkd configuration
       ansible.builtin.copy:
         src: "{{ ansible_env.HOME }}/.dotfiles/.config/sxhkd/sxhkdrc"
         dest: "{{ ansible_env.HOME }}/.config/sxhkd/sxhkdrc"
         mode: '0644'
-      when: ansible_env.HOME + '/.dotfiles/.config/sxhkd/sxhkdrc' is file
+      when: (ansible_env.HOME + '/.dotfiles/.config/sxhkd/sxhkdrc') is file
 
     - name: Copy Xmodmap configuration
       ansible.builtin.copy:
         src: "{{ ansible_env.HOME }}/.dotfiles/.config/X11/xmodmap"
         dest: "{{ ansible_env.HOME }}/.config/X11/xmodmap"
         mode: '0644'
-      when: ansible_env.HOME + '/.dotfiles/.config/X11/xmodmap' is file
+      when: (ansible_env.HOME + '/.dotfiles/.config/X11/xmodmap') is file
 
     - name: Load Xmodmap configuration on startup
       ansible.builtin.lineinfile:
@@ -209,11 +209,11 @@
         line: "xmodmap ~/.config/X11/xmodmap"
         state: present
         create: true
-      when: ansible_env.HOME + '/.dotfiles/.config/X11/xmodmap' is file
+      when: (ansible_env.HOME + '/.dotfiles/.config/X11/xmodmap') is file
 
     - name: Copy Linux keymap documentation
       ansible.builtin.copy:
         src: "{{ ansible_env.HOME }}/.dotfiles/.config/README-linux-keymap.md"
         dest: "{{ ansible_env.HOME }}/.config/README-linux-keymap.md"
         mode: '0644'
-      when: ansible_env.HOME + '/.dotfiles/.config/README-linux-keymap.md' is file
+      when: (ansible_env.HOME + '/.dotfiles/.config/README-linux-keymap.md') is file
