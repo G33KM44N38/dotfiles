@@ -1,49 +1,49 @@
 default_roles:
-  - nvim
-  - go
-  - stow
-  - lazygit
-  - lazydocker
-  - ripgrep
-  - tmux
-  # - skhd
-  # - yabai
-  - node
-  - fzf
-  # - cmake
-  - stripe
-  # - z
-  # - gh
-  # - qmk
-  - shortcat
-  # aldente
-  # - scw
-  - dir
-  - appcleaner
-  - raycast
-  - nerd_font
-  - arc
-  - work
-  - zsh
-  - age
-  - dock
-  - figma
-  - karabiner
-  - yarn
-  # - gitspeak
-  - aerospace
-  - python
-  - arc-cli
-  - solana
-  - pnpm
-  - ghostty
-  - cron
-  - mouseless
-  - backup
-  - discord
-  - rust
-  - beeper
-  - dbeaver
-  - notion
-  - lua-language-server
-  - config
+     - nvim
+     - go
+     - stow
+     - lazygit
+     - lazydocker
+     - ripgrep
+     - tmux
+     # - skhd
+     # - yabai
+     - node
+     - fzf
+     # - cmake
+     - stripe
+     # - z
+     # - gh
+     # - qmk
+     - shortcat
+     # aldente
+     # - scw
+     - dir
+     - appcleaner
+     - raycast
+     - nerd_font
+     - arc
+     - work
+     - zsh
+     # - age
+     - dock
+     - figma
+     - karabiner
+     - yarn
+     # - gitspeak
+     - aerospace
+     - python
+     - arc-cli
+     - solana
+     - pnpm
+     - ghostty
+     - cron
+     - mouseless
+     - backup
+     - discord
+     - rust
+     - beeper
+     - dbeaver
+     - notion
+     - lua-language-server
+     - config
