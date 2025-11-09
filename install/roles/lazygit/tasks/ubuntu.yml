@@ -1,5 +1,25 @@
-- name: LAZYGIT | Install lazygit
-  become: yes
-  ansible.builtin.shell: |
-    apt install lazygit
-  ignore_errors: yes
+- name: LAZYGIT | Download latest lazygit release
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/jesseduffield/lazygit/releases/latest
+    return_content: true
+  register: lazygit_release
+
+- name: LAZYGIT | Set lazygit download URL
+  ansible.builtin.set_fact:
+    lazygit_download_url: "{{ lazygit_release.json.assets | selectattr('name', 'match', 'lazygit_.*_Linux_x86_64.tar.gz') | first | default({}) }}"
+
+- name: LAZYGIT | Download and extract lazygit
+  ansible.builtin.unarchive:
+    src: "{{ lazygit_download_url.browser_download_url }}"
+    dest: "{{ ansible_env.HOME }}/.local/bin"
+    remote_src: true
+    extra_opts: [--strip-components=1]
+  when: lazygit_download_url.browser_download_url is defined
+
+- name: LAZYGIT | Add lazygit to PATH
+  ansible.builtin.lineinfile:
+    path: "{{ ansible_env.HOME }}/.zshrc"
+    line: 'export PATH="$HOME/.local/bin:$PATH"'
+    state: present
+    create: true
+  when: lazygit_download_url.browser_download_url is defined

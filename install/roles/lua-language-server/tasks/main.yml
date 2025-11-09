@@ -1,3 +1,4 @@
 ---
-- name: Run beeper task
+- name: Install lua-language-server on macos
   ansible.builtin.import_tasks: tasks/darwin.yml
+  when: ansible_system == 'Darwin'
