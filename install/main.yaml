@@ -78,9 +78,9 @@
      - name: Run roles
        ansible.builtin.include_role:
          name: discord
-     - name: Run roles
-       ansible.builtin.include_role:
-         name: fzf
+      - name: Run roles
+        ansible.builtin.include_role:
+          name: fzf
       - name: Run roles
         ansible.builtin.include_role:
           name: ghostty
