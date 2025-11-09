@@ -14,5 +14,5 @@
 
 
 # Open Google Meet and Beeper
-open raycast://extensions/vitoorgomes/google-meet/default-profile
-open -a "Beeper"
+open https://meet.google.com/new?_babacoiffure
+open -a "Beeper Desktop"
