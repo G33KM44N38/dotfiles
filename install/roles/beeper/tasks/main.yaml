@@ -1,6 +1,48 @@
 ---
-- name: Install Beeper
+- name: Install Beeper (macOS)
   community.general.homebrew_cask:
     name: beeper
     state: present
+  when: ansible_system == 'Darwin'
+
+- name: Check if Beeper is already installed (Linux)
+  ansible.builtin.stat:
+    path: /usr/local/bin/beeper
+  register: beeper_stat
+  when: ansible_system == 'Linux'
+
+- name: Download Beeper for Linux
+  ansible.builtin.get_url:
+    url: https://api.beeper.com/desktop/download/linux/x64/stable/com.automattic.beeper.desktop
+    dest: /tmp/beeper
+    mode: '0755'
+  when: ansible_system == 'Linux' and not beeper_stat.stat.exists
+
+- name: Install Beeper binary (Linux)
+  ansible.builtin.copy:
+    src: /tmp/beeper
+    dest: /usr/local/bin/beeper
+    mode: '0755'
+    remote_src: true
+  when: ansible_system == 'Linux' and not beeper_stat.stat.exists
+
+- name: Create desktop entry for Beeper (Linux)
+  ansible.builtin.copy:
+    content: |
+      [Desktop Entry]
+      Name=Beeper
+      Exec=/usr/local/bin/beeper
+      Icon=beeper
+      Type=Application
+      Categories=Network;InstantMessaging;
+      Comment=Universal messaging app
+    dest: /usr/share/applications/beeper.desktop
+    mode: '0644'
+  when: ansible_system == 'Linux' and not beeper_stat.stat.exists
+
+- name: Clean up temporary file (Linux)
+  ansible.builtin.file:
+    path: /tmp/beeper
+    state: absent
+  when: ansible_system == 'Linux'
 
