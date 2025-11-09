@@ -102,9 +102,9 @@
      - name: Run roles
        ansible.builtin.include_role:
          name: lua-language-server
-     - name: Run roles
-       ansible.builtin.include_role:
-         name: nerd_font
+      - name: Run roles
+        ansible.builtin.include_role:
+          name: nerd_font
       - name: Run roles
         ansible.builtin.include_role:
           name: node
