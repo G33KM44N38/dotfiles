@@ -105,9 +105,9 @@
      - name: Run roles
        ansible.builtin.include_role:
          name: nerd_font
-     - name: Run roles
-       ansible.builtin.include_role:
-         name: node
+      - name: Run roles
+        ansible.builtin.include_role:
+          name: node
       - name: Run roles
         ansible.builtin.include_role:
           name: notion
