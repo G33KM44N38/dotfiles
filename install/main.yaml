@@ -90,9 +90,9 @@
      - name: Run roles
        ansible.builtin.include_role:
          name: git_hooks
-     - name: Run roles
-       ansible.builtin.include_role:
-         name: go
+      - name: Run roles
+        ansible.builtin.include_role:
+          name: go
       - name: Run roles
         ansible.builtin.include_role:
           name: lazydocker
