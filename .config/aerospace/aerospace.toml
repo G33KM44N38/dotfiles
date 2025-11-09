@@ -133,6 +133,9 @@ if.app-id = 'com.blackmagic-design.DaVinciResolve'
 run = ['move-node-to-workspace 4']  
 
 [[on-window-detected]]
+if.app-id = 'net.whatsapp.WhatsApp'
+run = ['move-node-to-workspace 5']  
+[[on-window-detected]]
 if.app-id = 'im.beeper'
 run = ['move-node-to-workspace 5']  
 [[on-window-detected]]

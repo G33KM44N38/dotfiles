@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# Required parameters:
+# @raycast.schemaVersion 1
+# @raycast.title Set Input Volume to 100
+# @raycast.mode fullOutput
+
+# Optional parameters:
+# @raycast.icon 🎤
+# @raycast.packageName System Audio
+# @raycast.description Sets system microphone input volume to 100%
+
+# Documentation:
+# @raycast.author boss
+# @raycast.authorURL https://github.com/yourusername
+
+#
+# Sets system microphone input volume to 100 (always).
+# Requires: macOS (osascript available)
+
+set -euo pipefail
+
+# Read current input volume via osascript
+get_input_volume() {
+    osascript -e 'input volume of (get volume settings)' 2>/dev/null || echo ""
+}
+
+# Set input volume to 100
+set_input_volume_100() {
+    osascript -e 'set volume input volume 100'
+}
+
+# Run
+before="$(get_input_volume)"
+echo "Current input volume: ${before:-unknown}"
+
+set_input_volume_100
+
+# Small pause to let system apply change
+sleep 0.3
+
+after="$(get_input_volume)"
+echo "Input volume after setting: ${after:-unknown}"
+
+if [ "$after" = "100" ]; then
+    echo "Success: input volume is 100."
+    exit 0
+else
+    echo "Warning: unable to set input volume to 100. It is ${after:-unknown}."
+    echo "Note: some external microphones ignore system gain — adjust on the device or in its driver/app."
+    exit 2
+fi
