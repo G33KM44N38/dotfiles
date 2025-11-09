@@ -63,12 +63,9 @@
     - name: Run roles
       ansible.builtin.include_role:
         name: i3
-    - name: Run roles
-      ansible.builtin.include_role:
-        name: age
-    - name: Run roles
-      ansible.builtin.include_role:
-        name: backup
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: backup
     - name: Run roles
       ansible.builtin.include_role:
         name: beeper

@@ -1,5 +1,0 @@
-- name: AGE | Install age
-  homebrew:
-    name: age
-    state: present
-    update_homebrew: yes
