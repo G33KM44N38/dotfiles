@@ -108,9 +108,9 @@
      - name: Run roles
        ansible.builtin.include_role:
          name: node
-     - name: Run roles
-       ansible.builtin.include_role:
-         name: notion
+      - name: Run roles
+        ansible.builtin.include_role:
+          name: notion
       - name: Run roles
         ansible.builtin.include_role:
           name: nvim
