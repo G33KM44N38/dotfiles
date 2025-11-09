@@ -3,8 +3,13 @@
   when: ansible_system == 'Darwin'
 
 - name: Install Notion (Linux)
-  ansible.builtin.snap:
-    name: notion-snap
-    state: present
-    classic: true
+  ansible.builtin.shell: |
+    wget -q -O /tmp/notion-version.yml https://desktop-download.notion-static.com/latest-linux.yml &&
+    NOTION_VERSION=$(grep '^version:' /tmp/notion-version.yml | cut -d' ' -f2) &&
+    wget -q -O /tmp/notion.deb "https://desktop-download.notion-static.com/Notion-${NOTION_VERSION}_amd64.deb" &&
+    sudo apt install /tmp/notion.deb -y &&
+    rm -f /tmp/notion-version.yml /tmp/notion.deb
+  args:
+    executable: /bin/bash
+  become: true
   when: ansible_system == 'Linux'
