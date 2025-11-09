@@ -82,38 +82,54 @@ function _install_system_package {
         distro=$(_get_linux_distro)
         case "$distro" in
             ubuntu|debian)
-                if _command_exists apt-get; then
-                    _task "Installing $package via apt..."
-                    if _cmd_safe "sudo apt-get update && sudo apt-get install -y '$package'" "Installing $package with apt"; then
-                        _task_done
-                        return 0
-                    fi
-                fi
-                ;;
+                 if _command_exists apt-get; then
+                     _task "Installing $package via apt..."
+                     local apt_cmd="apt-get"
+                     if [[ "$EUID" -ne 0 ]]; then
+                         apt_cmd="sudo $apt_cmd"
+                     fi
+                     if _cmd_safe "$apt_cmd update && $apt_cmd install -y '$package'" "Installing $package with apt"; then
+                         _task_done
+                         return 0
+                     fi
+                 fi
+                 ;;
             rhel|centos|fedora)
-                if _command_exists dnf; then
-                    _task "Installing $package via dnf..."
-                    if _cmd_safe "sudo dnf install -y '$package'" "Installing $package with dnf"; then
-                        _task_done
-                        return 0
-                    fi
-                elif _command_exists yum; then
-                    _task "Installing $package via yum..."
-                    if _cmd_safe "sudo yum install -y '$package'" "Installing $package with yum"; then
-                        _task_done
-                        return 0
-                    fi
-                fi
-                ;;
-            arch)
-                if _command_exists pacman; then
-                    _task "Installing $package via pacman..."
-                    if _cmd_safe "sudo pacman -S --noconfirm '$package'" "Installing $package with pacman"; then
-                        _task_done
-                        return 0
-                    fi
-                fi
-                ;;
+                 if _command_exists dnf; then
+                     _task "Installing $package via dnf..."
+                     local dnf_cmd="dnf"
+                     if [[ "$EUID" -ne 0 ]]; then
+                         dnf_cmd="sudo $dnf_cmd"
+                     fi
+                     if _cmd_safe "$dnf_cmd install -y '$package'" "Installing $package with dnf"; then
+                         _task_done
+                         return 0
+                     fi
+                 elif _command_exists yum; then
+                     _task "Installing $package via yum..."
+                     local yum_cmd="yum"
+                     if [[ "$EUID" -ne 0 ]]; then
+                         yum_cmd="sudo $yum_cmd"
+                     fi
+                     if _cmd_safe "$yum_cmd install -y '$package'" "Installing $package with yum"; then
+                         _task_done
+                         return 0
+                     fi
+                 fi
+                 ;;
+             arch)
+                 if _command_exists pacman; then
+                     _task "Installing $package via pacman..."
+                     local pacman_cmd="pacman"
+                     if [[ "$EUID" -ne 0 ]]; then
+                         pacman_cmd="sudo $pacman_cmd"
+                     fi
+                     if _cmd_safe "$pacman_cmd -S --noconfirm '$package'" "Installing $package with pacman"; then
+                         _task_done
+                         return 0
+                     fi
+                 fi
+                 ;;
         esac
         
         _error "Could not install $package: unsupported Linux distribution or package manager"
