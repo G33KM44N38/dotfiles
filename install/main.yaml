@@ -59,7 +59,7 @@
          name: shortcat
        when: ansible_system == 'Darwin'
 
-      # Cross-platform roles (run on both macOS and Linux)
+     # Cross-platform roles (run on both macOS and Linux)
       - name: Run roles
         ansible.builtin.include_role:
           name: i3
