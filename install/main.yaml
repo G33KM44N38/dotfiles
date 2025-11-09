@@ -96,9 +96,9 @@
      - name: Run roles
        ansible.builtin.include_role:
          name: lazydocker
-     - name: Run roles
-       ansible.builtin.include_role:
-         name: lazygit
+      - name: Run roles
+        ansible.builtin.include_role:
+          name: lazygit
       - name: Run roles
         ansible.builtin.include_role:
           name: lua-language-server
