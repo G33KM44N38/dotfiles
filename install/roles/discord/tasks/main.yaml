@@ -1,5 +1,52 @@
-- name: Install Discord
+- name: Install Discord (macOS)
   community.general.homebrew_cask:
     name: discord
     state: present
+  when: ansible_system == 'Darwin'
+
+- name: Check if Discord is already installed (Linux)
+  ansible.builtin.stat:
+    path: /usr/local/bin/discord
+  register: discord_stat
+  when: ansible_system == 'Linux'
+
+- name: Download Discord for Linux
+  ansible.builtin.get_url:
+    url: https://discord.com/api/download?platform=linux&format=tar.gz
+    dest: /tmp/discord.tar.gz
+  when: ansible_system == 'Linux' and not discord_stat.stat.exists
+
+- name: Extract Discord (Linux)
+  ansible.builtin.unarchive:
+    src: /tmp/discord.tar.gz
+    dest: /opt
+    remote_src: true
+  when: ansible_system == 'Linux' and not discord_stat.stat.exists
+
+- name: Create symlink for Discord (Linux)
+  ansible.builtin.file:
+    src: /opt/Discord/Discord
+    dest: /usr/local/bin/discord
+    state: link
+  when: ansible_system == 'Linux' and not discord_stat.stat.exists
+
+- name: Create desktop entry for Discord (Linux)
+  ansible.builtin.copy:
+    content: |
+      [Desktop Entry]
+      Name=Discord
+      Exec=/usr/local/bin/discord
+      Icon=/opt/Discord/discord.png
+      Type=Application
+      Categories=Network;InstantMessaging;
+      Comment=All-in-one voice and text chat
+    dest: /usr/share/applications/discord.desktop
+    mode: '0644'
+  when: ansible_system == 'Linux' and not discord_stat.stat.exists
+
+- name: Clean up Discord archive (Linux)
+  ansible.builtin.file:
+    path: /tmp/discord.tar.gz
+    state: absent
+  when: ansible_system == 'Linux'
 

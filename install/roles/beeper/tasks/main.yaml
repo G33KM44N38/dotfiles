@@ -1,9 +1,12 @@
----
-- name: Install Beeper (macOS)
-  community.general.homebrew_cask:
-    name: beeper
-    state: present
+- name: Check if brew is available (macOS)
+  ansible.builtin.command: which brew
+  register: brew_check
+  ignore_errors: true
   when: ansible_system == 'Darwin'
+
+- name: Install Beeper (macOS)
+  ansible.builtin.command: brew install --cask beeper
+  when: ansible_system == 'Darwin' and brew_check.rc == 0
 
 - name: Check if Beeper is already installed (Linux)
   ansible.builtin.stat:
