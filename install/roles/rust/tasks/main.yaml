@@ -15,12 +15,12 @@
       become: no
 
     - name: Update Rust to latest stable version
-      shell: rustup update stable
+      shell: source "{{ ansible_env.HOME }}/.cargo/env" && rustup update stable
       become: no
       changed_when: false
 
     - name: Install common Rust tools
-      shell: rustup component add rustfmt clippy
+      shell: source "{{ ansible_env.HOME }}/.cargo/env" && rustup component add rustfmt clippy
       become: no
       changed_when: false
 
