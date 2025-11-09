@@ -129,9 +129,9 @@
      - name: Run roles
        ansible.builtin.include_role:
          name: ripgrep
-     - name: Run roles
-       ansible.builtin.include_role:
-         name: rust
+      - name: Run roles
+        ansible.builtin.include_role:
+          name: rust
       - name: Run roles
         ansible.builtin.include_role:
           name: scw
