@@ -1,4 +1,4 @@
 - name: GO | installation
   ignore_errors: yes
   ansible.builtin.shell: |
-    sudo snap install go
+    sudo snap install go --classic
