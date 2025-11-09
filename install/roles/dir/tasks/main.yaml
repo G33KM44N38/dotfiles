@@ -1,3 +1,4 @@
 ---
-- name: Run goinfre task
+- name: Run dir task
   ansible.builtin.import_tasks: tasks/darwin.yaml
+  when: ansible_system == 'Darwin'

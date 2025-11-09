@@ -1,4 +1,5 @@
 ---
-     - name: Run yabai task
-       ansible.builtin.import_tasks: tasks/darwin.yaml
+      - name: Run pre-commit task
+        ansible.builtin.import_tasks: tasks/darwin.yaml
+        when: ansible_system == 'Darwin'
 

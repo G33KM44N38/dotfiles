@@ -4,5 +4,5 @@
   when: ansible_system == 'Darwin'
 
 - name: Run node task
-  ansible.builtin.import_tasks: tasks/darwin.yaml
+  ansible.builtin.import_tasks: ubuntu.yml
   when: ansible_system == 'Linux' and ansible_distribution == 'Ubuntu'
