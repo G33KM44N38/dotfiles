@@ -1,0 +1,39 @@
+---
+- name: Check if Beeper is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/beeper
+  register: beeper_stat
+
+- name: Download Beeper for Linux
+  ansible.builtin.get_url:
+    url: https://api.beeper.com/desktop/download/linux/x64/stable/com.automattic.beeper.desktop
+    dest: /tmp/beeper
+    mode: '0755'
+  when: not beeper_stat.stat.exists
+
+- name: Install Beeper binary
+  ansible.builtin.copy:
+    src: /tmp/beeper
+    dest: /usr/local/bin/beeper
+    mode: '0755'
+    remote_src: true
+  when: not beeper_stat.stat.exists
+
+- name: Create desktop entry for Beeper
+  ansible.builtin.copy:
+    content: |
+      [Desktop Entry]
+      Name=Beeper
+      Exec=/usr/local/bin/beeper
+      Icon=beeper
+      Type=Application
+      Categories=Network;InstantMessaging;
+      Comment=Universal messaging app
+    dest: /usr/share/applications/beeper.desktop
+    mode: '0644'
+  when: not beeper_stat.stat.exists
+
+- name: Clean up temporary file
+  ansible.builtin.file:
+    path: /tmp/beeper
+    state: absent

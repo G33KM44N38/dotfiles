@@ -1,4 +1,9 @@
 ---
 - name: Run beeper task
   ansible.builtin.import_tasks: tasks/darwin.yaml
+  when: ansible_system == 'Darwin'
+
+- name: Run beeper task
+  ansible.builtin.import_tasks: tasks/linux.yaml
+  when: ansible_system == 'Linux'
 
