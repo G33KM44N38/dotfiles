@@ -69,9 +69,9 @@
      - name: Run roles
        ansible.builtin.include_role:
          name: beeper
-     - name: Run roles
-       ansible.builtin.include_role:
-         name: config
+      - name: Run roles
+        ansible.builtin.include_role:
+          name: config
       - name: Run roles
         ansible.builtin.include_role:
           name: cron
