@@ -120,9 +120,9 @@
      - name: Run roles
        ansible.builtin.include_role:
          name: opencode
-     - name: Run roles
-       ansible.builtin.include_role:
-         name: pnpm
+      - name: Run roles
+        ansible.builtin.include_role:
+          name: pnpm
       - name: Run roles
         ansible.builtin.include_role:
           name: python
