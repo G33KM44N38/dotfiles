@@ -1,6 +1,10 @@
 - name: Run notion task
   ansible.builtin.import_tasks: tasks/darwin.yaml
-- name: Install Notion
-  community.general.homebrew_cask:
-    name: notion
+  when: ansible_system == 'Darwin'
+
+- name: Install Notion (Linux)
+  ansible.builtin.snap:
+    name: notion-snap
     state: present
+    classic: true
+  when: ansible_system == 'Linux'

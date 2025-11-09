@@ -1,4 +1,10 @@
 ---
-- name: Run yabai task
+- name: Run figma task
   ansible.builtin.import_tasks: tasks/darwin.yaml
   when: ansible_system == 'Darwin'
+
+- name: Install Figma (Linux)
+  ansible.builtin.snap:
+    name: figma-linux
+    state: present
+  when: ansible_system == 'Linux'
