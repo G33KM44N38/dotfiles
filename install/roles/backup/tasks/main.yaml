@@ -7,7 +7,7 @@
 - name: BACKUP
   ansible.builtin.git:
     version: main
-    repo: https://github.com/G33KM44N38/backup
+    repo: git@github.com:G33KM44N38/backup.git
     update: false
     dest: ~/backup
   when: not backup_exists.stat.exists
