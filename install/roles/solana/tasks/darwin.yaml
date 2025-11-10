@@ -1,6 +1,0 @@
----
-- name: Install solana
-  homebrew:
-    name: solana
-    state: present
-    update_homebrew: yes

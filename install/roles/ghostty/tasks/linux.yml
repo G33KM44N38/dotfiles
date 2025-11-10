@@ -6,7 +6,6 @@
         url: https://api.github.com/repos/ghostty-org/ghostty/releases
         return_content: true
       register: ghostty_releases
-      register: ghostty_releases
 
     - name: Check for Linux binary in release
       ansible.builtin.set_fact:

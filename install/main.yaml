@@ -59,85 +59,85 @@
          name: shortcat
        when: ansible_system == 'Darwin'
 
-     # Cross-platform roles (run on both macOS and Linux)
+    # Cross-platform roles (run on both macOS and Linux)
      - name: Run roles
-        ansible.builtin.include_role:
-          name: i3
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: backup
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: beeper
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: config
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: cron
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: discord
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: fzf
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: ghostty
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: git
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: git_hooks
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: go
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: lazydocker
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: lazygit
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: lua-language-server
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: nerd_font
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: node
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: notion
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: nvim
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: ollama
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: opencode
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: pnpm
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: python
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: ripgrep
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: rust
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: scw
-      - name: Run roles
-        ansible.builtin.include_role:
-          name: stow
+       ansible.builtin.include_role:
+         name: i3
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: backup
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: beeper
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: config
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: cron
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: discord
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: fzf
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: ghostty
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: git
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: git_hooks
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: go
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: lazydocker
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: lazygit
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: lua-language-server
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: nerd_font
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: node
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: notion
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: nvim
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: ollama
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: opencode
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: pnpm
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: python
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: ripgrep
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: rust
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: scw
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: stow
      - name: Run roles
        ansible.builtin.include_role:
          name: stripe

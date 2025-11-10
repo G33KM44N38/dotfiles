@@ -13,7 +13,7 @@
 # @raycast.author me
 
 # Get script directory and load modules
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 
 # Load configuration first
 source "$SCRIPT_DIR/lib/config.sh"
