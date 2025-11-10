@@ -27,7 +27,7 @@ if [[ ! -f "bin/dotfiles" ]]; then
         git pull
     else
         echo -e "${GREEN}📥 Cloning dotfiles repository...${NC}"
-        git clone "https://github.com/G33KM44N38/dotfiles" "$HOME/.dotfiles"
+        git clone "git@github.com:G33KM44N38/dotfiles.git" "$HOME/.dotfiles"
         cd "$HOME/.dotfiles"
     fi
 

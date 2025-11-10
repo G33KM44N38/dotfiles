@@ -7,7 +7,7 @@
 - name: Clone Dotfiles
   ansible.builtin.git:
     clone: true
-    repo: https://github.com/G33KM44N38/dotfiles
+    repo: git@github.com:G33KM44N38/dotfiles.git
     dest: ~/.dotfiles
     update: false
   when: not dotfiles_exists.stat.exists

@@ -3,7 +3,7 @@
 # Configuration management for dotfiles script
 
 # Default configuration values
-DEFAULT_DOTFILES_REPO="https://github.com/G33KM44N38/dotfiles"
+DEFAULT_DOTFILES_REPO="git@github.com:G33KM44N38/dotfiles.git"
 DEFAULT_DOTFILES_DIR="$HOME/.dotfiles"
 DEFAULT_CONFIG_DIR="$HOME/.dotfiles"
 DEFAULT_VAULT_SECRET="$HOME/.ansible-vault/vault.secret"
@@ -140,7 +140,7 @@ function create_sample_config {
 # Dotfiles configuration file
 
 # Repository URL
-DOTFILES_REPO="https://github.com/G33KM44N38/dotfiles"
+DOTFILES_REPO="git@github.com:G33KM44N38/dotfiles.git"
 
 # Directory paths (use ~ for home directory)
 DOTFILES_DIR="$HOME/.dotfiles"

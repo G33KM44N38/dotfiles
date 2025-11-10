@@ -7,7 +7,7 @@
 - name: clone baba_coiffure repo
   ansible.builtin.git:
     clone: true
-    repo: https://github.com/babacoiffure/babacoiffure_monorepo
+    repo: git@github.com:babacoiffure/babacoiffure_monorepo.git
     dest: ~/coding/work/
     update: false
     bare: true
@@ -21,7 +21,7 @@
 - name: clone baba_coiffure repo
   ansible.builtin.git:
     clone: true
-    repo: https://github.com/babacoiffure/landing
+    repo: git@github.com:babacoiffure/landing.git
     dest: ~/coding/work/landing
     update: false
     bare: true
