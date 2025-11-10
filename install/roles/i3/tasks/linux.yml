@@ -1,219 +1,198 @@
 ---
+# Installation of i3 window manager and related tools for Linux systems
 - name: I3 | Install i3 window manager
   block:
-    - name: Install i3 via apt (Ubuntu/Debian)
-      ansible.builtin.apt:
-        name:
-          - i3
-          - i3status
-          - dmenu
-          - suckless-tools
-          - xss-lock
-          - i3lock
-          - sxhkd
-          - xcape
-          - xdotool
-          - wmctrl
-          - xbacklight
-          - playerctl
-          - copyq
-          - pavucontrol
-          - blueman
-          - flameshot
-          - arandr
-          - notify-osd
-        state: present
-        update_cache: true
-      when: ansible_distribution in ['Ubuntu', 'Debian']
+       - name: Install i3 via apt (Ubuntu/Debian)
+         ansible.builtin.apt:
+              name:
+                   - i3
+                   - i3status
+                   - dmenu
+                   - suckless-tools
+                   - xss-lock
+                   - i3lock
+                   - sxhkd
+                   - xcape
+                   - xdotool
+                   - wmctrl
+                   - xbacklight
+                   - playerctl
+                   - copyq
+                   - pavucontrol
+                   - blueman
+                   - flameshot
+                   - arandr
+                   - notify-osd
+              state: present
+              update_cache: true
+         when: ansible_distribution in ['Ubuntu', 'Debian']
 
-    - name: Install i3 via dnf (Fedora/RHEL)
-      ansible.builtin.dnf:
-        name:
-          - i3
-          - i3status
-          - dmenu
-          - xss-lock
-          - i3lock
-          - sxhkd
-          - xcape
-          - xdotool
-          - wmctrl
-          - xbacklight
-          - playerctl
-          - copyq
-          - pavucontrol
-          - blueman
-          - flameshot
-          - arandr
-          - libnotify
-        state: present
-      when: ansible_distribution in ['Fedora', 'RedHat', 'CentOS']
+       - name: Install i3 via dnf (Fedora/RHEL)
+         ansible.builtin.dnf:
+              name:
+                   - i3
+                   - i3status
+                   - dmenu
+                   - xss-lock
+                   - i3lock
+                   - sxhkd
+                   - xcape
+                   - xdotool
+                   - wmctrl
+                   - xbacklight
+                   - playerctl
+                   - copyq
+                   - pavucontrol
+                   - blueman
+                   - flameshot
+                   - arandr
+                   - libnotify
+              state: present
+         when: ansible_distribution in ['Fedora', 'RedHat', 'CentOS']
 
-    - name: Install i3 via pacman (Arch)
-      community.general.pacman:
-        name:
-          - i3-wm
-          - i3status
-          - dmenu
-          - xss-lock
-          - i3lock
-          - sxhkd
-          - xcape
-          - xdotool
-          - wmctrl
-          - xorg-xbacklight
-          - playerctl
-          - copyq
-          - pavucontrol
-          - blueman
-          - flameshot
-          - arandr
-          - libnotify
-        state: present
-      when: ansible_distribution == 'Archlinux'
+       - name: Install i3 via pacman (Arch)
+         community.general.pacman:
+              name:
+                   - i3-wm
+                   - i3status
+                   - dmenu
+                   - xss-lock
+                   - i3lock
+                   - sxhkd
+                   - xcape
+                   - xdotool
+                   - wmctrl
+                   - xorg-xbacklight
+                   - playerctl
+                   - copyq
+                   - pavucontrol
+                   - blueman
+                   - flameshot
+                   - arandr
+                   - libnotify
+              state: present
+         when: ansible_distribution == 'Archlinux'
 
-    - name: Install i3 via apk (Alpine)
-      community.general.apk:
-        name:
-          - i3wm
-          - i3status
-          - dmenu
-          - xss-lock
-          - i3lock
-          - sxhkd
-          - xcape
-          - xdotool
-          - wmctrl
-          - xbacklight
-          - playerctl
-          - copyq
-          - pavucontrol
-          - blueman
-          - flameshot
-          - arandr
-          - libnotify
-        state: present
-      when: ansible_distribution == 'Alpine'
+       - name: Install i3 via apk (Alpine)
+         community.general.apk:
+              name:
+                   - i3wm
+                   - i3status
+                   - dmenu
+                   - xss-lock
+                   - i3lock
+                   - sxhkd
+                   - xcape
+                   - xdotool
+                   - wmctrl
+                   - xbacklight
+                   - playerctl
+                   - copyq
+                   - pavucontrol
+                   - blueman
+                   - flameshot
+                   - arandr
+                   - libnotify
+              state: present
+         when: ansible_distribution == 'Alpine'
 
-    - name: Install i3 via zypper (openSUSE)
-      community.general.zypper:
-        name:
-          - i3
-          - i3status
-          - dmenu
-          - xss-lock
-          - i3lock
-          - sxhkd
-          - xcape
-          - xdotool
-          - wmctrl
-          - xbacklight
-          - playerctl
-          - copyq
-          - pavucontrol
-          - blueman
-          - flameshot
-          - arandr
-          - libnotify
-        state: present
-      when: ansible_distribution == 'openSUSE'
+       - name: Install i3 via zypper (openSUSE)
+         community.general.zypper:
+              name:
+                   - i3
+                   - i3status
+                   - dmenu
+                   - xss-lock
+                   - i3lock
+                   - sxhkd
+                   - xcape
+                   - xdotool
+                   - wmctrl
+                   - xbacklight
+                   - playerctl
+                   - copyq
+                   - pavucontrol
+                   - blueman
+                   - flameshot
+                   - arandr
+                   - libnotify
+              state: present
+         when: ansible_distribution == 'openSUSE'
 
-    - name: Install i3 via xbps (Void Linux)
-      community.general.xbps:
-        name:
-          - i3
-          - i3status
-          - dmenu
-          - xss-lock
-          - i3lock
-          - sxhkd
-          - xcape
-          - xdotool
-          - wmctrl
-          - xbacklight
-          - playerctl
-          - copyq
-          - pavucontrol
-          - blueman
-          - flameshot
-          - arandr
-          - libnotify
-        state: present
-      when: ansible_distribution == 'Void'
+       - name: Install i3 via xbps (Void Linux)
+         community.general.xbps:
+              name:
+                   - i3
+                   - i3status
+                   - dmenu
+                   - xss-lock
+                   - i3lock
+                   - sxhkd
+                   - xcape
+                   - xdotool
+                   - wmctrl
+                   - xbacklight
+                   - playerctl
+                   - copyq
+                   - pavucontrol
+                   - blueman
+                   - flameshot
+                   - arandr
+                   - libnotify
+              state: present
+          when: ansible_distribution == 'Void'
 
-    - name: Install i3 via pkg (FreeBSD)
-      community.general.pkgng:
-        name:
-          - i3
-          - i3status
-          - dmenu
-          - xss-lock
-          - i3lock
-          - sxhkd
-          - xcape
-          - xdotool
-          - wmctrl
-          - xbacklight
-          - playerctl
-          - copyq
-          - pavucontrol
-          - blueman
-          - flameshot
-          - arandr
-          - libnotify
-        state: present
-      when: ansible_system == 'FreeBSD'
+        # Create necessary directories and copy configuration files
+        - name: Create i3 config directory
+         ansible.builtin.file:
+              path: "{{ ansible_env.HOME }}/.config/i3"
+              state: directory
+              mode: "0755"
 
-    - name: Create i3 config directory
-      ansible.builtin.file:
-        path: "{{ ansible_env.HOME }}/.config/i3"
-        state: directory
-        mode: '0755'
+       - name: Create sxhkd config directory
+         ansible.builtin.file:
+              path: "{{ ansible_env.HOME }}/.config/sxhkd"
+              state: directory
+              mode: "0755"
 
-    - name: Create sxhkd config directory
-      ansible.builtin.file:
-        path: "{{ ansible_env.HOME }}/.config/sxhkd"
-        state: directory
-        mode: '0755'
+       - name: Create X11 config directory
+         ansible.builtin.file:
+              path: "{{ ansible_env.HOME }}/.config/X11"
+              state: directory
+              mode: "0755"
 
-    - name: Create X11 config directory
-      ansible.builtin.file:
-        path: "{{ ansible_env.HOME }}/.config/X11"
-        state: directory
-        mode: '0755'
+       - name: Copy i3 configuration
+         ansible.builtin.copy:
+              src: "{{ ansible_env.HOME }}/.dotfiles/.config/i3/config"
+              dest: "{{ ansible_env.HOME }}/.config/i3/config"
+              mode: "0644"
+         when: (ansible_env.HOME + '/.dotfiles/.config/i3/config') is file
 
-    - name: Copy i3 configuration
-      ansible.builtin.copy:
-        src: "{{ ansible_env.HOME }}/.dotfiles/.config/i3/config"
-        dest: "{{ ansible_env.HOME }}/.config/i3/config"
-        mode: '0644'
-      when: (ansible_env.HOME + '/.dotfiles/.config/i3/config') is file
+       - name: Copy sxhkd configuration
+         ansible.builtin.copy:
+              src: "{{ ansible_env.HOME }}/.dotfiles/.config/sxhkd/sxhkdrc"
+              dest: "{{ ansible_env.HOME }}/.config/sxhkd/sxhkdrc"
+              mode: "0644"
+         when: (ansible_env.HOME + '/.dotfiles/.config/sxhkd/sxhkdrc') is file
 
-    - name: Copy sxhkd configuration
-      ansible.builtin.copy:
-        src: "{{ ansible_env.HOME }}/.dotfiles/.config/sxhkd/sxhkdrc"
-        dest: "{{ ansible_env.HOME }}/.config/sxhkd/sxhkdrc"
-        mode: '0644'
-      when: (ansible_env.HOME + '/.dotfiles/.config/sxhkd/sxhkdrc') is file
+       - name: Copy Xmodmap configuration
+         ansible.builtin.copy:
+              src: "{{ ansible_env.HOME }}/.dotfiles/.config/X11/xmodmap"
+              dest: "{{ ansible_env.HOME }}/.config/X11/xmodmap"
+              mode: "0644"
+         when: (ansible_env.HOME + '/.dotfiles/.config/X11/xmodmap') is file
 
-    - name: Copy Xmodmap configuration
-      ansible.builtin.copy:
-        src: "{{ ansible_env.HOME }}/.dotfiles/.config/X11/xmodmap"
-        dest: "{{ ansible_env.HOME }}/.config/X11/xmodmap"
-        mode: '0644'
-      when: (ansible_env.HOME + '/.dotfiles/.config/X11/xmodmap') is file
+       - name: Load Xmodmap configuration on startup
+         ansible.builtin.lineinfile:
+              path: "{{ ansible_env.HOME }}/.xinitrc"
+              line: "xmodmap ~/.config/X11/xmodmap"
+              state: present
+              create: true
+         when: (ansible_env.HOME + '/.dotfiles/.config/X11/xmodmap') is file
 
-    - name: Load Xmodmap configuration on startup
-      ansible.builtin.lineinfile:
-        path: "{{ ansible_env.HOME }}/.xinitrc"
-        line: "xmodmap ~/.config/X11/xmodmap"
-        state: present
-        create: true
-      when: (ansible_env.HOME + '/.dotfiles/.config/X11/xmodmap') is file
-
-    - name: Copy Linux keymap documentation
-      ansible.builtin.copy:
-        src: "{{ ansible_env.HOME }}/.dotfiles/.config/README-linux-keymap.md"
-        dest: "{{ ansible_env.HOME }}/.config/README-linux-keymap.md"
-        mode: '0644'
-      when: (ansible_env.HOME + '/.dotfiles/.config/README-linux-keymap.md') is file
+       - name: Copy Linux keymap documentation
+         ansible.builtin.copy:
+              src: "{{ ansible_env.HOME }}/.dotfiles/.config/README-linux-keymap.md"
+              dest: "{{ ansible_env.HOME }}/.config/README-linux-keymap.md"
+              mode: "0644"
+         when: (ansible_env.HOME + '/.dotfiles/.config/README-linux-keymap.md') is file
