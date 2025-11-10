@@ -2,13 +2,13 @@
 
 # Required parameters:
 # @raycast.schemaVersion 1
-# @raycast.title Set Input Volume to 100
+# @raycast.title Fix input volume/sound
 # @raycast.mode fullOutput
 
 # Optional parameters:
 # @raycast.icon 🎤
 # @raycast.packageName System Audio
-# @raycast.description Sets system microphone input volume to 100%
+# @raycast.description fix input volume/sound
 
 # Documentation:
 # @raycast.author boss
