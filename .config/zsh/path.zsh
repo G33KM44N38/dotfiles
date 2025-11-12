@@ -12,6 +12,7 @@ add_to_path ~/.local/bin
 add_to_path ~/bin
 add_to_path ~/.bun/bin
 add_to_path ~/.GitSpeak/bin/
+add_to_path /Applications/Docker.app/Contents/Resources/bin
 
 # Add $HOME/.cargo/bin to fish_user_paths
 if [[ ! $fish_user_paths == *$HOME/.cargo/bin* ]]; then
