@@ -1,5 +1,8 @@
-S'il te plait, afin de préparer un commit propre, retire les logs, les fichiers inutiles et tous les debugs que tu peux as pu ajouter au cours de ce développement. Si on a beaucoup discuté et implémenté une solution vraiment étonnante, crée un petit .md dans /docs pour y expliquer la solution. N'ajoute cette doc que si c'est vraiment nécessaire pour la compréhension simple du projet par la suite.
-Une fois que tu as fait tout ça tu peux écouter mes précisions s'il y en :
-"$ARGUMENTS."
+S'il te plait, fait un résumé de notre objectif et du problème que nous rencontrons pour que je puisse le montrer à un model d'IA plus avancé.
 
-Et si il n'y en a pas, tu peux commit.
+Voici quelques informations de plus sur le problème :
+$ARGUMENTS.
+
+N'hesite pas à ajouter des codes snippets des passages qui te semblent pertinents et termine ton message par une liste des fichiers concernés.
+
+Si on ne semble pas avoir de problème en cours ou de blocage, réponds moi par une belle maxime ou une citation qui te semble pertinente et qui nous donnerait le sourire à tous les deux.
