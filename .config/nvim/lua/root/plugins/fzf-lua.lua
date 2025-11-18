@@ -17,6 +17,45 @@ return {
 		-- Neovim native (fzf-lua)
 		local fzf = require("fzf-lua")
 
+		fzf.staged_files_live_grep = function()
+			-- get staged files
+			local handle = io.popen("git diff --name-only --cached --diff-filter=ACMRTUXB")
+			if not handle then
+				return
+			end
+			local result = handle:read("*a")
+			handle:close()
+			if result == "" then
+				print("No staged files.")
+				return
+			end
+			-- split into Lua table (newline separated)
+			local files = {}
+			for s in result:gmatch("[^\n]+") do
+				table.insert(files, s)
+			end
+			-- build a pattern string for rg to restrict to these files
+			-- use --files-from-style: prepare a temporary file with paths and pass to rg via --files-from
+			local tmpname = vim.fn.tempname()
+			local f = io.open(tmpname, "w")
+			for _, p in ipairs(files) do
+				f:write(p .. "\n")
+			end
+			f:close()
+			-- call fzf-lua grep with rg, restricting files via --files-from
+			local fzf = require("fzf-lua")
+			fzf.grep({
+				rg_opts = "--line-number --hidden --smart-case --files-from " .. tmpname,
+				rg_glob = nil, -- disable glob
+				previewer = "bat", -- optional: bat preview
+				-- you can pass any fzf-lua opts here
+			})
+			-- remove temp file after a short delay (so rg can read it)
+			vim.defer_fn(function()
+				os.remove(tmpname)
+			end, 500)
+		end
+
 		fzf.hidden_files_lua = function()
 			local hidden_files = {}
 
@@ -67,6 +106,12 @@ return {
 
 		vim.api.nvim_set_keymap("n", "<leader>hi", "<cmd>lua require('fzf-lua').hidden_files_lua()<CR>", opts)
 
+		vim.keymap.set(
+			"n",
+			"<leader>sg",
+			"<cmd>lua require('fzf-lua').staged_files_live_grep()<CR>",
+			{ desc = "Live grep staged files" }
+		)
 		vim.keymap.set("n", "<leader>sw", "<cmd>FzfLua lsp_workspace_symbols<CR>", { desc = "Workspace Symbols" })
 		vim.api.nvim_set_keymap("n", "gi", "<cmd>FzfLua lsp_implementations<CR>", opts)
 		vim.api.nvim_set_keymap("n", "gt", "<cmd>FzfLua lsp_typedefs<CR>", opts) -- Go to type definition
@@ -74,7 +119,7 @@ return {
 		vim.api.nvim_set_keymap("n", "gr", "<cmd>FzfLua lsp_references<CR>", opts)
 		vim.api.nvim_set_keymap("n", "<C-p>", "<cmd>FzfLua files<CR>", opts)
 		vim.api.nvim_set_keymap("n", "<C-s>", "<cmd>FzfLua grep<CR>", opts)
-		vim.api.nvim_set_keymap("n", "<C-q>", "<cmd>FzfLua live_grep_glob<CR>", opts)
+		vim.api.nvim_set_keymap("n", "<C-q>", "<cmd>FzfLua live_grep<CR>", opts)
 		vim.api.nvim_set_keymap("n", "<leader>fb", "<cmd>FzfLua buffers<CR>", opts)
 		vim.api.nvim_set_keymap("n", "<leader>ke", "<cmd>FzfLua keymaps<CR>", opts)
 		vim.keymap.set({ "n", "v" }, "<leader>c", "<cmd>FzfLua lsp_code_actions<CR>", { desc = "Code Actions" })
