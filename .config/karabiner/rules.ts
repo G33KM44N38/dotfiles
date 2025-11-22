@@ -19,7 +19,7 @@ const hyperSubLayers = createHyperSubLayers({
     c: open("https://claude.ai/"),
     i: open("https://instagram.com?_perso"),
     d: open("http://localhost:3000"),
-    t: open("https://www.twitch.tv/?_renayam"),
+    t: open("raycast://extensions/the-browser-company/arc/search-tabs"),
     x: open("https://www.x.com/?_perso"),
     f: open("https://www.netflix.com/?_perso"),
   },
@@ -58,6 +58,7 @@ const hyperSubLayers = createHyperSubLayers({
     x: app("Discord"),
     y: app("Telegram"),
     z: app("Safari"),
+    v: app("Visual Studio Code"),
   },
   s: {
     u: { to: [{ key_code: "volume_increment" }] },
@@ -78,22 +79,22 @@ const hyperSubLayers = createHyperSubLayers({
     j: { to: [{ key_code: "rewind" }] },
   },
   r: {
-    q: open("raycast://extensions/raycast/raycast/search-quicklinks"),
-    a: open("raycast://extensions/raycast/window-management/maximize"),
+    a: open("raycast://extensions/destiner/render/view-services"),
     c: open(
       "raycast://extensions/VladCuciureanu/toothpick/manage-bluetooth-connections"
     ),
-    k: open("raycast://extensions/rolandleth/kill-process/index"),
-    u: open("raycast://extensions/raycast/screenshots/search-screenshots"),
     e: open("raycast://extensions/raycast/emoji-symbols/search-emoji-symbols"),
     h: open("raycast://extensions/raycast/clipboard-history/clipboard-history"),
     i: open("raycast://extensions/benvp/audio-device/set-input-device"),
-    o: open("raycast://extensions/benvp/audio-device/set-output-device"),
-    p: open("raycast://extensions/raycast/raycast/confetti"),
-    s: open("raycast://extensions/raycast/snippets/search-snippets"),
+    k: open("raycast://extensions/rolandleth/kill-process/index"),
+    l: open("raycast://extensions/eluce2/displayplacer/displayplacer"),
     m: open("raycast://extensions/raycast/navigation/search-menu-items"),
     n: open("raycast://extensions/raycast/raycast-notes/raycast-notes"),
-    l: open("raycast://extensions/eluce2/displayplacer/displayplacer"),
+    o: open("raycast://extensions/benvp/audio-device/set-output-device"),
+    p: open("raycast://extensions/raycast/raycast/confetti"),
+    q: open("raycast://extensions/raycast/raycast/search-quicklinks"),
+    s: open("raycast://extensions/raycast/snippets/search-snippets"),
+    u: open("raycast://extensions/raycast/screenshots/search-screenshots"),
   },
   n: {
     s: open("raycast://extensions/notion/notion/search-page"),
@@ -158,24 +159,17 @@ const rightGuiLayer = createKeyLayer(
     //left hand
     a: { to: [{ key_code: "backslash", modifiers: ["left_shift"] }] },
     b: { to: [{ key_code: "open_bracket", modifiers: ["left_shift"] }] },
-    v: { to: [{ key_code: "open_bracket" }] },
+    d: { to: [{ key_code: "open_bracket" }] },
     g: { to: [{ key_code: "9", modifiers: ["left_shift"] }] },
-    f: {
-      to: [{ key_code: "grave_accent_and_tilde", modifiers: ["left_shift"] }],
-    },
-    d: {
-      to: [{ key_code: "slash" }],
-    },
-    s: {
-      to: [{ key_code: "quote" }],
-    },
+    f: { to: [{ key_code: "open_bracket", modifiers: ["left_shift"] }] },
+    e: { to: [{ key_code: "slash" }] },
 
     //right hand
-    m: { to: [{ key_code: "close_bracket" }] },
-    n: { to: [{ key_code: "close_bracket", modifiers: ["left_shift"] }] },
     h: { to: [{ key_code: "0", modifiers: ["left_shift"] }] },
-    j: { to: [{ key_code: "hyphen", modifiers: ["left_shift"] }] },
-    k: { to: [{ key_code: "backslash" }] },
+    u: { to: [{ key_code: "hyphen" }] },
+    j: { to: [{ key_code: "close_bracket", modifiers: ["left_shift"] }] },
+    i: { to: [{ key_code: "backslash" }] },
+    k: { to: [{ key_code: "close_bracket" }] },
     l: { to: [{ key_code: "grave_accent_and_tilde" }] },
   },
   "spacebar"
