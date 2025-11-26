@@ -33,8 +33,65 @@ return {
 
 	config = function(_, opts)
 		require("debugprint").setup(opts)
+
 		-- Load the modular debug_print system
-		require("root.plugins.debug_print")
+		local navigation = require("root.plugins.debug_print.navigation")
+		local deletion = require("root.plugins.debug_print.deletion")
+		local config_module = require("root.plugins.debug_print.config")
+
+		-- Register keymaps
+		vim.keymap.set("n", config_module.KEYMAPS.next_all, function()
+			navigation.go_to_next_debug("all")
+		end, { noremap = true, silent = true })
+
+		vim.keymap.set("n", config_module.KEYMAPS.prev_all, function()
+			navigation.go_to_prev_debug("all")
+		end, { noremap = true, silent = true })
+
+		vim.keymap.set("n", config_module.KEYMAPS.next_log, function()
+			navigation.go_to_next_debug("log")
+		end, { noremap = true, silent = true })
+
+		vim.keymap.set("n", config_module.KEYMAPS.prev_log, function()
+			navigation.go_to_prev_debug("log")
+		end, { noremap = true, silent = true })
+
+		vim.keymap.set("n", config_module.KEYMAPS.next_warn, function()
+			navigation.go_to_next_debug("warn")
+		end, { noremap = true, silent = true })
+
+		vim.keymap.set("n", config_module.KEYMAPS.prev_warn, function()
+			navigation.go_to_prev_debug("warn")
+		end, { noremap = true, silent = true })
+
+		vim.keymap.set("n", config_module.KEYMAPS.delete, function()
+			deletion.delete_debug_at_cursor()
+		end, { noremap = true, silent = true })
+
+		-- Register commands
+		vim.api.nvim_create_user_command(config_module.COMMANDS.next_log, function()
+			navigation.go_to_next_debug("log")
+		end, {})
+
+		vim.api.nvim_create_user_command(config_module.COMMANDS.prev_log, function()
+			navigation.go_to_prev_debug("log")
+		end, {})
+
+		vim.api.nvim_create_user_command(config_module.COMMANDS.next_warn, function()
+			navigation.go_to_next_debug("warn")
+		end, {})
+
+		vim.api.nvim_create_user_command(config_module.COMMANDS.prev_warn, function()
+			navigation.go_to_prev_debug("warn")
+		end, {})
+
+		vim.api.nvim_create_user_command(config_module.COMMANDS.next_all, function()
+			navigation.go_to_next_debug("all")
+		end, {})
+
+		vim.api.nvim_create_user_command(config_module.COMMANDS.prev_all, function()
+			navigation.go_to_prev_debug("all")
+		end, {})
 	end,
 
 	dependencies = {
