@@ -1,3 +1,8 @@
+---
+description: code review what's has been done
+agent: build
+model: anthropic/claude-haiku-4-5
+---
 # Main Branch Comparison Review
 
 **Current branch:**

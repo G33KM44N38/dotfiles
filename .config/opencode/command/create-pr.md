@@ -1,3 +1,8 @@
+---
+description: create a pull request
+agent: build
+model: anthropic/claude-haiku-4-5
+---
 Generate a pull request from the current branch to the target branch (defaults to main if no target branch specified).
 
 Analyze the current branch changes, commit history, and generate an appropriate PR title and description following standard PR template format.
