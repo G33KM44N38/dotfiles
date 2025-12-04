@@ -16,7 +16,7 @@ const hyperSubLayers = createHyperSubLayers({
     a: open("https://chatgpt.com?_perso"),
     y: open("https://youtube.com?_perso"),
     r: open("https://reddit.com?_perso"),
-    c: open("https://claude.ai/"),
+    c: open("https://claude.ai/?_babacoiffure"),
     i: open("https://instagram.com?_perso"),
     d: open("http://localhost:3000"),
     t: open("raycast://extensions/the-browser-company/arc/search-tabs"),
@@ -54,7 +54,7 @@ const hyperSubLayers = createHyperSubLayers({
     q: app("Notes"),
     semicolon: app("Pages"),
     t: app("Ghostty"),
-    w: app("Brave Browser"),
+    w: app("WhatsApp"),
     x: app("Discord"),
     y: app("Telegram"),
     z: app("Safari"),
@@ -163,6 +163,7 @@ const rightGuiLayer = createKeyLayer(
     g: { to: [{ key_code: "9", modifiers: ["left_shift"] }] },
     f: { to: [{ key_code: "open_bracket", modifiers: ["left_shift"] }] },
     e: { to: [{ key_code: "slash" }] },
+    r: { to: [{ key_code: "hyphen", modifiers: ["left_shift"] }] },
 
     //right hand
     h: { to: [{ key_code: "0", modifiers: ["left_shift"] }] },
