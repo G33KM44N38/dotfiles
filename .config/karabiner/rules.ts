@@ -111,6 +111,9 @@ const hyperSubLayers = createHyperSubLayers({
 const leftGuiLayer = createKeyLayer(
   "left_gui",
   {
+    a: {
+      to: [{ key_code: "grave_accent_and_tilde", modifiers: ["left_shift"] }],
+    },
     q: { to: [{ key_code: "1" }] },
     w: { to: [{ key_code: "2" }] },
     e: { to: [{ key_code: "3" }] },

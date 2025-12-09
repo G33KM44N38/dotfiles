@@ -1,15 +1,15 @@
 ---
 - name: Add cron job for cleanup script
   vars:
-    script_path: "cleanup_goinfre" # Use ansible_env.HOME for the home directory
-    cron_name: "Cleanup old files"
-    cron_time: "0 0 * * *" # Every day at midnight
+       script_path: "cleanup_goinfre" # Use ansible_env.HOME for the home directory
+       cron_name: "Cleanup old files"
+       cron_time: "0 0 * * *" # Every day at midnight
   cron:
-    name: "{{ cron_name }}"
-    job: "/bin/bash {{ script_path }}"
-    minute: "{{ cron_time.split(' ')[0] }}"
-    hour: "{{ cron_time.split(' ')[1] }}"
-    day: "{{ cron_time.split(' ')[2] }}"
-    month: "{{ cron_time.split(' ')[3] }}"
-    weekday: "{{ cron_time.split(' ')[4] }}"
-    state: present
+       name: "{{ cron_name }}"
+       job: "/bin/bash {{ script_path }} > /dev/null 2>&1"
+       minute: "{{ cron_time.split(' ')[0] }}"
+       hour: "{{ cron_time.split(' ')[1] }}"
+       day: "{{ cron_time.split(' ')[2] }}"
+       month: "{{ cron_time.split(' ')[3] }}"
+       weekday: "{{ cron_time.split(' ')[4] }}"
+       state: present
