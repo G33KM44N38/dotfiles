@@ -13,12 +13,12 @@ return {
 			})
 		end,
 	},
+
 	{
 		"williamboman/mason-lspconfig.nvim",
 		dependencies = { "williamboman/mason.nvim" },
 		config = function()
 			require("mason-lspconfig").setup({
-				-- ✅ INSTALLER les serveurs mais NE PAS les démarrer automatiquement
 				ensure_installed = {
 					"lua_ls",
 					"ts_ls",
@@ -35,16 +35,13 @@ return {
 					"pyright",
 					"prismals",
 					"rust_analyzer",
-					-- ❌ PAS "graphql" ici - vous ne l'utilisez pas
 				},
 				automatic_installation = true,
 			})
-
-			-- ⚠️ CRITIQUE: Ne PAS appeler :setup_handlers()
-			-- ⚠️ CRITIQUE: Ne PAS utiliser handlers = { ... }
-			-- Laisser mason-lspconfig JUSTE installer les binaires
+			-- ⚠️ Ne pas utiliser setup_handlers ici
 		end,
 	},
+
 	{
 		"folke/lazydev.nvim",
 		ft = "lua",
@@ -54,6 +51,7 @@ return {
 			},
 		},
 	},
+
 	{
 		"neovim/nvim-lspconfig",
 		event = { "BufReadPre", "BufNewFile" },
@@ -63,7 +61,6 @@ return {
 			{ "antosha417/nvim-lsp-file-operations", config = true },
 		},
 		config = function()
-			local lspconfig = require("lspconfig")
 			local blink_cmp = require("blink.cmp")
 			local capabilities = blink_cmp.get_lsp_capabilities()
 
@@ -75,12 +72,10 @@ return {
 				severity_sort = true,
 			})
 
-			-- ========================================
-			-- Configuration MANUELLE des serveurs
-			-- ========================================
-
-			-- Lua (Neovim development)
-			lspconfig.lua_ls.setup({
+			----------------------------------------------------
+			-- LUA LS
+			----------------------------------------------------
+			vim.lsp.config("lua_ls", {
 				capabilities = capabilities,
 				settings = {
 					Lua = {
@@ -94,57 +89,57 @@ return {
 				},
 			})
 
-			-- TypeScript/JavaScript
-			lspconfig.ts_ls.setup({
+			----------------------------------------------------
+			-- TYPESCRIPT
+			----------------------------------------------------
+			vim.lsp.config("ts_ls", {
 				capabilities = capabilities,
-				root_dir = lspconfig.util.root_pattern("package.json"),
+				root_dir = vim.fs.root(0, { "package.json" }),
 				single_file_support = false,
 			})
 
-			-- ESLint (seulement si config existe)
-			lspconfig.eslint.setup({
+			----------------------------------------------------
+			-- ESLINT
+			----------------------------------------------------
+			vim.lsp.config("eslint", {
 				capabilities = capabilities,
-				root_dir = lspconfig.util.root_pattern(
+				root_dir = vim.fs.root(0, {
 					".eslintrc.js",
 					".eslintrc.cjs",
 					".eslintrc.json",
 					"eslint.config.js",
-					"eslint.config.mjs"
-				),
+					"eslint.config.mjs",
+				}),
 				single_file_support = false,
 			})
 
-			-- Tailwind (seulement si config existe)
-			lspconfig.tailwindcss.setup({
+			----------------------------------------------------
+			-- TAILWIND
+			----------------------------------------------------
+			vim.lsp.config("tailwindcss", {
 				capabilities = capabilities,
-				root_dir = lspconfig.util.root_pattern(
+				root_dir = vim.fs.root(0, {
 					"tailwind.config.js",
 					"tailwind.config.ts",
 					"tailwind.config.cjs",
-					"tailwind.config.mjs"
-				),
+					"tailwind.config.mjs",
+				}),
 				single_file_support = false,
 				on_attach = function(client, bufnr)
-					-- Bloquer sur fichiers de test
 					local filepath = vim.api.nvim_buf_get_name(bufnr)
+
 					if filepath:match("%.test%.") or filepath:match("%.spec%.") or filepath:match("/e2e/") then
 						vim.lsp.buf_detach_client(bufnr, client.id)
 						return
 					end
-					-- Désactiver l'autocomplétion générale
+
 					client.server_capabilities.completionProvider = false
 				end,
 			})
 
-			-- GraphQL - COMPLÈTEMENT DÉSACTIVÉ
-			-- Décommentez SEULEMENT si vous avez un .graphqlrc
-			-- lspconfig.graphql.setup({
-			-- 	capabilities = capabilities,
-			-- 	filetypes = { "graphql", "gql" },
-			-- 	root_dir = lspconfig.util.root_pattern(".graphqlrc", ".graphqlrc.yml", "graphql.config.js"),
-			-- })
-
-			-- Autres serveurs (configuration simple)
+			----------------------------------------------------
+			-- SERVEURS SIMPLES
+			----------------------------------------------------
 			local simple_servers = {
 				"html",
 				"cssls",
@@ -160,18 +155,17 @@ return {
 			}
 
 			for _, server in ipairs(simple_servers) do
-				lspconfig[server].setup({
+				vim.lsp.config(server, {
 					capabilities = capabilities,
 				})
 			end
 
-			-- ========================================
-			-- Protection anti-doublons AGGRESSIVE
-			-- ========================================
+			----------------------------------------------------
+			-- PROTECTION CONTRE LES DOUBLONS
+			----------------------------------------------------
 			vim.api.nvim_create_autocmd("LspAttach", {
 				group = vim.api.nvim_create_augroup("LspCleanupDuplicates", { clear = true }),
 				callback = function(args)
-					-- Attendre que tous les serveurs s'attachent
 					vim.defer_fn(function()
 						local bufnr = args.buf
 						local clients = vim.lsp.get_clients({ bufnr = bufnr })
@@ -183,7 +177,7 @@ return {
 							table.insert(by_name[client.name], client)
 						end
 
-						-- Détacher les doublons (garder le plus récent)
+						-- Détacher les doublons
 						for name, client_list in pairs(by_name) do
 							if #client_list > 1 then
 								table.sort(client_list, function(a, b)
@@ -205,7 +199,7 @@ return {
 							end
 						end
 
-						-- Bloquer GraphQL s'il apparaît quand même
+						-- Désactiver GraphQL s'il spawn malgré tout
 						for _, client in ipairs(vim.lsp.get_clients({ bufnr = bufnr })) do
 							if client.name == "graphql" then
 								vim.lsp.buf_detach_client(bufnr, client.id)
@@ -218,9 +212,9 @@ return {
 				end,
 			})
 
-			-- ========================================
-			-- Commandes de diagnostic
-			-- ========================================
+			----------------------------------------------------
+			-- COMMANDES UTILITAIRES
+			----------------------------------------------------
 			vim.api.nvim_create_user_command("LspClients", function()
 				local clients = vim.lsp.get_clients({ bufnr = 0 })
 				print(string.format("\n📋 Active LSP clients (%d):", #clients))
