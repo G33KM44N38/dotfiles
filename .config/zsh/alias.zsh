@@ -14,6 +14,7 @@ alias bsetup="ie && pnpm i"
 # Git command
 alias gc="git commit"
 alias gcn="git commit --no-verify"
+alias gfa="git fetch --all --prune"
 alias gcn="git commit -n"
 alias gs="git status"
 alias gp="git push && open raycast://extensions/raycast/raycast/confetti"
