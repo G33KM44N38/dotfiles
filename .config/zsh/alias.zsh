@@ -24,7 +24,7 @@ alias gl="git  pull"
 alias gaa="git add --all"
 alias graph="git log --all --decorate --oneline --graph"
 alias gcg="git config --edit --global"
-alias glo="git log --oneline --decorate --graph --all"
+alias glo="git log --graph --all --decorate --pretty=format:'%C(auto)%h %C(blue)%an%C(reset) %C(yellow)%d%C(reset) %s'"
 alias gcl="git config --edit --local"
 # git log oneline with the timestamp
 alias glog="git log --decorate --date=iso --pretty=format:'%C(auto)%h%d %C(cyan)%ad%C(reset) %s' --color=always"
