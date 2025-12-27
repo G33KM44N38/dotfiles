@@ -27,26 +27,26 @@ return {
 			["<C-b>"] = { "scroll_documentation_up" },
 			["<C-f>"] = { "scroll_documentation_down" },
 			["<C-e>"] = { "hide" },
-			["<C-Space>"] = { "show", "fallback" }, -- ✅ Forcer manuellement
+			["<C-Space>"] = { "show", "fallback" },
 		},
 		sources = {
-			default = { "lsp", "path", "snippets", "buffer", "emoji", "conventional_commits" },
+			default = { "snippets", "lsp", "path", "buffer", "emoji", "conventional_commits" },
 			providers = {
+				snippets = {
+					name = "Snippets",
+					score_offset = 300,
+					min_keyword_length = 1,
+				},
 				lsp = {
 					name = "LSP",
-					score_offset = 100,
-					min_keyword_length = 0, -- ✅ CHANGÉ: 1 → 0 (trigger immédiatement)
+					score_offset = 50,
+					min_keyword_length = 0,
 				},
 				buffer = {
 					name = "Buffer",
 					score_offset = -50,
 					min_keyword_length = 3,
 					max_items = 5,
-				},
-				snippets = {
-					name = "Snippets",
-					score_offset = 50,
-					min_keyword_length = 2,
 				},
 				path = {
 					name = "Path",
