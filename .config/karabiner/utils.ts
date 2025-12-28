@@ -228,11 +228,14 @@ export function createHomeRowMod(key_code: KeyCode, mod: KeyCode): Manipulator {
     to_if_alone: [{ key_code: key_code }],
     conditions: [
       { type: "variable_if", name: "hyper", value: 0 },
+      { type: "variable_if", name: "left_gui_layer", value: 0 },
+      { type: "variable_if", name: "left_option_layer", value: 0 },
+      { type: "variable_if", name: "right_command_layer", value: 0 },
       BuiltinKeyboardCondition,
     ],
     parameters: {
-      "basic.to_if_alone_timeout_milliseconds": 2000,
-      "basic.to_if_held_down_threshold_milliseconds": 500,
+      "basic.to_if_held_down_threshold_milliseconds": 150,
+      "basic.to_if_alone_timeout_milliseconds": 180,
     },
   };
 }
