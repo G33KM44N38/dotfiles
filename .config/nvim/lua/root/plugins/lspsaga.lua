@@ -3,17 +3,25 @@ return {
 	branch = "main",
 	config = function()
 		require("lspsaga").setup({})
-		vim.keymap.set("n", "K", "<cmd>Lspsaga hover_doc<CR>", Opts) -- show documentation for what is under cursor
 
-		vim.keymap.set(
-			"n",
-			"]d",
-			"<cmd>Lspsaga diagnostic_jump_next<CR>",
-			{ desc = "Go to previous [D]iagnostic message" }
-		)
-		vim.keymap.set("n", "[d", "<cmd>Lspsaga diagnostic_jump_prev<CR>", { desc = "Go to next [D]iagnostic message" })
+		local opts = { noremap = true, silent = true }
 
-		-- vim.keymap.set({ "n", "v" }, '<leader>c', "<cmd>Lspsaga code_actions<CR>",
-		-- 	{ desc = 'Go to next [D]iagnostic message' })
+		vim.keymap.set("n", "K", "<cmd>Lspsaga hover_doc<CR>", opts)
+
+		vim.keymap.set("n", "]d", "<cmd>Lspsaga diagnostic_jump_next<CR>", { desc = "Go to next diagnostic" })
+
+		vim.keymap.set("n", "[d", "<cmd>Lspsaga diagnostic_jump_prev<CR>", { desc = "Go to previous diagnostic" })
+
+		-- go to definition in a vertical split
+		vim.keymap.set("n", "gsd", function()
+			vim.cmd("vsplit")
+			vim.cmd("Lspsaga goto_definition")
+		end, { desc = "Go to definition in a vertical split" })
+
+		-- example: horizontal split
+		vim.keymap.set("n", "<leader>gsD", function()
+			vim.cmd("split")
+			vim.cmd("Lspsaga goto_definition")
+		end, { desc = "Go to definition in a horizontal split" })
 	end,
 }

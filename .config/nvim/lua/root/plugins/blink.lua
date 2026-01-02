@@ -45,7 +45,7 @@ return {
 				buffer = {
 					name = "Buffer",
 					score_offset = -50,
-					min_keyword_length = 3,
+					min_keyword_length = 1,
 					max_items = 5,
 				},
 				path = {
