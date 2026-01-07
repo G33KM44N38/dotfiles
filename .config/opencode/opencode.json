@@ -1,7 +1,6 @@
 {
 	"$schema": "https://opencode.ai/config.json",
 	"provider": {},
-	"mcp": {},
 	"agent": {
 		"meta-agent": {
 			"disable": true
@@ -10,8 +9,9 @@
 			"disable": true
 		},
 		"build": {
+			"prompt": "{file:./command/work.md}",
 			"mode": "primary",
-			"model": "anthropic/claude-haiku-4-5",
+			"model": "opencode/grok-code",
 			"tools": {
 				"write": true,
 				"edit": true,
@@ -20,7 +20,7 @@
 		},
 		"plan": {
 			"mode": "primary",
-			"model": "anthropic/claude-sonnet-4-20250514",
+			"model": "opencode/grok-code",
 			"tools": {
 				"write": false,
 				"edit": false,
