@@ -16,7 +16,7 @@ keymap("n", "<C-f>", "<cmd>silent !tmux neww tmux-navigate.sh<CR>", Opts)
 keymap("n", "<leader>lg", "<cmd>silent !tmux neww lazygit<CR>", Opts)
 keymap("n", "<leader>ld", "<cmd>silent !tmux neww lazydocker<CR>", Opts)
 keymap("i", "kj", "<Esc>", Opts)
-keymap("n", "<leader>f", ":Ex<CR>", Opts)
+keymap("n", "<leader><leader>", ":Ex<CR>", Opts)
 
 keymap("n", "<C-z>", "<nop>", Opts)
 

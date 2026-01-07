@@ -40,6 +40,16 @@ return {
 		})
 
 		local typescript_snip = {
+			s("st", {
+				t("style={ `"),
+				i(1),
+				t("` }"),
+			}),
+			s("sto", {
+				t("style={{ "),
+				i(1),
+				t(" }}"),
+			}),
 			s("ci", {
 				t("console.info("),
 				i(1),
@@ -350,6 +360,13 @@ return {
 		ls.add_snippets("markdown", {
 			s("nl", {
 				t("1. "),
+			}),
+			s("el", { -- external link
+				t("["),
+				i(1),
+				t("]("),
+				i(2),
+				t(")"),
 			}),
 			s("bold", {
 				t("**"),

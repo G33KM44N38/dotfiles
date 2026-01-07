@@ -39,7 +39,7 @@ return {
 	"tpope/vim-repeat",
 	"tpope/vim-sensible",
 	"voldikss/vim-floaterm",
-	"nvim-treesitter/nvim-treesitter-context",
+	-- "nvim-treesitter/nvim-treesitter-context",
 	{
 		"fatih/vim-go",
 		keys = false,

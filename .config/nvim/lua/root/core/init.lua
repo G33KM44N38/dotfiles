@@ -5,6 +5,9 @@ require("root.my_plugins.Commiter")
 -- require("root.my_plugins.git-worktree.lua.git-worktree")
 vim.cmd("let g:netrw_preview= 1")
 
+-- Filtrer les warnings LSP non-critiques
+vim.lsp.set_log_level("ERROR") -- Au lieu de "WARN"
+
 vim.opt.scrolloff = 1
 -- Required to be compatible with Neovim
 vim.opt.compatible = false

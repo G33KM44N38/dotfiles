@@ -58,7 +58,7 @@ function M.create_worktree_wrapper()
 					local clean_branch = branch:gsub("^origin/", "")
 
 					-- Créer le worktree avec le chemin et la branche nettoyés
-					git_worktree.create_worktree(path, clean_branch)
+					git_worktree.create_worktree(path, clean_branch, "origin")
 				end
 			end)
 			return true
@@ -72,6 +72,7 @@ _G.git_worktree_module = M
 return {
 	-- Fork corrigé sur GitHub - Fix du bug "receives from more than one src"
 	"G33KM44N38/git-worktree.nvim",
+	dependencies = { "nvim-lua/plenary.nvim" },
 
 	config = function()
 		local Worktree = require("git-worktree")
@@ -129,11 +130,6 @@ return {
 			":lua require('telescope').extensions.git_worktree.git_worktrees()<CR>",
 			Opts
 		)
-		vim.api.nvim_set_keymap(
-			"n",
-			"<leader>wc",
-			":lua _G.git_worktree_module.create_worktree_wrapper()<CR>",
-			Opts
-		)
+		vim.api.nvim_set_keymap("n", "<leader>wc", ":lua _G.git_worktree_module.create_worktree_wrapper()<CR>", Opts)
 	end,
 }

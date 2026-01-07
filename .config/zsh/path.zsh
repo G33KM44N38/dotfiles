@@ -15,9 +15,9 @@ add_to_path ~/.GitSpeak/bin/
 add_to_path /Applications/Docker.app/Contents/Resources/bin
 
 # Add $HOME/.cargo/bin to fish_user_paths
-if [[ ! $fish_user_paths == *$HOME/.cargo/bin* ]]; then
-    export fish_user_paths=$HOME/.cargo/bin:$fish_user_paths
-fi
+# if [[ ! $fish_user_paths == *$HOME/.cargo/bin* ]]; then
+#     export fish_user_paths=$HOME/.cargo/bin:$fish_user_paths
+# fi
 
 # Set FZF_COMPLETE to 2 if it's not already set
 if [[ -z $FZF_COMPLETE ]]; then
@@ -29,4 +29,4 @@ if [[ -z $TMUX_CONF ]]; then
     export TMUX_CONF=~/.config/tmux/tmux.conf
     export fish_tmux_config=~/.config/tmux/tmux.conf
 fi
-eval "$(zoxide init zsh)"
+# eval "$(zoxide init zsh)"

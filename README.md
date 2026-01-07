@@ -9,7 +9,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/G33KM44N38/dotfiles/main
 
 ### Option 2: Manual clone and run
 ```bash
-git clone https://github.com/G33KM44N38/dotfiles ~/.dotfiles
+git clone git@github.com:G33KM44N38/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
 ./bin/dotfiles
 ```
