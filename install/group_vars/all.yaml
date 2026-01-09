@@ -33,15 +33,16 @@ default_roles:
      # - gitspeak
      - aerospace
      - python
-      - arc-cli
-      - pnpm
+       - arc-cli
+       - pnpm
      - ghostty
      - cron
      - mouseless
      - backup
      - discord
      - rust
-      - beeper
-      - notion
+       - beeper
+       - notion
      - lua-language-server
      - config
+     - fd

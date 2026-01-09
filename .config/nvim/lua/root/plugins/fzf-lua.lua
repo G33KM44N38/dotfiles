@@ -117,7 +117,7 @@ return {
 		vim.api.nvim_set_keymap("n", "gt", "<cmd>FzfLua lsp_typedefs<CR>", opts) -- Go to type definition
 		vim.api.nvim_set_keymap("n", "gd", "<cmd>FzfLua lsp_definitions<CR>", opts)
 		vim.api.nvim_set_keymap("n", "gr", "<cmd>FzfLua lsp_references<CR>", opts)
-		vim.api.nvim_set_keymap("n", "<C-p>", "<cmd>FzfLua files<CR>", opts)
+		vim.api.nvim_set_keymap("n", "<C-p>", "<cmd>lua require('root.plugins.obsidian').smart_files()<CR>", opts)
 		vim.api.nvim_set_keymap("n", "<C-s>", "<cmd>FzfLua grep<CR>", opts)
 		vim.api.nvim_set_keymap("n", "<C-q>", "<cmd>FzfLua live_grep<CR>", opts)
 		vim.api.nvim_set_keymap("n", "<leader>fb", "<cmd>FzfLua buffers<CR>", opts)

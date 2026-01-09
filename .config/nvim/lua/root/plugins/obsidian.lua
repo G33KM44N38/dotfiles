@@ -28,6 +28,17 @@ vim.api.nvim_create_user_command("IsInWorkspace", function()
 	print(in_workspace)
 end, {})
 
+local function smart_files()
+	if in_workspace() then
+		require("fzf-lua").files({
+			cmd = "fd --type f --extension md",
+			cwd = workspace_path,
+		})
+	else
+		require("fzf-lua").files()
+	end
+end
+
 local function find_todos_line()
 	-- Iterate through all lines in the current buffer
 	for i, line in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
@@ -1875,7 +1886,7 @@ vim.api.nvim_set_keymap(
 	{ noremap = true, silent = true, desc = "Import RSS from RSS.md" }
 )
 
-return {
+local obsidian_config = {
 	{
 		"MeanderingProgrammer/render-markdown.nvim",
 		opts = {
@@ -1942,3 +1953,12 @@ return {
 		end,
 	},
 }
+
+return setmetatable(obsidian_config, {
+	__index = function(_, key)
+		if key == "smart_files" then
+			return smart_files
+		end
+		return nil
+	end,
+})
