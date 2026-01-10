@@ -1,4 +1,5 @@
 #!/bin/bash
+mole
 
 # Required parameters:
 # @raycast.schemaVersion 1
@@ -16,491 +17,491 @@
 # UI Functions
 # -------------------------
 
-# Terminal colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-MAGENTA='\033[0;35m'
-CYAN='\033[0;36m'
-RESET='\033[0m'
+# # Terminal colors
+# RED='\033[0;31m'
+# GREEN='\033[0;32m'
+# YELLOW='\033[0;33m'
+# BLUE='\033[0;34m'
+# MAGENTA='\033[0;35m'
+# CYAN='\033[0;36m'
+# RESET='\033[0m'
 
-# Print colored header
-print_header() {
-  echo -e "\n${BLUE}========================================${RESET}"
-  echo -e "${CYAN}$1${RESET}"
-  echo -e "${BLUE}========================================${RESET}\n"
-}
+# # Print colored header
+# print_header() {
+#   echo -e "\n${BLUE}========================================${RESET}"
+#   echo -e "${CYAN}$1${RESET}"
+#   echo -e "${BLUE}========================================${RESET}\n"
+# }
 
-# Success message
-success() {
-  echo -e "${GREEN}✓${RESET} $1"
-}
+# # Success message
+# success() {
+#   echo -e "${GREEN}✓${RESET} $1"
+# }
 
-# Error message
-error() {
-  echo -e "${RED}✗${RESET} $1"
-}
+# # Error message
+# error() {
+#   echo -e "${RED}✗${RESET} $1"
+# }
 
-# Info message
-info() {
-  echo -e "${YELLOW}→${RESET} $1"
-}
+# # Info message
+# info() {
+#   echo -e "${YELLOW}→${RESET} $1"
+# }
 
-# Processing message with spinner
-process_spinner() {
-  local pid=$1
-  local message=$2
-  local spin='-\|/'
-  local i=0
+# # Processing message with spinner
+# process_spinner() {
+#   local pid=$1
+#   local message=$2
+#   local spin='-\|/'
+#   local i=0
   
-  echo -ne "${YELLOW}→${RESET} $message "
+#   echo -ne "${YELLOW}→${RESET} $message "
   
-  while kill -0 $pid 2>/dev/null; do
-    i=$(( (i+1) % 4 ))
-    echo -ne "\b${spin:$i:1}"
-    sleep 0.1
-  done
+#   while kill -0 $pid 2>/dev/null; do
+#     i=$(( (i+1) % 4 ))
+#     echo -ne "\b${spin:$i:1}"
+#     sleep 0.1
+#   done
   
-  wait $pid
-  if [ $? -eq 0 ]; then
-    echo -e "\b${GREEN}✓${RESET}"
-  else
-    echo -e "\b${RED}✗${RESET}"
-  fi
-}
+#   wait $pid
+#   if [ $? -eq 0 ]; then
+#     echo -e "\b${GREEN}✓${RESET}"
+#   else
+#     echo -e "\b${RED}✗${RESET}"
+#   fi
+# }
 
-# Progress bar for multi-step operations
-show_progress() {
-  local current=$1
-  local total=$2
-  local title=$3
-  local percent=$((current * 100 / total))
-  local progress=$((current * 40 / total))
+# # Progress bar for multi-step operations
+# show_progress() {
+#   local current=$1
+#   local total=$2
+#   local title=$3
+#   local percent=$((current * 100 / total))
+#   local progress=$((current * 40 / total))
   
-  printf "${MAGENTA}[%-40s]${RESET} %3d%% %s\r" "$(printf '█%.0s' $(seq 1 $progress))" "$percent" "$title"
-}
+#   printf "${MAGENTA}[%-40s]${RESET} %3d%% %s\r" "$(printf '█%.0s' $(seq 1 $progress))" "$percent" "$title"
+# }
 
-# -------------------------
-# Optimization Functions
-# -------------------------
+# # -------------------------
+# # Optimization Functions
+# # -------------------------
 
-# Check if command exists
-command_exists() {
-  command -v "$1" &> /dev/null
-}
+# # Check if command exists
+# command_exists() {
+#   command -v "$1" &> /dev/null
+# }
 
-# Run tasks in parallel
-run_parallel() {
-  local tasks=("$@")
-  local pids=()
+# # Run tasks in parallel
+# run_parallel() {
+#   local tasks=("$@")
+#   local pids=()
   
-  for task in "${tasks[@]}"; do
-    eval "$task" &
-    pids+=($!)
-  done
+#   for task in "${tasks[@]}"; do
+#     eval "$task" &
+#     pids+=($!)
+#   done
   
-  # Wait for all background processes to complete
-  for pid in "${pids[@]}"; do
-    wait $pid
-  done
-}
+#   # Wait for all background processes to complete
+#   for pid in "${pids[@]}"; do
+#     wait $pid
+#   done
+# }
 
-# Only clean directories if they exist and are not empty
-clean_directory_if_needed() {
-  local dir="$1"
-  if [ -d "$dir" ] && [ "$(ls -A "$dir" 2>/dev/null)" ]; then
-    info "Cleaning: $dir"
-    rm -rf "$dir"/* 2>/dev/null
-    success "Cleaned $dir"
-  fi
-}
+# # Only clean directories if they exist and are not empty
+# clean_directory_if_needed() {
+#   local dir="$1"
+#   if [ -d "$dir" ] && [ "$(ls -A "$dir" 2>/dev/null)" ]; then
+#     info "Cleaning: $dir"
+#     rm -rf "$dir"/* 2>/dev/null
+#     success "Cleaned $dir"
+#   fi
+# }
 
-# -------------------------
-# Main Cleanup Functions
-# -------------------------
+# # -------------------------
+# # Main Cleanup Functions
+# # -------------------------
 
-# Run system memory and cache cleanup
-clean_system_memory() {
-  print_header "System Memory Cleanup"
+# # Run system memory and cache cleanup
+# clean_system_memory() {
+#   print_header "System Memory Cleanup"
   
-  if command_exists sudo && command_exists purge; then
-    info "Purging system memory..."
-    sudo purge &
-    process_spinner $! "Purging system memory"
-  else
-    error "System purge command not available"
-  fi
-}
+#   if command_exists sudo && command_exists purge; then
+#     info "Purging system memory..."
+#     sudo purge &
+#     process_spinner $! "Purging system memory"
+#   else
+#     error "System purge command not available"
+#   fi
+# }
 
-# Run brew cleanup in optimized way
-clean_homebrew() {
-  print_header "Homebrew Cleanup"
+# # Run brew cleanup in optimized way
+# clean_homebrew() {
+#   print_header "Homebrew Cleanup"
   
-  if command_exists brew; then
-    info "Updating and cleaning Homebrew packages..."
+#   if command_exists brew; then
+#     info "Updating and cleaning Homebrew packages..."
     
-    # Perform operations separately to better handle errors
-    brew update &>/dev/null &
-    process_spinner $! "Updating Homebrew"
+#     # Perform operations separately to better handle errors
+#     brew update &>/dev/null &
+#     process_spinner $! "Updating Homebrew"
     
-    brew upgrade &>/dev/null &
-    process_spinner $! "Upgrading packages"
+#     brew upgrade &>/dev/null &
+#     process_spinner $! "Upgrading packages"
     
-    brew cleanup &>/dev/null &
-    process_spinner $! "Cleaning up old versions"
+#     brew cleanup &>/dev/null &
+#     process_spinner $! "Cleaning up old versions"
     
-    brew autoremove &>/dev/null &
-    process_spinner $! "Removing unneeded dependencies"
+#     brew autoremove &>/dev/null &
+#     process_spinner $! "Removing unneeded dependencies"
     
-    success "Homebrew maintenance complete"
-  else
-    error "Homebrew not installed"
-  fi
-}
+#     success "Homebrew maintenance complete"
+#   else
+#     error "Homebrew not installed"
+#   fi
+# }
 
-# Clean development related directories
-clean_dev_directories() {
-  print_header "Development Environment Cleanup"
+# # Clean development related directories
+# clean_dev_directories() {
+#   print_header "Development Environment Cleanup"
   
-  # Find old node_modules directories (only in user's projects, not system dirs)
-  if [ -d "$HOME/coding" ]; then
-    info "Removing old node_modules directories..."
-    find "$HOME/coding" -name "node_modules" -type d -mtime +120 -exec rm -rf {} \; -prune 2>/dev/null &
-    process_spinner $! "Cleaning old node_modules (older than 120 days)"
-  fi
+#   # Find old node_modules directories (only in user's projects, not system dirs)
+#   if [ -d "$HOME/coding" ]; then
+#     info "Removing old node_modules directories..."
+#     find "$HOME/coding" -name "node_modules" -type d -mtime +120 -exec rm -rf {} \; -prune 2>/dev/null &
+#     process_spinner $! "Cleaning old node_modules (older than 120 days)"
+#   fi
   
-  # Remove Python cache (optimize the find command)
-  if [ "$SKIP_PYTHON" = false ] && (command_exists python3 || command_exists python); then
-    info "Cleaning Python cache..."
+#   # Remove Python cache (optimize the find command)
+#   if [ "$SKIP_PYTHON" = false ] && (command_exists python3 || command_exists python); then
+#     info "Cleaning Python cache..."
     
-    # Define Python project directories, prioritizing ~/coding
-    python_dirs=()
-    # Add user's main coding directory first
-    if [ -d "$HOME/coding" ]; then
-      python_dirs+=("$HOME/coding")
-    fi
+#     # Define Python project directories, prioritizing ~/coding
+#     python_dirs=()
+#     # Add user's main coding directory first
+#     if [ -d "$HOME/coding" ]; then
+#       python_dirs+=("$HOME/coding")
+#     fi
     
-    # Add other common directories as fallback
-    for dir in "$HOME/Projects" "$HOME/code" "$HOME/python" "$HOME/development"; do
-      if [ -d "$dir" ] && [ "$dir" != "$HOME/coding" ]; then
-        python_dirs+=("$dir")
-      fi
-    done
+#     # Add other common directories as fallback
+#     for dir in "$HOME/Projects" "$HOME/code" "$HOME/python" "$HOME/development"; do
+#       if [ -d "$dir" ] && [ "$dir" != "$HOME/coding" ]; then
+#         python_dirs+=("$dir")
+#       fi
+#     done
     
-    if [ ${#python_dirs[@]} -gt 0 ]; then
-      # Use a more targeted approach with better feedback
-      info "Targeting directories: ${python_dirs[*]}"
+#     if [ ${#python_dirs[@]} -gt 0 ]; then
+#       # Use a more targeted approach with better feedback
+#       info "Targeting directories: ${python_dirs[*]}"
       
-      # Use a more efficient approach with a timeout
-      (
-        for dir in "${python_dirs[@]}"; do
-          find "$dir" -name "__pycache__" -type d -prune -exec rm -rf {} \; 2>/dev/null
-        done
-      ) & PID=$!
+#       # Use a more efficient approach with a timeout
+#       (
+#         for dir in "${python_dirs[@]}"; do
+#           find "$dir" -name "__pycache__" -type d -prune -exec rm -rf {} \; 2>/dev/null
+#         done
+#       ) & PID=$!
       
-      # Add a shorter timeout (15 seconds should be plenty for targeted directories)
-      (
-        sleep 15
-        if ps -p $PID > /dev/null; then
-          kill $PID 2>/dev/null
-          wait $PID 2>/dev/null
-          echo -e "\b${YELLOW}⚠${RESET} (timed out)"
-        fi
-      ) & TIMEOUT_PID=$!
+#       # Add a shorter timeout (15 seconds should be plenty for targeted directories)
+#       (
+#         sleep 15
+#         if ps -p $PID > /dev/null; then
+#           kill $PID 2>/dev/null
+#           wait $PID 2>/dev/null
+#           echo -e "\b${YELLOW}⚠${RESET} (timed out)"
+#         fi
+#       ) & TIMEOUT_PID=$!
       
-      process_spinner $PID "Cleaning Python cache (15s max)"
-      kill $TIMEOUT_PID 2>/dev/null
-      wait $TIMEOUT_PID 2>/dev/null
-    else
-      info "No Python project directories found, skipping cache cleanup"
-    fi
-  elif [ "$SKIP_PYTHON" = true ]; then
-    info "Python cache cleanup skipped (--skip-python flag used)"
-  fi
+#       process_spinner $PID "Cleaning Python cache (15s max)"
+#       kill $TIMEOUT_PID 2>/dev/null
+#       wait $TIMEOUT_PID 2>/dev/null
+#     else
+#       info "No Python project directories found, skipping cache cleanup"
+#     fi
+#   elif [ "$SKIP_PYTHON" = true ]; then
+#     info "Python cache cleanup skipped (--skip-python flag used)"
+#   fi
   
-  # Run multiple cleanups in parallel for speed
-  local parallel_tasks=(
-    "clean_directory_if_needed '$HOME/Library/Caches/pip'" 
-    "clean_directory_if_needed '$HOME/.npm'" 
-    "clean_directory_if_needed '$HOME/.gradle/caches'"
-    "clean_directory_if_needed '$HOME/Library/Caches/CocoaPods'"
-    "clean_directory_if_needed '$HOME/Library/Messages/Attachments/'"
-    "clean_directory_if_needed '$HOME/Library/Developer/Xcode/DerivedData/'"
-    "clean_directory_if_needed '$HOME/Library/Developer/Xcode/Archives/'"
-    "clean_directory_if_needed '$HOME/Library/Developer/Xcode/iOS DeviceSupport/'"
-    "clean_directory_if_needed '$HOME/Library/Developer/CoreSimulator/'"
-  )
+#   # Run multiple cleanups in parallel for speed
+#   local parallel_tasks=(
+#     "clean_directory_if_needed '$HOME/Library/Caches/pip'" 
+#     "clean_directory_if_needed '$HOME/.npm'" 
+#     "clean_directory_if_needed '$HOME/.gradle/caches'"
+#     "clean_directory_if_needed '$HOME/Library/Caches/CocoaPods'"
+#     "clean_directory_if_needed '$HOME/Library/Messages/Attachments/'"
+#     "clean_directory_if_needed '$HOME/Library/Developer/Xcode/DerivedData/'"
+#     "clean_directory_if_needed '$HOME/Library/Developer/Xcode/Archives/'"
+#     "clean_directory_if_needed '$HOME/Library/Developer/Xcode/iOS DeviceSupport/'"
+#     "clean_directory_if_needed '$HOME/Library/Developer/CoreSimulator/'"
+#   )
   
-  run_parallel "${parallel_tasks[@]}"
-  success "Cache directories cleaned"
-}
+#   run_parallel "${parallel_tasks[@]}"
+#   success "Cache directories cleaned"
+# }
 
-# Clean Xcode related files
-clean_xcode() {
-  print_header "Xcode Cleanup"
+# # Clean Xcode related files
+# clean_xcode() {
+#   print_header "Xcode Cleanup"
   
-  # Check if Xcode is installed
-  if [ -d "/Applications/Xcode.app" ] || [ -d "$HOME/Library/Developer" ]; then
-    info "Closing Xcode if running..."
-    osascript -e 'quit app "Xcode"' &>/dev/null
+#   # Check if Xcode is installed
+#   if [ -d "/Applications/Xcode.app" ] || [ -d "$HOME/Library/Developer" ]; then
+#     info "Closing Xcode if running..."
+#     osascript -e 'quit app "Xcode"' &>/dev/null
     
-    # Give Xcode a moment to close properly
-    sleep 1
+#     # Give Xcode a moment to close properly
+#     sleep 1
     
-    # Clean Xcode caches in parallel
-    local parallel_tasks=(
-      "clean_directory_if_needed '$HOME/Library/Developer/CoreSimulator'"
-      "clean_directory_if_needed '$HOME/Library/Developer/Xcode/DerivedData'"
-      "clean_directory_if_needed '$HOME/Library/Caches/com.apple.dt.Xcode'"
-    )
+#     # Clean Xcode caches in parallel
+#     local parallel_tasks=(
+#       "clean_directory_if_needed '$HOME/Library/Developer/CoreSimulator'"
+#       "clean_directory_if_needed '$HOME/Library/Developer/Xcode/DerivedData'"
+#       "clean_directory_if_needed '$HOME/Library/Caches/com.apple.dt.Xcode'"
+#     )
     
-    run_parallel "${parallel_tasks[@]}"
+#     run_parallel "${parallel_tasks[@]}"
     
-    # Remove preferences only if explicitly needed (this is optional)
-    if [ -f "$HOME/Library/Preferences/com.apple.dt.Xcode.plist" ]; then
-      info "Resetting Xcode preferences..."
-      rm -f "$HOME/Library/Preferences/com.apple.dt.Xcode.plist"
-      success "Xcode preferences reset"
-    fi
+#     # Remove preferences only if explicitly needed (this is optional)
+#     if [ -f "$HOME/Library/Preferences/com.apple.dt.Xcode.plist" ]; then
+#       info "Resetting Xcode preferences..."
+#       rm -f "$HOME/Library/Preferences/com.apple.dt.Xcode.plist"
+#       success "Xcode preferences reset"
+#     fi
     
-    success "Xcode cleanup complete"
-  else
-    info "Xcode not installed, skipping related cleanup"
-  fi
-}
+#     success "Xcode cleanup complete"
+#   else
+#     info "Xcode not installed, skipping related cleanup"
+#   fi
+# }
 
-# Clean Docker if installed
-clean_docker() {
-  print_header "Docker Cleanup"
+# # Clean Docker if installed
+# clean_docker() {
+#   print_header "Docker Cleanup"
   
-  if command_exists docker; then
-    info "Pruning Docker volumes and system..."
+#   if command_exists docker; then
+#     info "Pruning Docker volumes and system..."
     
-    docker volume prune -f &>/dev/null &
-    process_spinner $! "Pruning unused Docker volumes"
+#     docker volume prune -f &>/dev/null &
+#     process_spinner $! "Pruning unused Docker volumes"
     
-    docker system prune -af --volumes &>/dev/null &
-    process_spinner $! "Pruning Docker system"
+#     docker system prune -af --volumes &>/dev/null &
+#     process_spinner $! "Pruning Docker system"
     
-    success "Docker cleanup complete"
-  else
-    info "Docker not installed, skipping cleanup"
-  fi
-}
+#     success "Docker cleanup complete"
+#   else
+#     info "Docker not installed, skipping cleanup"
+#   fi
+# }
 
-# Clean Rust if installed
-clean_rust() {
-  print_header "Rust Cleanup"
+# # Clean Rust if installed
+# clean_rust() {
+#   print_header "Rust Cleanup"
   
-  if command_exists cargo; then
-    # Find Cargo.toml files and clean their projects
-    info "Cleaning Rust project artifacts..."
-    find "$HOME/Projects" -name "Cargo.toml" -type f -execdir cargo clean \; &>/dev/null &
-    process_spinner $! "Cleaning Rust project build artifacts"
+#   if command_exists cargo; then
+#     # Find Cargo.toml files and clean their projects
+#     info "Cleaning Rust project artifacts..."
+#     find "$HOME/Projects" -name "Cargo.toml" -type f -execdir cargo clean \; &>/dev/null &
+#     process_spinner $! "Cleaning Rust project build artifacts"
     
-    # Only reinstall if necessary (this is quite slow, so make it optional)
-    if [ "$FULL_CLEAN" = true ]; then
-      info "Reinstalling Rust..."
-      brew reinstall rust &>/dev/null &
-      process_spinner $! "Reinstalling Rust"
-    fi
+#     # Only reinstall if necessary (this is quite slow, so make it optional)
+#     if [ "$FULL_CLEAN" = true ]; then
+#       info "Reinstalling Rust..."
+#       brew reinstall rust &>/dev/null &
+#       process_spinner $! "Reinstalling Rust"
+#     fi
     
-    success "Rust cleanup complete"
-  else
-    info "Rust not installed, skipping cleanup"
-  fi
-}
+#     success "Rust cleanup complete"
+#   else
+#     info "Rust not installed, skipping cleanup"
+#   fi
+# }
 
-# Clean Git repositories
-clean_git_repos() {
-  print_header "Git Repository Cleanup"
+# # Clean Git repositories
+# clean_git_repos() {
+#   print_header "Git Repository Cleanup"
   
-  if command_exists git; then
-    # Process Git repositories more efficiently by targeting specific directories
-    local git_dirs=()
+#   if command_exists git; then
+#     # Process Git repositories more efficiently by targeting specific directories
+#     local git_dirs=()
     
-    if [ -d "$HOME/Projects" ]; then
-      mapfile -t git_dirs < <(find "$HOME/Projects" -name ".git" -type d -prune 2>/dev/null)
+#     if [ -d "$HOME/Projects" ]; then
+#       mapfile -t git_dirs < <(find "$HOME/Projects" -name ".git" -type d -prune 2>/dev/null)
       
-      if [ ${#git_dirs[@]} -gt 0 ]; then
-        info "Found ${#git_dirs[@]} Git repositories to clean"
+#       if [ ${#git_dirs[@]} -gt 0 ]; then
+#         info "Found ${#git_dirs[@]} Git repositories to clean"
         
-        local count=0
-        local total=${#git_dirs[@]}
+#         local count=0
+#         local total=${#git_dirs[@]}
         
-        for git_dir in "${git_dirs[@]}"; do
-          repo_dir="${git_dir%/.git}"
-          ((count++))
+#         for git_dir in "${git_dirs[@]}"; do
+#           repo_dir="${git_dir%/.git}"
+#           ((count++))
           
-          show_progress $count $total "Cleaning Git repos"
+#           show_progress $count $total "Cleaning Git repos"
           
-          # Clean merged branches (master or main)
-          git -C "$repo_dir" branch --merged 2>/dev/null | grep -v "\* \(main\|master\)" | xargs -r git -C "$repo_dir" branch -d &>/dev/null
-        done
+#           # Clean merged branches (master or main)
+#           git -C "$repo_dir" branch --merged 2>/dev/null | grep -v "\* \(main\|master\)" | xargs -r git -C "$repo_dir" branch -d &>/dev/null
+#         done
         
-        echo # Add newline after progress bar
-        success "Git repositories cleaned"
-      else
-        info "No Git repositories found"
-      fi
-    else
-      info "No Projects directory found, skipping Git cleanup"
-    fi
-  else
-    info "Git not installed, skipping cleanup"
-  fi
-}
+#         echo # Add newline after progress bar
+#         success "Git repositories cleaned"
+#       else
+#         info "No Git repositories found"
+#       fi
+#     else
+#       info "No Projects directory found, skipping Git cleanup"
+#     fi
+#   else
+#     info "Git not installed, skipping cleanup"
+#   fi
+# }
 
-# Clean system application caches and unused files
-clean_system_caches() {
-  print_header "System Cache Cleanup"
+# # Clean system application caches and unused files
+# clean_system_caches() {
+#   print_header "System Cache Cleanup"
   
-  # Clean download history
-  if [ -f "$HOME/Library/Preferences/com.apple.LaunchServices.QuarantineEventsV*" ]; then
-    info "Clearing download history..."
-    sqlite3 "$HOME/Library/Preferences/com.apple.LaunchServices.QuarantineEventsV*" 'delete from LSQuarantineEvent' &>/dev/null &
-    process_spinner $! "Clearing download history"
-  fi
+#   # Clean download history
+#   if [ -f "$HOME/Library/Preferences/com.apple.LaunchServices.QuarantineEventsV*" ]; then
+#     info "Clearing download history..."
+#     sqlite3 "$HOME/Library/Preferences/com.apple.LaunchServices.QuarantineEventsV*" 'delete from LSQuarantineEvent' &>/dev/null &
+#     process_spinner $! "Clearing download history"
+#   fi
   
-  # Clean trash if necessary and user confirms
-  if [ -d "$HOME/.Trash" ] && [ "$(ls -A "$HOME/.Trash" 2>/dev/null)" ]; then
-    info "Emptying Trash..."
-    rm -rf "$HOME/.Trash"/* &>/dev/null &
-    process_spinner $! "Emptying Trash"
-  fi
+#   # Clean trash if necessary and user confirms
+#   if [ -d "$HOME/.Trash" ] && [ "$(ls -A "$HOME/.Trash" 2>/dev/null)" ]; then
+#     info "Emptying Trash..."
+#     rm -rf "$HOME/.Trash"/* &>/dev/null &
+#     process_spinner $! "Emptying Trash"
+#   fi
   
-  # Clean various application support directories (in parallel)
-  local parallel_tasks=(
-    "clean_directory_if_needed '$HOME/Library/Application Support/CrashReporter'"
-    "clean_directory_if_needed '$HOME/Library/Application State'"
-    "clean_directory_if_needed '$HOME/Library/Caches'"
-  )
+#   # Clean various application support directories (in parallel)
+#   local parallel_tasks=(
+#     "clean_directory_if_needed '$HOME/Library/Application Support/CrashReporter'"
+#     "clean_directory_if_needed '$HOME/Library/Application State'"
+#     "clean_directory_if_needed '$HOME/Library/Caches'"
+#   )
   
-  run_parallel "${parallel_tasks[@]}"
-  success "System caches cleaned"
-}
+#   run_parallel "${parallel_tasks[@]}"
+#   success "System caches cleaned"
+# }
 
-clean_uninstalled_app_data() {
-  local app_support_dir="$HOME/Library/Application Support"
-  local app_locations=("/Applications" "$HOME/Applications")
+# clean_uninstalled_app_data() {
+#   local app_support_dir="$HOME/Library/Application Support"
+#   local app_locations=("/Applications" "$HOME/Applications")
 
-  print_header "Cleaning uninstalled app data in Application Support"
+#   print_header "Cleaning uninstalled app data in Application Support"
 
-  # Loop through each folder in Application Support
-  find "$app_support_dir" -mindepth 1 -maxdepth 1 -type d | while read -r app_folder; do
-    local app_name=$(basename "$app_folder")
-    local app_found=false
+#   # Loop through each folder in Application Support
+#   find "$app_support_dir" -mindepth 1 -maxdepth 1 -type d | while read -r app_folder; do
+#     local app_name=$(basename "$app_folder")
+#     local app_found=false
 
-    # Check if app exists in the common Applications folders
-    for loc in "${app_locations[@]}"; do
-      # Check for app bundles (.app) with matching name (case-insensitive)
-      if ls "$loc"/*.app 2>/dev/null | grep -iq "^$loc/$app_name\.app$"; then
-        app_found=true
-        break
-      fi
-    done
+#     # Check if app exists in the common Applications folders
+#     for loc in "${app_locations[@]}"; do
+#       # Check for app bundles (.app) with matching name (case-insensitive)
+#       if ls "$loc"/*.app 2>/dev/null | grep -iq "^$loc/$app_name\.app$"; then
+#         app_found=true
+#         break
+#       fi
+#     done
 
-    # If not found, delete the app data folder
-    if [ "$app_found" = false ]; then
-      info "Removing leftover data for uninstalled app: $app_name"
-      rm -rf "$app_folder"
-      success "Deleted $app_folder"
-    fi
-  done
-}
+#     # If not found, delete the app data folder
+#     if [ "$app_found" = false ]; then
+#       info "Removing leftover data for uninstalled app: $app_name"
+#       rm -rf "$app_folder"
+#       success "Deleted $app_folder"
+#     fi
+#   done
+# }
 
-# -------------------------
-# Main Execution
-# -------------------------
+# # -------------------------
+# # Main Execution
+# # -------------------------
 
-# Run the main cleanup function
-main() {
-  # Clear the screen for a clean start
-  clear
+# # Run the main cleanup function
+# main() {
+#   # Clear the screen for a clean start
+#   clear
   
-  # Show a nice banner
-  echo -e "${CYAN}"
-  echo '  _____   _____    _____  _      _____          _   _ '
-  echo ' |  __ \ / ____|  / ____|| |    |  ___|  /\    | \ | |'
-  echo ' | |__) | |      | |     | |    | |__   /  \   |  \| |'
-  echo ' |  ___/| |      | |     | |    |  __| / /\ \  | . ` |'
-  echo ' | |    | |____  | |____ | |___ | |___/ ____ \ | |\  |'
-  echo ' |_|     \_____|  \_____||_____||_____/_/    \_\|_| \_|'
-  echo -e "${RESET}"
-  echo -e "${GREEN}Optimized System Cleanup Tool${RESET}"
-  echo -e "${YELLOW}=====================================${RESET}\n"
+#   # Show a nice banner
+#   echo -e "${CYAN}"
+#   echo '  _____   _____    _____  _      _____          _   _ '
+#   echo ' |  __ \ / ____|  / ____|| |    |  ___|  /\    | \ | |'
+#   echo ' | |__) | |      | |     | |    | |__   /  \   |  \| |'
+#   echo ' |  ___/| |      | |     | |    |  __| / /\ \  | . ` |'
+#   echo ' | |    | |____  | |____ | |___ | |___/ ____ \ | |\  |'
+#   echo ' |_|     \_____|  \_____||_____||_____/_/    \_\|_| \_|'
+#   echo -e "${RESET}"
+#   echo -e "${GREEN}Optimized System Cleanup Tool${RESET}"
+#   echo -e "${YELLOW}=====================================${RESET}\n"
   
-  # Initialize flags
-  FULL_CLEAN=false
-  SKIP_PYTHON=false
+#   # Initialize flags
+#   FULL_CLEAN=false
+#   SKIP_PYTHON=false
   
-  # Parse command line arguments
-  for arg in "$@"; do
-    case $arg in
-      --full)
-        FULL_CLEAN=true
-        ;;
-      --skip-python)
-        SKIP_PYTHON=true
-        ;;
-    esac
-  done
+#   # Parse command line arguments
+#   for arg in "$@"; do
+#     case $arg in
+#       --full)
+#         FULL_CLEAN=true
+#         ;;
+#       --skip-python)
+#         SKIP_PYTHON=true
+#         ;;
+#     esac
+#   done
   
-  # Display mode information
-  if [ "$FULL_CLEAN" = true ]; then
-    echo -e "${MAGENTA}Running in FULL cleanup mode${RESET}\n"
-  else
-    echo -e "${BLUE}Running in standard cleanup mode${RESET}"
-    echo -e "${BLUE}Use --full for more aggressive cleaning${RESET}\n"
-  fi
+#   # Display mode information
+#   if [ "$FULL_CLEAN" = true ]; then
+#     echo -e "${MAGENTA}Running in FULL cleanup mode${RESET}\n"
+#   else
+#     echo -e "${BLUE}Running in standard cleanup mode${RESET}"
+#     echo -e "${BLUE}Use --full for more aggressive cleaning${RESET}\n"
+#   fi
   
-  if [ "$SKIP_PYTHON" = true ]; then
-    echo -e "${YELLOW}Skipping Python cache cleanup${RESET}\n"
-  fi
+#   if [ "$SKIP_PYTHON" = true ]; then
+#     echo -e "${YELLOW}Skipping Python cache cleanup${RESET}\n"
+#   fi
   
-  # Count total steps for progress tracking
-  local total_steps=7
-  local current_step=0
+#   # Count total steps for progress tracking
+#   local total_steps=7
+#   local current_step=0
 
-  # Run cleanup functions with progress tracking
-  clean_system_memory
-  ((current_step++))
-  show_progress $current_step $total_steps "Overall Progress"
+#   # Run cleanup functions with progress tracking
+#   clean_system_memory
+#   ((current_step++))
+#   show_progress $current_step $total_steps "Overall Progress"
   
-  clean_homebrew
-  ((current_step++))
-  show_progress $current_step $total_steps "Overall Progress"
+#   clean_homebrew
+#   ((current_step++))
+#   show_progress $current_step $total_steps "Overall Progress"
   
-  clean_dev_directories
-  ((current_step++))
-  show_progress $current_step $total_steps "Overall Progress"
+#   clean_dev_directories
+#   ((current_step++))
+#   show_progress $current_step $total_steps "Overall Progress"
   
-  clean_xcode
-  ((current_step++))
-  show_progress $current_step $total_steps "Overall Progress"
+#   clean_xcode
+#   ((current_step++))
+#   show_progress $current_step $total_steps "Overall Progress"
   
-  clean_docker
-  ((current_step++))
-  show_progress $current_step $total_steps "Overall Progress"
+#   clean_docker
+#   ((current_step++))
+#   show_progress $current_step $total_steps "Overall Progress"
   
-  clean_rust
-  ((current_step++))
-  show_progress $current_step $total_steps "Overall Progress"
+#   clean_rust
+#   ((current_step++))
+#   show_progress $current_step $total_steps "Overall Progress"
   
-  clean_git_repos
-  ((current_step++))
-  show_progress $current_step $total_steps "Overall Progress"
+#   clean_git_repos
+#   ((current_step++))
+#   show_progress $current_step $total_steps "Overall Progress"
   
-  clean_system_caches
-  # clean_uninstalled_app_data
+#   clean_system_caches
+#   # clean_uninstalled_app_data
   
-  # Final cleanup message
-  echo # Add newline after progress bar
-  print_header "Cleanup Complete!"
-  echo -e "${GREEN}Your system has been cleaned and optimized.${RESET}"
-  echo -e "${YELLOW}You may want to restart your system for all changes to take effect.${RESET}\n"
-}
+#   # Final cleanup message
+#   echo # Add newline after progress bar
+#   print_header "Cleanup Complete!"
+#   echo -e "${GREEN}Your system has been cleaned and optimized.${RESET}"
+#   echo -e "${YELLOW}You may want to restart your system for all changes to take effect.${RESET}\n"
+# }
 
-# Execute the main function with any passed arguments
-main "$@"
+# # Execute the main function with any passed arguments
+# main "$@"
