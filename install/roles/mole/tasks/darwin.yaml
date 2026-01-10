@@ -1,0 +1,12 @@
+---
+- name: Install mole
+  homebrew:
+       name: mole
+       state: present
+       update_homebrew: yes
+
+- name: Install mole globally
+  npm:
+       name: mole
+       global: yes
+       state: present

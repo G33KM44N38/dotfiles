@@ -46,3 +46,4 @@ default_roles:
      - lua-language-server
      - config
      - fd
+     - mole

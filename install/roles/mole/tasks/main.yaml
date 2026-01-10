@@ -1,0 +1,4 @@
+---
+- name: Run mole task
+  ansible.builtin.import_tasks: tasks/darwin.yaml
+  when: ansible_system == 'Darwin'
