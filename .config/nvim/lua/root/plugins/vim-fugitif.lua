@@ -296,8 +296,28 @@ return {
 		vim.api.nvim_set_keymap("n", "<leader>q", ":lua QuitMenu()<CR>", { noremap = true, silent = true })
 
 		vim.cmd("command -bar -bang -nargs=* Gcommit lua InputArgs()")
-		vim.keymap.set("n", "gj", "<cmd>diffget //3<CR>")
-		vim.keymap.set("n", "gf", "<cmd>diffget //2<CR>")
+
+		-- vim.keymap.set("n", "gj", "<cmd>diffget //2<CR>")
+		-- vim.keymap.set("n", "gf", "<cmd>diffget //3<CR>")
+
+		vim.keymap.set(
+			"n",
+			"gf",
+			":let start = search('<<<<<<<', 'bc')<CR>"
+				.. ":let end = search('>>>>>>>', 'e')<CR>"
+				.. ":execute start.','.end.'diffget //2'<CR>",
+			{ desc = "Select conflict + diffget buffer 2", silent = true }
+		)
+		-- gc + 3 = select conflict + diffget from buffer 3
+		vim.keymap.set(
+			"n",
+			"gj",
+			":let start = search('<<<<<<<', 'bc')<CR>"
+				.. ":let end = search('>>>>>>>', 'e')<CR>"
+				.. ":execute start.','.end.'diffget //3'<CR>",
+			{ desc = "Select conflict + diffget buffer 3", silent = true }
+		)
+
 		vim.api.nvim_set_keymap("n", "<leader>g", ":G<CR>", { noremap = true, silent = true })
 
 		vim.api.nvim_create_user_command("AICommitMessage", function()
