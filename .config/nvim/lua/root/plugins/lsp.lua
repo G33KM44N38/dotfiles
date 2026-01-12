@@ -129,7 +129,12 @@ return {
 					local filepath = vim.api.nvim_buf_get_name(bufnr)
 
 					if filepath:match("%.test%.") or filepath:match("%.spec%.") or filepath:match("/e2e/") then
-						vim.lsp.buf_detach_client(bufnr, client.id)
+						-- Safe detachment with proper validation
+						if vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_buf_is_loaded(bufnr) then
+							pcall(function()
+								vim.lsp.buf_detach_client(bufnr, client.id)
+							end)
+						end
 						return
 					end
 
@@ -185,7 +190,12 @@ return {
 								end)
 
 								for i = 1, #client_list - 1 do
-									vim.lsp.buf_detach_client(bufnr, client_list[i].id)
+									-- Safe detachment with proper validation
+									if vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_buf_is_loaded(bufnr) then
+										pcall(function()
+											vim.lsp.buf_detach_client(bufnr, client_list[i].id)
+										end)
+									end
 									vim.schedule(function()
 										print(
 											string.format(
@@ -202,13 +212,18 @@ return {
 						-- Désactiver GraphQL s'il spawn malgré tout
 						for _, client in ipairs(vim.lsp.get_clients({ bufnr = bufnr })) do
 							if client.name == "graphql" then
-								vim.lsp.buf_detach_client(bufnr, client.id)
+								-- Safe detachment with proper validation
+								if vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_buf_is_loaded(bufnr) then
+									pcall(function()
+										vim.lsp.buf_detach_client(bufnr, client.id)
+									end)
+								end
 								vim.schedule(function()
 									print("🚫 Blocked graphql (not configured)")
 								end)
 							end
 						end
-					end, 100)
+					end, 200)
 				end,
 			})
 
