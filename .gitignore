@@ -72,3 +72,4 @@ goinfre/
 .claude/history.jsonl
 .config/mole/mole.log
 .config/simple-update-notifier/nodemon.json
+.claude/

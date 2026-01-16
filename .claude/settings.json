@@ -17,7 +17,7 @@
       "WebSearch"
     ]
   },
-  "model": "sonnet",
+  "model": "opus",
   "hooks": {
     "Stop": [
       {
