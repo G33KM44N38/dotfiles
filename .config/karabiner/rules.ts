@@ -41,7 +41,7 @@ const hyperSubLayers = createHyperSubLayers({
     s: app("Linear"),
     a: app("Arc"),
     b: app("Beeper Desktop"),
-    c: app("Calendar"),
+    c: app("Fantastical"),
     d: app("DaVinci Resolve"),
     e: app("Mail"),
     f: app("Figma"),

@@ -32,8 +32,8 @@ tmux kill-pane -a -t 4 2>/dev/null || true
 tmux send-keys -t 4 "opencode" C-m
 
 # # Split horizontally and run claude in the new pane
-# tmux split-window -h -t 4 -c "$PWD"
-# tmux send-keys -t 4 "claude" C-m
+tmux split-window -h -t 4 -c "$PWD"
+tmux send-keys -t 4 "claude" C-m
 
 # Return to the original window
 tmux select-window -t "$current_window"
