@@ -1,0 +1,6 @@
+---
+- name: Install claude-code on macos
+  community.general.homebrew_cask:
+       name: claude-code
+       state: present
+       update_homebrew: yes
