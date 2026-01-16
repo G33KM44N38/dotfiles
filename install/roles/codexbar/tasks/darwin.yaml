@@ -1,0 +1,6 @@
+---
+- name: Install codexbar
+  community.general.homebrew_cask:
+       name: codexbar
+       state: present
+       update_homebrew: yes

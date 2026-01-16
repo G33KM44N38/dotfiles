@@ -1,5 +1,4 @@
 ---
-- name: Run Marta task
+- name: Run codexbar task
   ansible.builtin.import_tasks: tasks/darwin.yaml
   when: ansible_system == 'Darwin'
-  ignore_errors: true

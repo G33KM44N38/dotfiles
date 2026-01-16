@@ -37,27 +37,63 @@ function M.create_worktree_wrapper()
 		attach_mappings = function(prompt_bufnr, map)
 			actions.select_default:replace(function()
 				local selection = action_state.get_selected_entry()
+				local prompt_text = action_state.get_current_line()
 				actions.close(prompt_bufnr)
 
+				local branch
+				local is_new_branch = false
+
 				if selection then
-					local branch = selection.value
+					-- Existing branch selected
+					branch = selection.value
+				elseif prompt_text and prompt_text ~= "" then
+					-- New branch name entered
+					branch = prompt_text
+					is_new_branch = true
+				else
+					return -- Nothing selected or typed
+				end
 
-					-- Demander le chemin personnalisé
+				if is_new_branch then
+					-- For new branches, ask for base branch via another Telescope picker
+					vim.schedule(function()
+						require("telescope.builtin").git_branches({
+							prompt_title = "Select base branch for: " .. branch,
+							attach_mappings = function(base_prompt_bufnr, _)
+								actions.select_default:replace(function()
+									local base_selection = action_state.get_selected_entry()
+									actions.close(base_prompt_bufnr)
+
+									if base_selection then
+										local base_branch = base_selection.value:gsub("^origin/", "")
+
+										-- Ask for path
+										local path = vim.fn.input("Path to subtree > ")
+										if path == "" then
+											path = branch
+										end
+
+										-- Pre-create the branch from the selected base
+										-- This is necessary because git-worktree plugin only creates from HEAD
+										local create_branch_cmd = string.format("git branch %s %s", branch, base_branch)
+										vim.fn.system(create_branch_cmd)
+
+										-- Now create the worktree - plugin will find the existing branch
+										git_worktree.create_worktree(path, branch, "origin")
+									end
+								end)
+								return true
+							end,
+						})
+					end)
+				else
+					-- Existing branch flow (unchanged)
 					local path = vim.fn.input("Path to subtree > ")
-
-					-- Si aucun chemin n'est fourni, utiliser le nom de la branche
 					if path == "" then
 						path = branch
 					end
-
-					-- Enlever uniquement le préfixe origin/ du chemin (garder feature/, bugfix/, etc.)
 					path = path:gsub("^origin/", "")
-
-					-- Nettoyer aussi le nom de la branche pour éviter le double origin/
-					-- Si la branche est origin/feature/X, on veut juste feature/X
 					local clean_branch = branch:gsub("^origin/", "")
-
-					-- Créer le worktree avec le chemin et la branche nettoyés
 					git_worktree.create_worktree(path, clean_branch, "origin")
 				end
 			end)

@@ -6,8 +6,6 @@ default_roles:
      - lazydocker
      - ripgrep
      - tmux
-     # - skhd
-     # - yabai
      - node
      - fzf
      # - cmake
@@ -47,3 +45,4 @@ default_roles:
      - config
      - fd
      - mole
+     - codexbar
