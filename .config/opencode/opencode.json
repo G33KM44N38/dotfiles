@@ -11,7 +11,7 @@
 		"build": {
 			"prompt": "{file:./command/work.md}",
 			"mode": "primary",
-			"model": "opencode/grok-code",
+			"model": "opencode/minimax-m2.1-free",
 			"tools": {
 				"write": true,
 				"edit": true,
@@ -20,7 +20,7 @@
 		},
 		"plan": {
 			"mode": "primary",
-			"model": "opencode/grok-code",
+			"model": "opencode/minimax-m2.1-free",
 			"tools": {
 				"write": false,
 				"edit": false,

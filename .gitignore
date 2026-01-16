@@ -70,3 +70,5 @@ goinfre/
 .claude/debug/
 .claude/file-history/
 .claude/history.jsonl
+.config/mole/mole.log
+.config/simple-update-notifier/nodemon.json
