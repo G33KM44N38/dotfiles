@@ -30,9 +30,12 @@ function M.create_worktree_wrapper()
 		end
 	end
 
-	ensure_fetch_refspec()
+		ensure_fetch_refspec()
 
-	-- Utilise le picker git_branches de Telescope
+		-- Ensure remote branches are fetched so they appear in the picker
+		vim.fn.system("git fetch --all 2>/dev/null")
+
+		-- Utilise le picker git_branches de Telescope
 	require("telescope.builtin").git_branches({
 		attach_mappings = function(prompt_bufnr, map)
 			actions.select_default:replace(function()
@@ -87,14 +90,24 @@ function M.create_worktree_wrapper()
 						})
 					end)
 				else
-					-- Existing branch flow (unchanged)
+					-- Existing branch flow - handle both local and remote branches
 					local path = vim.fn.input("Path to subtree > ")
 					if path == "" then
 						path = branch
 					end
-					path = path:gsub("^origin/", "")
-					local clean_branch = branch:gsub("^origin/", "")
-					git_worktree.create_worktree(path, clean_branch, "origin")
+
+					-- Check if selected branch is remote (origin/*)
+					local is_remote = branch:match("^origin/")
+					if is_remote then
+						-- For remote branches: create local tracking branch first, then worktree
+						local clean_branch = branch:gsub("^origin/", "")
+						vim.fn.system("git branch --track " .. clean_branch .. " " .. branch)
+						git_worktree.create_worktree(path, clean_branch, "origin")
+					else
+						-- Local branch: use as-is
+						path = path:gsub("^origin/", "")
+						git_worktree.create_worktree(path, branch, "origin")
+					end
 				end
 			end)
 			return true
