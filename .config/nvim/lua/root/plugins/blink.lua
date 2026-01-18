@@ -30,7 +30,7 @@ return {
 			["<C-Space>"] = { "show", "fallback" },
 		},
 		sources = {
-			default = { "snippets", "lsp", "path", "buffer", "emoji", "conventional_commits" },
+			default = { "snippets", "lsp", "path", "buffer", "emoji", "conventional_commits", "wikilinks" },
 			providers = {
 				snippets = {
 					name = "Snippets",
@@ -70,6 +70,27 @@ return {
 						return vim.bo.filetype == "gitcommit"
 					end,
 					opts = {},
+				},
+				wikilinks = {
+					name = "Wiki Links",
+					module = "root.blink-wikilinks",
+					score_offset = 80, -- Slightly above path to prioritize Obsidian files
+					min_keyword_length = 0,
+					max_items = 15,
+					opts = {
+						workspace_path = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/",
+					},
+					should_show_items = function()
+						-- Only show for markdown files
+						if vim.bo.filetype ~= "markdown" then
+							return false
+						end
+						-- Check if we're inside [[ ]]
+						local line = vim.api.nvim_get_current_line()
+						local col = vim.api.nvim_win_get_cursor(0)[2]
+						local line_to_cursor = line:sub(1, col + 1)
+						return line_to_cursor:find("%[%[[^%]]*$") ~= nil
+					end,
 				},
 			},
 		},
