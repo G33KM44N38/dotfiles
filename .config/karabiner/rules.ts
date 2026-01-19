@@ -162,13 +162,13 @@ const rightGuiLayer = createKeyLayer(
   "right_command",
   {
     //left hand
-    a: { to: [{ key_code: "backslash", modifiers: ["left_shift"] }] },
-    b: { to: [{ key_code: "open_bracket", modifiers: ["left_shift"] }] },
+    a: { to: [{ key_code: "backslash", modifiers: ["left_shift"] }] }, // pipe
     d: { to: [{ key_code: "open_bracket" }] },
     g: { to: [{ key_code: "9", modifiers: ["left_shift"] }] },
-    f: { to: [{ key_code: "open_bracket", modifiers: ["left_shift"] }] },
+    f: { to: [{ key_code: "open_bracket", modifiers: ["left_shift"] }] }, // square bracket
     e: { to: [{ key_code: "slash" }] },
     r: { to: [{ key_code: "hyphen", modifiers: ["left_shift"] }] },
+    s: { to: [{ key_code: "hyphen", modifiers: ["left_shift"] }] },
 
     //right hand
     h: { to: [{ key_code: "0", modifiers: ["left_shift"] }] },

@@ -122,6 +122,7 @@ return {
 		vim.api.nvim_set_keymap("n", "<C-q>", "<cmd>FzfLua live_grep<CR>", opts)
 		vim.api.nvim_set_keymap("n", "<leader>fb", "<cmd>FzfLua buffers<CR>", opts)
 		vim.api.nvim_set_keymap("n", "<leader>ke", "<cmd>FzfLua keymaps<CR>", opts)
+		vim.api.nvim_set_keymap("n", "<leader>ds", "<cmd>FzfLua lsp_document_symbols<CR>", opts)
 		vim.keymap.set({ "n", "v" }, "<leader>c", "<cmd>FzfLua lsp_code_actions<CR>", { desc = "Code Actions" })
 	end,
 }
