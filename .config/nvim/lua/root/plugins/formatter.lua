@@ -37,11 +37,22 @@ return {
 				yaml = { "prettier" }, -- <--- add this line for YAML formatting
 				yml = { "prettier" }, -- <--- also add this to catch `.yml` files
 			},
-			format_after_save = {
-				lsp_fallback = true,
-				async = true,
-				timeout_ms = 2000,
-			},
+			format_after_save = function(bufnr)
+				-- Skip formatting for large files (especially TSX with SVG)
+				local filepath = vim.api.nvim_buf_get_name(bufnr)
+				local ok, stats = pcall(vim.loop.fs_stat, filepath)
+				local file_size = ok and stats and stats.size or 0
+
+				if file_size > 100000 then -- 100KB threshold
+					return
+				end
+
+				return {
+					lsp_fallback = true,
+					async = true,
+					timeout_ms = 2000,
+				}
+			end,
 		})
 
 		vim.keymap.set({ "n", "v" }, "<leader>lf", function()

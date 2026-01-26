@@ -34,11 +34,21 @@ return {
 			enable = true,
 		},
 		highlight = {
-			enable = true,
-			disable = { "" },
-			filetype_exclude = { "tsx" },
-			additional_vim_regex_highlighting = { "tsx" },
-		},
+				enable = true,
+				disable = { "" },
+				-- Performance optimization for large files (especially TSX with SVG)
+				-- Treesitter is now fast enough for most cases, but we disable for very large files
+				disable = function(lang, bufnr)
+					if lang ~= "tsx" then
+						return false
+					end
+					local ok, stats = pcall(vim.loop.fs_stat, vim.api.nvim_buf_get_name(bufnr))
+					local file_size = ok and stats and stats.size or 0
+					return file_size > 200000 -- Disable for files > 200KB
+				end,
+				-- Sync highlighting from start for better performance
+				sync_from_start = true,
+			},
 		indent = {
 			enable = true,
 			disable = {

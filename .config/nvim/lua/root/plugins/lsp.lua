@@ -96,6 +96,20 @@ return {
 				capabilities = capabilities,
 				root_dir = vim.fs.root(0, { "package.json" }),
 				single_file_support = false,
+				on_attach = function(client, bufnr)
+					-- Get file size for performance optimization
+					local filepath = vim.api.nvim_buf_get_name(bufnr)
+					local ok, stats = pcall(vim.loop.fs_stat, filepath)
+					local file_size = ok and stats and stats.size or 0
+					local is_large_file = file_size > 100000 -- 100KB threshold
+
+					if is_large_file then
+						-- Disable expensive features for large files (especially TSX with SVG)
+						client.server_capabilities.semanticTokensProvider = nil
+						client.server_capabilities.inlayHintProvider = nil
+						vim.notify("LSP: Disabled heavy features for large file", vim.log.levels.WARN)
+					end
+				end,
 			})
 
 			----------------------------------------------------

@@ -1375,10 +1375,240 @@ vim.api.nvim_create_autocmd("FileType", {
 	end,
 })
 
+local function parse_amount(str)
+	if not str or str == "" then
+		return nil
+	end
+
+	-- Trim whitespace
+	str = str:match("^%s*(.-)%s*$")
+	if not str or str == "" then
+		return nil
+	end
+
+	-- Remove spaces used as thousand separators
+	str = str:gsub("%s", "")
+
+	-- Replace comma (European decimal separator) with period
+	str = str:gsub(",", ".")
+
+	-- Try to convert to number
+	local num = tonumber(str)
+	return num
+end
+
+local function find_table_boundaries(lines, start_line)
+	-- Find table start (current line should be part of a table)
+	local table_start = start_line
+	for i = start_line - 1, 1, -1 do
+		if lines[i]:match("^|") then
+			table_start = i
+		else
+			break
+		end
+	end
+
+	-- Find table end
+	local table_end = start_line
+	for i = start_line + 1, #lines do
+		if lines[i]:match("^|") then
+			table_end = i
+		else
+			break
+		end
+	end
+
+	return table_start, table_end
+end
+
+local function split_table_row(row)
+	local cells = {}
+
+	-- Find all cells between pipes, preserving empty cells
+	-- Split by | but keep track of all parts
+	local parts = {}
+	local start = 1
+	while start <= #row do
+		local pipe_pos = row:find("|", start)
+		if not pipe_pos then
+			table.insert(parts, row:sub(start))
+			break
+		end
+		table.insert(parts, row:sub(start, pipe_pos - 1))
+		start = pipe_pos + 1
+	end
+
+	-- Trim each part and skip the first (which is empty due to leading |)
+	-- Include all cells from index 2 to the last part
+	for i = 2, #parts do
+		local trimmed = parts[i]:match("^%s*(.-)%s*$") or ""
+		table.insert(cells, trimmed)
+	end
+
+	return cells
+end
+
+local function process_table(lines, table_start, table_end)
+	local total_row_idx = nil
+
+	-- Find the TOTAL row (case-insensitive, surrounded by *)
+	for i = table_start, table_end do
+		local row = lines[i]
+		if row:match("%*%s*[Tt][Oo][Tt][Aa][Ll]%s*%*") then
+			total_row_idx = i
+			break
+		end
+	end
+
+	if not total_row_idx then
+		return
+	end
+
+	local total_cells = split_table_row(lines[total_row_idx])
+	local num_cols = #total_cells
+
+	-- For each column, check if it has numeric values and calculate total
+	for col_idx = 1, num_cols do
+		local sum = 0
+		local has_numbers = false
+
+		-- Sum all numeric values in this column (excluding TOTAL row and header row)
+		-- Skip the separator row (table_start + 1)
+		for row_idx = table_start + 2, total_row_idx - 1 do
+			if row_idx <= #lines then
+				local cells = split_table_row(lines[row_idx])
+				if cells and cells[col_idx] then
+					local num = parse_amount(cells[col_idx])
+					if num then
+						sum = sum + num
+						has_numbers = true
+					end
+				end
+			end
+		end
+
+		-- Update the TOTAL row cell if column has numbers
+		if has_numbers then
+			-- Format number: if it's a whole number, don't show decimals
+			local formatted
+			if sum == math.floor(sum) then
+				formatted = tostring(math.floor(sum))
+			else
+				formatted = tostring(math.floor(sum * 100) / 100)
+			end
+			total_cells[col_idx] = formatted
+		end
+	end
+
+	-- Reconstruct the TOTAL row with updated values, preserving column count
+	local new_cells = {}
+	for i = 1, num_cols do
+		table.insert(new_cells, total_cells[i] or "")
+	end
+	local new_total_row = "| " .. table.concat(new_cells, " | ") .. " |"
+	lines[total_row_idx] = new_total_row
+end
+
+local function calculate_all_table_totals()
+	local bufnr = vim.api.nvim_get_current_buf()
+	if not bufnr or bufnr < 0 then
+		return
+	end
+
+	local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+	if not lines or #lines == 0 then
+		return
+	end
+
+	local updates = {} -- Store {line_idx, new_line} pairs
+
+	-- Find all tables and process them
+	local i = 1
+	while i <= #lines do
+		if lines[i] and lines[i]:match("^|") then
+			-- Found start of a table
+			local table_start = i
+			local table_end = i
+
+			-- Find end of table
+			for j = i + 1, #lines do
+				if lines[j] and lines[j]:match("^|") then
+					table_end = j
+				else
+					break
+				end
+			end
+
+			-- Find and update TOTAL row in this table
+			for row_idx = table_start, table_end do
+				local row = lines[row_idx]
+				if row and row:match("%*%s*[Tt][Oo][Tt][Aa][Ll]%s*%*") then
+					-- Found a TOTAL row
+					local total_cells = split_table_row(row)
+					local num_cols = #total_cells
+
+					-- For each column, calculate sum if it has numbers
+					for col_idx = 1, num_cols do
+						local sum = 0
+						local has_numbers = false
+
+						-- Sum values in this column (skip header and separator)
+						for data_row = table_start + 2, row_idx - 1 do
+							if data_row <= #lines then
+								local cells = split_table_row(lines[data_row])
+								if cells and cells[col_idx] then
+									local num = parse_amount(cells[col_idx])
+									if num then
+										sum = sum + num
+										has_numbers = true
+									end
+								end
+							end
+						end
+
+						-- Update cell with total
+						if has_numbers then
+							local formatted
+							if sum == math.floor(sum) then
+								formatted = tostring(math.floor(sum))
+							else
+								formatted = tostring(math.floor(sum * 100) / 100)
+							end
+							total_cells[col_idx] = formatted
+						end
+					end
+
+					-- Build new row with proper spacing
+					local row_parts = {}
+					for idx, cell in ipairs(total_cells) do
+						table.insert(row_parts, " " .. cell .. " ")
+					end
+					local new_row = "|" .. table.concat(row_parts, "|") .. "|"
+					table.insert(updates, { row_idx - 1, new_row }) -- -1 because nvim uses 0-indexed
+				end
+			end
+
+			i = table_end + 1
+		else
+			i = i + 1
+		end
+	end
+
+	-- Apply all updates to the buffer
+	for _, update in ipairs(updates) do
+		local line_idx = update[1]
+		local new_line = update[2]
+		pcall(function()
+			vim.api.nvim_buf_set_lines(bufnr, line_idx, line_idx + 1, false, { new_line })
+		end)
+	end
+end
+
 vim.api.nvim_create_autocmd({ "BufWritePre" }, {
 	pattern = "*.md",
 	callback = function()
 		if in_workspace() then
+			calculate_all_table_totals()
 			check_metadata()
 			if is_current_buffer_under_path(daily_folder) then
 				TODOSort()
