@@ -37,13 +37,13 @@ else
 fi
 
 # Only create extra windows if not excluded
-if [[ "$should_exclude" == false ]]; then
-  tmux new-window -n 'run'
-  tmux new-window -n 'process'
-  # tmux new-window -n 'AI'
-  # tmux send-keys -R "gemini" C-m
-  tmux new-window -n 'assistant'
-  tmux send-keys -R "coding-assistant" C-m
-fi
+# if [[ "$should_exclude" == false ]]; then
+#   tmux new-window -n 'run'
+#   tmux new-window -n 'process'
+#   # tmux new-window -n 'AI'
+#   # tmux send-keys -R "gemini" C-m
+#   tmux new-window -n 'assistant'
+#   tmux send-keys -R "coding-assistant" C-m
+# fi
 
 tmux select-window -t 1

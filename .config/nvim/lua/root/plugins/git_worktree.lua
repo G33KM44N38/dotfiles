@@ -1,11 +1,11 @@
 local function update_tmux_windows()
 	os.execute("tmux kill-window -t 2")
 	os.execute("tmux kill-window -t 3")
-	os.execute("tmux kill-window -t 4")
+	-- os.execute("tmux kill-window -t 4")
 	os.execute("tmux new-window -dn run")
 	os.execute("tmux new-window -dn process")
-	os.execute("tmux new-window -dn assistant")
-	os.execute('tmux send-keys -t assistant -R "coding-assistant" C-m')
+	-- os.execute("tmux new-window -dn assistant")
+	-- os.execute('tmux send-keys -t assistant -R "coding-assistant" C-m')
 end
 
 -- Module pour exposer les fonctions personnalisées
@@ -30,12 +30,12 @@ function M.create_worktree_wrapper()
 		end
 	end
 
-		ensure_fetch_refspec()
+	ensure_fetch_refspec()
 
-		-- Ensure remote branches are fetched so they appear in the picker
-		vim.fn.system("git fetch --all 2>/dev/null")
+	-- Ensure remote branches are fetched so they appear in the picker
+	vim.fn.system("git fetch --all 2>/dev/null")
 
-		-- Utilise le picker git_branches de Telescope
+	-- Utilise le picker git_branches de Telescope
 	require("telescope.builtin").git_branches({
 		attach_mappings = function(prompt_bufnr, map)
 			actions.select_default:replace(function()
