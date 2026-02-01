@@ -384,15 +384,18 @@ local function check_metadata()
 		return false
 	end
 
-	-- Get the file's modification time
+	-- Determine the file date to use
+	local file_date
+	
+	-- Check if file exists on disk
 	local file_stats = vim.uv.fs_stat(current_file_path)
-	if not file_stats then
-		-- print("Could not get file stats")
-		return false
+	if file_stats then
+		-- File exists on disk, use its modification time
+		file_date = os.date("%Y-%m-%d", file_stats.mtime.sec)
+	else
+		-- File is new (not yet saved to disk), use current date
+		file_date = os.date("%Y-%m-%d")
 	end
-
-	-- Convert file modification time to a formatted date string
-	local file_date = os.date("%Y-%m-%d", file_stats.mtime.sec)
 
 	-- Extract frontmatter
 	local frontmatter = extract_frontmatter()
