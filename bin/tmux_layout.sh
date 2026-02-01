@@ -12,7 +12,6 @@ EXCLUDED_PATHS=(
   "$WORKSPACE_PATH|odn"
   "$DATABASE_PATH| vi -c \":DBUIToggle\""
   "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain|odn"
-  "/Users/boss/.dotfiles/bin/create-todo|npm run dev"
 )
 
 # Check if current path is in the excluded list
@@ -37,13 +36,13 @@ else
 fi
 
 # Only create extra windows if not excluded
-# if [[ "$should_exclude" == false ]]; then
-#   tmux new-window -n 'run'
-#   tmux new-window -n 'process'
-#   # tmux new-window -n 'AI'
-#   # tmux send-keys -R "gemini" C-m
-#   tmux new-window -n 'assistant'
-#   tmux send-keys -R "coding-assistant" C-m
-# fi
+if [[ "$should_exclude" == false ]]; then
+  tmux new-window -n 'run'
+  tmux new-window -n 'process'
+  # tmux new-window -n 'AI'
+  # tmux send-keys -R "gemini" C-m
+  tmux new-window -n 'assistant'
+  tmux send-keys -R "coding-assistant" C-m
+fi
 
 tmux select-window -t 1

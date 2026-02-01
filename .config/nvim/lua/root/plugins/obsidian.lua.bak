@@ -1,0 +1,2451 @@
+local workspace_path = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/"
+local daily_folder = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Daily/"
+local weekly_folder = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Weekly/"
+local date_format = "%Y-%m-%d"
+local time_format = "%H:%M"
+
+local function normalize_path(path)
+	if path:sub(-1) ~= "/" then
+		path = path .. "/"
+	end
+	return path
+end
+
+local function in_workspace()
+	local handle = io.popen("pwd")
+	if not handle then
+		return false
+	end
+
+	local cwd = handle:read("*l")
+	handle:close()
+
+	return normalize_path(cwd) == normalize_path(workspace_path)
+end
+
+vim.api.nvim_create_user_command("IsInWorkspace", function()
+	local in_workspace = in_workspace()
+	print(in_workspace)
+end, {})
+
+local function smart_files()
+	if in_workspace() then
+		require("fzf-lua").files({
+			cmd = "fd --type f --extension md",
+			cwd = workspace_path,
+		})
+	else
+		require("fzf-lua").files()
+	end
+end
+
+local function find_todos_line()
+	-- Iterate through all lines in the current buffer
+	for i, line in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
+		if line:match("^%s*##%s*TODOS%s*$") then
+			-- Return the line number (Neovim uses 0-based indexing)
+			return i
+		end
+	end
+	return nil
+end
+
+local function find_next_non_empty_line(start_line)
+	-- Get total number of lines in the buffer
+	local total_lines = vim.api.nvim_buf_line_count(0)
+
+	-- Start from the next line
+	for i = start_line + 1, total_lines do
+		-- Get the line content
+		local line = vim.api.nvim_buf_get_lines(0, i - 1, i, false)[1]
+
+		-- Check if line is not empty (trim whitespace)
+		if line:match("%S") then
+			return i
+		end
+	end
+
+	-- Return nil if no non-empty line found
+	return nil
+end
+
+local function is_current_buffer_under_path(target_path)
+	local current_file = vim.api.nvim_buf_get_name(0)
+
+	-- Normalize paths to avoid issues with slashes (especially on Windows)
+	local normalize = vim.fs and vim.fs.normalize or function(path)
+		return path:gsub("\\", "/")
+	end
+
+	current_file = normalize(current_file)
+	target_path = normalize(target_path)
+
+	return current_file:sub(1, #target_path) == target_path
+end
+
+local function sort_with_nested_children(start_line, end_line)
+	local lines_info = {}
+
+	-- Step 1: Collect all lines with their indentation information
+	for line = start_line, end_line do
+		local line_content = vim.fn.getline(line)
+		local indent = vim.fn.indent(line)
+
+		table.insert(lines_info, {
+			line_num = line,
+			indent = indent,
+			content = line_content,
+		})
+	end
+
+	-- Step 2: Build a hierarchical structure of the lines
+	local function build_hierarchy()
+		local hierarchy = {}
+		local stack = {}
+		local current_level = hierarchy
+
+		for i, line_info in ipairs(lines_info) do
+			-- Create node for this line
+			local node = {
+				line_info = line_info,
+				children = {},
+				parent = nil,
+			}
+
+			-- Find the appropriate parent for this node based on indentation
+			while #stack > 0 and line_info.indent <= stack[#stack].line_info.indent do
+				table.remove(stack)
+			end
+
+			if #stack == 0 then
+				-- This is a top-level node
+				table.insert(hierarchy, node)
+			else
+				-- This is a child node
+				local parent = stack[#stack]
+				node.parent = parent
+				table.insert(parent.children, node)
+			end
+
+			-- Add this node to the stack as a potential parent for future nodes
+			table.insert(stack, node)
+		end
+
+		return hierarchy
+	end
+
+	-- Step 3: Sort the hierarchy at all levels
+	local function sort_hierarchy(nodes)
+		-- Sort children recursively first
+		for _, node in ipairs(nodes) do
+			if #node.children > 0 then
+				sort_hierarchy(node.children)
+			end
+		end
+
+		-- Sort nodes at this level
+		table.sort(nodes, function(a, b)
+			return a.line_info.content < b.line_info.content
+		end)
+	end
+
+	-- Step 4: Flatten the sorted hierarchy back to a list
+	local function flatten_hierarchy(nodes)
+		local result = {}
+
+		for _, node in ipairs(nodes) do
+			table.insert(result, node.line_info)
+			if #node.children > 0 then
+				local children = flatten_hierarchy(node.children)
+				for _, child in ipairs(children) do
+					table.insert(result, child)
+				end
+			end
+		end
+
+		return result
+	end
+
+	-- Build the hierarchical structure
+	local hierarchy = build_hierarchy()
+
+	-- Sort at all levels
+	sort_hierarchy(hierarchy)
+
+	-- Flatten the hierarchy back to a list
+	local sorted_lines = flatten_hierarchy(hierarchy)
+
+	-- Apply the sorted lines back to the buffer
+	for i, line_info in ipairs(sorted_lines) do
+		vim.fn.setline(start_line + i - 1, line_info.content)
+	end
+end
+
+vim.api.nvim_create_user_command("SortWithChildren", function()
+	local start_line = vim.fn.line("'<")
+	local end_line = vim.fn.line("'>")
+
+	sort_with_nested_children(start_line, end_line)
+end, { range = true })
+
+local function line_has_content(line_number)
+	-- Get line content
+	local line_content = vim.fn.getline(line_number)
+
+	-- Check if line is nil or empty
+	if not line_content or line_content == "" then
+		return false
+	end
+
+	-- Remove all whitespace
+	local trimmed = line_content:gsub("%s+", "")
+
+	return trimmed ~= ""
+end
+
+local function get_indent_group()
+	-- Get current line's indent
+	local current_line = vim.fn.line(".")
+	local current_indent = vim.fn.indent(current_line)
+
+	-- Start from next line
+	local next_line = current_line + 1
+	local total_lines = vim.fn.line("$")
+
+	while next_line <= total_lines do
+		if not line_has_content(next_line) then
+			break
+		end
+		local next_indent = vim.fn.indent(next_line)
+
+		-- Stop if indent is less than or equal to current indent
+		if next_indent < current_indent then
+			break
+		end
+
+		next_line = next_line + 1
+	end
+
+	return current_line, next_line - 1 -- Last line of the block
+end
+
+function TODOSort()
+	local cursor_position = vim.api.nvim_win_get_cursor(0)
+	local todo_line = find_todos_line()
+
+	if not todo_line then
+		-- If no TODOS section is found, do nothing
+		return
+	end
+
+	local start_of_todo_list = find_next_non_empty_line(todo_line)
+
+	-- It's possible that the TODOS section exists but there are no items after it.
+	-- In that case, find_next_non_empty_line might return nil.
+	if not start_of_todo_list then
+		return
+	end
+
+	vim.api.nvim_win_set_cursor(0, { start_of_todo_list, 0 })
+
+	local _, end_of_indent_group = get_indent_group()
+
+	sort_with_nested_children(start_of_todo_list, end_of_indent_group)
+
+	vim.api.nvim_win_set_cursor(0, { cursor_position[1], cursor_position[2] })
+end
+
+local function markdown_headings()
+	local pickers = require("telescope.pickers")
+	local finders = require("telescope.finders")
+	local conf = require("telescope.config").values
+	local actions = require("telescope.actions")
+	local action_state = require("telescope.actions.state")
+
+	-- Get current buffer contents
+	local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+	local headings = {}
+
+	-- Find all headings with their line numbers
+	for i, line in ipairs(lines) do
+		if line:match("^#+ ") then
+			table.insert(headings, {
+				line = i,
+				text = line:gsub("^#+%s*", ""), -- Remove #s from display
+				raw = line,
+			})
+		end
+	end
+
+	pickers
+		.new({}, {
+			prompt_title = "Markdown Headings",
+			finder = finders.new_table({
+				results = headings,
+				entry_maker = function(entry)
+					return {
+						value = entry,
+						display = string.format("%d: %s", entry.line, entry.text),
+						ordinal = string.format("%d %s", entry.line, entry.text),
+						lnum = entry.line,
+					}
+				end,
+			}),
+			sorter = conf.generic_sorter({}),
+			attach_mappings = function(prompt_bufnr)
+				actions.select_default:replace(function()
+					actions.close(prompt_bufnr)
+					local selection = action_state.get_selected_entry()
+					vim.api.nvim_win_set_cursor(0, { selection.lnum, 0 })
+				end)
+				return true
+			end,
+		})
+		:find()
+end
+
+local function extract_frontmatter()
+	-- Get all lines in the current buffer
+	local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+	local start_index = nil
+	local end_index = nil
+	local found_first = false
+
+	-- Find the start and end indices of the --- blocks
+	for i, line in ipairs(lines) do
+		if line:match("^%-%-%-") then
+			if not found_first then
+				start_index = i
+				found_first = true
+			else
+				end_index = i
+				break
+			end
+		end
+	end
+
+	-- If we found both markers, extract and return the content
+	if start_index and end_index then
+		local content = table.concat(vim.api.nvim_buf_get_lines(0, start_index, end_index - 1, false), "\n")
+		return content
+	end
+	return nil
+end
+
+local function edit_frontmatter(key, new_value)
+	-- Get all lines in the current buffer
+	local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+	local start_index = nil
+	local end_index = nil
+	local found_first = false
+	local key_line_index = nil
+
+	-- Find the frontmatter boundaries
+	for i, line in ipairs(lines) do
+		if line:match("^%-%-%-") then
+			if not found_first then
+				start_index = i
+				found_first = true
+			else
+				end_index = i
+				break
+			end
+		elseif found_first then
+			-- Look for the key while we're between the --- marks
+			if line:match("^" .. key .. ":%s*.*$") then
+				key_line_index = i
+			end
+		end
+	end
+
+	-- If we found the frontmatter and the key
+	if start_index and end_index and key_line_index then
+		-- Create the new line with the updated value
+		local new_line = string.format("%s: %s", key, new_value)
+		-- Replace the line in the buffer
+		vim.api.nvim_buf_set_lines(0, key_line_index - 1, key_line_index, false, { new_line })
+		return true
+	elseif start_index and end_index then
+		-- If we found frontmatter but not the key, add it
+		local new_line = string.format("%s: %s", key, new_value)
+		vim.api.nvim_buf_set_lines(0, end_index - 1, end_index - 1, false, { new_line })
+		return true
+	end
+	return false
+end
+
+local function check_metadata()
+	-- Get the current file's full path and name
+	local current_file_path = vim.fn.expand("%:p")
+	local current_file = vim.fn.expand("%:t:r") -- Get current file name without extension
+
+	-- Skip files in the Templates folder
+	if current_file_path:match("Templates/") then
+		return false
+	end
+
+	-- Get the file's modification time
+	local file_stats = vim.uv.fs_stat(current_file_path)
+	if not file_stats then
+		-- print("Could not get file stats")
+		return false
+	end
+
+	-- Convert file modification time to a formatted date string
+	local file_date = os.date("%Y-%m-%d", file_stats.mtime.sec)
+
+	-- Extract frontmatter
+	local frontmatter = extract_frontmatter()
+	if not frontmatter then
+		-- No frontmatter, so we'll add it
+		edit_frontmatter("created", file_date)
+		return true
+	end
+
+	-- Check if date exists in frontmatter
+	local frontmatter_date = frontmatter:match("created:%s*(.-)%s*$")
+
+	-- Handle template placeholder for any markdown file
+	if frontmatter_date and frontmatter_date:match("<%% tp%.date%.now%(%) %%>") then
+		-- print("Replacing template placeholder with actual created date")
+		edit_frontmatter("created", file_date)
+		return true
+	end
+
+	-- If no date is set, add the current file's date
+	if not frontmatter_date then
+		edit_frontmatter("created", file_date)
+		return true
+	end
+
+	return true
+end
+
+local function import_todos_from_previous_daily()
+	local current_file = vim.fn.expand("%:t:r") -- Get current file name without extension
+	local date_pattern = "(%d%d%d%d)%-(%d%d)%-(%d%d)"
+	local year, month, day = current_file:match(date_pattern)
+
+	if not (year and month and day) then
+		return false
+	end
+
+	local current_date = os.time({ year = year, month = month, day = day })
+
+	-- Find previous daily note
+	local i = 1
+	while true do
+		local prev_date = os.date("*t", current_date - (i * 86400)) -- 86400 seconds = 1 day
+		local prev_file = string.format("%04d-%02d-%02d.md", prev_date.year, prev_date.month, prev_date.day)
+		local full_path = daily_folder .. prev_file
+		local pattern = "^(%s*-%s*%[)([^x%]]+)(%].*)"
+
+		-- Check if file exists
+		local f = io.open(full_path, "r")
+		if f then
+			f:close()
+
+			-- Read the previous daily note
+			local content = {}
+			for line in io.lines(full_path) do
+				table.insert(content, line)
+			end
+
+			-- Find the TODOS section
+			local todos = {}
+			local in_todos_section = false
+			for _, line in ipairs(content) do
+				if line:match("^## TODOS") then
+					in_todos_section = true
+				elseif in_todos_section and line:match("^##") then
+					-- Stop when next section starts
+					break
+				elseif in_todos_section and line:match(pattern) then
+					-- Unchecked todo item
+					table.insert(todos, line)
+				end
+			end
+
+			-- If todos found, add them to current file
+			if #todos > 0 then
+				-- Get current buffer
+				local bufnr = vim.api.nvim_get_current_buf()
+
+				-- Find the TODOS section in current file
+				local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+				local todos_index = nil
+				local existing_todos = {}
+
+				-- First, find the TODOS section and collect existing todos
+				for i_2, line in ipairs(lines) do
+					if line:match("^## TODOS") then
+						todos_index = i_2
+					elseif todos_index and line:match("%s*-%s*%[") then
+						return false
+					elseif todos_index and line:match("%s*-%s*%[%s*%]") then
+						-- Collect existing unchecked todos
+						existing_todos[line:gsub("%s*-%s*%[%s*%]%s*(.*)$", "%1")] = true
+					elseif todos_index and line:match("^##") then
+						-- Stop when next section starts
+						break
+					end
+				end
+
+				-- Filter out todos that already exist
+				local new_todos = {}
+				for _, todo in ipairs(todos) do
+					local todo_text = todo:gsub("%s*-%s*%[%s*%]%s*(.*)$", "%1")
+					if not existing_todos[todo_text] then
+						table.insert(new_todos, todo)
+					end
+				end
+
+				-- Insert new todos if any
+				if #new_todos > 0 and todos_index then
+					-- Add an empty line after the todos for better readability
+					table.insert(new_todos, "")
+
+					vim.api.nvim_buf_set_lines(bufnr, todos_index + 1, todos_index + 1, false, new_todos)
+					-- print(string.format("Imported %d new todos from previous daily note", #new_todos))
+					return true
+				end
+			end
+
+			return true
+		end
+
+		-- Prevent infinite loop
+		if i > 1000 then
+			return false
+		end
+
+		i = i + 1
+	end
+end
+
+local function find_previous_daily()
+	local current_file = vim.fn.expand("%:t:r") -- Get current file name without extension
+	local date_pattern = "(%d%d%d%d)%-(%d%d)%-(%d%d)"
+	local year, month, day = current_file:match(date_pattern)
+
+	if year and month and day then
+		local current_date = os.time({ year = year, month = month, day = day })
+
+		-- Start checking from yesterday, going backwards
+		local i = 1
+		while true do
+			local prev_date = os.date("*t", current_date - (i * 86400)) -- 86400 seconds = 1 day
+			local prev_file = string.format("%04d-%02d-%02d.md", prev_date.year, prev_date.month, prev_date.day)
+			local full_path = daily_folder .. prev_file
+
+			-- Check if file exists
+			local f = io.open(full_path, "r")
+			if f then
+				f:close()
+				-- File exists, open it
+				vim.cmd("edit " .. vim.fn.fnameescape(full_path))
+				return true
+			end
+
+			-- Prevent infinite loop by checking a reasonable max (e.g., 1000 days)
+			if i > 1000 then
+				-- print("No previous daily notes found")
+				return false
+			end
+
+			i = i + 1
+		end
+	else
+		-- print("Current file is not a daily note")
+		return false
+	end
+end
+
+local ts = vim.treesitter
+local query = ts.query.parse(
+	"markdown",
+	[[
+  (fenced_code_block
+    (info_string) @language
+    (#eq? @language "dataview")
+  ) @block
+]]
+)
+
+local dataview_query = ""
+
+local table_dataview_query = {}
+
+-- Helper function to trim spaces
+function string.trim(s)
+	return s:match("^%s*(.-)%s*$")
+end
+
+local function find_next_daily()
+	local current_file = vim.fn.expand("%:t:r")
+	local date_pattern = "(%d%d%d%d)%-(%d%d)%-(%d%d)"
+	local year, month, day = current_file:match(date_pattern)
+
+	if year and month and day then
+		local current_date = os.time({ year = year, month = month, day = day })
+
+		local i = 1
+		while true do
+			local next_date = os.date("*t", current_date + (i * 86400))
+			local prev_file = string.format("%04d-%02d-%02d.md", next_date.year, next_date.month, next_date.day)
+			local full_path = daily_folder .. prev_file
+
+			local f = io.open(full_path, "r")
+			if f then
+				f:close()
+				vim.cmd("edit " .. vim.fn.fnameescape(full_path))
+				return true
+			end
+
+			if i > 1000 then
+				print("No previous daily notes found")
+				return false
+			end
+
+			i = i + 1
+		end
+	else
+		print("Current file is not a daily note")
+		return false
+	end
+end
+
+local function find_weekly()
+	-- Use Telescope to find files, but with custom sorting
+	require("telescope.builtin").find_files({
+		prompt_title = "Find Weekly Notes",
+		cwd = weekly_folder,
+		hidden = true,
+		find_command = { "fd", "--type", "f", "--strip-cwd-prefix" },
+		sorter = require("telescope.sorters").get_generic_fuzzy_sorter(),
+		attach_mappings = function(prompt_bufnr, map)
+			-- Override default sorting to sort files chronologically
+			local custom_sorter = require("telescope.sorters").get_generic_fuzzy_sorter()
+
+			-- Custom function to sort files
+			custom_sorter.scoring_function = function(_, prompt, entry)
+				-- Extract year, month, and week from filename
+				local year, month, week = entry.value:match("(%d+)%-([%a]+) (%d+)%a+")
+
+				-- Convert month to number
+				local month_names = {
+					"January",
+					"February",
+					"March",
+					"April",
+					"May",
+					"June",
+					"July",
+					"August",
+					"September",
+					"October",
+					"November",
+					"December",
+				}
+				local month_num = 0
+				for i, m in ipairs(month_names) do
+					if m == month then
+						month_num = i
+						break
+					end
+				end
+
+				-- Create a sortable key
+				local sort_key = tonumber(year) * 10000 + month_num * 100 + tonumber(week)
+
+				return sort_key -- Positive to sort chronologically (oldest at top)
+			end
+
+			return true
+		end,
+	})
+end
+
+local function apply_template_by_folder()
+	local current_file_path = vim.fn.expand("%:p")
+	local relative_path = current_file_path:sub(#workspace_path + 1)
+
+	local template_mappings = {
+		["Daily/"] = "Daily Template.md",
+		["Weekly/"] = "Weekly Template.md",
+	}
+
+	for folder, template in pairs(template_mappings) do
+		if relative_path:match("^" .. folder) then
+			local template_path = workspace_path .. "Templates/" .. template
+
+			local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+			if #lines <= 1 and (lines[1] == "" or lines[1]:match("^%s*$")) then
+				local template_content = {}
+				for line in io.lines(template_path) do
+					line = line:gsub("%%DATE%%", os.date("%Y-%m-%d"))
+					table.insert(template_content, line)
+				end
+
+				vim.api.nvim_buf_set_lines(0, 0, -1, false, template_content)
+
+				-- print(string.format("Applied template: %s for folder %s", template, folder))
+				return true
+			end
+		end
+	end
+
+	return false
+end
+
+local function create_weekly_note()
+	local current_time = os.time()
+	local current_date = os.date("*t", current_time)
+
+	local month_names = {
+		"January",
+		"February",
+		"March",
+		"April",
+		"May",
+		"June",
+		"July",
+		"August",
+		"September",
+		"October",
+		"November",
+		"December",
+	}
+	local month_name = month_names[current_date.month]
+
+	local week_number = math.ceil(current_date.day / 7)
+	local week_suffix
+	if week_number == 1 then
+		week_suffix = "st"
+	elseif week_number == 2 then
+		week_suffix = "nd"
+	elseif week_number == 3 then
+		week_suffix = "rd"
+	else
+		week_suffix = "th"
+	end
+
+	local filename = string.format("%d-%s %d%s.md", current_date.year, month_name, week_number, week_suffix)
+	local full_path = weekly_folder .. filename
+
+	local f = io.open(full_path, "a")
+	if f then
+		f:close()
+		vim.cmd("edit " .. vim.fn.fnameescape(full_path))
+	else
+		print("Failed to create weekly note")
+	end
+end
+
+local function find_previous_weekly()
+	local current_file = vim.fn.expand("%:t:r")
+
+	-- Parse the current weekly note filename (e.g., "2025-January 1st")
+	local year, month, week_number = current_file:match("(%d+)%-([%a]+) (%d+)%a+")
+
+	if year and month and week_number then
+		local month_names = {
+			"January",
+			"February",
+			"March",
+			"April",
+			"May",
+			"June",
+			"July",
+			"August",
+			"September",
+			"October",
+			"November",
+			"December",
+		}
+
+		-- Convert month name to number
+		local month_number
+		for i, name in ipairs(month_names) do
+			if name == month then
+				month_number = i
+				break
+			end
+		end
+
+		-- Start checking from the previous week
+		local i = 1
+		while true do
+			local prev_week_number = tonumber(week_number) - i
+			local prev_year = tonumber(year)
+			local prev_month_number = month_number
+
+			-- Adjust week number, month, and year
+			while prev_week_number < 1 do
+				prev_week_number = prev_week_number + 4
+				prev_month_number = prev_month_number - 1
+				if prev_month_number < 1 then
+					prev_month_number = 12
+					prev_year = prev_year - 1
+				end
+			end
+
+			local prev_month_name = month_names[prev_month_number]
+
+			-- Determine week suffix
+			local week_suffix
+			if prev_week_number == 1 then
+				week_suffix = "st"
+			elseif prev_week_number == 2 then
+				week_suffix = "nd"
+			elseif prev_week_number == 3 then
+				week_suffix = "rd"
+			else
+				week_suffix = "th"
+			end
+
+			local prev_file = string.format("%d-%s %d%s.md", prev_year, prev_month_name, prev_week_number, week_suffix)
+			local full_path = weekly_folder .. prev_file
+
+			-- Check if file exists
+			local f = io.open(full_path, "r")
+			if f then
+				f:close()
+				vim.cmd("edit " .. vim.fn.fnameescape(full_path))
+				return true
+			end
+
+			-- Prevent infinite loop
+			if i > 1000 then
+				print("No previous weekly notes found")
+				return false
+			end
+
+			i = i + 1
+		end
+	else
+		print("Current file is not a weekly note")
+		return false
+	end
+end
+
+local function find_next_weekly()
+	local current_file = vim.fn.expand("%:t:r")
+
+	-- Parse the current weekly note filename (e.g., "2025-January 1st")
+	local year, month, week_number = current_file:match("(%d+)%-([%a]+) (%d+)%a+")
+
+	if year and month and week_number then
+		local month_names = {
+			"January",
+			"February",
+			"March",
+			"April",
+			"May",
+			"June",
+			"July",
+			"August",
+			"September",
+			"October",
+			"November",
+			"December",
+		}
+
+		-- Convert month name to number
+		local month_number
+		for i, name in ipairs(month_names) do
+			if name == month then
+				month_number = i
+				break
+			end
+		end
+
+		-- Start checking from the next week
+		local i = 1
+		while true do
+			local next_week_number = tonumber(week_number) + i
+			local next_year = tonumber(year)
+			local next_month_number = month_number
+
+			-- Adjust week number, month, and year
+			while next_week_number > 4 do
+				next_week_number = next_week_number - 4
+				next_month_number = next_month_number + 1
+				if next_month_number > 12 then
+					next_month_number = 1
+					next_year = next_year + 1
+				end
+			end
+
+			local next_month_name = month_names[next_month_number]
+
+			-- Determine week suffix
+			local week_suffix
+			if next_week_number == 1 then
+				week_suffix = "st"
+			elseif next_week_number == 2 then
+				week_suffix = "nd"
+			elseif next_week_number == 3 then
+				week_suffix = "rd"
+			else
+				week_suffix = "th"
+			end
+
+			local next_file = string.format("%d-%s %d%s.md", next_year, next_month_name, next_week_number, week_suffix)
+			local full_path = weekly_folder .. next_file
+
+			-- Check if file exists
+			local f = io.open(full_path, "r")
+			if f then
+				f:close()
+				vim.cmd("edit " .. vim.fn.fnameescape(full_path))
+				return true
+			end
+
+			-- Prevent infinite loop
+			if i > 1000 then
+				print("No next weekly notes found")
+				return false
+			end
+
+			i = i + 1
+		end
+	else
+		print("Current file is not a weekly note")
+		return false
+	end
+end
+
+local function find_current_weekly()
+	local current_time = os.time()
+	local current_date = os.date("*t", current_time)
+
+	local month_names = {
+		"January",
+		"February",
+		"March",
+		"April",
+		"May",
+		"June",
+		"July",
+		"August",
+		"September",
+		"October",
+		"November",
+		"December",
+	}
+	local month_name = month_names[current_date.month]
+
+	local week_number = math.ceil(current_date.day / 7)
+	local week_suffix
+	if week_number == 1 then
+		week_suffix = "st"
+	elseif week_number == 2 then
+		week_suffix = "nd"
+	elseif week_number == 3 then
+		week_suffix = "rd"
+	else
+		week_suffix = "th"
+	end
+
+	local filename = string.format("%d-%s %d%s.md", current_date.year, month_name, week_number, week_suffix)
+	local full_path = weekly_folder .. filename
+
+	local f = io.open(full_path, "r")
+	if f then
+		f:close()
+		vim.cmd("edit " .. vim.fn.fnameescape(full_path))
+		return true
+	else
+		vim.cmd("WeeklyCreate")
+		-- print("Current weekly note not found")
+		return false
+	end
+end
+
+local function toggle_checkbox_with_timestamp()
+	-- Get the current line
+	local line = vim.api.nvim_get_current_line()
+
+	-- Match checkbox pattern
+	local checkbox_pattern = "(%s*-%s*%[)([%s%a%d])(])(.*)"
+	local indent, prefix, mark, suffix = line:match(checkbox_pattern)
+
+	if indent and prefix and mark and suffix then
+		local new_line
+
+		-- Get current timestamp
+		local completed_timestamp = os.date(date_format .. " " .. time_format)
+
+		-- Try to find existing start timestamp
+		local start_time_str = suffix:match("%[start:%s*(.-)%]")
+
+		local duration_str = ""
+		if start_time_str then
+			-- Parse it back into a timestamp
+			local sy, sm, sd, hh, mm = start_time_str:match("^(%d+)%-(%d+)%-(%d+)%s+(%d+):(%d+)$")
+			if sm and sd and sy and hh and mm then
+				local parsed_time = os.time({
+					year = assert(tonumber(sy), "Invalid year"),
+					month = assert(tonumber(sm), "Invalid month"),
+					day = assert(tonumber(sd), "Invalid day"),
+					hour = assert(tonumber(hh), "Invalid hour"),
+					min = assert(tonumber(mm), "Invalid minute"),
+					sec = 0,
+				})
+
+				local now = os.time()
+				local diff = now - parsed_time
+
+				local hours = math.floor(diff / 3600)
+				local minutes = math.floor((diff % 3600) / 60)
+				if hours > 0 then
+					duration_str = string.format(" [duration: %dh %dm]", hours, minutes)
+				else
+					duration_str = string.format(" [duration: %dm]", minutes)
+				end
+			end
+		end
+
+		-- Replace line with checkbox marked as completed
+		new_line = indent .. "x" .. "] " .. suffix .. " [completed: " .. completed_timestamp .. "]" .. duration_str
+
+		-- Update the line
+		vim.api.nvim_set_current_line(new_line)
+	else
+		vim.cmd("ObsidianToggleCheckbox")
+	end
+end
+
+local function todoStart()
+	local line = vim.api.nvim_get_current_line()
+
+	local pattern = "^(%s*-%s*%[)([^x%]]+)(%].*)"
+	local prefix, mark, rest_of_line = line:match(pattern)
+
+	if prefix and mark and rest_of_line then
+		local timestamp = os.date(date_format .. " " .. time_format)
+		local new_line
+
+		local new_mark = " "
+
+		if rest_of_line:match("%[start:[^%]]*%]") then
+			-- If start timestamp already exists, do nothing
+			return
+		else
+			local full_original_line = prefix .. new_mark .. rest_of_line
+			new_line = full_original_line:gsub("%s*$", "") .. " [start: " .. timestamp .. "]"
+		end
+
+		vim.api.nvim_set_current_line(new_line)
+	else
+		print("Not a valid, non-completed todo item.")
+	end
+end
+
+local function find_completed_todos_with_timestamps()
+	local pickers = require("telescope.pickers")
+	local finders = require("telescope.finders")
+	local conf = require("telescope.config").values
+	local actions = require("telescope.actions")
+	local action_state = require("telescope.actions.state")
+	local scan = require("plenary.scandir")
+
+	local completed_todos = {}
+
+	-- Get all markdown files in the daily folder
+	local files = scan.scan_dir(daily_folder, {
+		hidden = false,
+		add_dirs = false,
+		respect_gitignore = true,
+		depth = 1,
+		search_pattern = "%.md$",
+	})
+
+	-- Sort files by date (most recent first)
+	table.sort(files, function(a, b)
+		local a_filename = vim.fn.fnamemodify(a, ":t:r")
+		local b_filename = vim.fn.fnamemodify(b, ":t:r")
+		return a_filename > b_filename
+	end)
+
+	-- Process each file
+	for _, file_path in ipairs(files) do
+		local file_handle = io.open(file_path, "r")
+		if file_handle then
+			local filename = vim.fn.fnamemodify(file_path, ":t:r")
+			local content = file_handle:read("*all")
+			file_handle:close()
+
+			-- Process the file line by line
+			local line_num = 1
+			for line in content:gmatch("[^\r\n]+") do
+				-- Match checked todos with timestamp pattern: - [x] Todo text [completed: MM-DD-YYYY HH:MM]
+				local todo_text, timestamp = line:match("%s*-%s*%[x%]%s*(.-)%s*%[completed:%s*(.-)%]")
+				if todo_text and timestamp then
+					table.insert(completed_todos, {
+						file_path = file_path,
+						filename = filename,
+						line = line_num,
+						text = todo_text,
+						timestamp = timestamp,
+						raw = line,
+					})
+				end
+				line_num = line_num + 1
+			end
+		end
+	end
+
+	-- Sort by timestamp (most recent first)
+	table.sort(completed_todos, function(a, b)
+		return a.timestamp > b.timestamp
+	end)
+
+	pickers
+		.new({}, {
+			prompt_title = "Completed TODOs Across All Daily Notes",
+			finder = finders.new_table({
+				results = completed_todos,
+				entry_maker = function(entry)
+					return {
+						value = entry,
+						display = string.format("[%s] [%s] %s", entry.timestamp, entry.filename, entry.text),
+						ordinal = entry.timestamp .. " " .. entry.filename .. " " .. entry.text,
+						filename = entry.file_path,
+						lnum = entry.line,
+					}
+				end,
+			}),
+			sorter = conf.generic_sorter({}),
+			attach_mappings = function(prompt_bufnr)
+				actions.select_default:replace(function()
+					actions.close(prompt_bufnr)
+					local selection = action_state.get_selected_entry()
+					-- Open the file and go to that line
+					vim.cmd("edit " .. vim.fn.fnameescape(selection.filename))
+					vim.api.nvim_win_set_cursor(0, { selection.lnum, 0 })
+				end)
+				return true
+			end,
+		})
+		:find()
+end
+
+vim.api.nvim_create_user_command("CompletedTodos", function()
+	find_completed_todos_with_timestamps()
+end, {})
+
+vim.api.nvim_create_user_command("ObsidianDaily", function()
+	-- Get current date
+	local date_time = os.date("*t")
+	local year = date_time.year
+	local month = date_time.month
+	local day = date_time.day
+
+	-- Format month and day with leading zeros if needed
+	local month_str = string.format("%02d", month)
+	local day_str = string.format("%02d", day)
+
+	-- Create filename
+	local prefix_daily_folder = "Daily/"
+	local filename = prefix_daily_folder .. year .. "-" .. month_str .. "-" .. day_str .. ".md"
+
+	-- Check if the folder exists
+	local folder_exists = vim.fn.isdirectory(daily_folder)
+	if folder_exists == 0 then
+		-- Create the folder if it doesn't exist
+		vim.fn.mkdir(daily_folder, "p")
+	end
+
+	-- Open or create the file in Neovim
+	vim.cmd("edit " .. filename)
+end, {})
+
+vim.api.nvim_create_user_command("ObsidianPreviousWeekly", function()
+	find_previous_weekly()
+end, {})
+
+vim.api.nvim_create_user_command("ObsidianCurrentWeekly", function()
+	find_current_weekly()
+end, {})
+
+vim.api.nvim_create_user_command("ObsidianNextWeekly", function()
+	find_next_weekly()
+end, {})
+
+vim.api.nvim_create_user_command("ObsidianFindWeekly", function()
+	find_weekly()
+end, {})
+vim.api.nvim_create_user_command("WeeklyCreate", function()
+	create_weekly_note()
+end, {})
+
+vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
+	pattern = "*.md",
+	callback = function()
+		apply_template_by_folder()
+	end,
+})
+
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = "markdown",
+	callback = function()
+		if not in_workspace() then
+			return
+		end
+		-- Enable syntax highlighting if not already
+		vim.cmd("syntax enable")
+		-- Dim done todos: gray
+		vim.cmd([[syntax match TodoDone /^.*-\s\[x\].*/]])
+		vim.cmd([[highlight TodoDone guifg=#666666 gui=italic]])
+		-- Highlight [start: ...] in green (escaped correctly)
+		vim.cmd('syntax match TodoStart "\\[start: [^]]*\\]"')
+		vim.cmd("highlight TodoStart guifg=#22c55e gui=bold")
+		-- Highlight [today] in orange
+		vim.cmd('syntax match TodoToday "\\[today\\]"')
+		vim.cmd("highlight TodoToday guifg=#ff9900 gui=bold")
+		-- ADDED: Highlight for the In Progress section title
+		vim.cmd("highlight TodoInProgress guifg=#38bdf8 gui=bold") -- A nice blue color
+
+		-- Create namespace for virtual text
+		local ns_id = vim.api.nvim_create_namespace("markdown_today")
+
+		-- Function to add/update virtual text
+		local function update_virtual_text()
+			local bufnr = vim.api.nvim_get_current_buf()
+
+			-- Clear existing virtual text
+			vim.api.nvim_buf_clear_namespace(bufnr, ns_id, 0, -1)
+
+			-- Get all lines in the buffer
+			local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+			local today_lines = {}
+			local completed_lines = {}
+			local in_progress_lines = {} -- ADDED: Table for in-progress tasks
+			local eisenhower_a, eisenhower_b, eisenhower_c, eisenhower_d = {}, {}, {}, {}
+			local todos_line = nil
+
+			-- Find TODOS section and collect tasks
+			for i, line in ipairs(lines) do
+				-- Find ## TODOS heading
+				if line:match("^##%s+TODOS") then
+					todos_line = i - 1 -- Convert to 0-based indexing
+				end
+
+				if line:match("%[([A-D])%]") and not line:match("%[today%]") then
+					local category = line:match("%[([A-D])%]")
+					local content = line:gsub("^%s*-%s*%[ %]%s*", ""):gsub("%s*%[[A-D]%]", ""):gsub("%s*%[today%]", "")
+					if content:match("%S") then
+						if category == "A" then
+							table.insert(eisenhower_a, content)
+						elseif category == "B" then
+							table.insert(eisenhower_b, content)
+						elseif category == "C" then
+							table.insert(eisenhower_c, content)
+						elseif category == "D" then
+							table.insert(eisenhower_d, content)
+						end
+					end
+				end
+
+				if line:match("^%s*-%s*%[ %]") and line:match("%[start: ") and line:match("%[today%]") then
+					local cleaned_line = line:gsub("^%s*-%s*%[ %]%s*", "")
+						:gsub("%s*%[today%]", "")
+						:gsub("%s*%[start:[^%]]*%]%s*", "")
+						:gsub("%s*%[completed:[^%]]*%]%s*", "")
+						:gsub("%s*%[duration:[^%]]*%]%s*", "")
+					if cleaned_line:match("%S") then -- Only add if not empty after cleaning
+						table.insert(in_progress_lines, cleaned_line)
+					end
+				-- Find other [today] tasks (that are NOT in-progress and NOT completed)
+				elseif line:match("%[today%]") and not line:match("^%s*-%s*%[x%]") then
+					local cleaned_line = line:gsub("^%s*-%s*%[[^%]]*%]%s*", ""):gsub("%s*%[today%]", "")
+					if cleaned_line:match("%S") then -- Only add if not empty after cleaning
+						table.insert(today_lines, cleaned_line)
+					end
+				-- Find completed tasks [x]
+				elseif line:match("^%s*-%s*%[x%]") then
+					local task_part = line:gsub("^%s*-%s*%[x%]%s*", "")
+					local duration_match = task_part:match("%[duration:%s*([^%]]+)%]")
+					local task_name = task_part
+						:gsub("%s*%[start:.-%]", "") -- Use non-greedy match
+						:gsub("%s*%[completed:.-%]", "")
+						:gsub("%s*%[duration:.-%]", "")
+						:gsub("%s*%[today%]", "")
+
+					if task_name:match("%S") then
+						local display_text = task_name
+						if duration_match then
+							display_text = display_text .. " (" .. duration_match .. ")"
+						end
+						table.insert(completed_lines, display_text)
+					end
+				end
+			end
+
+			if
+				todos_line
+				and (
+					#today_lines > 0
+					or #completed_lines > 0
+					or #in_progress_lines > 0
+					or #eisenhower_a > 0
+					or #eisenhower_b > 0
+					or #eisenhower_c > 0
+					or #eisenhower_d > 0
+				)
+			then
+				local all_virt_lines = {}
+
+				-- Add empty line after TODOS
+				table.insert(all_virt_lines, { { "", "Normal" } })
+
+				-- ADDED: In Progress section (at the top)
+				if #in_progress_lines > 0 then
+					table.insert(all_virt_lines, { { "⏳ In Progress:", "TodoInProgress" } })
+					for _, task in ipairs(in_progress_lines) do
+						table.insert(all_virt_lines, { { "  • " .. task, "Comment" } })
+					end
+					table.insert(all_virt_lines, { { "", "Normal" } })
+				end
+
+				-- Add Today's Focus section if there are today items
+				if #today_lines > 0 then
+					table.insert(all_virt_lines, { { "📅 Today's Focus:", "TodoToday" } })
+					for _, task in ipairs(today_lines) do
+						table.insert(all_virt_lines, { { "  • " .. task, "Comment" } })
+					end
+					table.insert(all_virt_lines, { { "", "Normal" } })
+				end
+
+				-- Add Eisenhower Matrix section if there are tasks [A], [B], [C], or [D]
+				if #eisenhower_a > 0 or #eisenhower_b > 0 or #eisenhower_c > 0 or #eisenhower_d > 0 then
+					-- table.insert(all_virt_lines, { { "⚖️ Eisenhower Matrix:", "TodoEisenhower" } })
+
+					local function add_category(label, tasks, hl)
+						if #tasks > 0 then
+							table.insert(all_virt_lines, { { label, hl } })
+							for _, task in ipairs(tasks) do
+								local trimmed = vim.trim(task)
+								if #trimmed > 0 then
+									table.insert(all_virt_lines, { { trimmed, "Comment" } })
+								end
+							end
+							table.insert(all_virt_lines, { { "", "Normal" } })
+						end
+					end
+
+					vim.cmd("highlight TodoEisenhowerA guifg=#f38ba8 gui=bold") -- A = Urgent & Important (red)
+					vim.cmd("highlight TodoEisenhowerB guifg=#f9e2af gui=bold") -- B = Not Urgent but Important (yellow)
+					vim.cmd("highlight TodoEisenhowerC guifg=#89dceb gui=bold") -- C = Urgent but Not Important (blue)
+					vim.cmd("highlight TodoEisenhowerD guifg=#cdd6f4 gui=italic") -- D = Not Urgent & Not Important (grayish)
+
+					add_category("DO NOW (Urgent & Important)", eisenhower_a, "TodoEisenhowerA")
+					add_category("SCHEDULE (Not Urgent but Important)", eisenhower_b, "TodoEisenhowerB")
+					add_category("DELEGATE (Urgent but Not Important)", eisenhower_c, "TodoEisenhowerC")
+					add_category("REMOVE (Not Urgent & Not Important)", eisenhower_d, "TodoEisenhowerD")
+				end
+
+				-- Add Completed section if there are completed items
+				if #completed_lines > 0 then
+					table.insert(all_virt_lines, { { "✅ Completed Today:", "TodoStart" } })
+					for _, task in ipairs(completed_lines) do
+						table.insert(all_virt_lines, { { "  ✓ " .. task, "TodoDone" } })
+					end
+					table.insert(all_virt_lines, { { "", "Normal" } })
+				end
+
+				-- Add all virtual lines at once
+				vim.api.nvim_buf_set_extmark(bufnr, ns_id, todos_line + 1, 0, {
+					virt_lines = all_virt_lines,
+					hl_mode = "combine",
+				})
+			end
+		end
+
+		-- Set up autocmds for virtual text updates
+		vim.api.nvim_create_autocmd({ "BufReadPost", "BufWritePost", "TextChanged", "TextChangedI" }, {
+			buffer = 0, -- Current buffer only
+			callback = update_virtual_text,
+		})
+
+		-- Initial virtual text setup
+		vim.schedule(update_virtual_text)
+	end,
+})
+
+local function parse_amount(str)
+	if not str or str == "" then
+		return nil
+	end
+
+	-- Trim whitespace
+	str = str:match("^%s*(.-)%s*$")
+	if not str or str == "" then
+		return nil
+	end
+
+	-- Remove spaces used as thousand separators
+	str = str:gsub("%s", "")
+
+	-- Replace comma (European decimal separator) with period
+	str = str:gsub(",", ".")
+
+	-- Try to convert to number
+	local num = tonumber(str)
+	return num
+end
+
+local function find_table_boundaries(lines, start_line)
+	-- Find table start (current line should be part of a table)
+	local table_start = start_line
+	for i = start_line - 1, 1, -1 do
+		if lines[i]:match("^|") then
+			table_start = i
+		else
+			break
+		end
+	end
+
+	-- Find table end
+	local table_end = start_line
+	for i = start_line + 1, #lines do
+		if lines[i]:match("^|") then
+			table_end = i
+		else
+			break
+		end
+	end
+
+	return table_start, table_end
+end
+
+local function split_table_row(row)
+	local cells = {}
+
+	-- Find all cells between pipes, preserving empty cells
+	-- Split by | but keep track of all parts
+	local parts = {}
+	local start = 1
+	while start <= #row do
+		local pipe_pos = row:find("|", start)
+		if not pipe_pos then
+			table.insert(parts, row:sub(start))
+			break
+		end
+		table.insert(parts, row:sub(start, pipe_pos - 1))
+		start = pipe_pos + 1
+	end
+
+	-- Trim each part and skip the first (which is empty due to leading |)
+	-- Include all cells from index 2 to the last part
+	for i = 2, #parts do
+		local trimmed = parts[i]:match("^%s*(.-)%s*$") or ""
+		table.insert(cells, trimmed)
+	end
+
+	return cells
+end
+
+local function process_table(lines, table_start, table_end)
+	local total_row_idx = nil
+
+	-- Find the TOTAL row (case-insensitive, surrounded by *)
+	for i = table_start, table_end do
+		local row = lines[i]
+		if row:match("%*%s*[Tt][Oo][Tt][Aa][Ll]%s*%*") then
+			total_row_idx = i
+			break
+		end
+	end
+
+	if not total_row_idx then
+		return
+	end
+
+	local total_cells = split_table_row(lines[total_row_idx])
+	local num_cols = #total_cells
+
+	-- For each column, check if it has numeric values and calculate total
+	for col_idx = 1, num_cols do
+		local sum = 0
+		local has_numbers = false
+
+		-- Sum all numeric values in this column (excluding TOTAL row and header row)
+		-- Skip the separator row (table_start + 1)
+		for row_idx = table_start + 2, total_row_idx - 1 do
+			if row_idx <= #lines then
+				local cells = split_table_row(lines[row_idx])
+				if cells and cells[col_idx] then
+					local num = parse_amount(cells[col_idx])
+					if num then
+						sum = sum + num
+						has_numbers = true
+					end
+				end
+			end
+		end
+
+		-- Update the TOTAL row cell if column has numbers
+		if has_numbers then
+			-- Format number: if it's a whole number, don't show decimals
+			local formatted
+			if sum == math.floor(sum) then
+				formatted = tostring(math.floor(sum))
+			else
+				formatted = tostring(math.floor(sum * 100) / 100)
+			end
+			total_cells[col_idx] = formatted
+		end
+	end
+
+	-- Reconstruct the TOTAL row with updated values, preserving column count
+	local new_cells = {}
+	for i = 1, num_cols do
+		table.insert(new_cells, total_cells[i] or "")
+	end
+	local new_total_row = "| " .. table.concat(new_cells, " | ") .. " |"
+	lines[total_row_idx] = new_total_row
+end
+
+local function calculate_all_table_totals()
+	local bufnr = vim.api.nvim_get_current_buf()
+	if not bufnr or bufnr < 0 then
+		return
+	end
+
+	local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+	if not lines or #lines == 0 then
+		return
+	end
+
+	local updates = {} -- Store {line_idx, new_line} pairs
+
+	-- Find all tables and process them
+	local i = 1
+	while i <= #lines do
+		if lines[i] and lines[i]:match("^|") then
+			-- Found start of a table
+			local table_start = i
+			local table_end = i
+
+			-- Find end of table
+			for j = i + 1, #lines do
+				if lines[j] and lines[j]:match("^|") then
+					table_end = j
+				else
+					break
+				end
+			end
+
+			-- Find and update TOTAL row in this table
+			for row_idx = table_start, table_end do
+				local row = lines[row_idx]
+				if row and row:match("%*%s*[Tt][Oo][Tt][Aa][Ll]%s*%*") then
+					-- Found a TOTAL row
+					local total_cells = split_table_row(row)
+					local num_cols = #total_cells
+
+					-- For each column, calculate sum if it has numbers
+					for col_idx = 1, num_cols do
+						local sum = 0
+						local has_numbers = false
+
+						-- Sum values in this column (skip header and separator)
+						for data_row = table_start + 2, row_idx - 1 do
+							if data_row <= #lines then
+								local cells = split_table_row(lines[data_row])
+								if cells and cells[col_idx] then
+									local num = parse_amount(cells[col_idx])
+									if num then
+										sum = sum + num
+										has_numbers = true
+									end
+								end
+							end
+						end
+
+						-- Update cell with total
+						if has_numbers then
+							local formatted
+							if sum == math.floor(sum) then
+								formatted = tostring(math.floor(sum))
+							else
+								formatted = tostring(math.floor(sum * 100) / 100)
+							end
+							total_cells[col_idx] = formatted
+						end
+					end
+
+					-- Build new row with proper spacing
+					local row_parts = {}
+					for idx, cell in ipairs(total_cells) do
+						table.insert(row_parts, " " .. cell .. " ")
+					end
+					local new_row = "|" .. table.concat(row_parts, "|") .. "|"
+					table.insert(updates, { row_idx - 1, new_row }) -- -1 because nvim uses 0-indexed
+				end
+			end
+
+			i = table_end + 1
+		else
+			i = i + 1
+		end
+	end
+
+	-- Apply all updates to the buffer
+	for _, update in ipairs(updates) do
+		local line_idx = update[1]
+		local new_line = update[2]
+		pcall(function()
+			vim.api.nvim_buf_set_lines(bufnr, line_idx, line_idx + 1, false, { new_line })
+		end)
+	end
+end
+
+vim.api.nvim_create_autocmd({ "BufWritePre" }, {
+	pattern = "*.md",
+	callback = function()
+		if in_workspace() then
+			calculate_all_table_totals()
+			check_metadata()
+			if is_current_buffer_under_path(daily_folder) then
+				TODOSort()
+			end
+		end
+	end,
+})
+
+vim.api.nvim_create_user_command("ToggleCheckboxWithTimestamp", function()
+	toggle_checkbox_with_timestamp()
+end, {})
+
+vim.api.nvim_create_user_command("TODOSTart", function()
+	todoStart()
+end, {})
+
+vim.api.nvim_create_user_command("TmuxNavigateSecondBrain", function()
+	-- Use vim.fn.system() for better handling of shell commands in Neovim
+	vim.fn.system("tmux-navigate.sh Second_Brain")
+end, {})
+
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = "markdown",
+	callback = function()
+		if not in_workspace() then
+			return
+		end
+		vim.opt_local.autoindent = true
+		vim.api.nvim_set_keymap("n", "<leader>ts", "<cmd>TODOSort<CR>", {})
+		vim.api.nvim_set_keymap("n", "gd", "<cmd>ObsidianFollowLink<CR>", {})
+
+		vim.keymap.set("n", "<leader>fh", ":Headings<CR>", { noremap = true, silent = true, desc = "Find headings" })
+		vim.api.nvim_set_keymap(
+			"n",
+			"[h",
+			"?^#\\+\\s<CR>",
+			{ noremap = true, silent = true, desc = "Go to previous heading" }
+		)
+		vim.api.nvim_set_keymap(
+			"n",
+			"]h",
+			"/^#\\+\\s<CR>",
+			{ noremap = true, silent = true, desc = "Go to next heading" }
+		)
+		-- Weekly
+		vim.api.nvim_set_keymap(
+			"n",
+			"<leader>ww",
+			"<cmd>ObsidianCurrentWeekly<cr>",
+			{ noremap = true, silent = true, desc = "Current Weekly Note" }
+		)
+		vim.api.nvim_set_keymap("n", "<leader>wa", "<cmd>ObsidianFindWeekly<CR>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>wn", "<cmd>WeeklyCreate<CR>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap(
+			"n",
+			"<leader>wp",
+			"<cmd>ObsidianPreviousWeekly<cr>",
+			{ noremap = true, silent = true, desc = "Previous Weekly Note" }
+		)
+		vim.api.nvim_set_keymap(
+			"n",
+			"<leader>wn",
+			"<cmd>ObsidianNextWeekly<cr>",
+			{ noremap = true, silent = true, desc = "Next Weekly Note" }
+		)
+		-- Daily
+		vim.api.nvim_set_keymap("n", "<leader>da", "<cmd>ObsidianDailies<cr>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>dd", "<cmd>ObsidianToday<cr>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>dp", "<cmd>ObsidianPreviousDaily<cr>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>dn", "<cmd>ObsidianNextDaily<cr>", { noremap = true, silent = true })
+		-- Commands
+		vim.api.nvim_set_keymap(
+			"n",
+			"<leader>ch",
+			"<cmd>ToggleCheckboxWithTimestamp<cr>",
+			{ noremap = true, silent = true }
+		)
+		vim.api.nvim_set_keymap("n", "<leader>ts", "<cmd>TODOSTart<cr>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>bl", "<cmd>ObsidianBacklinks<cr>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>ot", "<cmd>ObsidianTags<cr>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>of", "<cmd>ObsidianTags<cr>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>nt", "<cmd>ObsidianNew<cr>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>it", "<cmd>ObsidianTemplate<cr>", { noremap = true, silent = true })
+		vim.api.nvim_set_keymap("n", "<leader>ef", ":ObsidianEditFrontmatter ", { noremap = true })
+		-- Add keymap for finding completed todos
+		vim.api.nvim_set_keymap(
+			"n",
+			"<leader>td",
+			"<cmd>CompletedTodos<cr>",
+			{ noremap = true, silent = true, desc = "Find completed TODOs" }
+		)
+		-- Create command to check metadata
+		vim.api.nvim_create_user_command("ObsidianCheckMetadata", function()
+			check_metadata()
+		end, {})
+
+		-- local files_in_workspace = scanWorkspace(workspace_path)
+		-- local result_files = executeQuery(dataview_query, files_in_workspace)
+	end,
+})
+
+vim.api.nvim_create_user_command("ObsidianEditFrontmatter", function(args)
+	if #args.fargs < 2 then
+		return
+	end
+	local key = args.fargs[1]
+	local value = table.concat({ select(2, unpack(args.fargs)) }, " ")
+end, {
+	nargs = "+",
+	complete = function(ArgLead, CmdLine, CursorPos)
+		return { "tags", "alias", "date", "title", "status", "type" }
+	end,
+})
+
+vim.api.nvim_create_user_command("ObsidianPreviousDaily", function()
+	find_previous_daily()
+end, {})
+
+vim.api.nvim_create_user_command("ObsidianNextDaily", function()
+	find_next_daily()
+end, {})
+
+vim.api.nvim_create_user_command("Headings", markdown_headings, {})
+
+vim.api.nvim_create_autocmd({ "BufReadPost", "BufWritePre" }, {
+	pattern = "*.md",
+	callback = function()
+		local current_file = vim.fn.expand("%:t:r")
+		local date_pattern = "(%d%d%d%d)%-(%d%d)%-(%d%d)"
+		local year, month, day = current_file:match(date_pattern)
+
+		if year and month and day then
+			import_todos_from_previous_daily()
+		end
+	end,
+})
+
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = "markdown",
+	callback = function()
+		vim.opt_local.conceallevel = 1
+	end,
+})
+
+local curl = require("plenary.curl")
+local rss_parser = require("root.my_plugins.rss_parser")
+
+local function show_rss_items(feed)
+	local ok, telescope = pcall(require, "telescope.pickers")
+	if ok then
+		local finders = require("telescope.finders")
+		local conf = require("telescope.config").values
+		local actions = require("telescope.actions")
+		local action_state = require("telescope.actions.state")
+		telescope
+			.new({}, {
+				prompt_title = feed.title or "RSS Feed",
+				finder = finders.new_table({
+					results = feed.items,
+					entry_maker = function(entry)
+						return {
+							value = entry,
+							display = entry.title or entry.link,
+							ordinal = (entry.title or "") .. (entry.link or ""),
+						}
+					end,
+				}),
+				sorter = conf.generic_sorter({}),
+				attach_mappings = function(prompt_bufnr)
+					actions.select_default:replace(function()
+						actions.close(prompt_bufnr)
+						local selection = action_state.get_selected_entry()
+						if selection and selection.value and selection.value.link then
+							vim.fn.jobstart({ "open", selection.value.link })
+						end
+					end)
+					return true
+				end,
+			})
+			:find()
+	else
+		print("Feed: " .. (feed.title or "(no title)"))
+		for i, item in ipairs(feed.items or {}) do
+			print(string.format("%d. %s", i, item.title or item.link or "(no title)"))
+		end
+	end
+end
+
+local function read_lines_from_file(path)
+	local lines = {}
+	local f = io.open(path, "r")
+	if not f then
+		return nil
+	end
+	for line in f:lines() do
+		local trimmed = line:match("^%s*(.-)%s*$")
+		if trimmed ~= "" and not trimmed:match("^#") then
+			table.insert(lines, trimmed)
+		end
+	end
+	f:close()
+	return lines
+end
+
+local function obsidian_rss_pull_multi(urls)
+	local feeds = {}
+	local done = 0
+	local total = #urls
+	local all_items = {}
+	for _, url in ipairs(urls) do
+		curl.get(url, {
+			callback = vim.schedule_wrap(function(response)
+				done = done + 1
+				if response.status == 200 then
+					local feed = rss_parser.parse(response.body)
+					if feed and feed.items then
+						for _, item in ipairs(feed.items) do
+							item.__feed_title = feed.title or url
+							table.insert(all_items, item)
+						end
+					end
+				else
+					vim.notify("Failed to fetch RSS feed: " .. url, vim.log.levels.ERROR)
+				end
+				if done == total then
+					if #all_items == 0 then
+						vim.notify("No items found in any RSS feed.", vim.log.levels.WARN)
+						return
+					end
+					-- Sort by pubDate if available
+					table.sort(all_items, function(a, b)
+						return (a.pubDate or "") > (b.pubDate or "")
+					end)
+					show_rss_items({ title = "All Feeds", items = all_items })
+				end
+			end),
+		})
+	end
+end
+
+vim.api.nvim_create_user_command("ObsidianRssPull", function(args)
+	if not args.args or args.args == "" then
+		print("Usage: :ObsidianRssPull <url> or <file_with_urls>")
+		return
+	end
+	local arg = args.args
+	if vim.fn.filereadable(arg) == 1 then
+		local urls = read_lines_from_file(arg)
+		if not urls or #urls == 0 then
+			vim.notify("No URLs found in file: " .. arg, vim.log.levels.WARN)
+			return
+		end
+		obsidian_rss_pull_multi(urls)
+	else
+		obsidian_rss_pull(arg)
+	end
+end, { nargs = 1, complete = "file" })
+
+local function create_note_from_rss_item(item)
+	local input = vim.fn.input("New note title: ", item.title or "", "file")
+	if not input or input == "" then
+		vim.notify("Note creation cancelled.", vim.log.levels.INFO)
+		return
+	end
+	local note_path = workspace_path .. input .. ".md"
+	local f = io.open(note_path, "w")
+	if not f then
+		vim.notify("Failed to create note: " .. note_path, vim.log.levels.ERROR)
+		return
+	end
+	f:write("# " .. (item.title or input) .. "\n\n")
+	f:write("**Group:** " .. (item.__group or "") .. "\n\n")
+	f:write("**Link:** [" .. (item.link or "") .. "](" .. (item.link or "") .. ")\n\n")
+	if item.description and item.description ~= "" then
+		f:write("**Description:**\n" .. item.description .. "\n\n")
+	end
+	f:close()
+	vim.cmd("edit " .. vim.fn.fnameescape(note_path))
+end
+
+-- Update show_grouped_rss_items to add this action
+local function show_grouped_rss_items(groups)
+	local ok, telescope = pcall(require, "telescope.pickers")
+	if ok then
+		local finders = require("telescope.finders")
+		local conf = require("telescope.config").values
+		local actions = require("telescope.actions")
+		local action_state = require("telescope.actions.state")
+		local all = {}
+		for group, items in pairs(groups) do
+			for _, item in ipairs(items) do
+				item.__group = group
+				table.insert(all, item)
+			end
+		end
+		telescope
+			.new({}, {
+				prompt_title = "RSS Feeds (Grouped)",
+				finder = finders.new_table({
+					results = all,
+					entry_maker = function(entry)
+						return {
+							value = entry,
+							display = string.format("[%s] %s", entry.__group, entry.title or entry.link),
+							ordinal = (entry.title or "") .. (entry.link or "") .. (entry.__group or ""),
+						}
+					end,
+				}),
+				sorter = conf.generic_sorter({}),
+				attach_mappings = function(prompt_bufnr, map)
+					actions.select_default:replace(function()
+						actions.close(prompt_bufnr)
+						local selection = action_state.get_selected_entry()
+						if selection and selection.value and selection.value.link then
+							vim.fn.jobstart({ "open", selection.value.link })
+						end
+					end)
+					map("i", "<C-n>", function()
+						local selection = action_state.get_selected_entry()
+						if selection and selection.value then
+							actions.close(prompt_bufnr)
+							create_note_from_rss_item(selection.value)
+						end
+					end)
+					map("n", "<C-n>", function()
+						local selection = action_state.get_selected_entry()
+						if selection and selection.value then
+							actions.close(prompt_bufnr)
+							create_note_from_rss_item(selection.value)
+						end
+					end)
+					return true
+				end,
+			})
+			:find()
+	else
+		for group, items in pairs(groups) do
+			print("== " .. group .. " ==")
+			for i, item in ipairs(items) do
+				print(string.format("%d. %s", i, item.title or item.link or "(no title)"))
+			end
+		end
+	end
+end
+
+local function parse_rss_md_groups(path)
+	local groups = {}
+	local current_group = nil
+	local f = io.open(path, "r")
+	if not f then
+		return groups
+	end
+	for line in f:lines() do
+		local trimmed = line:match("^%s*(.-)%s*$")
+		local group = trimmed:match("^#%s*(.+)$")
+		if group then
+			current_group = group:lower():gsub("^%s+", ""):gsub("%s+$", "")
+			groups[current_group] = groups[current_group] or {}
+		elseif current_group and trimmed ~= "" and not trimmed:match("^#") then
+			table.insert(groups[current_group], trimmed)
+		end
+	end
+	f:close()
+	return groups
+end
+
+local function obsidian_rss_from_md_grouped()
+	local rss_md = workspace_path .. "RSS.md"
+	local url_groups = parse_rss_md_groups(rss_md)
+	local item_groups = {}
+	local total = 0
+	for _, urls in pairs(url_groups) do
+		total = total + #urls
+	end
+	if total == 0 then
+		vim.notify("No RSS URLs found in RSS.md.", vim.log.levels.WARN)
+		return
+	end
+	local done = 0
+	local function check_done()
+		done = done + 1
+		if done == total then
+			show_grouped_rss_items(item_groups)
+		end
+	end
+	for group, urls in pairs(url_groups) do
+		item_groups[group] = {}
+		for _, url in ipairs(urls) do
+			curl.get(url, {
+				callback = vim.schedule_wrap(function(response)
+					if response.status == 200 then
+						local feed = rss_parser.parse(response.body)
+						if feed and feed.items then
+							for _, item in ipairs(feed.items) do
+								item.__feed_title = feed.title or url
+								table.insert(item_groups[group], item)
+							end
+						end
+					else
+						vim.notify("Failed to fetch RSS: " .. url, vim.log.levels.ERROR)
+					end
+					check_done()
+				end),
+			})
+		end
+	end
+end
+
+local function insert_rss_section_in_daily(groups)
+	-- Find the current buffer (assume daily note is open)
+	local bufnr = vim.api.nvim_get_current_buf()
+	local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+	local rss_start, rss_end = nil, nil
+	-- Find # RSS section
+	for i, line in ipairs(lines) do
+		if line:match("^#%s*RSS%s*$") then
+			rss_start = i
+			-- Find where the section ends (next heading or end of file)
+			for j = i + 1, #lines do
+				if lines[j]:match("^#%s*") then
+					rss_end = j - 1
+					break
+				end
+			end
+			if not rss_end then
+				rss_end = #lines
+			end
+			break
+		end
+	end
+	-- Prepare new RSS section content
+	local new_section = { "# RSS" }
+	for group, items in pairs(groups) do
+		table.insert(new_section, "")
+		table.insert(new_section, "## " .. group:gsub("^%l", string.upper))
+		for _, item in ipairs(items) do
+			local title = item.title or item.link or "(no title)"
+			local link = item.link or ""
+			table.insert(new_section, string.format("- [%s](%s)", title, link))
+		end
+	end
+	-- Insert or replace the section
+	if rss_start then
+		vim.api.nvim_buf_set_lines(bufnr, rss_start - 1, rss_end, false, new_section)
+	else
+		-- Add at end, with a blank line before
+		if #lines > 0 and lines[#lines]:match("%S") then
+			table.insert(new_section, 1, "")
+		end
+		vim.api.nvim_buf_set_lines(bufnr, #lines, #lines, false, new_section)
+	end
+end
+
+local function rssimport_and_insert()
+	local rss_md = workspace_path .. "RSS.md"
+	local url_groups = parse_rss_md_groups(rss_md)
+	local item_groups = {}
+	local total = 0
+	for _, urls in pairs(url_groups) do
+		total = total + #urls
+	end
+	if total == 0 then
+		vim.notify("No RSS URLs found in RSS.md.", vim.log.levels.WARN)
+		return
+	end
+	local done = 0
+	local function check_done()
+		done = done + 1
+		if done == total then
+			insert_rss_section_in_daily(item_groups)
+			show_grouped_rss_items(item_groups)
+		end
+	end
+	for group, urls in pairs(url_groups) do
+		item_groups[group] = {}
+		for _, url in ipairs(urls) do
+			curl.get(url, {
+				callback = vim.schedule_wrap(function(response)
+					if response.status == 200 then
+						local feed = rss_parser.parse(response.body)
+						if feed and feed.items then
+							for _, item in ipairs(feed.items) do
+								item.__feed_title = feed.title or url
+								table.insert(item_groups[group], item)
+							end
+						end
+					else
+						vim.notify("Failed to fetch RSS: " .. url, vim.log.levels.ERROR)
+					end
+					check_done()
+				end),
+			})
+		end
+	end
+end
+
+vim.api.nvim_create_user_command("RSSImport", function()
+	rssimport_and_insert()
+end, {})
+
+vim.api.nvim_set_keymap(
+	"n",
+	"<leader>ri",
+	":RSSImport<CR>",
+	{ noremap = true, silent = true, desc = "Import RSS from RSS.md" }
+)
+
+local obsidian_config = {
+	files = {},
+	last_update = 0,
+	cache_ttl = 30,
+}
+
+local completion_state = {
+	active = false,
+	bufnr = nil,
+	winid = nil,
+	matches = {},
+	selected_idx = 1,
+	query = "",
+	word_start = 0,
+	word_end = 0,
+}
+
+local function refresh_file_cache()
+	local now = os.time()
+	if (now - completion_cache.last_update) < completion_cache.cache_ttl and #completion_cache.files > 0 then
+		return completion_cache.files
+	end
+
+	local files = vim.fs.find(function(name)
+		return name:match("%.md$") ~= nil
+	end, {
+		path = workspace_path,
+		type = "file",
+		limit = math.huge,
+	})
+
+	local processed = {}
+	for _, file_path in ipairs(files) do
+		local relative_path = file_path:gsub(workspace_path, ""):gsub("%.md$", "")
+		if not relative_path:match("^Templates/")
+			and not relative_path:match("^%.")
+			and not relative_path:match("^%.trash/")
+			and not relative_path:match("^%.obsidian/") then
+			table.insert(processed, {
+				full_path = file_path,
+				relative_path = relative_path,
+				filename = vim.fs.basename(relative_path),
+			})
+		end
+	end
+
+	completion_cache.files = processed
+	completion_cache.last_update = now
+	return processed
+end
+
+local function close_completion_menu()
+	if completion_state.winid and vim.api.nvim_win_is_valid(completion_state.winid) then
+		vim.api.nvim_win_close(completion_state.winid, true)
+	end
+	if completion_state.bufnr and vim.api.nvim_buf_is_valid(completion_state.bufnr) then
+		vim.api.nvim_buf_delete(completion_state.bufnr, { force = true })
+	end
+	completion_state.active = false
+	completion_state.winid = nil
+	completion_state.bufnr = nil
+end
+
+local function update_completion_menu()
+	if not completion_state.active or not completion_state.winid then
+		return
+	end
+	local lines = {}
+	for i, match in ipairs(completion_state.matches) do
+		local prefix = i == completion_state.selected_idx and "▸ " or "  "
+		table.insert(lines, prefix .. match.filename)
+	end
+	vim.api.nvim_buf_set_lines(completion_state.bufnr, 0, -1, false, lines)
+end
+
+local function show_completion_menu(matches, query, word_start, word_end)
+	close_completion_menu()
+	if #matches == 0 then
+		return
+	end
+	completion_state.matches = matches
+	completion_state.selected_idx = 1
+	completion_state.query = query
+	completion_state.word_start = word_start
+	completion_state.word_end = word_end
+	completion_state.active = true
+	completion_state.bufnr = vim.api.nvim_create_buf(false, true)
+	vim.api.nvim_buf_set_option(completion_state.bufnr, "bufhidden", "wipe")
+	local cursor = vim.api.nvim_win_get_cursor(0)
+	local opts = {
+		relative = "cursor",
+		row = 1,
+		col = 0,
+		width = 40,
+		height = math.min(#matches, 10),
+		style = "minimal",
+		border = "rounded",
+		zindex = 1000,
+	}
+	completion_state.winid = vim.api.nvim_open_win(completion_state.bufnr, false, opts)
+	vim.api.nvim_win_set_option(completion_state.winid, "cursorline", false)
+	vim.api.nvim_win_set_option(completion_state.winid, "scrolloff", 0)
+	update_completion_menu()
+end
+
+local function select_next()
+	if not completion_state.active then
+		return
+	end
+	completion_state.selected_idx = (completion_state.selected_idx % #completion_state.matches) + 1
+	update_completion_menu()
+end
+
+local function select_prev()
+	if not completion_state.active then
+		return
+	end
+	completion_state.selected_idx = ((completion_state.selected_idx - 2 + #completion_state.matches) % #completion_state.matches) + 1
+	update_completion_menu()
+end
+
+local function accept_completion()
+	if not completion_state.active or #completion_state.matches == 0 then
+		return
+	end
+	local selected = completion_state.matches[completion_state.selected_idx]
+	close_completion_menu()
+	local line = vim.api.nvim_get_current_line()
+	local new_line = line:sub(1, completion_state.word_start) .. "[[" .. selected.filename .. "]]" .. line:sub(completion_state.word_end + 1)
+	vim.api.nvim_set_current_line(new_line)
+	local cursor = vim.api.nvim_win_get_cursor(0)
+	vim.api.nvim_win_set_cursor(0, { cursor[1], completion_state.word_start + #selected.filename + 4 })
+end
+
+local function check_inline_completion()
+	if vim.bo.filetype ~= "markdown" or not in_workspace() then
+		return
+	end
+	local line = vim.api.nvim_get_current_line()
+	local cursor_col = vim.api.nvim_win_get_cursor(0)[2]
+	local line_to_cursor = line:sub(1, cursor_col)
+	if line_to_cursor:find("%[%[[^%]]*$") then
+		close_completion_menu()
+		return
+	end
+	local word_start = cursor_col
+	for i = cursor_col, 1, -1 do
+		local char = line:sub(i, i)
+		if char:match("%s") or char:match("[%[%]%(%)]") then
+			word_start = i
+			break
+		end
+		word_start = i - 1
+	end
+	local query = line:sub(word_start + 1, cursor_col)
+	if #query < 2 then
+		close_completion_menu()
+		return
+	end
+	local all_files = refresh_file_cache()
+	local current_file = vim.api.nvim_buf_get_name(0):gsub("%.md$", "")
+	local current_basename = vim.fs.basename(current_file)
+	local query_lower = query:lower()
+	local matches = {}
+	for _, file in ipairs(all_files) do
+		if file.filename ~= current_basename then
+			local filename_lower = file.filename:lower()
+			if filename_lower:find(query_lower, 1, true) then
+				table.insert(matches, file)
+				if #matches >= 15 then
+					break
+				end
+			end
+		end
+	end
+	if #matches > 0 then
+		show_completion_menu(matches, query, word_start, cursor_col)
+	else
+		close_completion_menu()
+	end
+end
+
+-- Set up completion keymaps (blink-compatible)
+local function feedkey(key)
+	return vim.api.nvim_replace_termcodes(key, true, true, true)
+end
+
+vim.keymap.set("i", "<C-j>", function()
+	if completion_state.active then
+		select_next()
+		return ""
+	else
+		return feedkey("<C-j>")
+	end
+end, { expr = true, noremap = true, silent = true })
+
+vim.keymap.set("i", "<C-k>", function()
+	if completion_state.active then
+		select_prev()
+		return ""
+	else
+		return feedkey("<C-k>")
+	end
+end, { expr = true, noremap = true, silent = true })
+
+vim.keymap.set("i", "<CR>", function()
+	if completion_state.active then
+		accept_completion()
+		return ""
+	else
+		return feedkey("<CR>")
+	end
+end, { expr = true, noremap = true, silent = true })
+
+vim.keymap.set("i", "<Tab>", function()
+	if completion_state.active then
+		select_next()
+		return ""
+	else
+		return feedkey("<Tab>")
+	end
+end, { expr = true, noremap = true, silent = true })
+
+vim.keymap.set("i", "<S-Tab>", function()
+	if completion_state.active then
+		select_prev()
+		return ""
+	else
+		return feedkey("<S-Tab>")
+	end
+end, { expr = true, noremap = true, silent = true })
+
+vim.keymap.set("i", "<C-e>", function()
+	if completion_state.active then
+		close_completion_menu()
+		return ""
+	else
+		return feedkey("<C-e>")
+	end
+end, { expr = true, noremap = true, silent = true })
+
+-- Auto-trigger completion while typing
+vim.api.nvim_create_autocmd("TextChangedI", {
+	pattern = "*.md",
+	callback = function()
+		vim.schedule(check_inline_completion)
+	end,
+})
+
+-- Close menu on cursor movement or leaving insert mode
+vim.api.nvim_create_autocmd({ "CursorMovedI", "InsertLeave" }, {
+	pattern = "*.md",
+	callback = function()
+		close_completion_menu()
+	end,
+})
+
+local obsidian_config = {
+	{
+		"MeanderingProgrammer/render-markdown.nvim",
+		opts = {
+			file_types = { "markdown" },
+			checkbox = {
+				enabled = false,
+			},
+		},
+		ft = { "markdown" },
+	},
+	{
+		"epwalsh/obsidian.nvim",
+		version = "*",
+		lazy = true,
+		ft = "markdown",
+		dependencies = {
+			"nvim-lua/plenary.nvim",
+		},
+		opts = {
+			workspaces = {
+				{
+					name = "personal",
+					path = workspace_path,
+				},
+			},
+			date_format = date_format,
+			templates = {
+				folder = "Templates",
+				date_format = date_format,
+				time_format = time_format,
+			},
+			disable_frontmatter = true,
+			note_id_func = function(title)
+				return title
+			end,
+			daily_notes = {
+				folder = "Daily/",
+				date_format = date_format,
+				template = "Daily Template.md",
+			},
+			use_advanced_uri = true,
+			mappings = {},
+			attachments = {
+				img_folder = "Attachments/",
+				---@return string
+				img_name_func = function()
+					return string.format("%s-", os.time())
+				end,
+			},
+			follow_url_func = function(url)
+				vim.fn.jobstart({ "open", url })
+			end,
+		},
+		config = function(_, opts)
+			vim.api.nvim_create_autocmd("FileType", {
+				pattern = "markdown",
+				callback = function()
+					if in_workspace() then
+						vim.opt.spell = true
+					end
+				end,
+			})
+			require("obsidian").setup(opts)
+		end,
+	},
+}
+
+return setmetatable(obsidian_config, {
+	__index = function(_, key)
+		if key == "smart_files" then
+			return smart_files
+		end
+		return nil
+	end,
+})
