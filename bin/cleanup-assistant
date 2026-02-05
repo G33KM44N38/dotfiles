@@ -1,0 +1,219 @@
+#!/bin/bash
+# cleanup-assistant - Cleanup assistant processes (opencode, claude) using PGID-based termination
+#
+# Usage:
+#   cleanup-assistant pane <pane_pid>
+#   cleanup-assistant window <window_index> [session_name]
+#   cleanup-assistant session <session_name>
+#
+# Modes:
+#   pane    - Kill all child processes of a specific pane (by PID)
+#   window  - Kill all processes in a window across all panes (by window index)
+#   session - Kill all processes in a session across all windows
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Configuration
+SIGTERM_TIMEOUT=2  # Seconds to wait before SIGKILL
+DEBUG=${DEBUG:-0}
+
+# Helper function to log debug messages
+debug_log() {
+  if [ "$DEBUG" -eq 1 ]; then
+    echo "[DEBUG] $*" >&2
+  fi
+}
+
+# Helper function to cleanup a process group by PGID
+# Gracefully terminates with SIGTERM, then SIGKILL if needed
+cleanup_pgid() {
+  local pgid=$1
+  local pane_desc=$2
+
+  debug_log "Checking process group $pgid ($pane_desc)"
+
+  # Check if the process group exists
+  if ! ps -g "$pgid" >/dev/null 2>&1; then
+    debug_log "Process group $pgid already dead"
+    return 0
+  fi
+
+  echo -e "${YELLOW}[cleanup]${NC} Terminating processes in group $pgid ($pane_desc)"
+
+  # Try graceful shutdown with SIGTERM
+  if pkill -TERM -g "$pgid" 2>/dev/null; then
+    debug_log "Sent SIGTERM to process group $pgid"
+
+    # Wait for processes to die gracefully
+    sleep "$SIGTERM_TIMEOUT"
+
+    # Check if they're still around
+    if ps -g "$pgid" >/dev/null 2>&1; then
+      echo -e "${YELLOW}[cleanup]${NC} Processes still running, sending SIGKILL to group $pgid"
+      pkill -KILL -g "$pgid" 2>/dev/null || true
+      sleep 0.5
+    else
+      echo -e "${GREEN}[cleanup]${NC} Successfully terminated process group $pgid"
+      return 0
+    fi
+  fi
+
+  # Final check
+  if ps -g "$pgid" >/dev/null 2>&1; then
+    echo -e "${RED}[cleanup]${NC} Failed to kill process group $pgid" >&2
+    return 1
+  else
+    echo -e "${GREEN}[cleanup]${NC} Successfully terminated process group $pgid"
+    return 0
+  fi
+}
+
+# Cleanup by pane PID
+cleanup_pane() {
+  local pane_pid=$1
+
+  if [ -z "$pane_pid" ] || [ "$pane_pid" = "0" ]; then
+    echo -e "${RED}[cleanup]${NC} Invalid pane PID: $pane_pid" >&2
+    return 1
+  fi
+
+  debug_log "Cleaning up pane with PID $pane_pid"
+
+  # Get the process group of this pane
+  local pgid
+  pgid=$(ps -o pgid= -p "$pane_pid" 2>/dev/null | tr -d ' ') || {
+    debug_log "Pane PID $pane_pid no longer exists"
+    return 0
+  }
+
+  if [ -z "$pgid" ]; then
+    debug_log "Could not determine PGID for pane PID $pane_pid"
+    return 0
+  fi
+
+  cleanup_pgid "$pgid" "pane:$pane_pid"
+}
+
+# Cleanup by window (all panes in window)
+cleanup_window() {
+  local window_index=$1
+  local session_name=${2:-}
+
+  debug_log "Cleaning up window $window_index in session '$session_name'"
+
+  if [ -z "$window_index" ]; then
+    echo -e "${RED}[cleanup]${NC} Window index required" >&2
+    return 1
+  fi
+
+  # If session name not provided, try to get current session
+  if [ -z "$session_name" ]; then
+    session_name=$(tmux display-message -p '#S' 2>/dev/null) || {
+      echo -e "${RED}[cleanup]${NC} Could not determine session name" >&2
+      return 1
+    }
+  fi
+
+  # List all panes in the window
+  local pane_pids
+  pane_pids=$(tmux list-panes -t "${session_name}:${window_index}" -F '#{pane_pid}' 2>/dev/null) || {
+    debug_log "Window $window_index not found in session $session_name"
+    return 0
+  }
+
+  if [ -z "$pane_pids" ]; then
+    debug_log "No panes found in window $window_index"
+    return 0
+  fi
+
+  # Cleanup each pane's PGID
+  local failed=0
+  while IFS= read -r pane_pid; do
+    [ -z "$pane_pid" ] && continue
+
+    local pgid
+    pgid=$(ps -o pgid= -p "$pane_pid" 2>/dev/null | tr -d ' ') || {
+      debug_log "Pane PID $pane_pid no longer exists"
+      continue
+    }
+
+    [ -z "$pgid" ] && continue
+
+    cleanup_pgid "$pgid" "window:$window_index/pane:$pane_pid" || failed=$((failed + 1))
+  done <<< "$pane_pids"
+
+  return $failed
+}
+
+# Cleanup by session (all windows in session)
+cleanup_session() {
+  local session_name=$1
+
+  if [ -z "$session_name" ]; then
+    echo -e "${RED}[cleanup]${NC} Session name required" >&2
+    return 1
+  fi
+
+  debug_log "Cleaning up session $session_name"
+
+  # List all windows in the session
+  local window_indices
+  window_indices=$(tmux list-windows -t "$session_name" -F '#{window_index}' 2>/dev/null) || {
+    debug_log "Session $session_name not found or already closed"
+    return 0
+  }
+
+  if [ -z "$window_indices" ]; then
+    debug_log "No windows found in session $session_name"
+    return 0
+  fi
+
+  # Cleanup each window
+  local failed=0
+  while IFS= read -r window_index; do
+    [ -z "$window_index" ] && continue
+    cleanup_window "$window_index" "$session_name" || failed=$((failed + 1))
+  done <<< "$window_indices"
+
+  return $failed
+}
+
+# Main entry point
+main() {
+  local mode=${1:-}
+
+  if [ -z "$mode" ]; then
+    echo "Usage: cleanup-assistant <mode> [arguments...]" >&2
+    echo "" >&2
+    echo "Modes:" >&2
+    echo "  pane <pane_pid>                    - Cleanup by pane PID" >&2
+    echo "  window <window_index> [session]    - Cleanup by window index" >&2
+    echo "  session <session_name>             - Cleanup by session name" >&2
+    return 1
+  fi
+
+  case "$mode" in
+    pane)
+      cleanup_pane "${2:-}"
+      ;;
+    window)
+      cleanup_window "${2:-}" "${3:-}"
+      ;;
+    session)
+      cleanup_session "${2:-}"
+      ;;
+    *)
+      echo -e "${RED}[cleanup]${NC} Unknown mode: $mode" >&2
+      echo "Valid modes: pane, window, session" >&2
+      return 1
+      ;;
+  esac
+}
+
+main "$@"

@@ -17,7 +17,6 @@
       "WebSearch"
     ]
   },
-  "model": "opus",
   "hooks": {
     "Stop": [
       {
@@ -44,6 +43,9 @@
   "statusLine": {
     "type": "command",
     "command": "input=$(cat); current_dir=$(echo \"$input\" | jq -r '.workspace.current_dir'); model_display_name=$(echo \"$input\" | jq -r '.model.display_name'); dir_name=$(basename \"$current_dir\"); if git -C \"$current_dir\" rev-parse --is-inside-work-tree >/dev/null 2>&1; then branch=$(git -C \"$current_dir\" branch --show-current 2>/dev/null); if [ -n \"$branch\" ]; then if ! git -C \"$current_dir\" diff-index --quiet HEAD -- 2>/dev/null; then git_info=\" git:($branch) ✗\"; else git_info=\" git:($branch)\"; fi; else git_info=\"\"; fi; else git_info=\"\"; fi; printf \"➜ %s [%s]%s\" \"$dir_name\" \"$model_display_name\" \"$git_info\""
+  },
+  "enabledPlugins": {
+    "lua-lsp@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true
 }

@@ -1,11 +1,18 @@
 local function update_tmux_windows()
-	os.execute("tmux kill-window -t 2")
-	os.execute("tmux kill-window -t 3")
-	os.execute("tmux kill-window -t 4")
+	-- Kill old windows 2, 3, 4
+	os.execute("tmux kill-window -t 2 2>/dev/null || true")
+	os.execute("tmux kill-window -t 3 2>/dev/null || true")
+	os.execute("tmux kill-window -t 4 2>/dev/null || true")
+
+	-- Create new windows for this worktree
 	os.execute("tmux new-window -dn run")
 	os.execute("tmux new-window -dn process")
 	os.execute("tmux new-window -dn assistant")
 	os.execute('tmux send-keys -t assistant -R "coding-assistant" C-m')
+
+	-- Gracefully cleanup any orphaned processes left behind after killing windows
+	-- Runs in background so it doesn't block the worktree switch
+	os.execute("sleep 1 && cleanup-orphaned-processes.sh 2>/dev/null || true &")
 end
 
 -- Module pour exposer les fonctions personnalisées
@@ -167,9 +174,11 @@ return {
 							vim.cmd("LspRestart")
 						end
 					end
+					
+					-- Update tmux windows AFTER all worktree switch operations are complete
+					update_tmux_windows()
+					print("Switched to worktree: " .. metadata.path)
 				end, 500)
-				update_tmux_windows()
-				print("Switched to worktree: " .. metadata.path)
 			end
 		end)
 
