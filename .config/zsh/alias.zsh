@@ -34,3 +34,18 @@ alias oc="opencode"
 
 # Tmux
 alias tma="tmux a"
+
+# Ensure kill-server runs cleanup first
+tmux() {
+  case "${1:-}" in
+    kill-server)
+      "$HOME/.dotfiles/bin/tmux-cleanup.sh" server 2>/dev/null || true
+      ;;
+    kill-session)
+      if [ -n "${2:-}" ]; then
+        "$HOME/.dotfiles/bin/tmux-cleanup.sh" session "$2" 2>/dev/null || true
+      fi
+      ;;
+  esac
+  command tmux "$@"
+}
