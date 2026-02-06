@@ -1,18 +1,29 @@
 local function update_tmux_windows()
 	local session_name = vim.fn.system("tmux display-message -p '#S'"):gsub("\n", "")
+	if session_name == "" then
+		return
+	end
 
-	os.execute("/Users/boss/.dotfiles/bin/tmux-cleanup.sh window " .. session_name .. " 2 2>/dev/null || true")
-	os.execute("/Users/boss/.dotfiles/bin/tmux-cleanup.sh window " .. session_name .. " 3 2>/dev/null || true")
-	os.execute("/Users/boss/.dotfiles/bin/tmux-cleanup.sh window " .. session_name .. " 4 2>/dev/null || true")
+	local cleanup_cmd =
+		string.format("/Users/boss/.dotfiles/bin/tmux-cleanup.sh window %s 2 3 4 2>/dev/null || true", session_name)
+	os.execute(cleanup_cmd)
 
-	os.execute("tmux kill-window -t 2 2>/dev/null || true")
-	os.execute("tmux kill-window -t 3 2>/dev/null || true")
-	os.execute("tmux kill-window -t 4 2>/dev/null || true")
+	os.execute(string.format("tmux kill-window -t %s:2 2>/dev/null || true", session_name))
+	os.execute(string.format("tmux kill-window -t %s:3 2>/dev/null || true", session_name))
+	os.execute(string.format("tmux kill-window -t %s:4 2>/dev/null || true", session_name))
 
-	os.execute("tmux new-window -dn run")
-	os.execute("tmux new-window -dn process")
-	os.execute("tmux new-window -dn assistant")
-	os.execute('tmux send-keys -t assistant -R "coding-assistant" C-m')
+	local tmux_cmd = string.format(
+		"tmux "
+			.. "new-window -t %s -dn run \\; "
+			.. "new-window -t %s -dn process \\; "
+			.. "new-window -t %s -dn assistant \\; "
+			.. "send-keys -t %s:assistant -R 'coding-assistant' C-m",
+		session_name,
+		session_name,
+		session_name,
+		session_name
+	)
+	os.execute(tmux_cmd)
 end
 
 -- Module pour exposer les fonctions personnalisées
@@ -174,7 +185,7 @@ return {
 							vim.cmd("LspRestart")
 						end
 					end
-					
+
 					-- Update tmux windows AFTER all worktree switch operations are complete
 					update_tmux_windows()
 					print("Switched to worktree: " .. metadata.path)

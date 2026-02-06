@@ -3,7 +3,7 @@
 #
 # Usage:
 #   tmux-cleanup.sh pane <pane_pid>
-#   tmux-cleanup.sh window <session> <window>
+#   tmux-cleanup.sh window <session> <window> [window...]
 #   tmux-cleanup.sh session <session>
 #   tmux-cleanup.sh server
 
@@ -11,52 +11,24 @@ set -euo pipefail
 
 SIGTERM_TIMEOUT=2
 
-collect_descendants() {
-  local root_pid=$1
-  local all_pids="$root_pid"
-  local queue="$root_pid"
+kill_process_group() {
+  local leader_pid=$1
+  [ -z "$leader_pid" ] && return 0
 
-  while [ -n "$queue" ]; do
-    local next_queue=""
-    for pid in $queue; do
-      local children
-      children=$(ps -ax -o pid=,ppid= | awk -v parent="$pid" '$2 == parent {print $1}')
-      if [ -n "$children" ]; then
-        all_pids="$all_pids $children"
-        next_queue="$next_queue $children"
-      fi
-    done
-    queue="$next_queue"
-  done
-
-  echo "$all_pids"
-}
-
-kill_pids() {
-  local pids=$1
-  [ -z "$pids" ] && return 0
-
-  for pid in $pids; do
-    kill -TERM "$pid" 2>/dev/null || true
-  done
+  # In tmux panes, pane_pid is typically the process-group leader.
+  # Signaling the full group is much faster than walking the process tree.
+  kill -TERM -- "-$leader_pid" 2>/dev/null || kill -TERM "$leader_pid" 2>/dev/null || true
 
   local waited=0
-  while [ $waited -lt $((SIGTERM_TIMEOUT * 10)) ]; do
-    local alive=0
-    for pid in $pids; do
-      if kill -0 "$pid" 2>/dev/null; then
-        alive=1
-        break
-      fi
-    done
-    [ $alive -eq 0 ] && return 0
+  while [ "$waited" -lt $((SIGTERM_TIMEOUT * 10)) ]; do
+    if ! pgrep -g "$leader_pid" >/dev/null 2>&1; then
+      return 0
+    fi
     sleep 0.1
     waited=$((waited + 1))
   done
 
-  for pid in $pids; do
-    kill -KILL "$pid" 2>/dev/null || true
-  done
+  kill -KILL -- "-$leader_pid" 2>/dev/null || kill -KILL "$leader_pid" 2>/dev/null || true
 }
 
 cleanup_window() {
@@ -67,24 +39,17 @@ cleanup_window() {
 
   [ -z "$pane_pids" ] && return 0
 
-  local all_pids=""
   for pane_pid in $pane_pids; do
     [ -z "$pane_pid" ] && continue
-    all_pids="$all_pids $(collect_descendants "$pane_pid")"
+    kill_process_group "$pane_pid"
   done
-
-  all_pids=$(echo "$all_pids" | tr ' ' '\n' | sort -u | tr '\n' ' ')
-  kill_pids "$all_pids"
 }
 
 cleanup_pane() {
   local pane_pid=$1
   [ -z "$pane_pid" ] && return 0
 
-  local all_pids
-  all_pids=$(collect_descendants "$pane_pid")
-  all_pids=$(echo "$all_pids" | tr ' ' '\n' | sort -u | tr '\n' ' ')
-  kill_pids "$all_pids"
+  kill_process_group "$pane_pid"
 }
 
 cleanup_session() {
@@ -115,7 +80,12 @@ case "${1:-}" in
     cleanup_pane "${2:-}"
     ;;
   window)
-    cleanup_window "${2:-}" "${3:-}"
+    session="${2:-}"
+    shift 2 || true
+    [ "$#" -eq 0 ] && exit 0
+    for window in "$@"; do
+      cleanup_window "$session" "$window"
+    done
     ;;
   session)
     cleanup_session "${2:-}"
@@ -124,7 +94,7 @@ case "${1:-}" in
     cleanup_server
     ;;
   *)
-    echo "Usage: tmux-cleanup.sh pane <pane_pid> | window <session> <window> | session <session> | server" >&2
+    echo "Usage: tmux-cleanup.sh pane <pane_pid> | window <session> <window> [window...] | session <session> | server" >&2
     exit 1
     ;;
 esac
