@@ -8,6 +8,7 @@ DRY_RUN=false
 INTERACTIVE=true
 AUTO_PULL=true
 export GIT_PAGER=cat
+STATUS_FILE="/tmp/worktree_cleanup_status.txt"
 
 # Colors
 RED='\033[0;31m'
@@ -64,6 +65,15 @@ echo "Mode: $([ "$DRY_RUN" = true ] && echo "DRY RUN" || echo "LIVE")"
 echo "Interactive: $INTERACTIVE"
 echo ""
 
+# Preconditions and state reset
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo -e "${RED}Error: this command must be run inside a Git worktree${NC}"
+  exit 1
+fi
+
+rm -f "$STATUS_FILE"
+touch "$STATUS_FILE"
+
 # Initialize tracking
 declare -a SAFE_TO_REMOVE=()
 declare -a NEEDS_ATTENTION=()
@@ -77,7 +87,15 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "📡 STEP 1: Fetching from remote"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-git fetch --all --prune
+if [ "$DRY_RUN" = true ]; then
+  if ! git fetch --all --prune --dry-run; then
+    echo -e "${YELLOW}⚠️  Fetch dry-run failed, continuing with local refs${NC}"
+  fi
+else
+  if ! git fetch --all --prune; then
+    echo -e "${YELLOW}⚠️  Fetch failed, continuing with local refs${NC}"
+  fi
+fi
 echo ""
 
 # Step 2: Update protected branches
@@ -87,7 +105,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 for main_branch in "main" "release"; do
-  main_path=$(git worktree list | grep -E "\[$main_branch\]|\/$main_branch$" | awk '{print $1}' | head -1)
+  main_path=$(git worktree list | grep -E "\[$main_branch\]|\/$main_branch$" | awk '{print $1}' | head -1 || true)
   
   if [ -n "$main_path" ] && [ -d "$main_path" ]; then
     echo "Updating $main_branch at $main_path..."
@@ -111,7 +129,7 @@ echo "🔍 STEP 3: Analyzing worktrees"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-git worktree list | tail -n +2 | awk '{print $1}' | while read worktree_path; do
+git worktree list | awk '{print $1}' | while read -r worktree_path; do
   cd "$worktree_path" 2>/dev/null || continue
   
   branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
@@ -129,14 +147,14 @@ git worktree list | tail -n +2 | awk '{print $1}' | while read worktree_path; do
   # Check for uncommitted changes
   if ! git diff-index --quiet HEAD -- 2>/dev/null; then
     echo "  ⚠️  Uncommitted changes"
-    echo "$worktree_path|$branch|uncommitted" >> /tmp/worktree_cleanup_status.txt
+    echo "$worktree_path|$branch|uncommitted" >> "$STATUS_FILE"
     continue
   fi
   
   # Check if remote branch exists
   if ! git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
     echo "  🗑️  Remote deleted (merged)"
-    echo "$worktree_path|$branch|remote_deleted" >> /tmp/worktree_cleanup_status.txt
+    echo "$worktree_path|$branch|remote_deleted" >> "$STATUS_FILE"
     continue
   fi
   
@@ -146,15 +164,15 @@ git worktree list | tail -n +2 | awk '{print $1}' | while read worktree_path; do
   
   if [ "$unpushed" -gt 0 ] && [ "$behind" -gt 0 ]; then
     echo "  ⚠️  Diverged: $unpushed ahead, $behind behind"
-    echo "$worktree_path|$branch|diverged|$unpushed|$behind" >> /tmp/worktree_cleanup_status.txt
+    echo "$worktree_path|$branch|diverged|$unpushed|$behind" >> "$STATUS_FILE"
     continue
   elif [ "$unpushed" -gt 0 ]; then
     echo "  ↑ $unpushed unpushed commits"
-    echo "$worktree_path|$branch|unpushed|$unpushed" >> /tmp/worktree_cleanup_status.txt
+    echo "$worktree_path|$branch|unpushed|$unpushed" >> "$STATUS_FILE"
     continue
   elif [ "$behind" -gt 0 ]; then
     echo "  ↓ $behind commits behind"
-    echo "$worktree_path|$branch|behind|$behind" >> /tmp/worktree_cleanup_status.txt
+    echo "$worktree_path|$branch|behind|$behind" >> "$STATUS_FILE"
     continue
   fi
   
@@ -169,10 +187,10 @@ git worktree list | tail -n +2 | awk '{print $1}' | while read worktree_path; do
   
   if [ -n "$merged_into" ]; then
     echo "  ✓ Merged into $merged_into"
-    echo "$worktree_path|$branch|merged|$merged_into" >> /tmp/worktree_cleanup_status.txt
+    echo "$worktree_path|$branch|merged|$merged_into" >> "$STATUS_FILE"
   else
     echo "  ℹ️  Has unique work"
-    echo "$worktree_path|$branch|unique" >> /tmp/worktree_cleanup_status.txt
+    echo "$worktree_path|$branch|unique" >> "$STATUS_FILE"
   fi
   
   echo ""
@@ -185,19 +203,20 @@ echo "📊 STEP 4: Summary & Actions"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-if [ ! -f /tmp/worktree_cleanup_status.txt ]; then
+if [ ! -s "$STATUS_FILE" ]; then
   echo "✓ All worktrees are clean!"
+  rm -f "$STATUS_FILE"
   exit 0
 fi
 
 # Parse results
-remote_deleted=$(grep "|remote_deleted$" /tmp/worktree_cleanup_status.txt 2>/dev/null || true)
-merged=$(grep "|merged|" /tmp/worktree_cleanup_status.txt 2>/dev/null || true)
-behind=$(grep "|behind|" /tmp/worktree_cleanup_status.txt 2>/dev/null || true)
-diverged=$(grep "|diverged|" /tmp/worktree_cleanup_status.txt 2>/dev/null || true)
-unpushed=$(grep "|unpushed|" /tmp/worktree_cleanup_status.txt 2>/dev/null || true)
-uncommitted=$(grep "|uncommitted$" /tmp/worktree_cleanup_status.txt 2>/dev/null || true)
-unique=$(grep "|unique$" /tmp/worktree_cleanup_status.txt 2>/dev/null || true)
+remote_deleted=$(grep "|remote_deleted$" "$STATUS_FILE" 2>/dev/null || true)
+merged=$(grep "|merged|" "$STATUS_FILE" 2>/dev/null || true)
+behind=$(grep "|behind|" "$STATUS_FILE" 2>/dev/null || true)
+diverged=$(grep "|diverged|" "$STATUS_FILE" 2>/dev/null || true)
+unpushed=$(grep "|unpushed|" "$STATUS_FILE" 2>/dev/null || true)
+uncommitted=$(grep "|uncommitted$" "$STATUS_FILE" 2>/dev/null || true)
+unique=$(grep "|unique$" "$STATUS_FILE" 2>/dev/null || true)
 
 # Category 1: Safe to remove
 if [ -n "$remote_deleted" ] || [ -n "$merged" ]; then
@@ -306,7 +325,7 @@ fi
 
 if [ "$removable_count" -eq 0 ] && [ "$syncable_count" -eq 0 ]; then
   echo "✓ Nothing to cleanup automatically"
-  rm -f /tmp/worktree_cleanup_status.txt
+  rm -f "$STATUS_FILE"
   exit 0
 fi
 
@@ -315,5 +334,68 @@ echo "Ready to:"
 [ "$syncable_count" -gt 0 ] && echo "  • Sync $syncable_count worktree(s)"
 echo ""
 
-# vi:ft=sh:
+should_continue=true
+if [ "$INTERACTIVE" = true ] && [ "$DRY_RUN" = false ]; then
+  read -r -p "Proceed with these actions? [y/N] " response
+  case "$response" in
+    [Yy]|[Yy][Ee][Ss]) should_continue=true ;;
+    *) should_continue=false ;;
+  esac
+fi
 
+if [ "$should_continue" = false ]; then
+  echo "Aborted by user."
+  rm -f "$STATUS_FILE"
+  exit 0
+fi
+
+repo_cwd="$(pwd)"
+removed_ok=0
+synced_ok=0
+
+if [ "$removable_count" -gt 0 ]; then
+  echo "Removing safe worktrees..."
+  echo "$remote_deleted"$'\n'"$merged" | sed '/^$/d' | while IFS='|' read -r path branch status target; do
+    if [ "$DRY_RUN" = true ]; then
+      echo "  [DRY RUN] Would remove worktree: $path ($branch)"
+      echo "  [DRY RUN] Would delete branch: $branch"
+      continue
+    fi
+
+    if git worktree remove "$path"; then
+      echo "  ✓ Removed worktree: $path"
+      if git branch -d "$branch" >/dev/null 2>&1; then
+        echo "    ✓ Deleted branch: $branch"
+      else
+        echo "    ⚠️  Branch not deleted automatically: $branch"
+      fi
+    else
+      echo "  ⚠️  Failed to remove worktree: $path"
+    fi
+  done
+fi
+
+if [ "$syncable_count" -gt 0 ] && [ "$AUTO_PULL" = true ]; then
+  echo "Syncing behind worktrees..."
+  echo "$behind" | while IFS='|' read -r path branch status count; do
+    if [ "$DRY_RUN" = true ]; then
+      echo "  [DRY RUN] Would pull --rebase in: $path ($branch)"
+      continue
+    fi
+
+    if cd "$path" 2>/dev/null; then
+      if git pull --rebase; then
+        echo "  ✓ Synced: $branch"
+      else
+        echo "  ⚠️  Failed to sync: $branch"
+      fi
+      cd "$repo_cwd" >/dev/null 2>&1 || true
+    else
+      echo "  ⚠️  Worktree path unavailable: $path"
+    fi
+  done
+fi
+
+rm -f "$STATUS_FILE"
+
+# vi:ft=sh:
