@@ -8,6 +8,18 @@ YES=false
 AUTO_PULL=true
 export GIT_PAGER=cat
 
+if [[ -t 1 ]]; then
+  C_RESET=$'\033[0m'
+  C_BRANCH=$'\033[38;5;39m'
+else
+  C_RESET=""
+  C_BRANCH=""
+fi
+
+color_branch() {
+  printf "%s%s%s" "$C_BRANCH" "$1" "$C_RESET"
+}
+
 usage() {
   cat <<'EOF'
 Usage: worktree-cleanup.sh [--dry-run|-n] [--yes|-y] [--no-pull] [--help|-h]
@@ -170,9 +182,9 @@ if [[ -n "$safe" ]]; then
   echo "✅ SAFE TO REMOVE"
   echo "$safe" | while IFS='|' read -r path branch _ reason extra; do
     case "$reason" in
-      remote_deleted) echo "  • $branch  (remote gone)";;
-      merged) echo "  • $branch  (merged into origin/$extra)";;
-      *) echo "  • $branch";;
+      remote_deleted) echo "  • $(color_branch "$branch")  (remote gone)";;
+      merged) echo "  • $(color_branch "$branch")  (merged into origin/$extra)";;
+      *) echo "  • $(color_branch "$branch")";;
     esac
     echo "    $path"
   done
@@ -182,7 +194,7 @@ fi
 if [[ -n "$behind_list" ]]; then
   echo "🔄 BEHIND (can pull --rebase)"
   echo "$behind_list" | while IFS='|' read -r path branch _ _ count; do
-    echo "  • $branch  ($count behind)"
+    echo "  • $(color_branch "$branch")  ($count behind)"
     echo "    $path"
   done
   echo
@@ -192,12 +204,12 @@ if [[ -n "$attention" ]]; then
   echo "⚠️  ATTENTION (manual review)"
   echo "$attention" | while IFS='|' read -r path branch _ reason a b; do
     case "$reason" in
-      uncommitted) echo "  • $branch  (uncommitted changes)";;
-      unpushed) echo "  • $branch  ($a unpushed)";;
-      diverged) echo "  • $branch  (diverged: $a ahead, $b behind)";;
+      uncommitted) echo "  • $(color_branch "$branch")  (uncommitted changes)";;
+      unpushed) echo "  • $(color_branch "$branch")  ($a unpushed)";;
+      diverged) echo "  • $(color_branch "$branch")  (diverged: $a ahead, $b behind)";;
       detached) echo "  • (detached)";;
-      unreadable) echo "  • $branch  (cannot read path)";;
-      *) echo "  • $branch  ($reason)";;
+      unreadable) echo "  • $(color_branch "$branch")  (cannot read path)";;
+      *) echo "  • $(color_branch "$branch")  ($reason)";;
     esac
     echo "    $path"
   done
@@ -208,7 +220,7 @@ fi
 # if [[ -n "$keep" ]]; then
 #   echo "ℹ️  KEEP"
 #   echo "$keep" | while IFS='|' read -r path branch _ why _; do
-#     echo "  • $branch  ($why)"
+#     echo "  • $(color_branch "$branch")  ($why)"
 #     echo "    $path"
 #   done
 #   echo
@@ -243,8 +255,8 @@ if [[ "$safe_count" -gt 0 ]]; then
     fi
 
     git worktree remove --force "$path" >/dev/null 2>&1 \
-      && echo "  ✓ removed $branch" \
-      || echo "  ⚠️  failed to remove $branch"
+      && echo "  ✓ removed $(color_branch "$branch")" \
+      || echo "  ⚠️  failed to remove $(color_branch "$branch")"
 
     # delete local branch if possible (will fail if not fully merged)
     git branch -d "$branch" >/dev/null 2>&1 || true
@@ -262,8 +274,8 @@ if [[ "$behind_count" -gt 0 && "$AUTO_PULL" == true ]]; then
 
     if cd "$path" 2>/dev/null; then
       git pull --rebase >/dev/null 2>&1 \
-        && echo "  ✓ pulled $branch" \
-        || echo "  ⚠️  failed pull $branch"
+        && echo "  ✓ pulled $(color_branch "$branch")" \
+        || echo "  ⚠️  failed pull $(color_branch "$branch")"
       cd "$repo_cwd" >/dev/null 2>&1 || true
     else
       echo "  ⚠️  cannot cd: $path"

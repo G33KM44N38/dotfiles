@@ -1,29 +1,86 @@
+local uv = vim.uv or vim.loop
+local TMUX_REFRESH_DEBOUNCE_MS = 400
+local LSP_RESTART_DEBOUNCE_MS = 1500
+local last_tmux_refresh_ms = 0
+local last_lsp_restart_ms = 0
+local lsp_restart_nonce = 0
+
+local function now_ms()
+	if not uv or not uv.hrtime then
+		return math.floor(os.clock() * 1000)
+	end
+	return math.floor(uv.hrtime() / 1000000)
+end
+
+local function shell_escape(value)
+	return "'" .. tostring(value):gsub("'", "'\\''") .. "'"
+end
+
+local function run_async_shell(command)
+	vim.fn.jobstart({ "/bin/sh", "-c", command }, { detach = true })
+end
+
 local function update_tmux_windows()
 	local session_name = vim.fn.system("tmux display-message -p '#S'"):gsub("\n", "")
 	if session_name == "" then
 		return
 	end
 
-	local cleanup_cmd =
-		string.format("/Users/boss/.dotfiles/bin/tmux-cleanup.sh window %s 2 3 4 2>/dev/null || true", session_name)
-	os.execute(cleanup_cmd)
+	local now = now_ms()
+	if (now - last_tmux_refresh_ms) < TMUX_REFRESH_DEBOUNCE_MS then
+		return
+	end
+	last_tmux_refresh_ms = now
 
-	os.execute(string.format("tmux kill-window -t %s:2 2>/dev/null || true", session_name))
-	os.execute(string.format("tmux kill-window -t %s:3 2>/dev/null || true", session_name))
-	os.execute(string.format("tmux kill-window -t %s:4 2>/dev/null || true", session_name))
+	local session_target = shell_escape(session_name)
+	local target2 = shell_escape(session_name .. ":2")
+	local target3 = shell_escape(session_name .. ":3")
+	local target4 = shell_escape(session_name .. ":4")
+	local assistant_target = shell_escape(session_name .. ":assistant")
+	local cleanup_script = shell_escape("/Users/boss/.dotfiles/bin/tmux-cleanup.sh")
+	local cleanup_log = shell_escape("/tmp/tmux-cleanup.log")
 
-	local tmux_cmd = string.format(
-		"tmux "
-			.. "new-window -t %s -dn run \\; "
-			.. "new-window -t %s -dn process \\; "
-			.. "new-window -t %s -dn assistant \\; "
-			.. "send-keys -t %s:assistant -R 'coding-assistant' C-m",
-		session_name,
-		session_name,
-		session_name,
-		session_name
-	)
-	os.execute(tmux_cmd)
+	local tmux_refresh_cmd = table.concat({
+		cleanup_script .. " window " .. session_target .. " 2 3 4 >/dev/null 2>>" .. cleanup_log .. " || true;",
+		"tmux kill-window -t " .. target2 .. " >/dev/null 2>&1 || true;",
+		"tmux kill-window -t " .. target3 .. " >/dev/null 2>&1 || true;",
+		"tmux kill-window -t " .. target4 .. " >/dev/null 2>&1 || true;",
+		"tmux new-window -t " .. session_target .. " -dn run >/dev/null 2>&1 || true;",
+		"tmux new-window -t " .. session_target .. " -dn process >/dev/null 2>&1 || true;",
+		"tmux new-window -t " .. session_target .. " -dn assistant >/dev/null 2>&1 || true;",
+		"tmux send-keys -t " .. assistant_target .. " -R coding-assistant C-m >/dev/null 2>&1 || true",
+	}, " ")
+
+	-- Keep UI switch path fast; run one detached sequence to avoid cleanup/rebuild races.
+	run_async_shell(tmux_refresh_cmd)
+end
+
+local function schedule_lsp_restart()
+	local buf = vim.api.nvim_get_current_buf()
+	if not vim.api.nvim_buf_is_valid(buf) or vim.bo[buf].buftype == "nofile" then
+		return
+	end
+
+	local clients = vim.lsp.get_clients()
+	if #clients == 0 then
+		return
+	end
+
+	local now = now_ms()
+	if (now - last_lsp_restart_ms) < LSP_RESTART_DEBOUNCE_MS then
+		return
+	end
+	last_lsp_restart_ms = now
+
+	lsp_restart_nonce = lsp_restart_nonce + 1
+	local current_nonce = lsp_restart_nonce
+
+	vim.defer_fn(function()
+		if current_nonce ~= lsp_restart_nonce then
+			return
+		end
+		pcall(vim.cmd, "silent! LspRestart")
+	end, 120)
 end
 
 -- Module pour exposer les fonctions personnalisées
@@ -150,46 +207,18 @@ return {
 
 		Worktree.on_tree_change(function(op, metadata)
 			if op == Worktree.Operations.Switch then
-				vim.defer_fn(function()
-					local harpoon_logger = require("harpoon.logger")
-					harpoon_logger:log("git-worktree.nvim: on_tree_change - Inside defer_fn")
-					harpoon_logger:log("git-worktree.nvim: vim.loop.cwd() is:", vim.loop.cwd())
-					harpoon_logger:log(
-						"git-worktree.nvim: git_worktree.get_current_worktree_path() is:",
-						Worktree.get_current_worktree_path()
-					)
-
-					local harpoon = require("harpoon")
-
-					-- Get the key that Harpoon will use for the current worktree
-					local current_harpoon_key = harpoon.config.settings.key()
-
-					-- IMPORTANT: Clear Harpoon's internal list cache for this key
-					-- This forces Harpoon to re-read from disk the next time harpoon:list() is called
-					harpoon.lists[current_harpoon_key] = nil
-
-					-- Re-initialize Harpoon's data to force it to reload marks
-					harpoon.data = require("harpoon.data").Data:new(harpoon.config)
-
-					harpoon_logger:log(
-						"git-worktree.nvim: Harpoon data reloaded and list cache cleared for key:",
-						current_harpoon_key
-					)
-
-					-- Check if we're in a Neovim window/buffer context
-					local buf = vim.api.nvim_get_current_buf()
-					if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype ~= "nofile" then
-						-- Additional check to ensure we have active LSP clients
-						local clients = vim.lsp.get_clients()
-						if #clients > 0 then
-							vim.cmd("LspRestart")
-						end
+				vim.schedule(function()
+					local ok_harpoon, harpoon = pcall(require, "harpoon")
+					if ok_harpoon then
+						local current_harpoon_key = harpoon.config.settings.key()
+						harpoon.lists[current_harpoon_key] = nil
+						harpoon.data = require("harpoon.data").Data:new(harpoon.config)
 					end
 
-					-- Update tmux windows AFTER all worktree switch operations are complete
+					schedule_lsp_restart()
 					update_tmux_windows()
 					print("Switched to worktree: " .. metadata.path)
-				end, 500)
+				end)
 			end
 		end)
 

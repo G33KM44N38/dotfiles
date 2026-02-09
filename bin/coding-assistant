@@ -17,23 +17,44 @@ if [ -z "${TMUX:-}" ]; then
   exit 1
 fi
 
-# Store current window to return to it later
+# Store current window and session to return to it later
 current_window=$(tmux display-message -p '#I')
+session_name=$(tmux display-message -p '#S')
 
 # Create window 4 named 'assistant' (don't switch to it if it exists)
 if ! tmux list-windows | grep -q "^4:"; then
   tmux new-window -t 4 -n assistant -c "$PWD" -d
 fi
 
+# Cleanup any existing assistant processes from previous runs before launching new ones
+cleanup-assistant window 4 "$session_name" 2>/dev/null || true
+
 # Kill existing panes in the assistant window (keep only one)
 tmux kill-pane -a -t 4 2>/dev/null || true
 
+#####################
+###    OPENCODE   ###
+#####################
+
 # Run opencode in the first pane of window 4
-tmux send-keys -t 4 "opencode" C-m
+tmux send-keys -t 4 "opencode --continue" C-m
+
+
+#####################
+###  ANTRHOPIC    ###
+#####################
+
+# # # Split horizontally and run claude in the new pane
+# tmux split-window -h -t 4 -c "$PWD"
+# tmux send-keys -t 4 "claude" C-m
+
+#####################
+###    OPENAI     ###
+#####################
 
 # # Split horizontally and run claude in the new pane
 tmux split-window -h -t 4 -c "$PWD"
-tmux send-keys -t 4 "claude" C-m
+tmux send-keys -t 4 "codex resume" C-m
 
 # Return to the original window
 tmux select-window -t "$current_window"
