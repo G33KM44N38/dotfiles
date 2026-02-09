@@ -12,6 +12,7 @@ alias ca="coding-assistant"
 alias bsetup="ie && pnpm i"
 
 # Git command
+alias wtc="worktree-chore"
 alias gc="git commit"
 alias gcn="git commit --no-verify"
 alias gfa="git fetch --all --prune"
