@@ -21,8 +21,8 @@ return {
 			require("mason-lspconfig").setup({
 				ensure_installed = {
 					"lua_ls",
-					"ts_ls",
-					"eslint",
+					-- "ts_ls", -- REPLACED by typescript-tools.nvim
+					-- "eslint", -- Disabled: using project-local ESLint via command line
 					"tailwindcss",
 					"html",
 					"cssls",
@@ -39,6 +39,47 @@ return {
 				automatic_installation = true,
 			})
 			-- ⚠️ Ne pas utiliser setup_handlers ici
+		end,
+	},
+
+	{
+		"pmizio/typescript-tools.nvim",
+		event = { "BufReadPre", "BufNewFile" },
+		dependencies = { "williamboman/mason-lspconfig.nvim" },
+		ft = { "typescript", "typescriptreact", "javascript", "javascriptreact" },
+		config = function()
+			require("typescript-tools").setup({
+				settings = {
+					-- Memory optimization for 8GB RAM + Docker
+					tsserver_max_memory = 1536,  -- 1.5GB per instance
+					disable_solution_searching = false,  -- Keep cross-package navigation
+					
+					-- Performance optimizations
+					max_completion_entries = 25,
+					include_automatic_completions = false,
+					
+					-- File exclusions to reduce overhead
+					exclude_files = {
+						"**/*.min.js",
+						"**/*.generated.*",
+						"**/node_modules/**",
+					},
+				},
+				on_attach = function(client, bufnr)
+					-- Get file size for performance optimization
+					local filepath = vim.api.nvim_buf_get_name(bufnr)
+					local ok, stats = pcall(vim.loop.fs_stat, filepath)
+					local file_size = ok and stats and stats.size or 0
+					local is_large_file = file_size > 100000 -- 100KB threshold
+					
+					if is_large_file then
+						-- Disable expensive features for large files
+						client.server_capabilities.semanticTokensProvider = nil
+						client.server_capabilities.inlayHintProvider = nil
+						vim.notify("LSP: Disabled heavy features for large file", vim.log.levels.WARN)
+					end
+				end,
+			})
 		end,
 	},
 
@@ -90,42 +131,26 @@ return {
 			})
 
 			----------------------------------------------------
-			-- TYPESCRIPT
+			-- TYPESCRIPT (now handled by typescript-tools.nvim plugin above)
+			-- The configuration is in the typescript-tools.setup() call
 			----------------------------------------------------
-			vim.lsp.config("ts_ls", {
-				capabilities = capabilities,
-				root_dir = vim.fs.root(0, { "package.json" }),
-				single_file_support = false,
-				on_attach = function(client, bufnr)
-					-- Get file size for performance optimization
-					local filepath = vim.api.nvim_buf_get_name(bufnr)
-					local ok, stats = pcall(vim.loop.fs_stat, filepath)
-					local file_size = ok and stats and stats.size or 0
-					local is_large_file = file_size > 100000 -- 100KB threshold
-
-					if is_large_file then
-						-- Disable expensive features for large files (especially TSX with SVG)
-						client.server_capabilities.semanticTokensProvider = nil
-						client.server_capabilities.inlayHintProvider = nil
-						vim.notify("LSP: Disabled heavy features for large file", vim.log.levels.WARN)
-					end
-				end,
-			})
 
 			----------------------------------------------------
-			-- ESLINT
+			-- ESLINT (Disabled)
+			-- Using project-local ESLint via command line (npm run lint) instead of LSP
+			-- Reason: ESLint LSP can't find local node_modules libraries reliably
 			----------------------------------------------------
-			vim.lsp.config("eslint", {
-				capabilities = capabilities,
-				root_dir = vim.fs.root(0, {
-					".eslintrc.js",
-					".eslintrc.cjs",
-					".eslintrc.json",
-					"eslint.config.js",
-					"eslint.config.mjs",
-				}),
-				single_file_support = false,
-			})
+			-- vim.lsp.config("eslint", {
+			-- 	capabilities = capabilities,
+			-- 	root_dir = vim.fs.root(0, {
+			-- 		".eslintrc.js",
+			-- 		".eslintrc.cjs",
+			-- 		".eslintrc.json",
+			-- 		"eslint.config.js",
+			-- 		"eslint.config.mjs",
+			-- 	}),
+			-- 	single_file_support = false,
+			-- })
 
 			----------------------------------------------------
 			-- TAILWIND
@@ -262,6 +287,71 @@ return {
 					print("Usage: :LspKill <client_id>")
 				end
 			end, { nargs = 1 })
+
+			----------------------------------------------------
+			-- ESLINT COMMAND (using local installation)
+			----------------------------------------------------
+			vim.api.nvim_create_user_command("Eslint", function()
+				local filepath = vim.api.nvim_buf_get_name(0)
+				if filepath == "" then
+					vim.notify("No file open!", vim.log.levels.ERROR)
+					return
+				end
+				
+				vim.notify("Running ESLint...", vim.log.levels.INFO)
+				vim.fn.jobstart({
+					"./node_modules/.bin/eslint",
+					"--fix",
+					vim.fn.expand("%:p")
+				}, {
+					on_exit = function(job, exit_code)
+						if exit_code == 0 then
+							vim.notify("ESLint: No errors found ✓", vim.log.levels.INFO)
+							vim.cmd("edit!")  -- Reload fixed file
+						elseif exit_code == 1 then
+							vim.notify("ESLint: Errors found - check quickfix", vim.log.levels.WARNING)
+							vim.cmd("copen")  -- Show errors in quickfix
+						else
+							vim.notify("ESLint: Command failed (exit code " .. exit_code .. ")", vim.log.levels.ERROR)
+						end
+					end
+				})
+			end, {})
+		end,
+	},
+
+	----------------------------------------------------
+	-- MEMORY MANAGEMENT PLUGINS
+	----------------------------------------------------
+	{
+		"hinell/lsp-timeout.nvim",
+		event = "VeryLazy",
+		config = function()
+			-- lsp-timeout uses global config (no setup function)
+			vim.g.lspTimeoutConfig = {
+				stopTimeout = 180000,              -- 3 minutes idle timeout (conservative for testing)
+				startTimeout = 60000,               -- Start after 1 minute of focus
+				silent = true,                     -- Don't notify on stop/start
+				filetypes = {
+					ignore = {                     -- Don't manage LSP for these filetypes
+						"markdown", "text", "dockerfile",
+						"yml", "yaml", "json", "html", "css"
+					}
+				}
+			}
+		end,
+	},
+
+	{
+		"Zeioth/garbage-day.nvim",
+		event = "VeryLazy",
+		config = function()
+			require('garbage-day').setup({
+				aggressive_mode = false,        -- Conservative mode for testing
+				cleanup_interval = 180000,      -- Check every 3 minutes
+				excluded_servers = { "lua_ls" }, -- Keep Lua LSP running
+				notify_on_cleanup = false,
+			})
 		end,
 	},
 }

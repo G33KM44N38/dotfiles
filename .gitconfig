@@ -7,3 +7,6 @@
 	rebase = true
 [rebase]
 	autosquash = true
+[rerere]
+	enabled = true
+	autoupdate = true
