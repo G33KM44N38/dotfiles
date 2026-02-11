@@ -122,6 +122,9 @@
          name: opencode
      - name: Run roles
        ansible.builtin.include_role:
+         name: codex
+     - name: Run roles
+       ansible.builtin.include_role:
          name: pnpm
      - name: Run roles
        ansible.builtin.include_role:

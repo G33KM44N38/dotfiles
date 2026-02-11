@@ -3,7 +3,7 @@ return {
 	dependencies = { "MunifTanjim/nui.nvim" },
 	opts = {
 		keymaps = {
-			toggle = "<leader>dd", -- default '<leader>dd'
+			toggle = "<leader>te", -- TypeScript Error toggle
 			go_to_definition = "<leader>dx", -- default '<leader>dx'
 		},
 	},

@@ -1,6 +1,18 @@
 {
 	"$schema": "https://opencode.ai/config.json",
 	"provider": {},
+	"model": "opencode/kimi-free",
+	"mcp": {
+		"figma_desktop": {
+			"type": "remote",
+			"url": "http://127.0.0.1:3845/mcp"
+		}
+	},
+	"permission": {
+		"external_directory": {
+			"/tmp/*": "allow"
+		}
+	},
 	"agent": {
 		"meta-agent": {
 			"disable": true
@@ -9,9 +21,8 @@
 			"disable": true
 		},
 		"build": {
-			"prompt": "{file:./command/work.md}",
 			"mode": "primary",
-			"model": "opencode/minimax-m2.1-free",
+			"prompt": "{file:./command/agents.md}",
 			"tools": {
 				"write": true,
 				"edit": true,
@@ -20,7 +31,7 @@
 		},
 		"plan": {
 			"mode": "primary",
-			"model": "opencode/minimax-m2.1-free",
+			"prompt": "{file:./command/agents.md}",
 			"tools": {
 				"write": false,
 				"edit": false,

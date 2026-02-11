@@ -11,6 +11,37 @@ set -euo pipefail
 
 SIGTERM_TIMEOUT=2
 
+wait_for_group_exit() {
+  local group_pid=$1
+  local ticks=$2
+  local waited=0
+
+  while [ "$waited" -lt "$ticks" ]; do
+    if ! pgrep -g "$group_pid" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 0.1
+    waited=$((waited + 1))
+  done
+
+  return 1
+}
+
+log_group_survivors() {
+  local group_pid=$1
+  local survivors
+  survivors=$(pgrep -g "$group_pid" 2>/dev/null || true)
+  [ -z "$survivors" ] && return 0
+
+  echo "[tmux-cleanup] process group $group_pid still alive after SIGKILL" >&2
+  for pid in $survivors; do
+    local cmd
+    cmd=$(ps -o args= -p "$pid" 2>/dev/null || true)
+    [ -z "$cmd" ] && cmd="<unknown>"
+    echo "[tmux-cleanup] pid=$pid cmd=$cmd" >&2
+  done
+}
+
 kill_process_group() {
   local leader_pid=$1
   [ -z "$leader_pid" ] && return 0
@@ -19,16 +50,18 @@ kill_process_group() {
   # Signaling the full group is much faster than walking the process tree.
   kill -TERM -- "-$leader_pid" 2>/dev/null || kill -TERM "$leader_pid" 2>/dev/null || true
 
-  local waited=0
-  while [ "$waited" -lt $((SIGTERM_TIMEOUT * 10)) ]; do
-    if ! pgrep -g "$leader_pid" >/dev/null 2>&1; then
-      return 0
-    fi
-    sleep 0.1
-    waited=$((waited + 1))
-  done
+  if wait_for_group_exit "$leader_pid" $((SIGTERM_TIMEOUT * 10)); then
+    return 0
+  fi
 
   kill -KILL -- "-$leader_pid" 2>/dev/null || kill -KILL "$leader_pid" 2>/dev/null || true
+
+  if wait_for_group_exit "$leader_pid" 5; then
+    return 0
+  fi
+
+  log_group_survivors "$leader_pid"
+  return 0
 }
 
 cleanup_window() {

@@ -1,0 +1,7 @@
+---
+  - name: Install codex
+    homebrew:
+      name: codex
+      state: present
+      update_homebrew: yes
+
