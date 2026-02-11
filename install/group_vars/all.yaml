@@ -45,5 +45,5 @@ default_roles:
      - config
      - fd
      - mole
-     - codexbar
+     # - codexbar
      - claude-code
