@@ -101,9 +101,9 @@ local function build_tmux_refresh_command(session_name, target_path)
 		"tmux kill-window -t " .. target3 .. " >/dev/null 2>&1 || true;",
 		"TMUX_CLEANUP_SIGTERM_TIMEOUT=1 " .. cleanup_script .. " window " .. session_target .. " 4 >/dev/null 2>>" .. cleanup_log .. " || true;",
 		"tmux kill-window -t " .. target4 .. " >/dev/null 2>&1 || true;",
-		"tmux new-window -t " .. session_target .. " -dn run -c " .. target_path_escaped .. " >/dev/null 2>&1 || true;",
-		"tmux new-window -t " .. session_target .. " -dn process -c " .. target_path_escaped .. " >/dev/null 2>&1 || true;",
-		"tmux new-window -t " .. session_target .. " -dn assistant -c " .. target_path_escaped .. " >/dev/null 2>&1 || true;",
+		"tmux new-window -t " .. target2 .. " -dn run -c " .. target_path_escaped .. " >/dev/null 2>&1 || true;",
+		"tmux new-window -t " .. target3 .. " -dn process -c " .. target_path_escaped .. " >/dev/null 2>&1 || true;",
+		"tmux new-window -t " .. target4 .. " -dn assistant -c " .. target_path_escaped .. " >/dev/null 2>&1 || true;",
 		"tmux send-keys -t " .. assistant_target .. " -R " .. assistant_cmd .. " C-m >/dev/null 2>&1 || true;",
 	}, " ")
 
