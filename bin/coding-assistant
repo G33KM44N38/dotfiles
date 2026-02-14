@@ -1,10 +1,10 @@
 #!/bin/bash
-# coding-assistant - Sets up tmux window 4 'assistant' with opencode and claude in split panes
+# coding-assistant - Sets up tmux assistant window with opencode and codex in split panes
 
 set -euo pipefail
 
 # Ensure commands exist
-for cmd in opencode claude; do
+for cmd in opencode codex; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
     echo "Error: $cmd not found in PATH" >&2
     exit 1
@@ -20,31 +20,50 @@ fi
 # Store current window and session to return to it later
 current_window=$(tmux display-message -p '#I')
 session_name=$(tmux display-message -p '#S')
+tmux_supervise="$HOME/.dotfiles/bin/tmux-supervise"
+tmux_cleanup="$HOME/.dotfiles/bin/tmux-cleanup.sh"
+script_window=$(tmux display-message -p -t "${TMUX_PANE:-}" '#{window_index}' 2>/dev/null || echo "$current_window")
 
-# Create window 4 named 'assistant' (don't switch to it if it exists)
-if ! tmux list-windows | grep -q "^4:"; then
-  tmux new-window -t 4 -n assistant -c "$PWD" -d
+# Resolve assistant window by name first.
+assistant_window=$(tmux list-windows -F '#{window_index}:#{window_name}' | awk -F: '$2=="assistant"{print $1; exit}')
+
+# If missing, prefer index 4 when free to preserve your layout expectation.
+if [ -z "${assistant_window:-}" ]; then
+  if ! tmux list-windows | grep -q "^4:"; then
+    tmux new-window -t 4 -n assistant -c "$PWD" -d
+    assistant_window=4
+  else
+    assistant_window=$(tmux new-window -P -F '#{window_index}' -n assistant -c "$PWD" -d)
+  fi
 fi
 
-# Cleanup any existing assistant processes from previous runs before launching new ones
-cleanup-assistant window 4 "$session_name" 2>/dev/null || true
+assistant_target="${session_name}:${assistant_window}"
+
+# If invoked from inside assistant window, avoid killing our own pane process tree.
+# In that case, interrupt in-place instead. If invoked from another window, full cleanup is safe.
+if [ "$script_window" = "$assistant_window" ]; then
+  tmux send-keys -t "$assistant_target" C-c >/dev/null 2>&1 || true
+  tmux send-keys -t "$assistant_target" C-c >/dev/null 2>&1 || true
+else
+  "$tmux_cleanup" window "$session_name" "$assistant_window" 2>/dev/null || true
+fi
 
 # Kill existing panes in the assistant window (keep only one)
-tmux kill-pane -a -t 4 2>/dev/null || true
+tmux kill-pane -a -t "$assistant_target" 2>/dev/null || true
 
 #####################
 ###    OPENCODE   ###
 #####################
 
 # Run opencode in the first pane of window 4
-tmux send-keys -t 4 "opencode" C-m
+tmux send-keys -t "$assistant_target" "$tmux_supervise opencode" C-m
 
 
 #####################
-###  ANTRHOPIC    ###
+###  SECOND PANE  ###
 #####################
 
-# # # Split horizontally and run claude in the new pane
+# # # Split horizontally and run second assistant in the new pane
 # tmux split-window -h -t 4 -c "$PWD"
 # tmux send-keys -t 4 "claude" C-m
 
@@ -52,9 +71,9 @@ tmux send-keys -t 4 "opencode" C-m
 ###    OPENAI     ###
 #####################
 
-# # Split horizontally and run claude in the new pane
-tmux split-window -h -t 4 -c "$PWD"
-tmux send-keys -t 4 "codex" C-m
+# # Split horizontally and run codex in the new pane
+tmux split-window -h -t "$assistant_target" -c "$PWD"
+tmux send-keys -t "$assistant_target" "$tmux_supervise codex" C-m
 
 # Return to the original window
 tmux select-window -t "$current_window"

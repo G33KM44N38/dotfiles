@@ -11,7 +11,7 @@ case "$CURRENT_DIR" in
     tmux rename-window 'nvim' \
       \; send-keys -R "odn" C-m \
       \; new-window -n 'opencode' \
-      \; send-keys -t 'opencode' -R "opencode" C-m \
+      \; send-keys -t 'opencode' -R "$HOME/.dotfiles/bin/tmux-supervise opencode" C-m \
       \; select-window -t 1
     ;;
     

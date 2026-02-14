@@ -1,9 +1,12 @@
 local uv = vim.uv or vim.loop
-local TMUX_REFRESH_DEBOUNCE_MS = 400
 local LSP_RESTART_DEBOUNCE_MS = 1500
-local last_tmux_refresh_ms = 0
+local SWITCH_UI_MIN_VISIBLE_MS = 180
 local last_lsp_restart_ms = 0
 local lsp_restart_nonce = 0
+local switch_ui_nonce = 0
+local switch_ui_started_at_ms = 0
+local pending_tmux_refresh_path = nil
+local tmux_refresh_running = false
 
 local function now_ms()
 	if not uv or not uv.hrtime then
@@ -16,22 +19,68 @@ local function shell_escape(value)
 	return "'" .. tostring(value):gsub("'", "'\\''") .. "'"
 end
 
-local function run_async_shell(command)
-	vim.fn.jobstart({ "/bin/sh", "-c", command }, { detach = true })
+local function run_async_shell(command, on_exit)
+	local job_id = vim.fn.jobstart({ "/bin/sh", "-c", command }, {
+		detach = false,
+		on_exit = function(_, exit_code, _)
+			if on_exit then
+				vim.schedule(function()
+					on_exit(exit_code)
+				end)
+			end
+		end,
+	})
+
+	if job_id <= 0 and on_exit then
+		on_exit(job_id)
+	end
 end
 
-local function update_tmux_windows()
-	local session_name = vim.fn.system("tmux display-message -p '#S'"):gsub("\n", "")
-	if session_name == "" then
-		return
+local function worktree_label(path)
+	if type(path) ~= "string" or path == "" then
+		return "<unknown>"
 	end
-
-	local now = now_ms()
-	if (now - last_tmux_refresh_ms) < TMUX_REFRESH_DEBOUNCE_MS then
-		return
+	if vim.fs and vim.fs.basename then
+		return vim.fs.basename(path)
 	end
-	last_tmux_refresh_ms = now
+	return path:match("([^/]+)$") or path
+end
 
+local function begin_optimistic_switch(path)
+	switch_ui_nonce = switch_ui_nonce + 1
+	switch_ui_started_at_ms = now_ms()
+
+	local label = worktree_label(path)
+	vim.g.git_worktree_switch_inflight = 1
+	vim.g.git_worktree_switch_target = path or ""
+	pcall(vim.cmd, "redrawstatus")
+	vim.api.nvim_echo({ { "Switching worktree -> " .. label .. " ...", "ModeMsg" } }, false, {})
+	return switch_ui_nonce
+end
+
+local function finish_optimistic_switch(token, path, ok, err)
+	local elapsed = now_ms() - switch_ui_started_at_ms
+	local remaining = math.max(0, SWITCH_UI_MIN_VISIBLE_MS - elapsed)
+
+	vim.defer_fn(function()
+		if token ~= switch_ui_nonce then
+			return
+		end
+		vim.g.git_worktree_switch_inflight = 0
+		vim.g.git_worktree_switch_target = ""
+		pcall(vim.cmd, "redrawstatus")
+
+		local label = worktree_label(path)
+		if ok then
+			vim.api.nvim_echo({ { "Switched to worktree: " .. label, "MoreMsg" } }, false, {})
+		else
+			local message = tostring(err or "unknown error")
+			vim.api.nvim_echo({ { "Worktree switch post-hooks failed: " .. message, "ErrorMsg" } }, true, {})
+		end
+	end, remaining)
+end
+
+local function build_tmux_refresh_command(session_name, target_path)
 	local session_target = shell_escape(session_name)
 	local target2 = shell_escape(session_name .. ":2")
 	local target3 = shell_escape(session_name .. ":3")
@@ -39,20 +88,66 @@ local function update_tmux_windows()
 	local assistant_target = shell_escape(session_name .. ":assistant")
 	local cleanup_script = shell_escape("/Users/boss/.dotfiles/bin/tmux-cleanup.sh")
 	local cleanup_log = shell_escape("/tmp/tmux-cleanup.log")
+	local assistant_cmd = shell_escape("cd " .. target_path .. " && coding-assistant")
+	local target_path_escaped = shell_escape(target_path)
 
+	-- Default behavior: refresh windows 2/3/4 so their cwd tracks the new worktree.
+	-- For speed, 2/3 are killed immediately; assistant (4) gets explicit cleanup first
+	-- to prevent orphan opencode/codex/claude subprocesses.
 	local tmux_refresh_cmd = table.concat({
-		cleanup_script .. " window " .. session_target .. " 2 3 4 >/dev/null 2>>" .. cleanup_log .. " || true;",
+		"tmux send-keys -t " .. assistant_target .. " C-c >/dev/null 2>&1 || true;",
+		"tmux send-keys -t " .. assistant_target .. " C-c >/dev/null 2>&1 || true;",
 		"tmux kill-window -t " .. target2 .. " >/dev/null 2>&1 || true;",
 		"tmux kill-window -t " .. target3 .. " >/dev/null 2>&1 || true;",
+		"TMUX_CLEANUP_SIGTERM_TIMEOUT=1 " .. cleanup_script .. " window " .. session_target .. " 4 >/dev/null 2>>" .. cleanup_log .. " || true;",
 		"tmux kill-window -t " .. target4 .. " >/dev/null 2>&1 || true;",
-		"tmux new-window -t " .. session_target .. " -dn run >/dev/null 2>&1 || true;",
-		"tmux new-window -t " .. session_target .. " -dn process >/dev/null 2>&1 || true;",
-		"tmux new-window -t " .. session_target .. " -dn assistant >/dev/null 2>&1 || true;",
-		"tmux send-keys -t " .. assistant_target .. " -R coding-assistant C-m >/dev/null 2>&1 || true",
+		"tmux new-window -t " .. session_target .. " -dn run -c " .. target_path_escaped .. " >/dev/null 2>&1 || true;",
+		"tmux new-window -t " .. session_target .. " -dn process -c " .. target_path_escaped .. " >/dev/null 2>&1 || true;",
+		"tmux new-window -t " .. session_target .. " -dn assistant -c " .. target_path_escaped .. " >/dev/null 2>&1 || true;",
+		"tmux send-keys -t " .. assistant_target .. " -R " .. assistant_cmd .. " C-m >/dev/null 2>&1 || true;",
 	}, " ")
 
-	-- Keep UI switch path fast; run one detached sequence to avoid cleanup/rebuild races.
-	run_async_shell(tmux_refresh_cmd)
+	return tmux_refresh_cmd
+end
+
+local function drain_tmux_refresh_queue()
+	if tmux_refresh_running then
+		return
+	end
+
+	local target_path = pending_tmux_refresh_path
+	pending_tmux_refresh_path = nil
+
+	if type(target_path) ~= "string" or target_path == "" then
+		return
+	end
+
+	local session_name = vim.fn.system("tmux display-message -p '#S'"):gsub("\n", "")
+	if session_name == "" then
+		return
+	end
+
+	tmux_refresh_running = true
+	run_async_shell(build_tmux_refresh_command(session_name, target_path), function()
+		tmux_refresh_running = false
+		if pending_tmux_refresh_path ~= nil then
+			drain_tmux_refresh_queue()
+		end
+	end)
+end
+
+local function update_tmux_windows(worktree_path)
+	local target_path = worktree_path
+	if type(target_path) ~= "string" or target_path == "" then
+		target_path = vim.fn.getcwd()
+	end
+
+	pending_tmux_refresh_path = target_path
+	if tmux_refresh_running then
+		return
+	end
+
+	drain_tmux_refresh_queue()
 end
 
 local function schedule_lsp_restart()
@@ -207,17 +302,20 @@ return {
 
 		Worktree.on_tree_change(function(op, metadata)
 			if op == Worktree.Operations.Switch then
+				local switch_token = begin_optimistic_switch(metadata and metadata.path or "")
 				vim.schedule(function()
-					local ok_harpoon, harpoon = pcall(require, "harpoon")
-					if ok_harpoon then
-						local current_harpoon_key = harpoon.config.settings.key()
-						harpoon.lists[current_harpoon_key] = nil
-						harpoon.data = require("harpoon.data").Data:new(harpoon.config)
-					end
+					local ok, err = pcall(function()
+						local ok_harpoon, harpoon = pcall(require, "harpoon")
+						if ok_harpoon then
+							local current_harpoon_key = harpoon.config.settings.key()
+							harpoon.lists[current_harpoon_key] = nil
+							harpoon.data = require("harpoon.data").Data:new(harpoon.config)
+						end
 
-					schedule_lsp_restart()
-					update_tmux_windows()
-					print("Switched to worktree: " .. metadata.path)
+						schedule_lsp_restart()
+						update_tmux_windows(metadata and metadata.path or "")
+					end)
+					finish_optimistic_switch(switch_token, metadata and metadata.path or "", ok, err)
 				end)
 			end
 		end)

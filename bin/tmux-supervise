@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# tmux-supervise - run a command normally (foreground TTY), while exposing
+# a pane-scoped PID hint for tmux cleanup logic.
+#
+# Previous background supervision caused interactive CLIs (codex/opencode)
+# to lose proper foreground terminal behavior. This wrapper keeps execution
+# identical to running the command directly.
+
+set -euo pipefail
+
+if [ "$#" -eq 0 ]; then
+	echo "Usage: tmux-supervise <command> [args...]" >&2
+	exit 1
+fi
+
+STATE_DIR="${TMUX_SUPERVISE_STATE_DIR:-/tmp}"
+PANE_ID="${TMUX_PANE:-}"
+STATE_FILE=""
+
+if [ -n "$PANE_ID" ]; then
+	pane_key="$(printf '%s' "${PANE_ID#%}" | tr -cd 'A-Za-z0-9._-')"
+	if [ -n "$pane_key" ]; then
+		STATE_FILE="${STATE_DIR}/tmux-supervise-${pane_key}.pid"
+		printf '%s\n' "$$" >"$STATE_FILE"
+
+		# Best-effort stale file cleanup when this process exits.
+		# Only remove if file still references this same pid.
+		(
+			pid="$$"
+			file="$STATE_FILE"
+			while kill -0 "$pid" 2>/dev/null; do
+				sleep 0.2
+			done
+			current="$(tr -d '[:space:]' <"$file" 2>/dev/null || true)"
+			[ "$current" = "$pid" ] && rm -f "$file" 2>/dev/null || true
+		) &
+	fi
+fi
+
+exec "$@"
