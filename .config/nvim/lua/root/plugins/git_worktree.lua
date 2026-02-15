@@ -110,6 +110,27 @@ local function build_tmux_refresh_command(session_name, target_path)
 	return tmux_refresh_cmd
 end
 
+local function with_worktree_ready(path, cb)
+	if type(path) ~= "string" or path == "" then
+		cb(false)
+		return
+	end
+
+	if vim.system then
+		vim.system({ "git", "-C", path, "rev-parse", "--is-inside-work-tree" }, { text = true }, function(obj)
+			local ok = obj.code == 0 and type(obj.stdout) == "string" and obj.stdout:find("true", 1, true) ~= nil
+			vim.schedule(function()
+				cb(ok)
+			end)
+		end)
+		return
+	end
+
+	local out = vim.fn.system({ "git", "-C", path, "rev-parse", "--is-inside-work-tree" })
+	local ok = vim.v.shell_error == 0 and type(out) == "string" and out:find("true", 1, true) ~= nil
+	cb(ok)
+end
+
 local function drain_tmux_refresh_queue()
 	if tmux_refresh_running then
 		return
@@ -128,11 +149,21 @@ local function drain_tmux_refresh_queue()
 	end
 
 	tmux_refresh_running = true
-	run_async_shell(build_tmux_refresh_command(session_name, target_path), function()
-		tmux_refresh_running = false
-		if pending_tmux_refresh_path ~= nil then
-			drain_tmux_refresh_queue()
+	with_worktree_ready(target_path, function(ready)
+		if not ready then
+			tmux_refresh_running = false
+			if pending_tmux_refresh_path ~= nil then
+				drain_tmux_refresh_queue()
+			end
+			return
 		end
+
+		run_async_shell(build_tmux_refresh_command(session_name, target_path), function()
+			tmux_refresh_running = false
+			if pending_tmux_refresh_path ~= nil then
+				drain_tmux_refresh_queue()
+			end
+		end)
 	end)
 end
 
@@ -141,6 +172,7 @@ local function update_tmux_windows(worktree_path)
 	if type(target_path) ~= "string" or target_path == "" then
 		target_path = vim.fn.getcwd()
 	end
+	target_path = vim.fn.fnamemodify(target_path, ":p")
 
 	pending_tmux_refresh_path = target_path
 	if tmux_refresh_running then
@@ -313,7 +345,11 @@ return {
 						end
 
 						schedule_lsp_restart()
-						update_tmux_windows(metadata and metadata.path or "")
+						local current_worktree_path = Worktree.get_current_worktree_path()
+						if type(current_worktree_path) ~= "string" or current_worktree_path == "" then
+							current_worktree_path = vim.fn.getcwd()
+						end
+						update_tmux_windows(current_worktree_path)
 					end)
 					finish_optimistic_switch(switch_token, metadata and metadata.path or "", ok, err)
 				end)
