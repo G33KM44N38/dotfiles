@@ -35,6 +35,8 @@ alias oc="opencode"
 
 # Tmux
 alias tma="tmux a"
+alias t="tmux a"
+alias ts="tmux list-sessions"
 
 # Ensure kill-server runs cleanup first
 tmux() {
