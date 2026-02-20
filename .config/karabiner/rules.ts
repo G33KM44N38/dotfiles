@@ -61,7 +61,7 @@ const hyperSubLayers = createHyperSubLayers({
     v: app("Visual Studio Code"),
     w: app("WhatsApp"),
     x: app("Discord"),
-    y: app("Telegram"),
+    y: app("Brave Browser"),
     z: app("Safari"),
   },
   s: {
@@ -215,8 +215,33 @@ const rules: KarabinerRules[] = [
     manipulators: [createBasicManipulator("right_option", "tab", "")],
   },
   {
-    description: "caps lock to escape",
-    manipulators: [createBasicManipulator("caps_lock", "escape", "")],
+    description: "caps lock to escape/fn",
+    manipulators: [
+      {
+        description: "caps_lock -> fn (hold), escape (tap)",
+        type: "basic",
+        conditions: [
+          {
+            type: "device_if",
+            identifiers: [
+              {
+                vendor_id: 1452,
+              },
+            ],
+            description: "MacBook Pro built-in keyboard",
+          },
+        ],
+        from: {
+          key_code: "caps_lock",
+          modifiers: { optional: ["any"] },
+        },
+        to_if_held_down: [{ apple_vendor_top_case_key_code: "keyboard_fn" }],
+        to_if_alone: [{ key_code: "escape" }],
+        parameters: {
+          "basic.to_if_held_down_threshold_milliseconds": 500,
+        },
+      },
+    ],
   },
   {
     description: "close backet to alt-enter",

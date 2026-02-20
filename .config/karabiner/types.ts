@@ -117,6 +117,7 @@ export interface To {
   lazy?: boolean;
   halt?: boolean;
   key_code?: KeyCode;
+  apple_vendor_top_case_key_code?: "keyboard_fn";
   modifiers?: string[];
   shell_command?: string;
   repeat?: boolean;
