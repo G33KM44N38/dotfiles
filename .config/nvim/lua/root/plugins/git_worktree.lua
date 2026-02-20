@@ -81,33 +81,11 @@ local function finish_optimistic_switch(token, path, ok, err)
 end
 
 local function build_tmux_refresh_command(session_name, target_path)
+	local layout_script = shell_escape("/Users/boss/.dotfiles/bin/tmux_layout.sh")
 	local session_target = shell_escape(session_name)
-	local target2 = shell_escape(session_name .. ":2")
-	local target3 = shell_escape(session_name .. ":3")
-	local target4 = shell_escape(session_name .. ":4")
-	local assistant_target = shell_escape(session_name .. ":assistant")
-	local cleanup_script = shell_escape("/Users/boss/.dotfiles/bin/tmux-cleanup.sh")
-	local cleanup_log = shell_escape("/tmp/tmux-cleanup.log")
-	local assistant_cmd = shell_escape("cd " .. target_path .. " && coding-assistant")
 	local target_path_escaped = shell_escape(target_path)
 
-	-- Default behavior: refresh windows 2/3/4 so their cwd tracks the new worktree.
-	-- For speed, 2/3 are killed immediately; assistant (4) gets explicit cleanup first
-	-- to prevent orphan opencode/codex/claude subprocesses.
-	local tmux_refresh_cmd = table.concat({
-		"tmux send-keys -t " .. assistant_target .. " C-c >/dev/null 2>&1 || true;",
-		"tmux send-keys -t " .. assistant_target .. " C-c >/dev/null 2>&1 || true;",
-		"tmux kill-window -t " .. target2 .. " >/dev/null 2>&1 || true;",
-		"tmux kill-window -t " .. target3 .. " >/dev/null 2>&1 || true;",
-		"TMUX_CLEANUP_SIGTERM_TIMEOUT=1 " .. cleanup_script .. " window " .. session_target .. " 4 >/dev/null 2>>" .. cleanup_log .. " || true;",
-		"tmux kill-window -t " .. target4 .. " >/dev/null 2>&1 || true;",
-		"tmux new-window -t " .. target2 .. " -dn run -c " .. target_path_escaped .. " >/dev/null 2>&1 || true;",
-		"tmux new-window -t " .. target3 .. " -dn process -c " .. target_path_escaped .. " >/dev/null 2>&1 || true;",
-		"tmux new-window -t " .. target4 .. " -dn assistant -c " .. target_path_escaped .. " >/dev/null 2>&1 || true;",
-		"tmux send-keys -t " .. assistant_target .. " -R " .. assistant_cmd .. " C-m >/dev/null 2>&1 || true;",
-	}, " ")
-
-	return tmux_refresh_cmd
+	return layout_script .. " reset " .. session_target .. " " .. target_path_escaped
 end
 
 local function with_worktree_ready(path, cb)
@@ -144,7 +122,7 @@ local function drain_tmux_refresh_queue()
 	end
 
 	local session_name = vim.fn.system("tmux display-message -p '#S'"):gsub("\n", "")
-	if session_name == "" then
+	if vim.v.shell_error ~= 0 or session_name == "" then
 		return
 	end
 
