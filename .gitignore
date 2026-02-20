@@ -73,3 +73,7 @@ goinfre/
 .config/mole/mole.log
 .config/simple-update-notifier/nodemon.json
 .claude/
+
+# Codex runtime/state: keep only instructions file
+.codex/**
+!.codex/AGENTS.md
