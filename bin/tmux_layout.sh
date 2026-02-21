@@ -150,15 +150,7 @@ window_spec() {
 			esac
 			;;
 		2)
-			case "$profile" in
-				second_brain)
-					name="opencode"
-					command="$TMUX_SUPERVISE opencode"
-					;;
-				*)
-					name="run"
-					;;
-			esac
+			name="run"
 			;;
 		3)
 			name="process"
@@ -261,7 +253,7 @@ reset_layout() {
 
 	set_session_layout_context "$session" "$root" "$profile"
 
-	window_rows="$(tmux list-windows -t "$session" -F '#{window_id}\t#{window_index}\t#{window_name}' 2>/dev/null || true)"
+	window_rows="$(tmux list-windows -t "$session" -F '#{window_id}'$'\t''#{window_index}'$'\t''#{window_name}' 2>/dev/null || true)"
 	[ -z "$window_rows" ] && return 0
 
 	while IFS= read -r row; do

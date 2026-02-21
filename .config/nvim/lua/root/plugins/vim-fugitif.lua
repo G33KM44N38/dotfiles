@@ -160,7 +160,7 @@ local function GenerateCommitMessageWithAI(provider)
 
 	-- Provider-specific logic
 	if provider == "openai" then
-		local api_key = os.getenv("OPENAI_API_KEY")
+		local api_key = os.getenv("OPENAI_KEY")
 
 		if not api_key then
 			vim.notify("OPENAI_API_KEY not set", vim.log.levels.ERROR)
