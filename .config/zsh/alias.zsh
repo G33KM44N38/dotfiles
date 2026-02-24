@@ -8,6 +8,7 @@ alias odn="daily_open.sh"
 alias me="manage_env.sh"
 alias ie="import_env.sh"
 alias bch="babacoiffure_checkhealth.sh"
+alias bsetup="ie && pnpm i"
 alias ca="coding-assistant"
 alias bsetup="ie && pnpm i"
 
