@@ -241,17 +241,54 @@ selected_path="$(printf '%s' "$selected" | cut -f4)"
 selected_branch="$selected_ref"
 
 sanitize_name() {
-	printf '%s\n' "$1" | tr '[:space:]' '-' | tr -cd 'A-Za-z0-9._-'
+	printf '%s\n' "$1" | tr '/[:space:]' '--' | tr -cd 'A-Za-z0-9._-'
+}
+
+sanitize_branch_path() {
+	local raw="$1"
+	local part safe result=""
+
+	# Preserve slash hierarchy from branch names (e.g. feature/foo/bar),
+	# but sanitize each segment to safe filesystem characters.
+	IFS='/' read -r -a parts <<<"$raw"
+	for part in "${parts[@]:-}"; do
+		safe="$(printf '%s\n' "$part" | tr '[:space:]' '-' | tr -cd 'A-Za-z0-9._-')"
+		if [ -z "$safe" ] || [ "$safe" = "." ] || [ "$safe" = ".." ]; then
+			safe="wt"
+		fi
+		if [ -z "$result" ]; then
+			result="$safe"
+		else
+			result="$result/$safe"
+		fi
+	done
+
+	[ -z "$result" ] && result="wt"
+	printf '%s\n' "$result"
 }
 
 pick_worktree_base_dir() {
 	local root="$1"
 	local preferred="$2"
-	local normalized
+	local normalized top preferred_parent
 	normalized="$(normalize_existing_path "$preferred" || true)"
-	if [ -n "$normalized" ] && [ -d "$normalized" ] && [ "${normalized#$root/}" != "$normalized" ] && [ "$normalized" != "$root" ]; then
-		printf '%s\n' "$normalized"
-		return 0
+	if [ -n "$normalized" ] && [ -d "$normalized" ]; then
+		top="$(git -C "$normalized" rev-parse --show-toplevel 2>/dev/null || true)"
+		if [ -n "$top" ] && [ -d "$top" ] && [ "${top#$root/}" != "$top" ] && [ "$top" != "$root" ]; then
+			preferred_parent="$(dirname "$top")"
+			if [ -n "$preferred_parent" ] && [ -d "$preferred_parent" ] && [ "${preferred_parent#$root/}" != "$preferred_parent" ]; then
+				printf '%s\n' "$preferred_parent"
+				return 0
+			fi
+		fi
+
+		if [ "${normalized#$root/}" != "$normalized" ] && [ "$normalized" != "$root" ]; then
+			preferred_parent="$(dirname "$normalized")"
+			if [ -n "$preferred_parent" ] && [ -d "$preferred_parent" ] && [ "${preferred_parent#$root/}" != "$preferred_parent" ]; then
+				printf '%s\n' "$preferred_parent"
+				return 0
+			fi
+		fi
 	fi
 	if [ -d "$root/codex" ]; then
 		printf '%s\n' "$root/codex"
@@ -260,18 +297,46 @@ pick_worktree_base_dir() {
 	printf '%s\n' "$root"
 }
 
+find_window_for_worktree() {
+	local worktree="$1"
+	local window_id pane_path option_worktree pane_root
+
+	while IFS=$'\t' read -r window_id pane_path; do
+		[ -z "$window_id" ] && continue
+
+		option_worktree="$("$tmux_bin" show-options -w -t "$window_id" -v @secondary-worktree-path 2>/dev/null || true)"
+		if [ "$option_worktree" = "$worktree" ]; then
+			"$tmux_bin" display-message -p -t "$window_id" '#{window_index}'
+			return 0
+		fi
+
+		pane_root="$(git -C "$pane_path" rev-parse --show-toplevel 2>/dev/null || true)"
+		if [ -n "$pane_root" ] && [ "$pane_root" = "$worktree" ]; then
+			"$tmux_bin" display-message -p -t "$window_id" '#{window_index}'
+			return 0
+		fi
+	done < <("$tmux_bin" list-windows -t "$source_session" -F '#{window_id}'$'\t''#{pane_current_path}')
+
+	return 1
+}
+
+next_worktree_window_index() {
+	local session="$1"
+	local min_index="${2:-6}"
+	local used_indexes candidate
+
+	used_indexes="$("$tmux_bin" list-windows -t "$session" -F '#{window_index}' 2>/dev/null || true)"
+	candidate="$min_index"
+	while printf '%s\n' "$used_indexes" | grep -qx "$candidate"; do
+		candidate=$((candidate + 1))
+	done
+
+	printf '%s\n' "$candidate"
+}
+
 window_label="$(sanitize_name "$selected_branch")"
 [ -z "$window_label" ] && window_label="secondary"
 window_name="secondary-$window_label"
-
-created_window="$("$tmux_bin" new-window -d -P -F '#{window_index}' -t "$source_session" -n "$window_name" -c "$source_path" 2>/dev/null || true)"
-if [ -z "$created_window" ]; then
-	fail "secondary picker: failed to create window in session $source_session"
-fi
-
-cleanup_window_on_error() {
-	"$tmux_bin" kill-window -t "${source_session}:${created_window}" >/dev/null 2>&1 || true
-}
 
 if [ "$selected_kind" = "RB" ]; then
 	remote_branch="$selected_ref"
@@ -281,7 +346,7 @@ if [ "$selected_kind" = "RB" ]; then
 
 	if [ -z "$selected_path" ]; then
 		base_dir="$(pick_worktree_base_dir "$repo_root" "$source_path")"
-		branch_dir="$(sanitize_name "$local_branch")"
+		branch_dir="$(sanitize_branch_path "$local_branch")"
 		[ -z "$branch_dir" ] && branch_dir="wt"
 		target_path="$base_dir/$branch_dir"
 		suffix=2
@@ -293,14 +358,12 @@ if [ "$selected_kind" = "RB" ]; then
 		if ! git -C "$repo_root" show-ref --verify --quiet "refs/heads/$local_branch"; then
 			track_err="$(git -C "$repo_root" branch --track "$local_branch" "$remote_branch" 2>&1 || true)"
 			if ! git -C "$repo_root" show-ref --verify --quiet "refs/heads/$local_branch"; then
-				cleanup_window_on_error
 				fail "secondary picker: failed to create tracking branch $local_branch from $remote_branch: $track_err"
 			fi
 		fi
 
 		add_err="$(git -C "$repo_root" worktree add "$target_path" "$local_branch" 2>&1 || true)"
 		if [ ! -d "$target_path" ]; then
-			cleanup_window_on_error
 			fail "secondary picker: failed to create worktree $target_path for $local_branch: $add_err"
 		fi
 
@@ -309,7 +372,6 @@ if [ "$selected_kind" = "RB" ]; then
 fi
 
 if [ -z "$selected_path" ] || [ ! -d "$selected_path" ]; then
-	cleanup_window_on_error
 	fail "secondary picker: invalid selected worktree path: $selected_path"
 fi
 
@@ -318,6 +380,22 @@ secondary_agent="$("$tmux_bin" show-option -gv @secondary-agent 2>/dev/null || t
 
 "$tmux_bin" set-option -gq @secondary-worktree "$selected_path"
 "$tmux_bin" set-option -gq @secondary-session "$source_session"
+
+existing_window="$(find_window_for_worktree "$selected_path" || true)"
+if [ -n "$existing_window" ]; then
+	"$tmux_bin" select-window -t "${source_session}:${existing_window}"
+	if [ "$("$tmux_bin" display-message -p -t "${source_session}:${existing_window}" '#{window_zoomed_flag}')" = "0" ]; then
+		"$tmux_bin" resize-pane -Z -t "${source_session}:${existing_window}"
+	fi
+	exit 0
+fi
+
+target_window_index="$(next_worktree_window_index "$source_session" 6)"
+created_window="$("$tmux_bin" new-window -d -P -F '#{window_index}' -t "${source_session}:${target_window_index}" -n "$window_name" -c "$source_path" 2>/dev/null || true)"
+if [ -z "$created_window" ]; then
+	fail "secondary picker: failed to create window at index >=6 in session $source_session"
+fi
+
 "$tmux_bin" set-option -wq -t "${source_session}:${created_window}" @secondary-worktree-path "$selected_path"
 
 printf -v launch_cmd 'cd %q && %q %q' "$selected_path" "$HOME/.dotfiles/bin/tmux-supervise" "$secondary_agent"
