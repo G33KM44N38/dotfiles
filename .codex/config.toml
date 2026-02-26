@@ -1,0 +1,47 @@
+model = "gpt-5.3-codex"
+model_reasoning_effort = "high"
+[projects."/Users/boss/coding/work/babacoiffure_monorepo.git/main"]
+trust_level = "trusted"
+
+[projects."/Users/boss/coding/work/babacoiffure_monorepo.git/feature/onboarding"]
+trust_level = "trusted"
+
+[projects."/Users/boss/.dotfiles/install"]
+trust_level = "trusted"
+
+[projects."/Users/boss/.dotfiles"]
+trust_level = "trusted"
+
+[projects."/Users/boss/coding/work/babacoiffure_monorepo.git"]
+trust_level = "trusted"
+
+[projects."/Users/boss/coding/work/babacoiffure_monorepo.git/feature/baba-449-limit-weekly-appointments"]
+trust_level = "trusted"
+
+[projects."/Users/boss/coding/work/landing"]
+trust_level = "trusted"
+
+[projects."/Users/boss/coding/work"]
+trust_level = "trusted"
+
+[projects."/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain"]
+trust_level = "trusted"
+
+[mcp_servers.linear]
+url = "https://mcp.linear.app/mcp"
+
+# Paused: re-enable by uncommenting this block.
+#[mcp_servers.figma_desktop]
+#url = "http://127.0.0.1:3845/mcp"
+
+[mcp_servers.axiom]
+url = "https://mcp.axiom.co/mcp?org-id=babacoiffure-zp6k"
+bearer_token_env_var = "AXIOM_MCP_TOKEN"
+
+[notice]
+hide_rate_limit_model_nudge = true
+
+[notice.model_migrations]
+"gpt-5.1-codex-mini" = "gpt-5.3-codex"
+"gpt-5.1-codex-max" = "gpt-5.3-codex"
+"gpt-5.2-codex" = "gpt-5.3-codex"
