@@ -116,7 +116,12 @@ add_candidate_path() {
 candidate_paths=()
 add_candidate_path "$source_path"
 add_candidate_path "$("$tmux_bin" display-message -p -t '{last}' '#{pane_current_path}' 2>/dev/null || true)"
-add_candidate_path "$("$tmux_bin" show-option -gv @secondary-worktree 2>/dev/null || true)"
+session_secondary_worktree="$("$tmux_bin" show-option -qv -t "$source_session" @secondary-worktree 2>/dev/null || true)"
+if [ -z "$session_secondary_worktree" ]; then
+	# Backward compatibility with old global option.
+	session_secondary_worktree="$("$tmux_bin" show-option -gv @secondary-worktree 2>/dev/null || true)"
+fi
+add_candidate_path "$session_secondary_worktree"
 
 repo_root=""
 for candidate in "${candidate_paths[@]}"; do
@@ -377,9 +382,13 @@ fi
 
 secondary_agent="$("$tmux_bin" show-option -gv @secondary-agent 2>/dev/null || true)"
 [ -z "$secondary_agent" ] && secondary_agent="codex"
+secondary_agent_first="${secondary_agent%% *}"
+if [ "${secondary_agent_first##*/}" = "codex" ] && [[ " $secondary_agent " != *" --dangerously-bypass-approvals-and-sandbox "* ]]; then
+	secondary_agent="$secondary_agent --dangerously-bypass-approvals-and-sandbox"
+fi
 
-"$tmux_bin" set-option -gq @secondary-worktree "$selected_path"
-"$tmux_bin" set-option -gq @secondary-session "$source_session"
+"$tmux_bin" set-option -q -t "$source_session" @secondary-worktree "$selected_path"
+"$tmux_bin" set-option -q -t "$source_session" @secondary-session "$source_session"
 
 existing_window="$(find_window_for_worktree "$selected_path" || true)"
 if [ -n "$existing_window" ]; then
@@ -391,7 +400,7 @@ if [ -n "$existing_window" ]; then
 fi
 
 target_window_index="$(next_worktree_window_index "$source_session" 6)"
-created_window="$("$tmux_bin" new-window -d -P -F '#{window_index}' -t "${source_session}:${target_window_index}" -n "$window_name" -c "$source_path" 2>/dev/null || true)"
+created_window="$("$tmux_bin" new-window -d -P -F '#{window_index}' -t "${source_session}:${target_window_index}" -n "$window_name" -c "$selected_path" 2>/dev/null || true)"
 if [ -z "$created_window" ]; then
 	fail "secondary picker: failed to create window at index >=6 in session $source_session"
 fi

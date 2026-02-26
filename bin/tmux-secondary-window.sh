@@ -23,9 +23,6 @@ explicit_worktree="${1:-}"
 explicit_session="${2:-}"
 session_name="$explicit_session"
 if [ -z "$session_name" ]; then
-	session_name="$("$tmux_bin" show-option -gv @secondary-session 2>/dev/null || true)"
-fi
-if [ -z "$session_name" ]; then
 	session_name="$("$tmux_bin" display-message -p '#S' 2>/dev/null || true)"
 fi
 if [ -z "$session_name" ]; then
@@ -38,6 +35,10 @@ fi
 
 current_path="$explicit_worktree"
 if [ -z "$current_path" ]; then
+	current_path="$("$tmux_bin" show-option -qv -t "$session_name" @secondary-worktree 2>/dev/null || true)"
+fi
+if [ -z "$current_path" ]; then
+	# Backward compatibility with old global option.
 	current_path="$("$tmux_bin" show-option -gv @secondary-worktree 2>/dev/null || true)"
 fi
 if [ -z "$current_path" ]; then
@@ -45,10 +46,18 @@ if [ -z "$current_path" ]; then
 fi
 
 secondary_agent="$("$tmux_bin" show-option -gv @secondary-agent 2>/dev/null || true)"
-secondary_worktree="$("$tmux_bin" show-option -gv @secondary-worktree 2>/dev/null || true)"
+secondary_worktree="$("$tmux_bin" show-option -qv -t "$session_name" @secondary-worktree 2>/dev/null || true)"
+if [ -z "$secondary_worktree" ]; then
+	secondary_worktree="$("$tmux_bin" show-option -gv @secondary-worktree 2>/dev/null || true)"
+fi
 
 if [ -z "$secondary_agent" ]; then
 	secondary_agent="codex"
+fi
+
+secondary_agent_first="${secondary_agent%% *}"
+if [ "${secondary_agent_first##*/}" = "codex" ] && [[ " $secondary_agent " != *" --dangerously-bypass-approvals-and-sandbox "* ]]; then
+	secondary_agent="$secondary_agent --dangerously-bypass-approvals-and-sandbox"
 fi
 
 resolve_target_worktree() {
@@ -121,6 +130,8 @@ else
 	fi
 fi
 
+"$tmux_bin" set-option -q -t "$session_name" @secondary-worktree "$target_worktree"
+
 secondary_window="$(find_window_for_worktree "$target_worktree" || true)"
 
 if [ -z "${secondary_window:-}" ]; then
@@ -138,10 +149,10 @@ if [ -z "${secondary_window:-}" ]; then
 		secondary_window="$("$tmux_bin" new-window -d -P -F '#{window_index}' -t "$session_name" -n "$window_name" -c "$target_worktree")"
 	fi
 
-	"$tmux_bin" set-option -wq -t "${session_name}:${secondary_window}" @secondary-worktree-path "$target_worktree"
+		"$tmux_bin" set-option -wq -t "${session_name}:${secondary_window}" @secondary-worktree-path "$target_worktree"
 
-	printf -v launch_cmd 'cd %q && %q %q' "$target_worktree" "$tmux_supervise" "$secondary_agent"
-	"$tmux_bin" send-keys -t "${session_name}:${secondary_window}" -R "$launch_cmd" C-m
+		printf -v launch_cmd 'cd %q && %q %q' "$target_worktree" "$tmux_supervise" "$secondary_agent"
+		"$tmux_bin" send-keys -t "${session_name}:${secondary_window}" -R "$launch_cmd" C-m
 fi
 
 "$tmux_bin" select-window -t "${session_name}:${secondary_window}"

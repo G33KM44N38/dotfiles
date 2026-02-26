@@ -37,4 +37,32 @@ if [ -n "$PANE_ID" ]; then
 	fi
 fi
 
+if [ "$#" -eq 1 ] && [[ "$1" =~ [[:space:]] ]]; then
+	# Compatibility: handle accidentally escaped command+arg as one token.
+	read -r -a cmd <<<"$1"
+	set -- "${cmd[@]}"
+fi
+
+if [ "${1##*/}" = "codex" ]; then
+	# Backward-compat: codex renamed this flag.
+	has_bypass_flag=0
+	rewritten=()
+	for arg in "$@"; do
+		case "$arg" in
+		--dangerous)
+			[ "$has_bypass_flag" -eq 0 ] && rewritten+=("--dangerously-bypass-approvals-and-sandbox")
+			has_bypass_flag=1
+			;;
+		--dangerously-bypass-approvals-and-sandbox)
+			[ "$has_bypass_flag" -eq 0 ] && rewritten+=("$arg")
+			has_bypass_flag=1
+			;;
+		*)
+			rewritten+=("$arg")
+			;;
+		esac
+	done
+	set -- "${rewritten[@]}"
+fi
+
 exec "$@"
