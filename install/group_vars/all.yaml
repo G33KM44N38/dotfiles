@@ -13,9 +13,7 @@ default_roles:
      # - z
      # - gh
      # - qmk
-     - shortcat
      # aldente
-     # - scw
      - dir
      - appcleaner
      - raycast
@@ -29,7 +27,6 @@ default_roles:
      - karabiner
      - yarn
      # - gitspeak
-     - aerospace
      - python
        - arc-cli
        - pnpm

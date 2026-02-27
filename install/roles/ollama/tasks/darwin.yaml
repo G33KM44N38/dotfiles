@@ -1,5 +1,0 @@
----
-- name: Install Ollama via Homebrew
-  community.general.homebrew:
-    name: ollama
-    state: present

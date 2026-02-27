@@ -54,7 +54,7 @@ else
     echo -e "${RED}❌ Main playbook missing macOS conditionals${NC}"
 fi
 
-if grep -q "aerospace\|appcleaner\|arc\|dock\|karabiner\|mouseless\|raycast\|shortcat" install/main.yaml; then
+if grep -q "appcleaner\|arc\|dock\|karabiner\|mouseless\|raycast" install/main.yaml; then
     if grep -q "when: ansible_system == 'Darwin'" install/main.yaml; then
         echo -e "${GREEN}✅ macOS-only roles are properly conditional${NC}"
     else
@@ -68,7 +68,7 @@ fi
 echo -e "\n${BLUE}Checking role Linux support...${NC}"
 
 # Roles that should have Linux support
-linux_roles=("cron" "ghostty" "ollama" "python" "scw" "solana" "stripe")
+linux_roles=("cron" "ghostty" "python" "solana" "stripe")
 failed_roles=0
 
 for role in "${linux_roles[@]}"; do
