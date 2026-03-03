@@ -56,7 +56,7 @@ tmux kill-pane -a -t "$assistant_target" 2>/dev/null || true
 #####################
 
 # Run opencode in the first pane of window 4
-tmux send-keys -t "$assistant_target" "$tmux_supervise opencode" C-m
+# tmux send-keys -t "$assistant_target" "$tmux_supervise opencode" C-m
 
 
 #####################
@@ -72,8 +72,8 @@ tmux send-keys -t "$assistant_target" "$tmux_supervise opencode" C-m
 #####################
 
 # # Split horizontally and run codex in the new pane
-tmux split-window -h -t "$assistant_target" -c "$PWD"
-tmux send-keys -t "$assistant_target" "$tmux_supervise codex" C-m
+# tmux split-window -h -t "$assistant_target" -c "$PWD"
+tmux send-keys -t "$assistant_target" "$tmux_supervise codex --dangerously-bypass-approvals-and-sandbox" C-m
 
 # Return to the original window
 tmux select-window -t "$current_window"

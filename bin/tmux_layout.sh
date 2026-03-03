@@ -266,6 +266,9 @@ reset_layout() {
 		if [ "$window_index" = "1" ]; then
 			continue
 		fi
+		if [[ "$window_index" =~ ^[0-9]+$ ]] && [ "$window_index" -gt 5 ]; then
+			continue
+		fi
 
 		managed="$(tmux show-options -w -t "$window_id" -v "$LAYOUT_MANAGED_OPT" 2>/dev/null || true)"
 		secondary="$(tmux show-options -w -t "$window_id" -v @secondary-worktree-path 2>/dev/null || true)"
