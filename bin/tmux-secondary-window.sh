@@ -140,7 +140,7 @@ if [ -z "${secondary_window:-}" ]; then
 		window_label="secondary"
 	fi
 	window_label="$(sanitize_window_label "$window_label")"
-	window_name="secondary-$window_label"
+	window_name="$window_label"
 
 	if ! "$tmux_bin" list-windows -t "$session_name" -F '#{window_index}' | grep -qx '5'; then
 		"$tmux_bin" new-window -d -t "${session_name}:5" -n "$window_name" -c "$target_worktree"

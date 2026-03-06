@@ -5,5 +5,15 @@
     state: present
     update_homebrew: yes
 
-- name: Configure github cli
-  command: gh extension install github/gh-copilot
+- name: List installed github cli extensions
+  ansible.builtin.command: gh extension list
+  register: gh_extensions
+  changed_when: false
+
+- name: Install github copilot extension
+  ansible.builtin.command: gh extension install github/gh-copilot
+  when: "'gh-copilot' not in gh_extensions.stdout"
+
+- name: Install gh-dash extension
+  ansible.builtin.command: gh extension install dlvhdr/gh-dash
+  when: "'gh-dash' not in gh_extensions.stdout"

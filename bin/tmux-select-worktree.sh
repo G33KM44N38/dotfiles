@@ -341,7 +341,7 @@ next_worktree_window_index() {
 
 window_label="$(sanitize_name "$selected_branch")"
 [ -z "$window_label" ] && window_label="secondary"
-window_name="secondary-$window_label"
+window_name="$window_label"
 
 if [ "$selected_kind" = "RB" ]; then
 	remote_branch="$selected_ref"
