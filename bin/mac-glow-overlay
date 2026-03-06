@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+app_dir="$HOME/.dotfiles/dev/active/mac-glow-overlay"
+
+if [ ! -d "$app_dir" ]; then
+  echo "Missing app directory: $app_dir" >&2
+  exit 1
+fi
+
+cd "$app_dir"
+swift run mac-glow-overlay

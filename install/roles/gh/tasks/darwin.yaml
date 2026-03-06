@@ -5,6 +5,18 @@
     state: present
     update_homebrew: yes
 
+- name: Install git-delta
+  homebrew:
+    name: git-delta
+    state: present
+    update_homebrew: yes
+
+- name: Install diffnav
+  homebrew:
+    name: dlvhdr/formulae/diffnav
+    state: present
+    update_homebrew: yes
+
 - name: List installed github cli extensions
   ansible.builtin.command: gh extension list
   register: gh_extensions
