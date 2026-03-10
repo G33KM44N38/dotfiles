@@ -13,9 +13,93 @@ return {
 	},
 	config = function()
 		local opts = { noremap = true, silent = true }
+		local workspace_path = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/"
 
 		-- Neovim native (fzf-lua)
 		local fzf = require("fzf-lua")
+
+		local function normalize_path(path)
+			if path:sub(-1) ~= "/" then
+				path = path .. "/"
+			end
+			return path
+		end
+
+		local function in_obsidian_workspace()
+			return normalize_path(vim.fn.getcwd()) == normalize_path(workspace_path)
+		end
+
+		local function run_command_lines(cmd, cwd)
+			local shell_cmd = cmd .. " 2>/dev/null"
+			if cwd then
+				shell_cmd = "cd " .. vim.fn.shellescape(cwd) .. " && " .. shell_cmd
+			end
+
+			local lines = vim.fn.systemlist(shell_cmd)
+			if vim.v.shell_error ~= 0 then
+				return {}
+			end
+
+			return lines
+		end
+
+		local function merge_unique_lists(...)
+			local merged = {}
+			local seen = {}
+
+			for _, list in ipairs({ ... }) do
+				for _, item in ipairs(list) do
+					if item ~= "" and not seen[item] then
+						seen[item] = true
+						table.insert(merged, item)
+					end
+				end
+			end
+
+			return merged
+		end
+
+		local function smart_files()
+			local search_cwd = in_obsidian_workspace() and workspace_path or vim.fn.getcwd()
+			local fd_cmd = in_obsidian_workspace() and "fd --type f --extension md"
+				or "fd --type f --hidden --exclude node_modules --exclude dist"
+			local tracked_ignored_cmd = "git ls-files -ci --exclude-standard"
+			local picker_opts = {
+				previewer = "builtin",
+				winopts = {
+					preview = {
+						hidden = false,
+					},
+				},
+			}
+
+			if in_obsidian_workspace() then
+				tracked_ignored_cmd = tracked_ignored_cmd .. " -- " .. vim.fn.shellescape("*.md")
+			end
+
+			local tracked_ignored = run_command_lines(tracked_ignored_cmd, search_cwd)
+
+			if #tracked_ignored == 0 then
+				if in_obsidian_workspace() then
+					fzf.files(vim.tbl_deep_extend("force", picker_opts, {
+						cmd = fd_cmd,
+						cwd = workspace_path,
+					}))
+				else
+					fzf.files(picker_opts)
+				end
+				return
+			end
+
+			local visible_files = run_command_lines(fd_cmd, search_cwd)
+			local files = merge_unique_lists(visible_files, tracked_ignored)
+
+			fzf.fzf_exec(files, vim.tbl_deep_extend("force", picker_opts, {
+				cwd = search_cwd,
+				prompt = "Files> ",
+				actions = fzf.defaults.actions.files,
+			}))
+		end
 
 		fzf.staged_files_live_grep = function()
 			-- get staged files
@@ -117,7 +201,7 @@ return {
 		vim.api.nvim_set_keymap("n", "gt", "<cmd>FzfLua lsp_typedefs<CR>", opts) -- Go to type definition
 		vim.api.nvim_set_keymap("n", "gd", "<cmd>FzfLua lsp_definitions<CR>", opts)
 		vim.api.nvim_set_keymap("n", "gr", "<cmd>FzfLua lsp_references<CR>", opts)
-		vim.api.nvim_set_keymap("n", "<C-p>", "<cmd>lua require('root.plugins.obsidian').smart_files()<CR>", opts)
+		vim.keymap.set("n", "<C-p>", smart_files, opts)
 		vim.api.nvim_set_keymap("n", "<C-s>", "<cmd>FzfLua grep<CR>", opts)
 		vim.api.nvim_set_keymap("n", "<C-q>", "<cmd>FzfLua live_grep<CR>", opts)
 		vim.api.nvim_set_keymap("n", "<leader>fb", "<cmd>FzfLua buffers<CR>", opts)
