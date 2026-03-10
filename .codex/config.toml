@@ -1,5 +1,6 @@
-model = "gpt-5.3-codex"
+model = "gpt-5.4"
 model_reasoning_effort = "high"
+notify = ["/Users/boss/.dotfiles/bin/codex-glow-notify"]
 [projects."/Users/boss/coding/work/babacoiffure_monorepo.git/main"]
 trust_level = "trusted"
 
@@ -30,13 +31,16 @@ trust_level = "trusted"
 [mcp_servers.linear]
 url = "https://mcp.linear.app/mcp"
 
-# Paused: re-enable by uncommenting this block.
-#[mcp_servers.figma_desktop]
-#url = "http://127.0.0.1:3845/mcp"
-
 [mcp_servers.axiom]
 url = "https://mcp.axiom.co/mcp?org-id=babacoiffure-zp6k"
 bearer_token_env_var = "AXIOM_MCP_TOKEN"
+
+# [mcp_servers.codebase-retrieval]
+# command = "auggie"
+# args = ["--mcp", "--mcp-auto-workspace"]
+
+[mcp_servers.analytics-mcp]
+command = "analytics-mcp"
 
 [notice]
 hide_rate_limit_model_nudge = true
@@ -45,3 +49,4 @@ hide_rate_limit_model_nudge = true
 "gpt-5.1-codex-mini" = "gpt-5.3-codex"
 "gpt-5.1-codex-max" = "gpt-5.3-codex"
 "gpt-5.2-codex" = "gpt-5.3-codex"
+"gpt-5.3-codex" = "gpt-5.4"
