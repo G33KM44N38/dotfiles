@@ -25,9 +25,10 @@ usage() {
 Usage: worktree-cleanup.sh [--dry-run|-n] [--yes|-y] [--no-pull] [--help|-h]
 
 Cleans up git worktrees:
-- SAFE REMOVE: merged into origin/main|origin/release OR remote-tracking branch deleted
+- SAFE REMOVE: HEAD already merged into origin/main|origin/release
 - BEHIND: can auto pull --rebase
-- ATTENTION: uncommitted, unpushed, diverged
+- UNPUSHED: local commits not on upstream
+- ATTENTION: uncommitted/untracked, diverged, detached, unreadable, no upstream
 - KEEP: unique work
 
 Options:
@@ -85,7 +86,6 @@ list_worktrees() {
         print path "\t" b
       }
       $1=="detached"{
-        # detached HEAD; treat as attention
         print path "\t" "(detached)"
       }
     '
@@ -96,7 +96,6 @@ while IFS=$'\t' read -r wt_path wt_branch; do
   [[ -z "${wt_path:-}" ]] && continue
   [[ ! -d "$wt_path" ]] && continue
 
-  # Enter worktree
   if ! cd "$wt_path" 2>/dev/null; then
     echo "$wt_path|$wt_branch|attention|unreadable" >>"$status_file"
     continue
@@ -117,40 +116,14 @@ while IFS=$'\t' read -r wt_path wt_branch; do
     continue
   fi
 
-  # Uncommitted changes: attention
-  if ! git diff-index --quiet HEAD -- 2>/dev/null; then
-    echo "$wt_path|$branch|attention|uncommitted" >>"$status_file"
+  # Any local change at all (tracked, staged, deleted, untracked): attention
+  if [[ -n "$(git status --porcelain --untracked-files=normal 2>/dev/null)" ]]; then
+    echo "$wt_path|$branch|attention|local_changes" >>"$status_file"
     cd "$repo_cwd" >/dev/null 2>&1 || true
     continue
   fi
 
-  # If remote-tracking branch is missing locally, it was pruned/deleted => safe remove
-  # (no slow ls-remote calls)
-  if ! git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
-    echo "$wt_path|$branch|safe|remote_deleted" >>"$status_file"
-    cd "$repo_cwd" >/dev/null 2>&1 || true
-    continue
-  fi
-
-  # Ahead/behind relative to origin/branch
-  ahead="$(git rev-list --count "origin/$branch..HEAD" 2>/dev/null || echo 0)"
-  behind="$(git rev-list --count "HEAD..origin/$branch" 2>/dev/null || echo 0)"
-
-  if [[ "$ahead" -gt 0 && "$behind" -gt 0 ]]; then
-    echo "$wt_path|$branch|attention|diverged|$ahead|$behind" >>"$status_file"
-    cd "$repo_cwd" >/dev/null 2>&1 || true
-    continue
-  elif [[ "$ahead" -gt 0 ]]; then
-    echo "$wt_path|$branch|attention|unpushed|$ahead" >>"$status_file"
-    cd "$repo_cwd" >/dev/null 2>&1 || true
-    continue
-  elif [[ "$behind" -gt 0 ]]; then
-    echo "$wt_path|$branch|behind|behind|$behind" >>"$status_file"
-    cd "$repo_cwd" >/dev/null 2>&1 || true
-    continue
-  fi
-
-  # Merged into protected remote branches => safe
+  # Check whether HEAD is already contained in a protected remote branch
   merged_into=""
   for target in main release; do
     if git show-ref --verify --quiet "refs/remotes/origin/$target"; then
@@ -161,18 +134,61 @@ while IFS=$'\t' read -r wt_path wt_branch; do
     fi
   done
 
-  if [[ -n "$merged_into" ]]; then
-    echo "$wt_path|$branch|safe|merged|$merged_into" >>"$status_file"
-  else
-    echo "$wt_path|$branch|keep|unique" >>"$status_file"
+  # Resolve actual upstream if configured; otherwise fall back to origin/<branch> if it exists
+  upstream_ref="$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)"
+  compare_ref=""
+  if [[ -n "$upstream_ref" ]]; then
+    compare_ref="$upstream_ref"
+  elif git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+    compare_ref="origin/$branch"
   fi
 
+  ahead=0
+  behind=0
+  if [[ -n "$compare_ref" ]]; then
+    ahead="$(git rev-list --count "${compare_ref}..HEAD" 2>/dev/null || echo 0)"
+    behind="$(git rev-list --count "HEAD..${compare_ref}" 2>/dev/null || echo 0)"
+  fi
+
+  # SAFE only when HEAD is already merged into origin/main or origin/release
+  if [[ -n "$merged_into" ]]; then
+    echo "$wt_path|$branch|safe|merged|$merged_into" >>"$status_file"
+    cd "$repo_cwd" >/dev/null 2>&1 || true
+    continue
+  fi
+
+  # If there is no upstream to compare against and HEAD is not merged into a protected branch,
+  # do NOT assume it's safe.
+  if [[ -z "$compare_ref" ]]; then
+    echo "$wt_path|$branch|attention|no_upstream" >>"$status_file"
+    cd "$repo_cwd" >/dev/null 2>&1 || true
+    continue
+  fi
+
+  # Ahead/behind relative to actual upstream
+  if [[ "$ahead" -gt 0 && "$behind" -gt 0 ]]; then
+    echo "$wt_path|$branch|attention|diverged|$ahead|$behind|$compare_ref" >>"$status_file"
+    cd "$repo_cwd" >/dev/null 2>&1 || true
+    continue
+  elif [[ "$ahead" -gt 0 ]]; then
+    echo "$wt_path|$branch|unpushed|unpushed|$ahead|$compare_ref" >>"$status_file"
+    cd "$repo_cwd" >/dev/null 2>&1 || true
+    continue
+  elif [[ "$behind" -gt 0 ]]; then
+    echo "$wt_path|$branch|behind|behind|$behind|$compare_ref" >>"$status_file"
+    cd "$repo_cwd" >/dev/null 2>&1 || true
+    continue
+  fi
+
+  # sync with upstream and clean => safe to remove
+  echo "$wt_path|$branch|safe|synced_clean|$compare_ref" >>"$status_file"
   cd "$repo_cwd" >/dev/null 2>&1 || true
 done < <(list_worktrees)
 
-# -------- summarize (only important info) --------
+# -------- summarize --------
 safe="$(grep '|safe|' "$status_file" 2>/dev/null || true)"
 behind_list="$(grep '|behind|' "$status_file" 2>/dev/null || true)"
+unpushed_list="$(grep '|unpushed|' "$status_file" 2>/dev/null || true)"
 attention="$(grep '|attention|' "$status_file" 2>/dev/null || true)"
 keep="$(grep '|keep|' "$status_file" 2>/dev/null || true)"
 
@@ -182,8 +198,8 @@ if [[ -n "$safe" ]]; then
   echo "✅ SAFE TO REMOVE"
   echo "$safe" | while IFS='|' read -r path branch _ reason extra; do
     case "$reason" in
-      remote_deleted) echo "  • $(color_branch "$branch")  (remote gone)";;
       merged) echo "  • $(color_branch "$branch")  (merged into origin/$extra)";;
+      synced_clean) echo "  • $(color_branch "$branch")  (clean and synced with ${extra:-upstream})";;
       *) echo "  • $(color_branch "$branch")";;
     esac
     echo "    $path"
@@ -193,8 +209,17 @@ fi
 
 if [[ -n "$behind_list" ]]; then
   echo "🔄 BEHIND (can pull --rebase)"
-  echo "$behind_list" | while IFS='|' read -r path branch _ _ count; do
-    echo "  • $(color_branch "$branch")  ($count behind)"
+  echo "$behind_list" | while IFS='|' read -r path branch _ _ count compare_ref; do
+    echo "  • $(color_branch "$branch")  ($count behind ${compare_ref:-upstream})"
+    echo "    $path"
+  done
+  echo
+fi
+
+if [[ -n "$unpushed_list" ]]; then
+  echo "📤 UNPUSHED COMMITS"
+  echo "$unpushed_list" | while IFS='|' read -r path branch _ _ count compare_ref; do
+    echo "  • $(color_branch "$branch")  ($count commit(s) not pushed to ${compare_ref:-upstream})"
     echo "    $path"
   done
   echo
@@ -202,13 +227,13 @@ fi
 
 if [[ -n "$attention" ]]; then
   echo "⚠️  ATTENTION (manual review)"
-  echo "$attention" | while IFS='|' read -r path branch _ reason a b; do
+  echo "$attention" | while IFS='|' read -r path branch _ reason a b c; do
     case "$reason" in
-      uncommitted) echo "  • $(color_branch "$branch")  (uncommitted changes)";;
-      unpushed) echo "  • $(color_branch "$branch")  ($a unpushed)";;
-      diverged) echo "  • $(color_branch "$branch")  (diverged: $a ahead, $b behind)";;
+      local_changes) echo "  • $(color_branch "$branch")  (local changes: tracked/staged/untracked)";;
+      diverged) echo "  • $(color_branch "$branch")  (diverged from ${c:-upstream}: $a ahead, $b behind)";;
       detached) echo "  • (detached)";;
       unreadable) echo "  • $(color_branch "$branch")  (cannot read path)";;
+      no_upstream) echo "  • $(color_branch "$branch")  (no upstream configured / remote-tracking ref missing)";;
       *) echo "  • $(color_branch "$branch")  ($reason)";;
     esac
     echo "    $path"
@@ -216,15 +241,18 @@ if [[ -n "$attention" ]]; then
   echo
 fi
 
-# keep is not printed by default (declutter), but you can uncomment if you want:
-# if [[ -n "$keep" ]]; then
-#   echo "ℹ️  KEEP"
-#   echo "$keep" | while IFS='|' read -r path branch _ why _; do
-#     echo "  • $(color_branch "$branch")  ($why)"
-#     echo "    $path"
-#   done
-#   echo
-# fi
+if [[ -n "$keep" ]]; then
+  echo "ℹ️  KEEP"
+  echo "$keep" | while IFS='|' read -r path branch _ why extra; do
+    case "$why" in
+      protected) echo "  • $(color_branch "$branch")  (protected)";;
+      unique) echo "  • $(color_branch "$branch")  (unique)";;
+      *) echo "  • $(color_branch "$branch")  ($why)";;
+    esac
+    echo "    $path"
+  done
+  echo
+fi
 
 safe_count="$(printf "%s\n" "$safe" | sed '/^$/d' | wc -l | tr -d ' ')"
 behind_count="$(printf "%s\n" "$behind_list" | sed '/^$/d' | wc -l | tr -d ' ')"
@@ -266,7 +294,7 @@ fi
 
 if [[ "$behind_count" -gt 0 && "$AUTO_PULL" == true ]]; then
   echo "⬇️  Pulling behind worktrees..."
-  printf "%s\n" "$behind_list" | sed '/^$/d' | while IFS='|' read -r path branch _ _ _; do
+  printf "%s\n" "$behind_list" | sed '/^$/d' | while IFS='|' read -r path branch _ _ _ compare_ref; do
     if $DRY_RUN; then
       echo "  [DRY RUN] (cd \"$path\" && git pull --rebase)"
       continue
