@@ -1,8 +1,50 @@
 local model = "opencode/minimax-m2.5-free"
 
-local preprompt = "Generate a git commit message for the staged changes below. "
-	.. "Follow conventional commits format (feat/fix/refactor/docs/chore/etc with optional scope). "
-	.. "Respond ONLY with the commit message text — no explanation, no markdown fences, nothing else."
+local preprompt = [[
+You are generating a git commit message from a staged diff.
+
+Goal:
+Write the most useful commit message for future maintainers reading git history.
+Preserve intent and context, not just surface-level file changes.
+
+Requirements:
+- Use Conventional Commits format: type(scope): subject
+- Choose the most accurate type (feat, fix, refactor, docs, test, chore, perf, build, ci, style, revert)
+- Add a scope when it improves clarity
+- The subject must be specific and descriptive, not generic
+- Focus on why the change exists and what behavior changed
+- Infer the higher-level purpose from the diff when possible
+- Mention important side effects, constraints, fixes, or refactors if they are central
+- Avoid vague subjects like:
+  - update code
+  - fix issue
+  - refactor stuff
+  - improve commit
+- Do not mention irrelevant implementation noise
+- Do not invent behavior that is not supported by the diff
+
+Output format:
+- First line: a single concise Conventional Commit subject
+- Then a blank line
+- Then a body as bullet points only if it adds important context
+- Keep the body brief but information-dense
+- Include in the body only the most important details:
+  - behavior change
+  - motivation
+  - important refactor
+  - edge case handled
+  - risk or migration impact
+
+Rules:
+- Return only the commit message
+- No markdown fences
+- No explanation before or after
+- Prefer a strong descriptive subject over a short vague one
+- If the change is simple, subject only is fine
+- If the change is nuanced, include a short body
+
+Staged diff:
+]]
 
 local function strip_ansi(str)
 	return str:gsub("\27%[[%d;]*m", ""):gsub("\27%[%?%d+[hl]", ""):gsub("\27%[[%d]*[A-Za-z]", ""):gsub("\r", "")
