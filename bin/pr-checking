@@ -1,0 +1,363 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ------------------------------------------------------------
+# remote-branches-integrated-map.sh
+#
+# Maps remote branches to:
+#   - PR info (open / draft / merged / closed)
+#   - whether branch tip is already contained in protected branches
+#
+# A branch is considered "already in main" if:
+#   git merge-base --is-ancestor origin/<branch> origin/main
+#
+# This is valid regardless of whether it got there by:
+#   - PR merge
+#   - direct push
+#   - local merge + push
+#   - merge through another feature branch
+#
+# Requirements:
+#   - git
+#   - gh authenticated
+#   - python3
+#
+# Usage:
+#   ./remote-branches-integrated-map.sh
+#   ./remote-branches-integrated-map.sh --remote origin
+#   ./remote-branches-integrated-map.sh --targets main,release,v2
+#   ./remote-branches-integrated-map.sh --json
+# ------------------------------------------------------------
+
+REMOTE="origin"
+TARGETS="main,release"
+JSON=false
+INCLUDE_PROTECTED=false
+
+if [[ -t 1 ]]; then
+  C_RESET=$'\033[0m'
+  C_BRANCH=$'\033[38;5;39m'
+  C_PR_NUM=$'\033[38;5;226m'      # Yellow
+  C_STATE=$'\033[38;5;51m'        # Cyan
+  C_TITLE=$'\033[38;5;246m'       # Grey
+  C_BASE=$'\033[38;5;156m'        # Light green
+else
+  C_RESET=""
+  C_BRANCH=""
+  C_PR_NUM=""
+  C_STATE=""
+  C_TITLE=""
+  C_BASE=""
+fi
+
+color_branch() {
+  printf "%s%s%s" "$C_BRANCH" "$1" "$C_RESET"
+}
+
+usage() {
+  cat <<'EOF'
+Usage: remote-branches-integrated-map.sh [options]
+
+Options:
+  --remote <name>        Remote to inspect (default: origin)
+  --targets <csv>        Protected target branches to check containment against
+                         (default: main,release,v2)
+  --include-protected    Include target branches themselves in results
+  --json                 Output JSON
+  -h, --help             Show help
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --remote)
+      REMOTE="${2:-}"
+      [[ -n "$REMOTE" ]] || { echo "Missing value for --remote"; exit 1; }
+      shift 2
+      ;;
+    --targets)
+      TARGETS="${2:-}"
+      [[ -n "$TARGETS" ]] || { echo "Missing value for --targets"; exit 1; }
+      shift 2
+      ;;
+    --include-protected)
+      INCLUDE_PROTECTED=true
+      shift
+      ;;
+    --json)
+      JSON=true
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1"
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "Error: run this inside a git repository"
+  exit 1
+fi
+
+if ! command -v gh >/dev/null 2>&1; then
+  echo "Error: GitHub CLI 'gh' is required"
+  exit 1
+fi
+
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "Error: python3 is required"
+  exit 1
+fi
+
+if ! git remote get-url "$REMOTE" >/dev/null 2>&1; then
+  echo "Error: remote '$REMOTE' does not exist"
+  exit 1
+fi
+
+git fetch "$REMOTE" --prune >/dev/null 2>&1 || true
+
+tmp_branches="$(mktemp -t remote_branches.XXXXXX)"
+tmp_prs="$(mktemp -t remote_prs.XXXXXX)"
+tmp_status="$(mktemp -t remote_branch_status.XXXXXX)"
+
+cleanup() {
+  rm -f "$tmp_branches" "$tmp_prs" "$tmp_status"
+}
+trap cleanup EXIT
+
+git for-each-ref --format='%(refname:short)' "refs/remotes/$REMOTE" \
+  | sed "/^${REMOTE//\//\\/}\/HEAD$/d" \
+  | sed "s#^${REMOTE}/##" \
+  | sort -u > "$tmp_branches"
+
+gh pr list \
+  --state all \
+  --limit 1000 \
+  --json number,title,state,isDraft,headRefName,baseRefName,mergedAt,closedAt,url \
+  > "$tmp_prs"
+
+IFS=',' read -r -a TARGET_ARRAY <<< "$TARGETS"
+
+while IFS= read -r branch; do
+  [[ -z "$branch" ]] && continue
+
+  skip=false
+  if ! $INCLUDE_PROTECTED; then
+    for t in "${TARGET_ARRAY[@]}"; do
+      if [[ "$branch" == "$t" ]]; then
+        skip=true
+        break
+      fi
+    done
+  fi
+  $skip && continue
+
+  contained_in="-"
+  for target in "${TARGET_ARRAY[@]}"; do
+    if git show-ref --verify --quiet "refs/remotes/$REMOTE/$target"; then
+      if git show-ref --verify --quiet "refs/remotes/$REMOTE/$branch"; then
+        if git merge-base --is-ancestor "refs/remotes/$REMOTE/$branch" "refs/remotes/$REMOTE/$target" 2>/dev/null; then
+          contained_in="$target"
+          break
+        fi
+      fi
+    fi
+  done
+
+  echo "$branch|$contained_in" >> "$tmp_status"
+done < "$tmp_branches"
+
+python3 - "$tmp_prs" "$tmp_status" "$REMOTE" "$JSON" <<'PY'
+import json
+import sys
+import os
+from pathlib import Path
+
+prs_file = Path(sys.argv[1])
+status_file = Path(sys.argv[2])
+remote = sys.argv[3]
+json_mode = sys.argv[4].lower() == "true"
+
+# Color codes
+is_tty = sys.stdout.isatty() and os.environ.get('TERM') != 'dumb'
+C_RESET = "\033[0m" if is_tty else ""
+C_BRANCH = "\033[38;5;39m" if is_tty else ""      # Blue
+C_PR_NUM = "\033[38;5;226m" if is_tty else ""     # Yellow
+C_STATE = "\033[38;5;51m" if is_tty else ""       # Cyan
+C_TITLE = "\033[38;5;246m" if is_tty else ""      # Grey
+C_BASE = "\033[38;5;156m" if is_tty else ""       # Light green
+
+prs = json.loads(prs_file.read_text())
+
+pr_by_branch = {}
+for pr in prs:
+    head = pr.get("headRefName")
+    if not head:
+        continue
+    pr_by_branch.setdefault(head, []).append(pr)
+
+def pr_rank(pr):
+    state = (pr.get("state") or "").upper()
+    merged = bool(pr.get("mergedAt"))
+    is_draft = bool(pr.get("isDraft"))
+
+    if state == "OPEN" and not is_draft:
+        return (0, -(pr.get("number") or 0))
+    if state == "OPEN" and is_draft:
+        return (1, -(pr.get("number") or 0))
+    if merged:
+        return (2, -(pr.get("number") or 0))
+    return (3, -(pr.get("number") or 0))
+
+def classify_pr(pr):
+    if pr.get("isDraft"):
+        return "DRAFT_PR"
+    state = (pr.get("state") or "").upper()
+    if state == "OPEN":
+        return "OPEN_PR"
+    if pr.get("mergedAt"):
+        return "MERGED_PR"
+    # return "CLOSED_NOT_MERGED"
+
+rows = []
+for line in status_file.read_text().splitlines():
+    if not line.strip():
+        continue
+    branch, contained_in = line.split("|", 1)
+    prs_for_branch = pr_by_branch.get(branch, [])
+    prs_for_branch = sorted(prs_for_branch, key=pr_rank)
+
+    best_pr = prs_for_branch[0] if prs_for_branch else None
+
+    if best_pr:
+        status = classify_pr(best_pr)
+    elif contained_in != "-":
+        status = f"IN_{contained_in.upper().replace('-', '_')}"
+    else:
+        status = "NO_PR_NOT_IN_TARGETS"
+
+    rows.append({
+        "remote": remote,
+        "branch": branch,
+        "status": status,
+        "contained_in": None if contained_in == "-" else contained_in,
+        "pr": None if not best_pr else {
+            "number": best_pr.get("number"),
+            "title": best_pr.get("title"),
+            "state": best_pr.get("state"),
+            "isDraft": best_pr.get("isDraft"),
+            "baseRefName": best_pr.get("baseRefName"),
+            "mergedAt": best_pr.get("mergedAt"),
+            "closedAt": best_pr.get("closedAt"),
+            "url": best_pr.get("url"),
+        },
+        "all_prs_count": len(prs_for_branch),
+    })
+
+if json_mode:
+    print(json.dumps({
+        "remote": remote,
+        "rows": rows,
+    }, indent=2))
+    sys.exit(0)
+
+groups = {}
+for row in rows:
+    groups.setdefault(row["status"], []).append(row)
+
+order = [
+    "DRAFT_PR",
+    "OPEN_PR",
+    # "MERGED_PR",
+    # "IN_MAIN",
+    "IN_RELEASE",
+    "CLOSED_NOT_MERGED",
+    "NO_PR_NOT_IN_TARGETS",
+]
+
+icons = {
+    "DRAFT_PR": "📝",
+    "OPEN_PR": "🟣",
+    "MERGED_PR": "✅",
+    "IN_MAIN": "🟢",
+    "IN_RELEASE": "🟢",
+    "CLOSED_NOT_MERGED": "🟠",
+    "NO_PR_NOT_IN_TARGETS": "📭",
+}
+
+titles = {
+    "DRAFT_PR": "DRAFT PR",
+    "OPEN_PR": "OPEN PR",
+    "MERGED_PR": "MERGED PR",
+    "IN_MAIN": "ALREADY IN MAIN (no PR match needed)",
+    "IN_RELEASE": "ALREADY IN RELEASE (no PR match needed)",
+    "CLOSED_NOT_MERGED": "CLOSED PR, NOT MERGED",
+    "NO_PR_NOT_IN_TARGETS": "NO PR / NOT IN TARGETS",
+}
+
+print(f"🔎 Remote: {remote}")
+print()
+
+total = 0
+for key in order:
+     items = groups.get(key, [])
+     if not items:
+         continue
+     total += len(items)
+     print(f"{icons[key]} {titles[key]}")
+     
+     # Group by baseRefName (target branch) for PR statuses
+     if key in ["DRAFT_PR", "OPEN_PR", "MERGED_PR"]:
+         grouped_by_base = {}
+         for row in items:
+             if row["pr"]:
+                 base = row["pr"].get("baseRefName") or "?"
+                 if base not in grouped_by_base:
+                     grouped_by_base[base] = []
+                 grouped_by_base[base].append(row)
+             else:
+                 if "?" not in grouped_by_base:
+                     grouped_by_base["?"] = []
+                 grouped_by_base["?"].append(row)
+         
+         # Sort bases with "?" at the end
+         bases_sorted = sorted([b for b in grouped_by_base.keys() if b != "?"])
+         if "?" in grouped_by_base:
+             bases_sorted.append("?")
+         
+         for base in bases_sorted:
+             rows_for_base = grouped_by_base[base]
+             print(f"  → {base}")
+             for row in sorted(rows_for_base, key=lambda r: r["branch"]):
+                 print(f"    • {C_BRANCH}{row['branch']}{C_RESET}")
+                 pr = row["pr"]
+                 if pr:
+                     draft = " [draft]" if pr.get("isDraft") else ""
+                     merged = " [merged]" if pr.get("mergedAt") else ""
+                     state = pr.get('state', '?')
+                     num = pr['number']
+                     title = pr.get('title', '')
+                     print(
+                         f"      PR {C_PR_NUM}#{num}{C_RESET} [{C_STATE}{state}{C_RESET}]"
+                         f"{draft}{merged} -> {C_BASE}{base}{C_RESET} - {C_TITLE}{title}{C_RESET}"
+                     )
+     else:
+         # For non-PR items (IN_MAIN, IN_RELEASE, NO_PR_NOT_IN_TARGETS), show flat list
+         for row in sorted(items, key=lambda r: r["branch"]):
+             print(f"  • {C_BRANCH}{row['branch']}{C_RESET}")
+             if row["contained_in"]:
+                 print(f"    contained in {remote}/{row['contained_in']}")
+     print()
+
+print(f"Total branches: {total}")
+for key in order:
+    items = groups.get(key, [])
+    if items:
+        print(f"{titles[key]}: {len(items)}")
+PY
