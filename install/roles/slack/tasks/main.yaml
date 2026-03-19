@@ -1,0 +1,4 @@
+---
+- name: Install Slack on macOS
+  ansible.builtin.import_tasks: darwin.yaml
+  when: ansible_system == 'Darwin'

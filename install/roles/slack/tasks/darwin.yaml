@@ -1,0 +1,3 @@
+---
+- name: Install Slack
+  ansible.builtin.command: brew install --cask slack
