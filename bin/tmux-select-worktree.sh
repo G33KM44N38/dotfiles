@@ -246,7 +246,7 @@ selected_path="$(printf '%s' "$selected" | cut -f4)"
 selected_branch="$selected_ref"
 
 sanitize_name() {
-	printf '%s\n' "$1" | tr '/[:space:]' '--' | tr -cd 'A-Za-z0-9._-'
+	printf '%s\n' "$1" | tr '/[:space:]' '--' | tr -cd 'A-Za-z0-9._'
 }
 
 sanitize_branch_path() {
@@ -339,10 +339,6 @@ next_worktree_window_index() {
 	printf '%s\n' "$candidate"
 }
 
-window_label="$(sanitize_name "$selected_branch")"
-[ -z "$window_label" ] && window_label="secondary"
-window_name="$window_label"
-
 if [ "$selected_kind" = "RB" ]; then
 	remote_branch="$selected_ref"
 	local_branch="${remote_branch#*/}"
@@ -375,6 +371,10 @@ if [ "$selected_kind" = "RB" ]; then
 		selected_path="$target_path"
 	fi
 fi
+
+window_label="$(sanitize_name "$selected_branch")"
+[ -z "$window_label" ] && window_label="secondary"
+window_name="$window_label"
 
 if [ -z "$selected_path" ] || [ ! -d "$selected_path" ]; then
 	fail "secondary picker: invalid selected worktree path: $selected_path"
@@ -412,7 +412,6 @@ if [ -z "$top_left_pane" ]; then
 	fail "secondary picker: failed to resolve base pane for ${source_session}:${created_window}"
 fi
 
-# TO CREATE BOTTOM TERMINAL PANE
 # bottom_pane="$("$tmux_bin" split-window -v -d -P -F '#{pane_id}' -t "$top_left_pane" -c "$selected_path" 2>/dev/null || true)"
 # if [ -z "$bottom_pane" ]; then
 # 	fail "secondary picker: failed to create bottom terminal pane for ${source_session}:${created_window}"
