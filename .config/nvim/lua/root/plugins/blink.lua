@@ -15,6 +15,7 @@ return {
 				["<C-k>"] = { "select_prev", "fallback" },
 				["<Tab>"] = { "accept" },
 			},
+			sources = { "buffer", "cmdline" },
 			completion = { menu = { auto_show = true } },
 		},
 		keymap = {
@@ -30,7 +31,7 @@ return {
 			["<C-Space>"] = { "show", "fallback" },
 		},
 		sources = {
-			default = { "snippets", "lsp", "path", "buffer", "emoji", "conventional_commits", "wikilinks_inline", "wikilinks" },
+			default = { "snippets", "lsp", "path", "emoji", "conventional_commits", "wikilinks_inline", "wikilinks" },
 			providers = {
 				snippets = {
 					name = "Snippets",
@@ -39,14 +40,14 @@ return {
 				},
 				lsp = {
 					name = "LSP",
-					score_offset = 50,
+					score_offset = 150,
 					min_keyword_length = 0,
 				},
 				buffer = {
 					name = "Buffer",
-					score_offset = -50,
+					score_offset = -200,
 					min_keyword_length = 1,
-					max_items = 5,
+					max_items = 3,
 				},
 				path = {
 					name = "Path",
