@@ -1,5 +1,5 @@
-model = "gpt-5.4"
-model_reasoning_effort = "high"
+model = "gpt-5.4-mini"
+model_reasoning_effort = "medium"
 notify = ["/Users/boss/.dotfiles/bin/codex-glow-notify"]
 [projects."/Users/boss/coding/work/babacoiffure_monorepo.git/main"]
 trust_level = "trusted"
@@ -28,6 +28,15 @@ trust_level = "trusted"
 [projects."/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain"]
 trust_level = "trusted"
 
+[projects."/Users/boss/coding/work/ou-mange-t'on"]
+trust_level = "trusted"
+
+[projects."/Users/boss/.dotfiles/goinfre/baba-v2"]
+trust_level = "trusted"
+
+[projects."/Users/boss"]
+trust_level = "trusted"
+
 [mcp_servers.linear]
 url = "https://mcp.linear.app/mcp"
 
@@ -46,7 +55,10 @@ command = "analytics-mcp"
 hide_rate_limit_model_nudge = true
 
 [notice.model_migrations]
-"gpt-5.1-codex-mini" = "gpt-5.3-codex"
-"gpt-5.1-codex-max" = "gpt-5.3-codex"
+"gpt-5.1-codex-mini" = "gpt-5.4"
+"gpt-5.1-codex-max" = "gpt-5.4"
 "gpt-5.2-codex" = "gpt-5.3-codex"
 "gpt-5.3-codex" = "gpt-5.4"
+
+# [features]
+# multi_agent = true
