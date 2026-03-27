@@ -25,8 +25,24 @@ return {
 			return path
 		end
 
+		local function path_is_under(path, target_path)
+			if not path or path == "" then
+				return false
+			end
+
+			path = normalize_path(vim.fs.normalize(path))
+			target_path = normalize_path(vim.fs.normalize(target_path))
+
+			return path:sub(1, #target_path) == target_path
+		end
+
 		local function in_obsidian_workspace()
-			return normalize_path(vim.fn.getcwd()) == normalize_path(workspace_path)
+			local current_file = vim.api.nvim_buf_get_name(0)
+			if path_is_under(current_file, workspace_path) then
+				return true
+			end
+
+			return path_is_under(vim.fn.getcwd(), workspace_path)
 		end
 
 		local function run_command_lines(cmd, cwd)
