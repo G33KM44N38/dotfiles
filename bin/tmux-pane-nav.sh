@@ -23,6 +23,11 @@ case "$role" in
 	*) exit 0 ;;
 esac
 
+case "$mode" in
+	focus|smart-zoom) ;;
+	*) exit 0 ;;
+esac
+
 if [ -z "$window_target" ]; then
 	window_target="$("$tmux_bin" display-message -p '#{window_id}' 2>/dev/null || true)"
 fi
@@ -33,6 +38,7 @@ created_top_right=0
 pick_pane() {
 	local target_role="$1"
 	"$tmux_bin" list-panes -t "$window_target" -F '#{pane_id}'$'\t''#{pane_top}'$'\t''#{pane_left}' 2>/dev/null | \
+		sort -t "$(printf '\t')" -k2,2n -k3,3n | \
 		awk -F'\t' -v mode="$target_role" '
 			BEGIN { best_id = ""; best_top = -1; best_left = -1 }
 			{
@@ -57,6 +63,21 @@ pick_pane() {
 			}
 			END { if (best_id != "") print best_id }
 		'
+}
+
+window_zoomed_flag() {
+	"$tmux_bin" display-message -p -t "$window_target" '#{window_zoomed_flag}' 2>/dev/null || true
+}
+
+current_pane_id() {
+	"$tmux_bin" display-message -p -t "$window_target" '#{pane_id}' 2>/dev/null || true
+}
+
+unzoom_window() {
+	local pane_id
+	pane_id="$(current_pane_id)"
+	[ -n "$pane_id" ] || return 0
+	"$tmux_bin" resize-pane -Z -t "$pane_id" >/dev/null 2>&1 || true
 }
 
 top_row_count() {
@@ -119,17 +140,14 @@ focus_only() {
 
 focus_and_zoom() {
 	local pane_id="$1"
-	local zoomed
-	zoomed="$("$tmux_bin" display-message -p -t "$window_target" '#{window_zoomed_flag}' 2>/dev/null || true)"
-	if [ "$zoomed" = "1" ]; then
-		"$tmux_bin" select-pane -Z -t "$pane_id" >/dev/null 2>&1 || true
-		return 0
-	fi
 	"$tmux_bin" select-pane -t "$pane_id" >/dev/null 2>&1 || true
 	"$tmux_bin" resize-pane -Z -t "$pane_id" >/dev/null 2>&1 || true
 }
 
 if [ "$mode" != "focus" ]; then
+	if [ "$(window_zoomed_flag)" = "1" ]; then
+		unzoom_window
+	fi
 	ensure_role
 fi
 
