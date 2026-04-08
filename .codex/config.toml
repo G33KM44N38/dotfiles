@@ -48,16 +48,8 @@ bearer_token_env_var = "AXIOM_MCP_TOKEN"
 # command = "auggie"
 # args = ["--mcp", "--mcp-auto-workspace"]
 
-[mcp_servers.code-index]
-command = "uvx"
-args = [
-	"code-index-mcp",
-	"--project-path",
-	"/Users/boss/coding/work/babacoiffure_monorepo.git/v2--2",
-]
-
-[mcp_servers.analytics-mcp]
-command = "analytics-mcp"
+# [mcp_servers.analytics-mcp]
+# command = "analytics-mcp"
 
 [notice]
 hide_rate_limit_model_nudge = true
