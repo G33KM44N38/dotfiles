@@ -1,4 +1,4 @@
-model = "gpt-5.4-mini"
+model = "gpt-5.4"
 model_reasoning_effort = "medium"
 notify = ["/Users/boss/.dotfiles/bin/codex-glow-notify"]
 [projects."/Users/boss/coding/work/babacoiffure_monorepo.git/main"]
@@ -48,6 +48,14 @@ bearer_token_env_var = "AXIOM_MCP_TOKEN"
 # command = "auggie"
 # args = ["--mcp", "--mcp-auto-workspace"]
 
+[mcp_servers.code-index]
+command = "uvx"
+args = [
+	"code-index-mcp",
+	"--project-path",
+	"/Users/boss/coding/work/babacoiffure_monorepo.git/v2--2",
+]
+
 [mcp_servers.analytics-mcp]
 command = "analytics-mcp"
 
@@ -60,5 +68,17 @@ hide_rate_limit_model_nudge = true
 "gpt-5.2-codex" = "gpt-5.3-codex"
 "gpt-5.3-codex" = "gpt-5.4"
 
-# [features]
+[plugins."github@openai-curated"]
+enabled = true
+
+[tui]
+status_line = [
+	"five-hour-limit",
+	"context-used",
+	"model-with-reasoning",
+	"current-dir",
+]
+
+[features]
+codex_hooks = true
 # multi_agent = true
