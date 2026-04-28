@@ -133,21 +133,36 @@ if [ -z "$repo_root" ]; then
 	fail "secondary picker: not in a git repository (checked: ${candidate_paths[*]})"
 fi
 
-fetch_values="$(git -C "$repo_root" config --get-all remote.origin.fetch 2>/dev/null || true)"
-if ! printf '%s\n' "$fetch_values" | grep -q 'refs/remotes/origin'; then
-	git -C "$repo_root" config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*" >/dev/null 2>&1 || true
+cache_key=""
+if command -v shasum >/dev/null 2>&1; then
+	cache_key="$(printf '%s' "$repo_root" | shasum | awk '{print $1}')"
 fi
-git -C "$repo_root" fetch --all >/dev/null 2>&1 || true
+[ -z "$cache_key" ] && cache_key="$(printf '%s' "$repo_root" | tr -cd 'A-Za-z0-9._-' | cut -c1-80)"
+cache_file="/tmp/tmux-select-worktree-${UID:-$(id -u)}-${cache_key}.tsv"
+cache_ttl_seconds="${TMUX_WORKTREE_CACHE_TTL:-60}"
 
-worktree_entries=()
-while IFS= read -r line; do
-	worktree_entries+=("$line")
-done < <(
-	git -C "$repo_root" worktree list --porcelain | awk '
+cache_is_fresh() {
+	local file="$1"
+	local ttl="$2"
+	[ -s "$file" ] || return 1
+	perl -e 'exit((time - (stat($ARGV[0]))[9]) <= $ARGV[1] ? 0 : 1)' "$file" "$ttl" 2>/dev/null
+}
+
+build_worktree_cache() {
+	local root="$1"
+	local fetch_values
+
+	fetch_values="$(git -C "$root" config --get-all remote.origin.fetch 2>/dev/null || true)"
+	if ! printf '%s\n' "$fetch_values" | grep -q 'refs/remotes/origin'; then
+		git -C "$root" config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*" >/dev/null 2>&1 || true
+	fi
+	git -C "$root" fetch --all >/dev/null 2>&1 || true
+
+	git -C "$root" worktree list --porcelain | awk '
 		BEGIN { path=""; branch="(detached)"; is_bare=0 }
 		function emit_entry() {
 			if (path != "" && is_bare == 0) {
-				print path "\t" branch
+				print "WT\t" path "\t" branch
 			}
 		}
 		/^worktree / {
@@ -174,7 +189,35 @@ done < <(
 			emit_entry()
 		}
 	'
-)
+	git -C "$root" for-each-ref --sort=refname --format='RB	%(refname:short)' refs/remotes
+}
+
+refresh_worktree_cache() {
+	local tmp_file="${cache_file}.$$"
+	if build_worktree_cache "$repo_root" >"$tmp_file"; then
+		mv "$tmp_file" "$cache_file"
+	else
+		rm -f "$tmp_file"
+		return 1
+	fi
+}
+
+if ! cache_is_fresh "$cache_file" "$cache_ttl_seconds"; then
+	refresh_worktree_cache || true
+fi
+if [ ! -s "$cache_file" ]; then
+	fail "secondary picker: unable to build worktree cache for $repo_root"
+fi
+
+worktree_entries=()
+remote_branch_entries=()
+while IFS=$'\t' read -r entry_kind entry_value entry_extra; do
+	[ -z "$entry_kind" ] && continue
+	case "$entry_kind" in
+		WT) worktree_entries+=("${entry_value}"$'\t'"${entry_extra}") ;;
+		RB) remote_branch_entries+=("$entry_value") ;;
+	esac
+done <"$cache_file"
 
 find_worktree_by_branch() {
 	local needle="$1"
@@ -202,7 +245,7 @@ for item in "${worktree_entries[@]:-}"; do
 	display_rows+=("WT"$'\t'"${marker}"$'\t'"${branch}"$'\t'"${path}")
 done
 
-while IFS= read -r remote_branch; do
+for remote_branch in "${remote_branch_entries[@]:-}"; do
 	[ -z "$remote_branch" ] && continue
 	case "$remote_branch" in
 		*/*) ;;
@@ -217,7 +260,7 @@ while IFS= read -r remote_branch; do
 		continue
 	fi
 	display_rows+=("RB"$'\t'"+"$'\t'"${remote_branch}"$'\t'"<create-worktree>")
-done < <(git -C "$repo_root" for-each-ref --sort=refname --format='%(refname:short)' refs/remotes)
+done
 
 if [ "${#display_rows[@]}" -eq 0 ]; then
 	fail "secondary picker: no worktrees or remote branches available in $repo_root"
@@ -368,6 +411,7 @@ if [ "$selected_kind" = "RB" ]; then
 			fail "secondary picker: failed to create worktree $target_path for $local_branch: $add_err"
 		fi
 
+		rm -f "$cache_file"
 		selected_path="$target_path"
 	fi
 fi
