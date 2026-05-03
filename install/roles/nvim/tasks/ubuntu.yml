@@ -7,3 +7,23 @@
      sudo ln -sf /opt/nvim-linux-x86_64/bin/nvim /usr/local/bin/nvim
      echo 'export PATH="/opt/nvim-linux-x86_64/bin:$PATH"' >> ~/.bashrc
      echo 'export PATH="/opt/nvim-linux-x86_64/bin:$PATH"' >> ~/.zshrc
+
+- name: NVIM | Check tree-sitter CLI
+  ansible.builtin.shell: command -v tree-sitter
+  register: tree_sitter_cli
+  changed_when: false
+  failed_when: false
+
+- name: NVIM | Install npm for tree-sitter CLI
+  become: yes
+  ansible.builtin.apt:
+     name: npm
+     state: present
+  when: tree_sitter_cli.rc != 0
+
+- name: NVIM | Install tree-sitter CLI
+  community.general.npm:
+     name: tree-sitter-cli
+     global: true
+     state: present
+  when: tree_sitter_cli.rc != 0

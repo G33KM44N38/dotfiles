@@ -11,3 +11,8 @@
         name: nvim
         state: present
         update_homebrew: yes
+
+    - name: NVIM | Install tree-sitter CLI
+      homebrew:
+        name: tree-sitter
+        state: present

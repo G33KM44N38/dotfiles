@@ -110,11 +110,14 @@ return {
 			local visible_files = run_command_lines(fd_cmd, search_cwd)
 			local files = merge_unique_lists(visible_files, tracked_ignored)
 
-			fzf.fzf_exec(files, vim.tbl_deep_extend("force", picker_opts, {
-				cwd = search_cwd,
-				prompt = "Files> ",
-				actions = fzf.defaults.actions.files,
-			}))
+			fzf.fzf_exec(
+				files,
+				vim.tbl_deep_extend("force", picker_opts, {
+					cwd = search_cwd,
+					prompt = "Files> ",
+					actions = fzf.defaults.actions.files,
+				})
+			)
 		end
 
 		fzf.staged_files_live_grep = function()
@@ -157,7 +160,7 @@ return {
 		end
 
 		fzf.hidden_files_lua = function()
-			local hidden_files = {}
+			local files = {}
 
 			local function scan_dir(dir)
 				local fs = vim.loop.fs_scandir(dir)
@@ -173,23 +176,14 @@ return {
 
 					local full_path = dir .. "/" .. name
 
-					-- Ignore node_modules and dist
-					if name == "node_modules" or name == "dist" then
+					if name == "node_modules" then
 						goto continue
 					end
 
-					-- If file is hidden and is a file, add to results
-					if name:sub(1, 1) == "." then
-						if type == "file" then
-							table.insert(hidden_files, full_path)
-						elseif type == "directory" then
-							scan_dir(full_path)
-						end
-					else
-						-- Still scan non-hidden directories (like .git inside .config)
-						if type == "directory" then
-							scan_dir(full_path)
-						end
+					if type == "file" then
+						table.insert(files, full_path)
+					elseif type == "directory" then
+						scan_dir(full_path)
 					end
 
 					::continue::
@@ -198,8 +192,8 @@ return {
 
 			scan_dir(".")
 
-			require("fzf-lua").fzf_exec(hidden_files, {
-				prompt = "Hidden Files> ",
+			require("fzf-lua").fzf_exec(files, {
+				prompt = "Files> ",
 				actions = require("fzf-lua").defaults.actions.files,
 			})
 		end
