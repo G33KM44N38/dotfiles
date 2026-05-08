@@ -139,13 +139,50 @@ if command -v shasum >/dev/null 2>&1; then
 fi
 [ -z "$cache_key" ] && cache_key="$(printf '%s' "$repo_root" | tr -cd 'A-Za-z0-9._-' | cut -c1-80)"
 cache_file="/tmp/tmux-select-worktree-${UID:-$(id -u)}-${cache_key}.tsv"
-cache_ttl_seconds="${TMUX_WORKTREE_CACHE_TTL:-60}"
+cache_meta_file="${cache_file}.meta"
+# Keep the cache for days, but refresh it in the background after it ages out.
+cache_max_age_seconds="${TMUX_WORKTREE_CACHE_TTL:-604800}"
+cache_refresh_after_seconds="${TMUX_WORKTREE_CACHE_REFRESH_AFTER:-86400}"
 
-cache_is_fresh() {
+cache_age_seconds() {
 	local file="$1"
-	local ttl="$2"
 	[ -s "$file" ] || return 1
-	perl -e 'exit((time - (stat($ARGV[0]))[9]) <= $ARGV[1] ? 0 : 1)' "$file" "$ttl" 2>/dev/null
+	perl -e 'print time - (stat($ARGV[0]))[9]' "$file" 2>/dev/null
+}
+
+path_mtime_seconds() {
+	local path="$1"
+	[ -e "$path" ] || return 1
+	perl -e 'print (stat($ARGV[0]))[9]' "$path" 2>/dev/null
+}
+
+resolve_repo_git_path() {
+	local root="$1"
+	local rel="$2"
+	local path
+
+	path="$(git -C "$root" rev-parse --git-path "$rel" 2>/dev/null || true)"
+	[ -n "$path" ] || return 1
+	if [ "${path#/}" = "$path" ]; then
+		path="$root/$path"
+	fi
+	printf '%s\n' "$path"
+}
+
+repo_cache_stamp() {
+	local root="$1"
+	local packed_refs refs_heads refs_remotes refs_origin
+
+	packed_refs="$(resolve_repo_git_path "$root" packed-refs 2>/dev/null || true)"
+	refs_heads="$(resolve_repo_git_path "$root" refs/heads 2>/dev/null || true)"
+	refs_remotes="$(resolve_repo_git_path "$root" refs/remotes 2>/dev/null || true)"
+	refs_origin="$(resolve_repo_git_path "$root" refs/remotes/origin 2>/dev/null || true)"
+
+	printf '%s|%s|%s|%s\n' \
+		"$(path_mtime_seconds "$packed_refs" 2>/dev/null || echo 0)" \
+		"$(path_mtime_seconds "$refs_heads" 2>/dev/null || echo 0)" \
+		"$(path_mtime_seconds "$refs_remotes" 2>/dev/null || echo 0)" \
+		"$(path_mtime_seconds "$refs_origin" 2>/dev/null || echo 0)"
 }
 
 build_worktree_cache() {
@@ -194,16 +231,44 @@ build_worktree_cache() {
 
 refresh_worktree_cache() {
 	local tmp_file="${cache_file}.$$"
+	local tmp_meta="${cache_meta_file}.$$"
 	if build_worktree_cache "$repo_root" >"$tmp_file"; then
+		repo_cache_stamp "$repo_root" >"$tmp_meta" || true
 		mv "$tmp_file" "$cache_file"
+		mv "$tmp_meta" "$cache_meta_file" 2>/dev/null || true
 	else
 		rm -f "$tmp_file"
+		rm -f "$tmp_meta"
 		return 1
 	fi
 }
 
-if ! cache_is_fresh "$cache_file" "$cache_ttl_seconds"; then
+refresh_worktree_cache_background() {
+	local lock_dir="${cache_file}.lock"
+
+	mkdir "$lock_dir" 2>/dev/null || return 0
+	(
+		trap 'rmdir "$lock_dir" >/dev/null 2>&1 || true' EXIT
+		refresh_worktree_cache >/dev/null 2>&1
+	) &
+}
+
+cache_age=""
+if [ -s "$cache_file" ]; then
+	cache_age="$(cache_age_seconds "$cache_file" || true)"
+fi
+cache_stamp=""
+if [ -s "$cache_meta_file" ]; then
+	cache_stamp="$(cat "$cache_meta_file" 2>/dev/null || true)"
+fi
+current_stamp="$(repo_cache_stamp "$repo_root" 2>/dev/null || true)"
+
+if [ -z "$cache_age" ] || [ -z "$cache_stamp" ] || [ "$cache_stamp" != "$current_stamp" ]; then
 	refresh_worktree_cache || true
+elif [ "$cache_age" -gt "$cache_max_age_seconds" ]; then
+	refresh_worktree_cache || true
+elif [ "$cache_age" -gt "$cache_refresh_after_seconds" ]; then
+	refresh_worktree_cache_background
 fi
 if [ ! -s "$cache_file" ]; then
 	fail "secondary picker: unable to build worktree cache for $repo_root"
@@ -289,7 +354,10 @@ selected_path="$(printf '%s' "$selected" | cut -f4)"
 selected_branch="$selected_ref"
 
 sanitize_name() {
-	printf '%s\n' "$1" | tr '/[:space:]' '--' | tr -cd 'A-Za-z0-9._'
+	printf '%s\n' "$1" \
+		| tr '/[:space:]' '--' \
+		| tr -cd 'A-Za-z0-9._-' \
+		| sed 's/^-*//; s/-*$//'
 }
 
 sanitize_branch_path() {
