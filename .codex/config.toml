@@ -1,5 +1,5 @@
-model = "gpt-5.4"
-model_reasoning_effort = "medium"
+model = "gpt-5.5"
+model_reasoning_effort = "low"
 notify = ["/Users/boss/.dotfiles/bin/codex-glow-notify"]
 [projects."/Users/boss/coding/work/babacoiffure_monorepo.git/main"]
 trust_level = "trusted"
@@ -37,6 +37,15 @@ trust_level = "trusted"
 [projects."/Users/boss"]
 trust_level = "trusted"
 
+[projects."/Users/boss/.dotfiles/goinfre/open-vibe-island"]
+trust_level = "trusted"
+
+[projects."/Users/boss/coding/work/database"]
+trust_level = "trusted"
+
+[projects."/Users/boss/Downloads"]
+trust_level = "trusted"
+
 [mcp_servers.linear]
 url = "https://mcp.linear.app/mcp"
 
@@ -64,6 +73,8 @@ hide_rate_limit_model_nudge = true
 enabled = true
 
 [tui]
+terminal_title = []
+
 status_line = [
 	"five-hour-limit",
 	"context-used",
@@ -71,6 +82,9 @@ status_line = [
 	"current-dir",
 ]
 
+[tui.model_availability_nux]
+"gpt-5.5" = 4
+
 [features]
-codex_hooks = true
+hooks = true
 # multi_agent = true
