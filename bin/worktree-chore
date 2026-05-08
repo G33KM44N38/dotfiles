@@ -58,10 +58,6 @@ fi
 
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 repo_cwd="$(pwd)"
-status_file="$(mktemp -t worktree_cleanup.XXXXXX)"
-
-cleanup() { rm -f "$status_file" 2>/dev/null || true; }
-trap cleanup EXIT
 
 echo "🧹 worktree cleanup  (mode: $($DRY_RUN && echo DRY-RUN || echo LIVE))"
 
@@ -91,34 +87,73 @@ list_worktrees() {
     '
 }
 
-# -------- analyze --------
+# -------- plan --------
+safe_rows=()
+behind_rows=()
+unpushed_rows=()
+attention_rows=()
+keep_rows=()
+safe_count=0
+behind_count=0
+unpushed_count=0
+attention_count=0
+keep_count=0
+
+record_row() {
+  local bucket="$1"
+  local row="$2"
+
+  case "$bucket" in
+    safe)
+      safe_rows+=("$row")
+      safe_count=$((safe_count + 1))
+      ;;
+    behind)
+      behind_rows+=("$row")
+      behind_count=$((behind_count + 1))
+      ;;
+    unpushed)
+      unpushed_rows+=("$row")
+      unpushed_count=$((unpushed_count + 1))
+      ;;
+    attention)
+      attention_rows+=("$row")
+      attention_count=$((attention_count + 1))
+      ;;
+    keep)
+      keep_rows+=("$row")
+      keep_count=$((keep_count + 1))
+      ;;
+  esac
+}
+
 while IFS=$'\t' read -r wt_path wt_branch; do
   [[ -z "${wt_path:-}" ]] && continue
   [[ ! -d "$wt_path" ]] && continue
 
   if ! cd "$wt_path" 2>/dev/null; then
-    echo "$wt_path|$wt_branch|attention|unreadable" >>"$status_file"
+    record_row attention "$wt_path|$wt_branch|attention|unreadable"
     continue
   fi
 
   # Determine branch reliably
   branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
   if [[ "$branch" == "HEAD" || -z "$branch" ]]; then
-    echo "$wt_path|(detached)|attention|detached" >>"$status_file"
+    record_row attention "$wt_path|(detached)|attention|detached"
     cd "$repo_cwd" >/dev/null 2>&1 || true
     continue
   fi
 
   # Protected branches: keep
   if [[ "$branch" =~ $PROTECTED_BRANCHES_REGEX ]]; then
-    echo "$wt_path|$branch|keep|protected" >>"$status_file"
+    record_row keep "$wt_path|$branch|keep|protected"
     cd "$repo_cwd" >/dev/null 2>&1 || true
     continue
   fi
 
   # Any local change at all (tracked, staged, deleted, untracked): attention
   if [[ -n "$(git status --porcelain --untracked-files=normal 2>/dev/null)" ]]; then
-    echo "$wt_path|$branch|attention|local_changes" >>"$status_file"
+    record_row attention "$wt_path|$branch|attention|local_changes"
     cd "$repo_cwd" >/dev/null 2>&1 || true
     continue
   fi
@@ -126,7 +161,7 @@ while IFS=$'\t' read -r wt_path wt_branch; do
   # Check whether HEAD is already contained in a protected remote branch
   merged_into=""
   for target in main release; do
-    if git show-ref --verify --quiet "refs/remotes/origin/$target"; then
+    if git -C "$repo_root" show-ref --verify --quiet "refs/remotes/origin/$target"; then
       if git merge-base --is-ancestor HEAD "origin/$target" 2>/dev/null; then
         merged_into="$target"
         break
@@ -139,7 +174,7 @@ while IFS=$'\t' read -r wt_path wt_branch; do
   compare_ref=""
   if [[ -n "$upstream_ref" ]]; then
     compare_ref="$upstream_ref"
-  elif git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+  elif git -C "$repo_root" show-ref --verify --quiet "refs/remotes/origin/$branch"; then
     compare_ref="origin/$branch"
   fi
 
@@ -152,7 +187,7 @@ while IFS=$'\t' read -r wt_path wt_branch; do
 
   # SAFE only when HEAD is already merged into origin/main or origin/release
   if [[ -n "$merged_into" ]]; then
-    echo "$wt_path|$branch|safe|merged|$merged_into" >>"$status_file"
+    record_row safe "$wt_path|$branch|safe|merged|$merged_into"
     cd "$repo_cwd" >/dev/null 2>&1 || true
     continue
   fi
@@ -160,43 +195,38 @@ while IFS=$'\t' read -r wt_path wt_branch; do
   # If there is no upstream to compare against and HEAD is not merged into a protected branch,
   # do NOT assume it's safe.
   if [[ -z "$compare_ref" ]]; then
-    echo "$wt_path|$branch|attention|no_upstream" >>"$status_file"
+    record_row attention "$wt_path|$branch|attention|no_upstream"
     cd "$repo_cwd" >/dev/null 2>&1 || true
     continue
   fi
 
   # Ahead/behind relative to actual upstream
   if [[ "$ahead" -gt 0 && "$behind" -gt 0 ]]; then
-    echo "$wt_path|$branch|attention|diverged|$ahead|$behind|$compare_ref" >>"$status_file"
+    record_row attention "$wt_path|$branch|attention|diverged|$ahead|$behind|$compare_ref"
     cd "$repo_cwd" >/dev/null 2>&1 || true
     continue
   elif [[ "$ahead" -gt 0 ]]; then
-    echo "$wt_path|$branch|unpushed|unpushed|$ahead|$compare_ref" >>"$status_file"
+    record_row unpushed "$wt_path|$branch|unpushed|unpushed|$ahead|$compare_ref"
     cd "$repo_cwd" >/dev/null 2>&1 || true
     continue
   elif [[ "$behind" -gt 0 ]]; then
-    echo "$wt_path|$branch|behind|behind|$behind|$compare_ref" >>"$status_file"
+    record_row behind "$wt_path|$branch|behind|behind|$behind|$compare_ref"
     cd "$repo_cwd" >/dev/null 2>&1 || true
     continue
   fi
 
   # sync with upstream and clean => safe to remove
-  echo "$wt_path|$branch|safe|synced_clean|$compare_ref" >>"$status_file"
+  record_row safe "$wt_path|$branch|safe|synced_clean|$compare_ref"
   cd "$repo_cwd" >/dev/null 2>&1 || true
 done < <(list_worktrees)
 
 # -------- summarize --------
-safe="$(grep '|safe|' "$status_file" 2>/dev/null || true)"
-behind_list="$(grep '|behind|' "$status_file" 2>/dev/null || true)"
-unpushed_list="$(grep '|unpushed|' "$status_file" 2>/dev/null || true)"
-attention="$(grep '|attention|' "$status_file" 2>/dev/null || true)"
-keep="$(grep '|keep|' "$status_file" 2>/dev/null || true)"
-
 echo
 
-if [[ -n "$safe" ]]; then
+if [[ "${#safe_rows[@]}" -gt 0 ]]; then
   echo "✅ SAFE TO REMOVE"
-  echo "$safe" | while IFS='|' read -r path branch _ reason extra; do
+  for row in "${safe_rows[@]}"; do
+    IFS='|' read -r path branch _ reason extra <<<"$row"
     case "$reason" in
       merged) echo "  • $(color_branch "$branch")  (merged into origin/$extra)";;
       synced_clean) echo "  • $(color_branch "$branch")  (clean and synced with ${extra:-upstream})";;
@@ -207,27 +237,30 @@ if [[ -n "$safe" ]]; then
   echo
 fi
 
-if [[ -n "$behind_list" ]]; then
+if [[ "${#behind_rows[@]}" -gt 0 ]]; then
   echo "🔄 BEHIND (can pull --rebase)"
-  echo "$behind_list" | while IFS='|' read -r path branch _ _ count compare_ref; do
+  for row in "${behind_rows[@]}"; do
+    IFS='|' read -r path branch _ _ count compare_ref <<<"$row"
     echo "  • $(color_branch "$branch")  ($count behind ${compare_ref:-upstream})"
     echo "    $path"
   done
   echo
 fi
 
-if [[ -n "$unpushed_list" ]]; then
+if [[ "${#unpushed_rows[@]}" -gt 0 ]]; then
   echo "📤 UNPUSHED COMMITS"
-  echo "$unpushed_list" | while IFS='|' read -r path branch _ _ count compare_ref; do
+  for row in "${unpushed_rows[@]}"; do
+    IFS='|' read -r path branch _ _ count compare_ref <<<"$row"
     echo "  • $(color_branch "$branch")  ($count commit(s) not pushed to ${compare_ref:-upstream})"
     echo "    $path"
   done
   echo
 fi
 
-if [[ -n "$attention" ]]; then
+if [[ "${#attention_rows[@]}" -gt 0 ]]; then
   echo "⚠️  ATTENTION (manual review)"
-  echo "$attention" | while IFS='|' read -r path branch _ reason a b c; do
+  for row in "${attention_rows[@]}"; do
+    IFS='|' read -r path branch _ reason a b c <<<"$row"
     case "$reason" in
       local_changes) echo "  • $(color_branch "$branch")  (local changes: tracked/staged/untracked)";;
       diverged) echo "  • $(color_branch "$branch")  (diverged from ${c:-upstream}: $a ahead, $b behind)";;
@@ -241,9 +274,10 @@ if [[ -n "$attention" ]]; then
   echo
 fi
 
-if [[ -n "$keep" ]]; then
+if [[ "${#keep_rows[@]}" -gt 0 ]]; then
   echo "ℹ️  KEEP"
-  echo "$keep" | while IFS='|' read -r path branch _ why extra; do
+  for row in "${keep_rows[@]}"; do
+    IFS='|' read -r path branch _ why extra <<<"$row"
     case "$why" in
       protected) echo "  • $(color_branch "$branch")  (protected)";;
       unique) echo "  • $(color_branch "$branch")  (unique)";;
@@ -253,9 +287,6 @@ if [[ -n "$keep" ]]; then
   done
   echo
 fi
-
-safe_count="$(printf "%s\n" "$safe" | sed '/^$/d' | wc -l | tr -d ' ')"
-behind_count="$(printf "%s\n" "$behind_list" | sed '/^$/d' | wc -l | tr -d ' ')"
 
 if [[ "$safe_count" -eq 0 && "$behind_count" -eq 0 ]]; then
   echo "✓ Nothing to do automatically."
@@ -275,39 +306,36 @@ fi
 # -------- actions --------
 if [[ "$safe_count" -gt 0 ]]; then
   echo "🗑️  Removing safe worktrees..."
-  printf "%s\n" "$safe" | sed '/^$/d' | while IFS='|' read -r path branch _ _ _; do
+  for row in "${safe_rows[@]}"; do
+    IFS='|' read -r path branch _ _ _ <<<"$row"
     if $DRY_RUN; then
       echo "  [DRY RUN] git worktree remove --force \"$path\""
       echo "  [DRY RUN] git branch -d \"$branch\""
       continue
     fi
 
-    git worktree remove --force "$path" >/dev/null 2>&1 \
+    git -C "$repo_root" worktree remove --force "$path" >/dev/null 2>&1 \
       && echo "  ✓ removed $(color_branch "$branch")" \
       || echo "  ⚠️  failed to remove $(color_branch "$branch")"
 
     # delete local branch if possible (will fail if not fully merged)
-    git branch -d "$branch" >/dev/null 2>&1 || true
+    git -C "$repo_root" branch -d "$branch" >/dev/null 2>&1 || true
   done
   echo
 fi
 
 if [[ "$behind_count" -gt 0 && "$AUTO_PULL" == true ]]; then
   echo "⬇️  Pulling behind worktrees..."
-  printf "%s\n" "$behind_list" | sed '/^$/d' | while IFS='|' read -r path branch _ _ _ compare_ref; do
+  for row in "${behind_rows[@]}"; do
+    IFS='|' read -r path branch _ _ _ compare_ref <<<"$row"
     if $DRY_RUN; then
       echo "  [DRY RUN] (cd \"$path\" && git pull --rebase)"
       continue
     fi
 
-    if cd "$path" 2>/dev/null; then
-      git pull --rebase >/dev/null 2>&1 \
-        && echo "  ✓ pulled $(color_branch "$branch")" \
-        || echo "  ⚠️  failed pull $(color_branch "$branch")"
-      cd "$repo_cwd" >/dev/null 2>&1 || true
-    else
-      echo "  ⚠️  cannot cd: $path"
-    fi
+    git -C "$path" pull --rebase >/dev/null 2>&1 \
+      && echo "  ✓ pulled $(color_branch "$branch")" \
+      || echo "  ⚠️  failed pull $(color_branch "$branch")"
   done
   echo
 fi
@@ -316,7 +344,7 @@ fi
 if $DRY_RUN; then
   echo "[DRY RUN] git worktree prune"
 else
-  git worktree prune >/dev/null 2>&1 || true
+  git -C "$repo_root" worktree prune >/dev/null 2>&1 || true
 fi
 
 echo "✓ Done."
