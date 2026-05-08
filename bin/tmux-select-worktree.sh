@@ -153,7 +153,7 @@ cache_age_seconds() {
 path_mtime_seconds() {
 	local path="$1"
 	[ -e "$path" ] || return 1
-	perl -e 'print (stat($ARGV[0]))[9]' "$path" 2>/dev/null
+	perl -e 'print((stat($ARGV[0]))[9])' "$path" 2>/dev/null
 }
 
 resolve_repo_git_path() {
@@ -171,18 +171,20 @@ resolve_repo_git_path() {
 
 repo_cache_stamp() {
 	local root="$1"
-	local packed_refs refs_heads refs_remotes refs_origin
+	local packed_refs refs_heads refs_remotes refs_origin worktrees
 
 	packed_refs="$(resolve_repo_git_path "$root" packed-refs 2>/dev/null || true)"
 	refs_heads="$(resolve_repo_git_path "$root" refs/heads 2>/dev/null || true)"
 	refs_remotes="$(resolve_repo_git_path "$root" refs/remotes 2>/dev/null || true)"
 	refs_origin="$(resolve_repo_git_path "$root" refs/remotes/origin 2>/dev/null || true)"
+	worktrees="$(resolve_repo_git_path "$root" worktrees 2>/dev/null || true)"
 
-	printf '%s|%s|%s|%s\n' \
+	printf '%s|%s|%s|%s|%s\n' \
 		"$(path_mtime_seconds "$packed_refs" 2>/dev/null || echo 0)" \
 		"$(path_mtime_seconds "$refs_heads" 2>/dev/null || echo 0)" \
 		"$(path_mtime_seconds "$refs_remotes" 2>/dev/null || echo 0)" \
-		"$(path_mtime_seconds "$refs_origin" 2>/dev/null || echo 0)"
+		"$(path_mtime_seconds "$refs_origin" 2>/dev/null || echo 0)" \
+		"$(path_mtime_seconds "$worktrees" 2>/dev/null || echo 0)"
 }
 
 build_worktree_cache() {
