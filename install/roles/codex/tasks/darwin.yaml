@@ -5,3 +5,22 @@
       state: present
       update_homebrew: yes
 
+  - name: Remove legacy codex-auth package
+    npm:
+      name: codex-auth
+      global: yes
+      state: absent
+
+  - name: Install Loongphy codex-auth globally
+    npm:
+      name: "@loongphy/codex-auth"
+      global: yes
+      state: latest
+
+  - name: Enable codex-auth auto-switch
+    ansible.builtin.command: codex-auth config auto enable
+    changed_when: false
+
+  - name: Disable codex-auth API refresh
+    ansible.builtin.command: codex-auth config api disable
+    changed_when: false
