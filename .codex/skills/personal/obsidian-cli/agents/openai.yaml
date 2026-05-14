@@ -1,0 +1,4 @@
+interface:
+  display_name: "Obsidian CLI"
+  short_description: "Use Obsidian from terminal and Neovim workflows."
+  default_prompt: "Use terminal-first Obsidian workflows: open notes, open URIs, create/search markdown notes in the current vault, and keep edits safe."

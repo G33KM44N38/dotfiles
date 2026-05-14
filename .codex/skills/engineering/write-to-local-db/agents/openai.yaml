@@ -1,0 +1,4 @@
+interface:
+  display_name: "Write to Local DB"
+  short_description: "Seed BabaCoiffure local Mongo safely"
+  default_prompt: "Use $write-to-local-db to add local Mongo data for a BabaCoiffure test user."

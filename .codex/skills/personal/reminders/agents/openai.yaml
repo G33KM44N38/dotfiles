@@ -1,0 +1,4 @@
+interface:
+  display_name: "Reminders"
+  short_description: "Manage Apple Reminders from Codex"
+  default_prompt: "Use $reminders to create or update an Apple Reminder for this task."

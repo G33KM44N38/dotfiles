@@ -1,0 +1,7 @@
+interface:
+  display_name: "Calendar Feedback Flow"
+  short_description: "Convert event feedback into note updates"
+  default_prompt: "Use $calendar-feedback-flow to extract calendar event feedback, update the matching Obsidian note, and suggest a better learning resource when needed."
+
+policy:
+  allow_implicit_invocation: true
