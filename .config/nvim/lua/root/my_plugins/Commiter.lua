@@ -1,11 +1,4 @@
-local model = "anthropic/claude-haiku-4-5"
-
-local opencode_server_host = "127.0.0.1"
-local opencode_server_port = 4096
-local opencode_server_url = "http://" .. opencode_server_host .. ":" .. opencode_server_port
-
-local server_job_id = nil
-local server_starting = false
+local model = "gpt-5.4-mini"
 
 local preprompt = [[
 You are generating a git commit message from a staged diff.
@@ -61,85 +54,6 @@ local function is_commit_editmsg(buf)
 	buf = buf or 0
 	local name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(buf), ":t")
 	return name == "COMMIT_EDITMSG"
-end
-
-local function is_server_ready()
-	local ok, chan =
-		pcall(vim.fn.sockconnect, "tcp", opencode_server_host .. ":" .. opencode_server_port, { rpc = false })
-
-	if not ok or not chan or chan <= 0 then
-		return false
-	end
-
-	pcall(vim.fn.chanclose, chan)
-	return true
-end
-
-local function ensure_server()
-	if is_server_ready() then
-		return true
-	end
-
-	if server_job_id and server_job_id > 0 then
-		return false
-	end
-
-	if server_starting then
-		return false
-	end
-
-	server_starting = true
-
-	server_job_id = vim.fn.jobstart({
-		"opencode",
-		"serve",
-		"--hostname",
-		opencode_server_host,
-		"--port",
-		tostring(opencode_server_port),
-	}, {
-		detach = false,
-		on_stderr = function(_, data)
-			if not data then
-				return
-			end
-
-			local msg = table.concat(data, "\n"):match("^%s*(.-)%s*$")
-			if msg == "" then
-				return
-			end
-
-			vim.schedule(function()
-				vim.notify("opencode serve: " .. msg, vim.log.levels.WARN)
-			end)
-		end,
-		on_exit = function(_, code)
-			server_job_id = nil
-			server_starting = false
-
-			if code ~= 0 then
-				vim.schedule(function()
-					vim.notify("opencode server exited with code " .. code, vim.log.levels.ERROR)
-				end)
-			end
-		end,
-	})
-
-	if server_job_id <= 0 then
-		server_job_id = nil
-		server_starting = false
-		vim.notify("Failed to start opencode server.", vim.log.levels.ERROR)
-		return false
-	end
-
-	vim.defer_fn(function()
-		server_starting = false
-		if is_server_ready() then
-			vim.notify("opencode server ready.", vim.log.levels.INFO)
-		end
-	end, 1200)
-
-	return false
 end
 
 local function fill_commit_editmsg(buf, message)
@@ -225,22 +139,24 @@ local function open_commit_float(message)
 end
 
 local function commit()
+	if vim.fn.executable("codex") ~= 1 then
+		vim.notify("Codex CLI not found in PATH.", vim.log.levels.ERROR)
+		return
+	end
+
 	local staged_files = vim.fn.systemlist("git diff --staged --name-only")
 	if #staged_files == 0 then
 		vim.notify("No staged files to commit.", vim.log.levels.WARN)
 		return
 	end
 
-	if not is_server_ready() then
-		ensure_server()
-		vim.notify("Starting opencode server, run the command again in a moment.", vim.log.levels.INFO)
-		return
-	end
-
 	local current_buf = vim.api.nvim_get_current_buf()
 	local in_commit_buf = is_commit_editmsg(current_buf)
 
-	vim.notify("Generating commit message… with the model " .. model, vim.log.levels.INFO)
+	vim.notify(
+		"Generating commit message with Codex" .. (model and (" (" .. model .. ")") or ""),
+		vim.log.levels.INFO
+	)
 
 	vim.system({ "git", "diff", "--staged" }, { text = true }, function(diff_result)
 		vim.schedule(function()
@@ -253,40 +169,52 @@ local function commit()
 
 			local diff = diff_result.stdout
 			local prompt = preprompt .. "\n\n" .. diff
+			local tmpfile = vim.fn.tempname()
+			local cmd = {
+				"codex",
+				"exec",
+				"--color",
+				"never",
+				"--sandbox",
+				"read-only",
+				"--output-last-message",
+				tmpfile,
+				"-",
+			}
 
-			vim.system({
-				"opencode",
-				"run",
-				"--attach",
-				opencode_server_url,
-				"-m",
-				model,
-				prompt,
-			}, {
+			if model then
+				table.insert(cmd, 3, model)
+				table.insert(cmd, 3, "-m")
+			end
+
+			vim.system(cmd, {
 				text = true,
+				stdin = prompt,
 			}, function(result)
 				vim.schedule(function()
+					local output = ""
+					if vim.fn.filereadable(tmpfile) == 1 then
+						output = table.concat(vim.fn.readfile(tmpfile), "\n")
+					end
+					vim.fn.delete(tmpfile)
+
 					if result.code ~= 0 then
 						local err = (result.stderr or ""):match("^%s*(.-)%s*$")
-						if err:match("ECONNREFUSED") or err:match("connect") then
-							vim.notify(
-								"Could not reach opencode server at " .. opencode_server_url,
-								vim.log.levels.ERROR
-							)
-						else
-							vim.notify(
-								"opencode exited with code " .. result.code .. (err ~= "" and (": " .. err) or ""),
-								vim.log.levels.ERROR
-							)
-						end
+						local out = strip_ansi(result.stdout or ""):match("^%s*(.-)%s*$")
+						vim.notify(
+							"Codex exited with code "
+								.. result.code
+								.. (err ~= "" and (": " .. err) or (out ~= "" and (": " .. out) or "")),
+							vim.log.levels.ERROR
+						)
 						return
 					end
 
-					local response = strip_ansi(result.stdout or "")
+					local response = output ~= "" and output or strip_ansi(result.stdout or "")
 					response = response:match("^%s*(.-)%s*$")
 
 					if response == "" then
-						vim.notify("opencode returned an empty response.", vim.log.levels.ERROR)
+						vim.notify("Codex returned an empty response.", vim.log.levels.ERROR)
 						return
 					end
 
@@ -297,7 +225,7 @@ local function commit()
 					end
 					local elapsed_sec = (vim.loop.hrtime() - start) / 1e9
 
-					vim.notify(string.format("Commit message generated in %.2f ms", elapsed_sec), vim.log.levels.INFO)
+					vim.notify(string.format("Commit message generated in %.2f s", elapsed_sec), vim.log.levels.INFO)
 				end)
 			end)
 		end)
@@ -312,25 +240,9 @@ vim.keymap.set("n", "<leader>ai", "<cmd>Commiter<CR>", {
 	desc = "AI commit message",
 })
 
-vim.api.nvim_create_autocmd({ "BufReadPost", "BufNewFile" }, {
-	pattern = "COMMIT_EDITMSG",
-	callback = function()
-		pcall(ensure_server)
-	end,
-})
-
-vim.api.nvim_create_autocmd("VimLeavePre", {
-	callback = function()
-		if server_job_id and server_job_id > 0 then
-			pcall(vim.fn.jobstop, server_job_id)
-		end
-	end,
-})
-
 return {
 	strip_ansi = strip_ansi,
 	is_commit_editmsg = is_commit_editmsg,
 	fill_commit_editmsg = fill_commit_editmsg,
 	open_commit_float = open_commit_float,
-	ensure_server = ensure_server,
 }

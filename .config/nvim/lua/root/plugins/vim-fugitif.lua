@@ -341,20 +341,12 @@ return {
 		vim.api.nvim_create_autocmd("FileType", {
 			pattern = "gitcommit",
 			callback = function()
-				vim.api.nvim_buf_set_keymap(
-					0,
-					"n",
-					"<leader>ai",
-					":AICommitMessage<CR>",
-					{ noremap = true, silent = true }
-				)
-				vim.api.nvim_buf_set_keymap(
-					0,
-					"n",
-					"<leader>oi",
-					":OllamaCommitMessage<CR>",
-					{ noremap = true, silent = true }
-				)
+				vim.keymap.set("n", "<leader>ai", "<cmd>Commiter<CR>", {
+					buffer = true,
+					noremap = true,
+					silent = true,
+					desc = "Generate commit message with Codex",
+				})
 			end,
 		})
 	end,
