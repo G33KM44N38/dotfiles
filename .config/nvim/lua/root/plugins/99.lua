@@ -8,7 +8,7 @@ return {
 		-- for reporting bugs, i would not rely on this, but instead the provided
 		-- logging mechanisms within 99.  This is for more debugging purposes
 		local cwd = vim.uv.cwd()
-		local basename = vim.fs.basename(cwd)
+		local basename = (cwd and vim.fs.basename(cwd)) or "nvim"
 		_99.setup({
 			-- Use a model that exists in your opencode installation
 			model = "anthropic/claude-haiku-4-5",
