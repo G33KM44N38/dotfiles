@@ -53,6 +53,9 @@ url = "https://mcp.linear.app/mcp"
 url = "https://mcp.axiom.co/mcp?org-id=babacoiffure-zp6k"
 bearer_token_env_var = "AXIOM_MCP_TOKEN"
 
+[mcp_servers.sentry]
+enabled = false
+
 # [mcp_servers.codebase-retrieval]
 # command = "auggie"
 # args = ["--mcp", "--mcp-auto-workspace"]
