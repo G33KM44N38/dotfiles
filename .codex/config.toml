@@ -1,6 +1,7 @@
 model = "gpt-5.5"
 model_reasoning_effort = "low"
 notify = ["/Users/boss/.dotfiles/bin/codex-glow-notify"]
+service_tier = "fast"
 [projects."/Users/boss/coding/work/babacoiffure_monorepo.git/main"]
 trust_level = "trusted"
 
@@ -46,6 +47,12 @@ trust_level = "trusted"
 [projects."/Users/boss/Downloads"]
 trust_level = "trusted"
 
+[projects."/Users/boss/.dotfiles/goinfre/codex-auth"]
+trust_level = "trusted"
+
+[projects."/Users/boss/coding/work/dorali"]
+trust_level = "trusted"
+
 [mcp_servers.linear]
 url = "https://mcp.linear.app/mcp"
 
@@ -54,6 +61,7 @@ url = "https://mcp.axiom.co/mcp?org-id=babacoiffure-zp6k"
 bearer_token_env_var = "AXIOM_MCP_TOKEN"
 
 [mcp_servers.sentry]
+command = "true"
 enabled = false
 
 # [mcp_servers.codebase-retrieval]
@@ -65,6 +73,7 @@ enabled = false
 
 [notice]
 hide_rate_limit_model_nudge = true
+fast_default_opt_out = true
 
 [notice.model_migrations]
 "gpt-5.1-codex-mini" = "gpt-5.4"
@@ -90,4 +99,21 @@ status_line = [
 
 [features]
 hooks = true
+goals = true
+apps = true
+
+[hooks.state]
+
+[hooks.state."/Users/boss/.codex/hooks.json:permission_request:0:0"]
+trusted_hash = "sha256:f6254a62ddefb39d032df7cb63c28be155b1b4f1ad12881730fe837ad7ccb89e"
+
+[hooks.state."/Users/boss/.codex/hooks.json:session_start:0:0"]
+trusted_hash = "sha256:dccb2d1d9a57f51945d9ce19fb514874df49f09a21421e56acb2eeaf023f8849"
+
+[hooks.state."/Users/boss/.codex/hooks.json:stop:0:0"]
+trusted_hash = "sha256:144bcbfbfed57b117eb5bc1cc3ea7e79f1cccc7ff183be324b06589fc31d24ad"
+
+[hooks.state."/Users/boss/.codex/hooks.json:user_prompt_submit:0:0"]
+enabled = true
+trusted_hash = "sha256:0964f451705304ad5334bcaacd42201929be8c31210a527b1b2d4f9fe7549658"
 # multi_agent = true
