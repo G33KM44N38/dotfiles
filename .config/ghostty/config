@@ -9,4 +9,4 @@ keybind = cmd+shift+z=toggle_split_zoom
 keybind = alt+u=unbind
 keybind = alt+i=unbind
 keybind = alt+y=unbind
-theme = light:Catppuccin Latte,dark:TokyoNight Night
+theme = light:GitHub Light High Contrast,dark:TokyoNight Night
