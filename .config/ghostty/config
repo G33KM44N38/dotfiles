@@ -1,5 +1,5 @@
-background-opacity = 0.8
-background-blur = true
+background-opacity = 1
+background-blur = false
 # tmux uses many Alt-based bindings; force macOS Option to act as Alt.
 macos-option-as-alt = true
 # Send explicit Meta sequences for tmux worktree picker shortcuts.
