@@ -8,6 +8,7 @@
   "blink-cmp-conventional-commits": { "branch": "main", "commit": "a636d365bf80dbfdde049494e91d71ec51e11a15" },
   "blink-emoji.nvim": { "branch": "master", "commit": "066013e4c98a9318408ee3f1ca2dbcb6fa3e4c06" },
   "blink.cmp": { "branch": "main", "commit": "b19413d214068f316c78978b08264ed1c41830ec" },
+  "catppuccin": { "branch": "main", "commit": "426dbebe06b5c69fd846ceb17b42e12f890aedf1" },
   "cloak.nvim": { "branch": "main", "commit": "648aca6d33ec011dc3166e7af3b38820d01a71e4" },
   "conform.nvim": { "branch": "master", "commit": "c2526f1cde528a66e086ab1668e996d162c75f4f" },
   "debugprint.nvim": { "branch": "main", "commit": "25bc7c2b1703050d14cfb2560974a8426febe08d" },
