@@ -85,6 +85,7 @@ fast_default_opt_out = true
 enabled = true
 
 [tui]
+theme = "ansi"
 terminal_title = []
 
 status_line = [
