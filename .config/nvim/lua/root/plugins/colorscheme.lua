@@ -1,13 +1,14 @@
 return {
 	{
-		"catppuccin/nvim",
-		name = "catppuccin",
+		"projekt0n/github-nvim-theme",
+		name = "github-theme",
 		lazy = false,
 		priority = 999,
 		opts = {
-			flavour = "latte",
-			transparent_background = true,
-			term_colors = true,
+			options = {
+				transparent = false,
+				terminal_colors = true,
+			},
 		},
 	},
 	{
@@ -26,8 +27,8 @@ return {
 				},
 				light = {
 					background = "light",
-					colorscheme = "catppuccin-latte",
-					line_nr = "#5c5f77",
+					colorscheme = "github_light_high_contrast",
+					line_nr = "#24292f",
 				},
 			}
 
