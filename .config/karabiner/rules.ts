@@ -64,6 +64,7 @@ const hyperSubLayers = createHyperSubLayers({
     x: app("Discord"),
     y: app("Brave Browser"),
     z: app("Safari"),
+    slash: app("Codex"),
   },
   s: {
     u: { to: [{ key_code: "volume_increment" }] },
