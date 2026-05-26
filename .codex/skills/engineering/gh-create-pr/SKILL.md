@@ -34,6 +34,7 @@ Use this workflow when the user asks to open a PR with GitHub CLI.
   - `Changes`
   - `Test Plan`
   - `Risks / Notes`
+- `Test Plan` must include at least one real-user validation step for PRs we create, written as the workflow a user would perform to verify the change.
 
 5. Create PR:
 - `gh pr create --base <target> --title "<title>" --body "<body>"`
