@@ -1,11 +1,5 @@
 #!/bin/bash
 
-# Check if fzf is installed
-if ! command -v fzf &> /dev/null; then
-  echo "fzf is not installed. Please install it first."
-  exit 1
-fi
-
 # Define source directory
 SOURCE_DIR="$HOME/.dotfiles/.group_env"
 
@@ -15,8 +9,30 @@ if [ ! -d "$SOURCE_DIR" ]; then
   exit 1
 fi
 
-# Use fzf to select a file
-SELECTED_FILE=$(find "$SOURCE_DIR" -type f | fzf)
+if [ "$#" -gt 1 ]; then
+  echo "Usage: $(basename "$0") [env-file]"
+  exit 1
+fi
+
+if [ "$#" -eq 1 ]; then
+  if [ -f "$1" ]; then
+    SELECTED_FILE="$1"
+  elif [ -f "$SOURCE_DIR/$1" ]; then
+    SELECTED_FILE="$SOURCE_DIR/$1"
+  else
+    echo "File '$1' does not exist."
+    exit 1
+  fi
+else
+  # Check if fzf is installed
+  if ! command -v fzf &> /dev/null; then
+    echo "fzf is not installed. Please install it first."
+    exit 1
+  fi
+
+  # Use fzf to select a file
+  SELECTED_FILE=$(find "$SOURCE_DIR" -type f | fzf)
+fi
 
 # If the user didn't select anything, exit
 if [ -z "$SELECTED_FILE" ]; then
