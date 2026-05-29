@@ -1,0 +1,4 @@
+interface:
+  display_name: "macOS Calendar"
+  short_description: "Modify Apple Calendar events reliably from Codex."
+  default_prompt: "Use macOS Calendar to inspect, add, update, import, or delete Apple Calendar events safely."
