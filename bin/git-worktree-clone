@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" -lt 2 ]; then
+  echo "Usage: git wt-clone <repo-url> <main-dir>"
+  echo "Example: git wt-clone git@github.com:you/repo.git my-project"
+  exit 1
+fi
+
+repo_url="$1"
+main_dir="$2"
+
+git clone "$repo_url" "$main_dir"
+
+cd "$main_dir"
+
+default_branch="$(
+  git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null \
+  | sed 's#^origin/##'
+)"
+
+if [ -z "$default_branch" ]; then
+  default_branch="$(git branch --show-current)"
+fi
+
+echo "Cloned into: $main_dir"
+echo "Default branch: $default_branch"
+echo
+echo "To add a worktree:"
+echo "  cd $main_dir"
+echo "  git worktree add ../${main_dir}-feature -b feature origin/$default_branch"
