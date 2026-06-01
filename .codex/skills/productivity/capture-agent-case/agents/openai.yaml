@@ -1,0 +1,4 @@
+interface:
+  display_name: "Capture Agent Case"
+  short_description: "Archive agent prompts, fixes, and failure notes"
+  default_prompt: "Use $capture-agent-case to archive this coding-agent session for later review."

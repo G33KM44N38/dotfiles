@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+"""Create a structured coding-agent review case."""
+
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import json
+import os
+import re
+from pathlib import Path
+from typing import Iterable
+
+
+VALID_STATUSES = {"solved", "partial", "blocked", "failed"}
+
+
+def read_text(value: str | None, file_path: str | None) -> str:
+    if value and file_path:
+        raise SystemExit("Use either an inline value or a file value, not both.")
+    if file_path:
+        return Path(file_path).expanduser().read_text(encoding="utf-8").strip()
+    return (value or "").strip()
+
+
+def split_csv(values: Iterable[str] | None) -> list[str]:
+    result: list[str] = []
+    for value in values or []:
+        for item in value.split(","):
+            item = item.strip()
+            if item:
+                result.append(item)
+    return result
+
+
+def slugify(text: str) -> str:
+    slug = re.sub(r"[^a-zA-Z0-9]+", "-", text.lower()).strip("-")
+    return slug[:70] or "agent-case"
+
+
+def yaml_value(value: object) -> str:
+    return json.dumps(value, ensure_ascii=False)
+
+
+def section(title: str, body: str) -> str:
+    return f"## {title}\n\n{body.strip() if body.strip() else 'Not recorded.'}\n"
+
+
+def bullet_section(title: str, values: list[str]) -> str:
+    body = "\n".join(f"- {value}" for value in values) if values else "Not recorded."
+    return f"## {title}\n\n{body}\n"
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Create a structured Markdown archive of a coding-agent session."
+    )
+    parser.add_argument("--title", required=True, help="Short case title.")
+    parser.add_argument(
+        "--status",
+        required=True,
+        choices=sorted(VALID_STATUSES),
+        help="Outcome classification.",
+    )
+    parser.add_argument("--out-dir", help="Archive directory. Defaults to AGENT_CASES_DIR or ~/agent-cases.")
+    parser.add_argument("--repo", default="", help="Repository path or project name.")
+    parser.add_argument("--agent", default="", help="Agent/model/tool name.")
+    parser.add_argument("--tags", action="append", help="Comma-separated tags. May be repeated.")
+    parser.add_argument("--files", action="append", help="Comma-separated file paths. May be repeated.")
+
+    parser.add_argument("--prompt", help="Inline initial prompt.")
+    parser.add_argument("--prompt-file", help="File containing initial prompt.")
+    parser.add_argument("--transcript", help="Inline visible user/agent transcript.")
+    parser.add_argument("--transcript-file", help="File containing visible user/agent transcript.")
+    parser.add_argument("--solution", help="Inline final solution.")
+    parser.add_argument("--solution-file", help="File containing final solution.")
+    parser.add_argument("--failures", action="append", help="Failure mode or mistake. May be repeated.")
+    parser.add_argument("--commands", action="append", help="Command or tool evidence. May be repeated.")
+    parser.add_argument("--verification", action="append", help="Test or validation evidence. May be repeated.")
+    parser.add_argument("--lessons", action="append", help="Review lesson or process improvement. May be repeated.")
+    parser.add_argument("--notes", default="", help="Additional free-form notes.")
+    args = parser.parse_args()
+
+    prompt = read_text(args.prompt, args.prompt_file)
+    transcript = read_text(args.transcript, args.transcript_file)
+    solution = read_text(args.solution, args.solution_file)
+    if not prompt:
+        raise SystemExit("Missing initial prompt. Provide --prompt or --prompt-file.")
+    if not solution:
+        raise SystemExit("Missing solution. Provide --solution or --solution-file.")
+
+    now = dt.datetime.now().astimezone()
+    out_dir = Path(args.out_dir or os.environ.get("AGENT_CASES_DIR", "~/agent-cases")).expanduser()
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    tags = split_csv(args.tags)
+    files = split_csv(args.files)
+    failures = args.failures or []
+    commands = args.commands or []
+    verification = args.verification or []
+    lessons = args.lessons or []
+
+    frontmatter = {
+        "title": args.title,
+        "created_at": now.isoformat(timespec="seconds"),
+        "status": args.status,
+        "repo": args.repo,
+        "agent": args.agent,
+        "tags": tags,
+        "files": files,
+    }
+
+    lines = ["---"]
+    for key, value in frontmatter.items():
+        lines.append(f"{key}: {yaml_value(value)}")
+    lines.extend(
+        [
+            "---",
+            "",
+            f"# {args.title}",
+            "",
+            section("Initial Prompt", prompt),
+            section("Transcript", transcript),
+            section("Solution Found", solution),
+            bullet_section("Failures and Friction", failures),
+            bullet_section("Commands and Tools", commands),
+            bullet_section("Verification", verification),
+            bullet_section("Lessons for Next Time", lessons),
+        ]
+    )
+    if args.notes.strip():
+        lines.append(section("Additional Notes", args.notes))
+
+    filename = f"{now.strftime('%Y-%m-%d-%H%M%S')}-{slugify(args.title)}.md"
+    output = out_dir / filename
+    output.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+    print(output)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
