@@ -36,6 +36,7 @@ INCLUDE_BREW_CASKS=false
 SIM_RUNTIME_RETENTION_DAYS=30
 CHOOSE_SIM_RUNTIME=false
 DUA_BIN=""
+WIFI_DNS_BEFORE=""
 
 # Print colored header
 print_header() {
@@ -214,6 +215,77 @@ print_brew_cask_recovery_hints() {
   for cask in "${broken_casks[@]}"; do
     info "To repair $cask: brew uninstall --cask --force $cask"
     info "Then reinstall only if you still want it: brew install --cask $cask"
+  done
+}
+
+flush_dns_cache() {
+  dscacheutil -flushcache 2>/dev/null || true
+  killall -HUP mDNSResponder 2>/dev/null || true
+}
+
+github_dns_resolves() {
+  local host
+
+  for host in github.com api.github.com; do
+    if ! dscacheutil -q host -a name "$host" >/dev/null 2>&1; then
+      return 1
+    fi
+  done
+
+  return 0
+}
+
+set_hotspot_dns_if_github_is_broken() {
+  if ! command_exists networksetup; then
+    return 1
+  fi
+
+  if github_dns_resolves; then
+    return 0
+  fi
+
+  if [ -n "$WIFI_DNS_BEFORE" ] && [ "$WIFI_DNS_BEFORE" != "There aren't any DNS Servers set on Wi-Fi." ]; then
+    warn "GitHub DNS resolution broke; restoring previous Wi-Fi DNS"
+    # shellcheck disable=SC2086
+    run_destructive "Restore previous Wi-Fi DNS" networksetup -setdnsservers Wi-Fi $WIFI_DNS_BEFORE
+    if [ "$DRY_RUN" = false ]; then
+      flush_dns_cache
+      if github_dns_resolves; then
+        return 0
+      fi
+    fi
+  fi
+
+  warn "GitHub DNS resolution broke; applying hotspot-safe Wi-Fi DNS"
+  run_destructive "Set Wi-Fi DNS for hotspot GitHub access" \
+    networksetup -setdnsservers Wi-Fi 1.1.1.1 8.8.8.8
+  if [ "$DRY_RUN" = true ]; then
+    return 0
+  fi
+
+  flush_dns_cache
+  github_dns_resolves
+}
+
+remember_wifi_dns() {
+  if command_exists networksetup; then
+    WIFI_DNS_BEFORE="$(networksetup -getdnsservers Wi-Fi 2>/dev/null || true)"
+  fi
+}
+
+run_external_cleanup_tools() {
+  local tool
+
+  # Keep these Homebrew cleanup tools in the main flow, but guard DNS after each
+  # one because hotspot-provided resolvers have broken GitHub lookups before.
+  for tool in mole mac-cleanup; do
+    if command_exists "$tool"; then
+      info "Running $tool"
+      run_with_spinner "$tool" "$tool"
+      set_hotspot_dns_if_github_is_broken || warn "GitHub DNS still does not resolve after $tool"
+    else
+      warn "Skipping $tool: command not found"
+    fi
   done
 }
 
@@ -858,6 +930,9 @@ main() {
     echo -e "${GREEN}No cleanup actions were executed.${RESET}\n"
     exit 0
   fi
+
+  remember_wifi_dns
+  run_external_cleanup_tools
 
   if [ "$FULL_CLEAN" = true ]; then
     echo -e "${MAGENTA}Running in FULL cleanup mode${RESET}\n"
