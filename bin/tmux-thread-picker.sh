@@ -327,7 +327,7 @@ emit_row() {
 			state_label="wait"
 			;;
 		codex_running)
-			dot="$(color_text "$c_proc" "●")"
+			dot="$(color_text "$c_proc" "▶")"
 			state_label="run"
 			;;
 		*) dot=" " ;;
