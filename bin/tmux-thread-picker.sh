@@ -1151,6 +1151,13 @@ fi
 
 [ -n "$fzf_bin" ] || fail "thread picker: fzf not found in PATH"
 
+archive_action="archive"
+archive_reload="$0 --rows"
+if [ "${TMUX_THREAD_SHOW_ARCHIVED:-0}" = "1" ]; then
+	archive_action="unarchive"
+	archive_reload="TMUX_THREAD_SHOW_ARCHIVED=1 $0 --rows"
+fi
+
 header="$(
 	printf '      %s  %s  %s  %s' \
 		"$(pad_text "state" 6)" \
@@ -1166,7 +1173,7 @@ selected="$(
 		--with-nth=2 \
 		--header="$header" \
 		--header-border=line \
-		--footer="Ctrl-n new | Ctrl-r refresh | Ctrl-o worktree picker | Ctrl-p pin | Ctrl-t title | Ctrl-a archive | Alt-a archived | Enter open" \
+		--footer="Ctrl-n new | Ctrl-r refresh | Ctrl-o worktree picker | Ctrl-p pin | Ctrl-t title | Ctrl-a $archive_action | Alt-a archived | Enter open" \
 		--footer-border=line \
 		--layout=reverse \
 		--border \
@@ -1175,7 +1182,7 @@ selected="$(
 		--listen="${tmp_dir}/fzf.sock" \
 		--bind "start:execute-silent($0 --watch-fzf ${tmp_dir}/fzf.sock)" \
 		--bind "ctrl-p:execute-silent($0 --toggle-pin {5})+reload($0 --rows)" \
-		--bind "ctrl-a:execute-silent($0 --toggle-archive {5})+reload($0 --rows)" \
+		--bind "ctrl-a:execute-silent($0 --toggle-archive {5})+reload($archive_reload)" \
 		--bind "alt-a:reload(TMUX_THREAD_SHOW_ARCHIVED=1 $0 --rows)" \
 		--bind "ctrl-t:execute($0 --edit-title {5})+reload($0 --rows)" \
 		--bind "ctrl-n:execute($0 --new-thread {5})+abort" \

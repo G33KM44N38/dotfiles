@@ -158,8 +158,8 @@ open_layout() {
 
 	sleep 0.1
 	"$tmux_bin" send-keys -t "$top_left_pane" -R "$vi_cmd" C-m
-	"$tmux_bin" send-keys -t "$top_right_pane" -R "$co_cmd" C-m
-	"$tmux_bin" send-keys -t "$bottom_left_pane" -R "$bootstrap_cmd" C-m
+	"$tmux_bin" send-keys -t "$top_right_pane" -R "$bootstrap_cmd" C-m
+	"$tmux_bin" send-keys -t "$bottom_left_pane" -R "$co_cmd" C-m
 
 	"$tmux_bin" switch-client -t "${target_session}:${created_window}" >/dev/null 2>&1 || "$tmux_bin" select-window -t "${target_session}:${created_window}" >/dev/null 2>&1 || true
 	"$tmux_bin" select-pane -t "$bottom_left_pane"
