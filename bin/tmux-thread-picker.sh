@@ -322,7 +322,14 @@ emit_row() {
 	[ "$state" = "open " ] && state_label="open"
 
 	case "$row_signal" in
-		codex_done) dot="$(color_text "$c_dot_current" "●")" ;;
+		codex_done)
+			dot="$(color_text "$c_dot_current" "●")"
+			state_label="wait"
+			;;
+		codex_running)
+			dot="$(color_text "$c_proc" "●")"
+			state_label="run"
+			;;
 		*) dot=" " ;;
 	esac
 	if [ "$process_signal" = "process" ]; then
