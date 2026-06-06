@@ -771,8 +771,17 @@ create_new_thread() {
 	project_name_value="$(printf '%s' "$selected_project" | cut -f1)"
 	[ -d "$source_repo_path" ] || fail "thread picker: invalid project path for new thread: $source_repo_path"
 
-	printf 'Thread title for %s: ' "$project_name_value" > /dev/tty
-	IFS= read -r title < /dev/tty || title=""
+	title="$(
+		"$fzf_bin" \
+			--prompt="thread title for $project_name_value > " \
+			--print-query \
+			--height=100% \
+			--border \
+			--no-info \
+			--phony \
+			--bind "enter:accept-or-print-query" \
+			< /dev/null | head -n1
+	)" || title=""
 	[ -n "$title" ] || exit 0
 
 	branch="$(sanitize_branch_path "$title")"
