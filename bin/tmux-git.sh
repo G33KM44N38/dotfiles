@@ -196,7 +196,7 @@ pick_pr() {
 }
 
 open_current_branch_pr() {
-	local current_path root branch selected count pr_number match_flag match_label
+	local current_path root branch selected count pr_number match_flag match_branch match_label ticket_key
 
 	current_path="$(tmux_path)"
 	root="$(repo_root "$current_path")"
@@ -214,6 +214,7 @@ open_current_branch_pr() {
 			--jq 'length'
 	)"
 	match_flag="--head"
+	match_branch="$branch"
 	match_label="head"
 
 	if [ "$count" -eq 0 ]; then
@@ -226,7 +227,25 @@ open_current_branch_pr() {
 				--jq 'length'
 		)"
 		match_flag="--base"
+		match_branch="$branch"
 		match_label="base"
+	fi
+
+	if [ "$count" -eq 0 ]; then
+		ticket_key="$(printf '%s\n' "$branch" | sed -nE 's/.*(([A-Z]+|[a-z]+)-[0-9]+).*/\1/p' | head -n1 | tr '[:lower:]' '[:upper:]')"
+		if [ -n "$ticket_key" ]; then
+			count="$(
+				GH_PAGER=cat gh pr list \
+					--limit 200 \
+					--state open \
+					--search "$ticket_key" \
+					--json number \
+					--jq 'length'
+			)"
+			match_flag="--search"
+			match_branch="$ticket_key"
+			match_label="search"
+		fi
 	fi
 
 	if [ "$count" -eq 0 ]; then
@@ -238,7 +257,7 @@ open_current_branch_pr() {
 			GH_PAGER=cat gh pr list \
 				--limit 200 \
 				--state open \
-				"$match_flag" "$branch" \
+				"$match_flag" "$match_branch" \
 				--json number \
 				--jq '.[0].number'
 		)"
@@ -247,11 +266,11 @@ open_current_branch_pr() {
 			GH_PAGER=cat gh pr list \
 				--limit 200 \
 				--state open \
-				"$match_flag" "$branch" \
+				"$match_flag" "$match_branch" \
 				--json number,title,isDraft,author,baseRefName,url \
 				--template '{{range .}}{{printf "%v\t" .number}}{{if .isDraft}}D{{else}} {{end}}{{printf "\t%s\t%s\t%s\t%s\t%s\n" .headRefName .baseRefName .author.login .title .url}}{{end}}' | \
 			fzf \
-				--prompt="open pr ($match_label:$branch) > " \
+				--prompt="open pr ($match_label:$match_branch) > " \
 				--delimiter=$'\t' \
 				--with-nth=1,2,3,4,5,6 \
 				--header=$'pr\tdraft\thead\tbase\tauthor\ttitle' \
