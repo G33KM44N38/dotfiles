@@ -148,13 +148,23 @@ fi
 if [ "$mode" = "--watch-fzf" ]; then
 	fzf_socket="${2:-}"
 	[ -n "$fzf_socket" ] || exit 0
-	while [ -S "$fzf_socket" ]; do
-		"$0" --refresh-cache >/dev/null 2>&1 || true
-		[ -S "$fzf_socket" ] || exit 0
-		curl --silent --show-error --max-time 1 --unix-socket "$fzf_socket" http \
-			--data-binary "reload(cat '$display_cache_file')" >/dev/null 2>&1 || exit 0
-		sleep "${TMUX_THREAD_WATCH_INTERVAL:-2}"
-	done
+	(
+		last_checksum="$(cksum "$display_cache_file" 2>/dev/null || true)"
+		sleep "${TMUX_THREAD_WATCH_INITIAL_DELAY:-1}"
+		while [ -S "$fzf_socket" ]; do
+			"$0" --refresh-cache >/dev/null 2>&1 || true
+			[ -S "$fzf_socket" ] || exit 0
+			if [ -s "$display_cache_file" ]; then
+				checksum="$(cksum "$display_cache_file" 2>/dev/null || true)"
+				if [ -n "$checksum" ] && [ "$checksum" != "$last_checksum" ]; then
+					last_checksum="$checksum"
+					curl --silent --show-error --max-time 1 --unix-socket "$fzf_socket" http \
+						--data-binary "reload(cat '$display_cache_file')" >/dev/null 2>&1 || exit 0
+				fi
+			fi
+			sleep "${TMUX_THREAD_WATCH_INTERVAL:-5}"
+		done
+	) >/dev/null 2>&1 &
 	exit 0
 fi
 
