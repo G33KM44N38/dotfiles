@@ -154,7 +154,7 @@ fi
 source_path="$("$tmux_bin" display-message -p -t "${TMUX_PANE:-}" '#{pane_current_path}' 2>/dev/null || true)"
 [ -n "$source_path" ] || source_path="$PWD"
 
-if [ -n "${NO_COLOR:-}" ]; then
+if [ -n "${NO_COLOR:-}" ] && [ "${TMUX_THREAD_COLOR:-1}" != "1" ]; then
 	c_reset=""
 	c_bold=""
 	c_dim=""
