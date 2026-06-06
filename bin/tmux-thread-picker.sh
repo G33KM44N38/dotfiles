@@ -300,7 +300,7 @@ emit_row() {
 	local row_signal="${10:-}"
 	local process_signal="${11:-}"
 	local detail_override="${12:-}"
-	local pinned archived archive_label pin_label state_label title detail branch_col target_col display sort_key relative_path fallback_title dot proc_marker
+	local pinned archived archive_label pin_label state_label title detail branch_col display sort_key relative_path fallback_title dot proc_marker
 
 	if is_archived "$pin_key" && [ "${TMUX_THREAD_SHOW_ARCHIVED:-0}" != "1" ]; then
 		return 0
@@ -354,19 +354,17 @@ emit_row() {
 	title="$(thread_title "$pin_key" "$fallback_title")"
 	title="$(pad_text "$title" 30)"
 	detail="$(pad_text "$detail" 56)"
-	branch_col="$(pad_text "$branch" 28)"
-	target_col="$(pad_text "$target" 22)"
+	branch_col="$(pad_text "$branch" 56)"
 
 	display="$(
-		printf '%s%s %s %s  %s  %s  %s  %s' \
+		printf '%s%s %s %s  %s  %s  %s' \
 			"$dot" \
 			"$proc_marker" \
 			"$(color_text "$c_red" "$pin_label$archive_label")" \
 			"$(color_state "$kind" "$(pad_text "$state_label" 6)")" \
 			"$title" \
 			"$(color_text "$c_dim" "$detail")" \
-			"$(color_text "$c_magenta" "$branch_col")" \
-			"$(color_text "$c_blue" "$target_col")"
+			"$(color_text "$c_magenta" "$branch_col")"
 	)"
 
 	sort_key="1"
@@ -1047,11 +1045,21 @@ fi
 
 [ -n "$fzf_bin" ] || fail "thread picker: fzf not found in PATH"
 
+header="$(
+	printf '      %s  %s  %s  %s' \
+		"$(pad_text "state" 6)" \
+		"$(pad_text "title" 30)" \
+		"$(pad_text "path" 56)" \
+		"$(pad_text "branch" 56)"
+)"
+
 selected="$(
 		"$fzf_bin" \
 		--prompt="thread > " \
 		--delimiter=$'\t' \
 		--with-nth=2 \
+		--header="$header" \
+		--header-border=line \
 		--footer="Ctrl-n new | Ctrl-o worktree picker | Ctrl-p pin | Ctrl-t title | Ctrl-a archive | Alt-a archived | Enter open" \
 		--footer-border=line \
 		--layout=reverse \
