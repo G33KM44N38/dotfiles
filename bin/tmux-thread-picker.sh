@@ -145,6 +145,19 @@ if [ "$mode" = "--edit-title" ]; then
 	exit 0
 fi
 
+if [ "$mode" = "--watch-fzf" ]; then
+	fzf_socket="${2:-}"
+	[ -n "$fzf_socket" ] || exit 0
+	while [ -S "$fzf_socket" ]; do
+		"$0" --refresh-cache >/dev/null 2>&1 || true
+		[ -S "$fzf_socket" ] || exit 0
+		curl --silent --show-error --max-time 1 --unix-socket "$fzf_socket" http \
+			--data-binary "reload(cat '$display_cache_file')" >/dev/null 2>&1 || exit 0
+		sleep "${TMUX_THREAD_WATCH_INTERVAL:-2}"
+	done
+	exit 0
+fi
+
 source_session="$("$tmux_bin" display-message -p '#S' 2>/dev/null || true)"
 if [ -z "$source_session" ]; then
 	source_session="$("$tmux_bin" list-sessions -F '#{session_name}' 2>/dev/null | head -n1 || true)"
@@ -1148,6 +1161,9 @@ selected="$(
 		--layout=reverse \
 		--border \
 		--ansi \
+		--track \
+		--listen="${tmp_dir}/fzf.sock" \
+		--bind "start:execute-silent($0 --watch-fzf ${tmp_dir}/fzf.sock)" \
 		--bind "ctrl-p:execute-silent($0 --toggle-pin {5})+reload($0 --rows)" \
 		--bind "ctrl-a:execute-silent($0 --toggle-archive {5})+reload($0 --rows)" \
 		--bind "alt-a:reload(TMUX_THREAD_SHOW_ARCHIVED=1 $0 --rows)" \
