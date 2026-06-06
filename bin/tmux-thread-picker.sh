@@ -42,8 +42,8 @@ seen_file="$pin_state_dir/seen-finished"
 repo_cache_file="$pin_state_dir/repo-candidates.tsv"
 worktree_cache_file="$pin_state_dir/worktrees.tsv"
 codex_state_cache_file="$pin_state_dir/codex-states.tsv"
-repo_cache_ttl="${TMUX_THREAD_CACHE_TTL:-60}"
-codex_state_cache_ttl="${TMUX_THREAD_CODEX_CACHE_TTL:-5}"
+repo_cache_ttl="${TMUX_THREAD_CACHE_TTL:-300}"
+codex_state_cache_ttl="${TMUX_THREAD_CODEX_CACHE_TTL:-15}"
 
 toggle_pin() {
 	local key="$1"
@@ -856,23 +856,38 @@ cache_age_seconds() {
 }
 
 collect_cached_repo_candidates() {
-	local cache_age tmp_cache scan_root
+	local cache_age
 
 	mkdir -p "$pin_state_dir"
 	cache_age="$(cache_age_seconds "$repo_cache_file" 2>/dev/null || true)"
-	if [ -n "$cache_age" ] && [ "$cache_age" -lt "$repo_cache_ttl" ]; then
+	if [ -s "$repo_cache_file" ]; then
 		cat "$repo_cache_file" >>"$repo_candidates_file"
+		if [ -n "$cache_age" ] && [ "$cache_age" -ge "$repo_cache_ttl" ]; then
+			refresh_repo_cache_background
+		fi
 		return 0
 	fi
 
-	tmp_cache="${repo_cache_file}.$$"
+	refresh_repo_cache
+	cat "$repo_cache_file" >>"$repo_candidates_file"
+}
+
+refresh_repo_cache_background() {
+	(
+		refresh_repo_cache
+	) >/dev/null 2>&1 &
+}
+
+refresh_repo_cache() {
+	local tmp_cache scan_root
+
+	tmp_cache="${repo_cache_file}.${BASHPID:-$$}"
 	: >"$tmp_cache"
 	for scan_root in "${scan_roots[@]:-}"; do
 		collect_repo_candidates "$scan_root" >>"$tmp_cache"
 	done
 	sort -u "$tmp_cache" >"$repo_cache_file"
 	rm -f "$tmp_cache"
-	cat "$repo_cache_file" >>"$repo_candidates_file"
 }
 
 add_current_repo_candidate() {
@@ -886,11 +901,12 @@ add_current_repo_candidate() {
 }
 
 emit_open_rows() {
-	local row session_name window_index window_id window_name pane_path activity_flag bell_flag pane_path tagged_path path root branch state target current_marker project row_signal codex_state process_signal metadata relative_path
+	local row session_name window_index window_id window_name activity_flag bell_flag pane_path tagged_path path root branch state target current_marker project row_signal codex_state process_signal metadata relative_path source_window_index
 
-	while IFS=$'\t' read -r session_name window_index window_id window_name activity_flag bell_flag pane_path; do
+	source_window_index="$("$tmux_bin" display-message -p '#{window_index}' 2>/dev/null || true)"
+
+	while IFS=$'\t' read -r session_name window_index window_id window_name activity_flag bell_flag pane_path tagged_path; do
 		[ -n "$window_id" ] || continue
-		tagged_path="$("$tmux_bin" show-options -w -t "$window_id" -v @secondary-worktree-path 2>/dev/null || true)"
 		path="$tagged_path"
 		[ -n "$path" ] || path="$pane_path"
 		path="$(normalize_existing_path "$path" || true)"
@@ -898,9 +914,7 @@ emit_open_rows() {
 
 		metadata="$(awk -F '\t' -v path="$path" '$1 == path { print $2 "\t" $3 "\t" $4; exit }' "$worktree_cache_file" 2>/dev/null || true)"
 		if [ -n "$metadata" ]; then
-			branch="$(printf '%s' "$metadata" | cut -f1)"
-			project="$(printf '%s' "$metadata" | cut -f2)"
-			relative_path="$(printf '%s' "$metadata" | cut -f3)"
+			IFS=$'\t' read -r branch project relative_path <<<"$metadata"
 			if [ "$branch" = "-" ]; then
 				branch="$(branch_name "$path")"
 			fi
@@ -912,7 +926,7 @@ emit_open_rows() {
 			relative_path="$(project_relative_path "$path")"
 		fi
 		current_marker=" "
-		if [ "$session_name" = "$source_session" ] && [ "$window_index" = "$("$tmux_bin" display-message -p '#{window_index}' 2>/dev/null || true)" ]; then
+		if [ "$session_name" = "$source_session" ] && [ "$window_index" = "$source_window_index" ]; then
 			current_marker="*"
 		fi
 		state="open$current_marker"
@@ -943,7 +957,7 @@ emit_open_rows() {
 		fi
 		emit_row "OPEN" "$state" "$branch" "$target" "$window_name" "$path" "$target" "$project" "$path" "$row_signal" "$process_signal" "$relative_path"
 		printf '%s\n' "$path" >>"$open_paths_file"
-	done < <("$tmux_bin" list-windows -a -F '#{session_name}'$'\t''#{window_index}'$'\t''#{window_id}'$'\t''#{window_name}'$'\t''#{window_activity_flag}'$'\t''#{window_bell_flag}'$'\t''#{pane_current_path}' 2>/dev/null)
+	done < <("$tmux_bin" list-windows -a -F '#{session_name}'$'\t''#{window_index}'$'\t''#{window_id}'$'\t''#{window_name}'$'\t''#{window_activity_flag}'$'\t''#{window_bell_flag}'$'\t''#{pane_current_path}'$'\t''#{@secondary-worktree-path}' 2>/dev/null)
 }
 
 emit_picker_row() {
@@ -977,16 +991,37 @@ emit_worktree_rows() {
 }
 
 ensure_worktree_cache() {
-	local repo_path path branch project relative_path cache_age tmp_cache
+	local cache_age
 
 	mkdir -p "$pin_state_dir"
 	cache_age="$(cache_age_seconds "$worktree_cache_file" 2>/dev/null || true)"
-	if [ -n "$cache_age" ] && [ "$cache_age" -lt "$repo_cache_ttl" ]; then
+	if [ -s "$worktree_cache_file" ]; then
+		if [ -n "$cache_age" ] && [ "$cache_age" -ge "$repo_cache_ttl" ]; then
+			refresh_worktree_cache_background
+		fi
 		return 0
 	fi
 
-	tmp_cache="${worktree_cache_file}.$$"
-	sort -u "$repo_candidates_file" | cut -f2 | while IFS= read -r repo_path; do
+	refresh_worktree_cache
+}
+
+refresh_worktree_cache_background() {
+	local repo_snapshot
+
+	repo_snapshot="${pin_state_dir}/repo-candidates-for-worktrees.${BASHPID:-$$}.tsv"
+	sort -u "$repo_candidates_file" >"$repo_snapshot" 2>/dev/null || : >"$repo_snapshot"
+	(
+		refresh_worktree_cache "$repo_snapshot"
+		rm -f "$repo_snapshot"
+	) >/dev/null 2>&1 &
+}
+
+refresh_worktree_cache() {
+	local repo_source="${1:-$repo_candidates_file}"
+	local repo_path path branch project relative_path tmp_cache
+
+	tmp_cache="${worktree_cache_file}.${BASHPID:-$$}"
+	sort -u "$repo_source" | cut -f2 | while IFS= read -r repo_path; do
 		"$git_bin" -C "$repo_path" worktree list --porcelain 2>/dev/null | awk '
 			BEGIN { path=""; branch="-" }
 			function emit_entry() {
@@ -1069,7 +1104,7 @@ selected="$(
 		--with-nth=2 \
 		--header="$header" \
 		--header-border=line \
-		--footer="Ctrl-n new | Ctrl-o worktree picker | Ctrl-p pin | Ctrl-t title | Ctrl-a archive | Alt-a archived | Enter open" \
+		--footer="Ctrl-n new | Ctrl-r refresh | Ctrl-o worktree picker | Ctrl-p pin | Ctrl-t title | Ctrl-a archive | Alt-a archived | Enter open" \
 		--footer-border=line \
 		--layout=reverse \
 		--border \
@@ -1079,6 +1114,7 @@ selected="$(
 		--bind "alt-a:reload(TMUX_THREAD_SHOW_ARCHIVED=1 $0 --rows)" \
 		--bind "ctrl-t:execute($0 --edit-title {5})+reload($0 --rows)" \
 		--bind "ctrl-n:execute($0 --new-thread {5})+abort" \
+		--bind "ctrl-r:reload($0 --rows)" \
 		--bind "ctrl-o:execute($HOME/.dotfiles/bin/tmux-select-worktree.sh)" \
 		--bind "):clear-query+search(::)" \
 		--bind "(:clear-query+search(::)" \
