@@ -156,40 +156,7 @@ ensure_branch_worktree() {
 open_worktree_window() {
 	local session="$1"
 	local worktree="$2"
-	local secondary_agent existing_window window_index created_window top_left_pane bottom_pane top_right_pane window_name
-
-	secondary_agent="$(tmux show-option -gv @secondary-agent 2>/dev/null || true)"
-	[ -z "$secondary_agent" ] && secondary_agent="codex"
-	if [ "${secondary_agent%% *}" = "codex" ] && [[ " $secondary_agent " != *" --dangerously-bypass-approvals-and-sandbox "* ]]; then
-		secondary_agent="$secondary_agent --dangerously-bypass-approvals-and-sandbox"
-	fi
-
-	tmux set-option -q -t "$session" @secondary-worktree "$worktree"
-
-	existing_window="$(window_for_worktree "$session" "$worktree" || true)"
-	if [ -n "$existing_window" ]; then
-		tmux select-window -t "${session}:${existing_window}"
-		return 0
-	fi
-
-	window_index="$(next_window_index "$session" 6)"
-	window_name="$(sanitize_name "$(basename "$worktree")")"
-	[ -z "$window_name" ] && window_name="worktree"
-	created_window="$(
-		tmux new-window -d -P -F '#{window_index}' -t "${session}:${window_index}" -n "$window_name" -c "$worktree"
-	)"
-	tmux set-option -wq -t "${session}:${created_window}" @secondary-worktree-path "$worktree"
-
-	top_left_pane="$(tmux display-message -p -t "${session}:${created_window}" '#{pane_id}')"
-	bottom_pane="$(tmux split-window -v -d -P -F '#{pane_id}' -t "$top_left_pane" -c "$worktree")"
-	top_right_pane="$(tmux split-window -h -d -P -F '#{pane_id}' -t "$top_left_pane" -c "$worktree")"
-
-	tmux send-keys -t "$top_left_pane" -R "cd $(printf '%q' "$worktree") && nvim ." C-m
-	tmux send-keys -t "$top_right_pane" -R "cd $(printf '%q' "$worktree") && $HOME/.dotfiles/bin/tmux-supervise $(printf '%q' "$secondary_agent")" C-m
-	tmux send-keys -t "$bottom_pane" -R "cd $(printf '%q' "$worktree") && $HOME/.dotfiles/bin/bootstrap_local_worktree.sh $(printf '%q' "$worktree")" C-m
-
-	tmux select-window -t "${session}:${created_window}"
-	tmux select-pane -t "$bottom_pane"
+	"$HOME/.dotfiles/bin/tmux-worktree-layout.sh" open "$session" "$worktree" "$(basename "$worktree")"
 }
 
 pick_pr() {

@@ -686,41 +686,9 @@ window_has_running_process() {
 open_thread_window() {
 	local path="$1"
 	local branch="$2"
-	local existing_window window_index window_name created_window top_left_pane bottom_pane nvim_cmd bootstrap_cmd
-
-	existing_window="$(window_for_path "$path" || true)"
-	if [ -n "$existing_window" ]; then
-		mark_seen_finished "$path"
-		"$tmux_bin" switch-client -t "$existing_window"
-		return 0
-	fi
-
-	window_index="$(next_thread_window_index "$source_session" 6)"
-	window_name="$(sanitize_name "$branch")"
-	if [ -z "$window_name" ] || [ "$window_name" = "-" ]; then
-		window_name="$(sanitize_name "$(basename "$path")")"
-	fi
-	[ -n "$window_name" ] || window_name="thread"
-
-	created_window="$("$tmux_bin" new-window -d -P -F '#{window_index}' -t "${source_session}:${window_index}" -n "$window_name" -c "$path" 2>/dev/null || true)"
-	[ -n "$created_window" ] || fail "thread picker: failed to create window for $path"
-
-	"$tmux_bin" set-option -wq -t "${source_session}:${created_window}" @secondary-worktree-path "$path"
-	"$tmux_bin" set-option -q -t "$source_session" @secondary-worktree "$path"
-
-	top_left_pane="$("$tmux_bin" display-message -p -t "${source_session}:${created_window}" '#{pane_id}' 2>/dev/null || true)"
-	if [ -n "$top_left_pane" ]; then
-		printf -v nvim_cmd 'cd %q && nvim .' "$path"
-		"$tmux_bin" send-keys -t "$top_left_pane" -R "$nvim_cmd" C-m >/dev/null 2>&1 || true
-		bottom_pane="$("$tmux_bin" split-window -v -d -P -F '#{pane_id}' -t "$top_left_pane" -c "$path" 2>/dev/null || true)"
-		if [ -n "$bottom_pane" ]; then
-			printf -v bootstrap_cmd 'cd %q && %q %q' "$path" "$HOME/.dotfiles/bin/bootstrap_local_worktree.sh" "$path"
-			"$tmux_bin" send-keys -t "$bottom_pane" -R "$bootstrap_cmd" C-m >/dev/null 2>&1 || true
-		fi
-	fi
 
 	mark_seen_finished "$path"
-	"$tmux_bin" select-window -t "${source_session}:${created_window}"
+	exec "$HOME/.dotfiles/bin/tmux-worktree-layout.sh" open "$source_session" "$path" "$branch"
 }
 
 new_worktree_base_dir() {

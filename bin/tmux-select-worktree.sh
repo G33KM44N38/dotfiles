@@ -415,43 +415,6 @@ pick_worktree_base_dir() {
 	printf '%s\n' "$root"
 }
 
-find_window_for_worktree() {
-	local worktree="$1"
-	local window_id pane_path option_worktree pane_root
-
-	while IFS=$'\t' read -r window_id pane_path; do
-		[ -z "$window_id" ] && continue
-
-		option_worktree="$("$tmux_bin" show-options -w -t "$window_id" -v @secondary-worktree-path 2>/dev/null || true)"
-		if [ "$option_worktree" = "$worktree" ]; then
-			"$tmux_bin" display-message -p -t "$window_id" '#{window_index}'
-			return 0
-		fi
-
-		pane_root="$(git -C "$pane_path" rev-parse --show-toplevel 2>/dev/null || true)"
-		if [ -n "$pane_root" ] && [ "$pane_root" = "$worktree" ]; then
-			"$tmux_bin" display-message -p -t "$window_id" '#{window_index}'
-			return 0
-		fi
-	done < <("$tmux_bin" list-windows -t "$source_session" -F '#{window_id}'$'\t''#{pane_current_path}')
-
-	return 1
-}
-
-next_worktree_window_index() {
-	local session="$1"
-	local min_index="${2:-6}"
-	local used_indexes candidate
-
-	used_indexes="$("$tmux_bin" list-windows -t "$session" -F '#{window_index}' 2>/dev/null || true)"
-	candidate="$min_index"
-	while printf '%s\n' "$used_indexes" | grep -qx "$candidate"; do
-		candidate=$((candidate + 1))
-	done
-
-	printf '%s\n' "$candidate"
-}
-
 if [ "$selected_kind" = "RB" ]; then
 	remote_branch="$selected_ref"
 	local_branch="${remote_branch#*/}"
@@ -486,66 +449,8 @@ if [ "$selected_kind" = "RB" ]; then
 	fi
 fi
 
-window_label="$(sanitize_name "$selected_branch")"
-[ -z "$window_label" ] && window_label="secondary"
-window_name="$window_label"
-
 if [ -z "$selected_path" ] || [ ! -d "$selected_path" ]; then
 	fail "secondary picker: invalid selected worktree path: $selected_path"
 fi
 
-secondary_agent="$("$tmux_bin" show-option -gv @secondary-agent 2>/dev/null || true)"
-[ -z "$secondary_agent" ] && secondary_agent="codex"
-secondary_agent_first="${secondary_agent%% *}"
-if [ "${secondary_agent_first##*/}" = "codex" ] && [[ " $secondary_agent " != *" --dangerously-bypass-approvals-and-sandbox "* ]]; then
-	secondary_agent="$secondary_agent --dangerously-bypass-approvals-and-sandbox"
-fi
-
-"$tmux_bin" set-option -q -t "$source_session" @secondary-worktree "$selected_path"
-"$tmux_bin" set-option -q -t "$source_session" @secondary-session "$source_session"
-
-existing_window="$(find_window_for_worktree "$selected_path" || true)"
-if [ -n "$existing_window" ]; then
-	"$tmux_bin" select-window -t "${source_session}:${existing_window}"
-	if [ "$("$tmux_bin" display-message -p -t "${source_session}:${existing_window}" '#{window_zoomed_flag}')" = "1" ]; then
-		"$tmux_bin" resize-pane -Z -t "${source_session}:${existing_window}"
-	fi
-	exit 0
-fi
-
-target_window_index="$(next_worktree_window_index "$source_session" 6)"
-created_window="$("$tmux_bin" new-window -d -P -F '#{window_index}' -t "${source_session}:${target_window_index}" -n "$window_name" -c "$selected_path" 2>/dev/null || true)"
-if [ -z "$created_window" ]; then
-	fail "secondary picker: failed to create window at index >=6 in session $source_session"
-fi
-
-"$tmux_bin" set-option -wq -t "${source_session}:${created_window}" @secondary-worktree-path "$selected_path"
-
-top_left_pane="$("$tmux_bin" display-message -p -t "${source_session}:${created_window}" '#{pane_id}' 2>/dev/null || true)"
-if [ -z "$top_left_pane" ]; then
-	fail "secondary picker: failed to resolve base pane for ${source_session}:${created_window}"
-fi
-
-bottom_pane="$("$tmux_bin" split-window -v -d -P -F '#{pane_id}' -t "$top_left_pane" -c "$selected_path" 2>/dev/null || true)"
-if [ -z "$bottom_pane" ]; then
-	fail "secondary picker: failed to create bottom terminal pane for ${source_session}:${created_window}"
-fi
-
-#### TO CREATE CODEX PANE
-# top_right_pane="$("$tmux_bin" split-window -h -d -P -F '#{pane_id}' -t "$top_left_pane" -c "$selected_path" 2>/dev/null || true)"
-# if [ -z "$top_right_pane" ]; then
-# 	fail "secondary picker: failed to create codex pane for ${source_session}:${created_window}"
-# fi
-
-printf -v nvim_cmd 'cd %q && nvim .' "$selected_path"
-"$tmux_bin" send-keys -t "$top_left_pane" -R "$nvim_cmd" C-m
-
-printf -v launch_cmd 'cd %q && %q %q' "$selected_path" "$HOME/.dotfiles/bin/tmux-supervise" "$secondary_agent"
-# "$tmux_bin" send-keys -t "$top_right_pane" -R "$launch_cmd" C-m
-printf -v bootstrap_cmd 'cd %q && %q %q' "$selected_path" "$HOME/.dotfiles/bin/bootstrap_local_worktree.sh" "$selected_path"
-"$tmux_bin" send-keys -t "$bottom_pane" -R "$bootstrap_cmd" C-m
-"$tmux_bin" select-window -t "${source_session}:${created_window}"
-"$tmux_bin" select-pane -t "$bottom_pane"
-if [ "$("$tmux_bin" display-message -p -t "${source_session}:${created_window}" '#{window_zoomed_flag}')" = "1" ]; then
-	"$tmux_bin" resize-pane -Z -t "${source_session}:${created_window}"
-fi
+exec "$HOME/.dotfiles/bin/tmux-worktree-layout.sh" open "$source_session" "$selected_path" "$selected_branch"
