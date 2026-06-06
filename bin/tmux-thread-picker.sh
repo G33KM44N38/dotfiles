@@ -42,6 +42,7 @@ seen_file="$pin_state_dir/seen-finished"
 repo_cache_file="$pin_state_dir/repo-candidates.tsv"
 worktree_cache_file="$pin_state_dir/worktrees.tsv"
 codex_state_cache_file="$pin_state_dir/codex-states.tsv"
+display_cache_file="$pin_state_dir/display-rows.tsv"
 repo_cache_ttl="${TMUX_THREAD_CACHE_TTL:-300}"
 codex_state_cache_ttl="${TMUX_THREAD_CODEX_CACHE_TTL:-15}"
 
@@ -466,6 +467,18 @@ build_rows() {
 	emit_worktree_rows >>"$rows_file"
 	sort -t "$(printf '\t')" -k1,1 "$rows_file" >"$sorted_rows_file"
 	render_grouped_rows "$sorted_rows_file" >"$display_rows_file"
+}
+
+write_display_cache() {
+	[ -s "$display_rows_file" ] || return 0
+	mkdir -p "$pin_state_dir"
+	cp "$display_rows_file" "$display_cache_file" 2>/dev/null || true
+}
+
+refresh_display_cache_background() {
+	(
+		"$0" --refresh-cache
+	) >/dev/null 2>&1 &
 }
 
 normalize_existing_path() {
@@ -1071,7 +1084,25 @@ sorted_rows_file="$tmp_dir/sorted-rows.tsv"
 display_rows_file="$tmp_dir/display-rows.tsv"
 pane_rows_file="$tmp_dir/panes.tsv"
 codex_state_rows_file="$tmp_dir/codex-states.tsv"
-build_rows
+
+if [ "$mode" = "--refresh-cache" ]; then
+	refresh_lock_dir="$pin_state_dir/display-refresh.lock"
+	if ! mkdir "$refresh_lock_dir" 2>/dev/null; then
+		exit 0
+	fi
+	trap 'rmdir "$refresh_lock_dir" 2>/dev/null || true; rm -rf "$tmp_dir"' EXIT
+	build_rows
+	write_display_cache
+	exit 0
+fi
+
+if [ "$mode" = "pick" ] && [ -s "$display_cache_file" ]; then
+	cp "$display_cache_file" "$display_rows_file" 2>/dev/null || : >"$display_rows_file"
+	refresh_display_cache_background
+else
+	build_rows
+	write_display_cache
+fi
 
 if [ ! -s "$display_rows_file" ]; then
 	fail "thread picker: no tmux windows or git worktrees found"
@@ -1083,6 +1114,7 @@ if [ "$mode" = "--list" ]; then
 fi
 
 if [ "$mode" = "--rows" ]; then
+	write_display_cache
 	cat "$display_rows_file"
 	exit 0
 fi
