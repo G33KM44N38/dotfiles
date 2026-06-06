@@ -11,6 +11,7 @@ LAYOUT_INIT_OPT="@layout-initialized"
 LAYOUT_MANAGED_OPT="@layout-managed"
 
 TMUX_CLEANUP_SCRIPT="$HOME/.dotfiles/bin/tmux-cleanup.sh"
+TMUX_PANE_NAV_SCRIPT="$HOME/.dotfiles/bin/tmux-pane-nav.sh"
 TMUX_SECONDARY_SCRIPT="$HOME/.dotfiles/bin/tmux-secondary-window.sh"
 TMUX_SUPERVISE="$HOME/.dotfiles/bin/tmux-supervise"
 
@@ -215,6 +216,10 @@ init_layout() {
 	fi
 	tmux set-option -wq -t "${session}:1" "$LAYOUT_MANAGED_OPT" "0"
 	tmux set-option -q -t "$session" "$LAYOUT_INIT_OPT" "1"
+
+	if [ "$profile" = "default" ]; then
+		"$TMUX_PANE_NAV_SCRIPT" top-left "${session}:1" layout no-commands >/dev/null 2>&1 || true
+	fi
 }
 
 open_window() {

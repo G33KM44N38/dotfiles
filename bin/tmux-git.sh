@@ -186,6 +186,7 @@ open_worktree_window() {
 
 	tmux send-keys -t "$top_left_pane" -R "cd $(printf '%q' "$worktree") && nvim ." C-m
 	tmux send-keys -t "$top_right_pane" -R "cd $(printf '%q' "$worktree") && $HOME/.dotfiles/bin/tmux-supervise $(printf '%q' "$secondary_agent")" C-m
+	tmux send-keys -t "$bottom_pane" -R "cd $(printf '%q' "$worktree") && $HOME/.dotfiles/bin/bootstrap_local_worktree.sh $(printf '%q' "$worktree")" C-m
 
 	tmux select-window -t "${session}:${created_window}"
 	tmux select-pane -t "$bottom_pane"

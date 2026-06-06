@@ -17,6 +17,7 @@ fi
 role="${1:-top-left}"
 window_target="${2:-}"
 mode="${3:-smart-zoom}"
+layout_commands="${4:-commands}"
 
 case "$role" in
 	top-left|top-right|bottom|bottom-right) ;;
@@ -109,6 +110,17 @@ pane_path() {
 	"$tmux_bin" display-message -p -t "$1" '#{pane_current_path}' 2>/dev/null || true
 }
 
+pane_command() {
+	"$tmux_bin" display-message -p -t "$1" '#{pane_current_command}' 2>/dev/null || true
+}
+
+is_shell_pane() {
+	case "$(pane_command "$1")" in
+		bash|fish|sh|zsh) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
 ensure_top_right() {
 	local top_left path
 	has_top_right && return 0
@@ -171,11 +183,11 @@ launch_layout_commands() {
 	top_left_pane="$(pick_pane top-left)"
 	top_right_pane="$(pick_pane top-right)"
 
-	if [ -n "$top_left_pane" ]; then
+	if [ -n "$top_left_pane" ] && is_shell_pane "$top_left_pane"; then
 		"$tmux_bin" send-keys -t "$top_left_pane" -R "vi ." C-m >/dev/null 2>&1 || true
 	fi
 
-	if [ -n "$top_right_pane" ]; then
+	if [ -n "$top_right_pane" ] && is_shell_pane "$top_right_pane"; then
 		"$tmux_bin" send-keys -t "$top_right_pane" -R "co" C-m >/dev/null 2>&1 || true
 	fi
 }
@@ -195,7 +207,9 @@ if [ "$mode" = "layout" ]; then
 		unzoom_window
 	fi
 	ensure_layout
-	launch_layout_commands
+	if [ "$layout_commands" != "no-commands" ]; then
+		launch_layout_commands
+	fi
 	top_left_pane="$(pick_pane top-left)"
 	[ -n "$top_left_pane" ] && focus_only "$top_left_pane"
 	exit 0

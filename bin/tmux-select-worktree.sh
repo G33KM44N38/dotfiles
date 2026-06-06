@@ -526,10 +526,10 @@ if [ -z "$top_left_pane" ]; then
 	fail "secondary picker: failed to resolve base pane for ${source_session}:${created_window}"
 fi
 
-# bottom_pane="$("$tmux_bin" split-window -v -d -P -F '#{pane_id}' -t "$top_left_pane" -c "$selected_path" 2>/dev/null || true)"
-# if [ -z "$bottom_pane" ]; then
-# 	fail "secondary picker: failed to create bottom terminal pane for ${source_session}:${created_window}"
-# fi
+bottom_pane="$("$tmux_bin" split-window -v -d -P -F '#{pane_id}' -t "$top_left_pane" -c "$selected_path" 2>/dev/null || true)"
+if [ -z "$bottom_pane" ]; then
+	fail "secondary picker: failed to create bottom terminal pane for ${source_session}:${created_window}"
+fi
 
 #### TO CREATE CODEX PANE
 # top_right_pane="$("$tmux_bin" split-window -h -d -P -F '#{pane_id}' -t "$top_left_pane" -c "$selected_path" 2>/dev/null || true)"
@@ -542,8 +542,10 @@ printf -v nvim_cmd 'cd %q && nvim .' "$selected_path"
 
 printf -v launch_cmd 'cd %q && %q %q' "$selected_path" "$HOME/.dotfiles/bin/tmux-supervise" "$secondary_agent"
 # "$tmux_bin" send-keys -t "$top_right_pane" -R "$launch_cmd" C-m
+printf -v bootstrap_cmd 'cd %q && %q %q' "$selected_path" "$HOME/.dotfiles/bin/bootstrap_local_worktree.sh" "$selected_path"
+"$tmux_bin" send-keys -t "$bottom_pane" -R "$bootstrap_cmd" C-m
 "$tmux_bin" select-window -t "${source_session}:${created_window}"
-# "$tmux_bin" select-pane -t "$bottom_pane"
+"$tmux_bin" select-pane -t "$bottom_pane"
 if [ "$("$tmux_bin" display-message -p -t "${source_session}:${created_window}" '#{window_zoomed_flag}')" = "1" ]; then
 	"$tmux_bin" resize-pane -Z -t "${source_session}:${created_window}"
 fi

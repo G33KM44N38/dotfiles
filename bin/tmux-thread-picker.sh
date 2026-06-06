@@ -686,7 +686,7 @@ window_has_running_process() {
 open_thread_window() {
 	local path="$1"
 	local branch="$2"
-	local existing_window window_index window_name created_window top_left_pane nvim_cmd
+	local existing_window window_index window_name created_window top_left_pane bottom_pane nvim_cmd bootstrap_cmd
 
 	existing_window="$(window_for_path "$path" || true)"
 	if [ -n "$existing_window" ]; then
@@ -712,6 +712,11 @@ open_thread_window() {
 	if [ -n "$top_left_pane" ]; then
 		printf -v nvim_cmd 'cd %q && nvim .' "$path"
 		"$tmux_bin" send-keys -t "$top_left_pane" -R "$nvim_cmd" C-m >/dev/null 2>&1 || true
+		bottom_pane="$("$tmux_bin" split-window -v -d -P -F '#{pane_id}' -t "$top_left_pane" -c "$path" 2>/dev/null || true)"
+		if [ -n "$bottom_pane" ]; then
+			printf -v bootstrap_cmd 'cd %q && %q %q' "$path" "$HOME/.dotfiles/bin/bootstrap_local_worktree.sh" "$path"
+			"$tmux_bin" send-keys -t "$bottom_pane" -R "$bootstrap_cmd" C-m >/dev/null 2>&1 || true
+		fi
 	fi
 
 	mark_seen_finished "$path"
