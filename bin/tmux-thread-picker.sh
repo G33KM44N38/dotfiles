@@ -147,6 +147,44 @@ if [ "$mode" = "--edit-title" ]; then
 	exit 0
 fi
 
+kill_thread_window() {
+	local kind="$1"
+	local target="$2"
+	local source_target="${3:-}"
+	local session window cleanup_script fallback_target
+
+	[ "$kind" = "OPEN" ] || exit 0
+	[ -n "$target" ] || exit 0
+	[[ "$target" == *:* ]] || exit 0
+
+	session="${target%%:*}"
+	window="${target#*:}"
+	[ -n "$session" ] && [ -n "$window" ] || exit 0
+
+	if [ "$target" = "$source_target" ]; then
+		fallback_target="$(
+			"$tmux_bin" list-windows -t "$session" -F '#{window_index}' 2>/dev/null |
+				awk -v killed="$window" '$1 != killed { print; exit }'
+		)"
+		if [ -n "$fallback_target" ]; then
+			"$tmux_bin" switch-client -t "${session}:${fallback_target}" >/dev/null 2>&1 ||
+				"$tmux_bin" select-window -t "${session}:${fallback_target}" >/dev/null 2>&1 ||
+				true
+		fi
+	fi
+
+	cleanup_script="$HOME/.dotfiles/bin/tmux-cleanup.sh"
+	if [ -x "$cleanup_script" ]; then
+		"$cleanup_script" window "$session" "$window" >/dev/null 2>&1 || true
+	fi
+	"$tmux_bin" kill-window -t "$target" >/dev/null 2>&1 || true
+}
+
+if [ "$mode" = "--kill-window" ]; then
+	kill_thread_window "${2:-}" "${3:-}" "${4:-}"
+	exit 0
+fi
+
 if [ "$mode" = "--watch-fzf" ]; then
 	fzf_socket="${2:-}"
 	[ -n "$fzf_socket" ] || exit 0
@@ -1275,6 +1313,9 @@ if [ "${TMUX_THREAD_SHOW_ARCHIVED:-0}" = "1" ]; then
 	archive_action="unarchive"
 	archive_reload="TMUX_THREAD_SHOW_ARCHIVED=1 $0 --rows"
 fi
+source_window_index="$("$tmux_bin" display-message -p -t "$source_pane" '#{window_index}' 2>/dev/null || true)"
+source_target="${source_session}:${source_window_index}"
+printf -v source_target_q '%q' "$source_target"
 
 header="$(
 	printf '      %s  %s  %s  %s' \
@@ -1291,7 +1332,7 @@ selected="$(
 		--with-nth=2 \
 		--header="$header" \
 		--header-border=line \
-		--footer="Ctrl-n new | Ctrl-r refresh | Ctrl-o worktree picker | Ctrl-p pin | Ctrl-t title | Ctrl-a $archive_action | Alt-a archived | Enter open" \
+		--footer="Ctrl-n new | Ctrl-r refresh | Ctrl-o worktree picker | Ctrl-p pin | Ctrl-t title | Ctrl-a $archive_action | Ctrl-q kill | Alt-a archived | Enter open" \
 		--footer-border=line \
 		--layout=reverse \
 		--border \
@@ -1300,6 +1341,7 @@ selected="$(
 		--listen="${tmp_dir}/fzf.sock" \
 		--bind "start:execute-silent($0 --watch-fzf ${tmp_dir}/fzf.sock)" \
 		--bind "ctrl-p:execute-silent($0 --toggle-pin {5})+reload($0 --rows)" \
+		--bind "ctrl-q:execute-silent($0 --kill-window {1} {3} $source_target_q)+reload($0 --rows)" \
 		--bind "ctrl-a:execute-silent($0 --toggle-archive {5})+reload($archive_reload)" \
 		--bind "alt-a:reload(TMUX_THREAD_SHOW_ARCHIVED=1 $0 --rows)" \
 		--bind "ctrl-t:execute($0 --edit-title {5})+reload($0 --rows)" \
