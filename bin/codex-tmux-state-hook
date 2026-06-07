@@ -18,29 +18,34 @@ done
 state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/tmux-thread-picker/codex-hooks"
 mkdir -p "$state_dir"
 index_file="${XDG_STATE_HOME:-$HOME/.local/state}/tmux-thread-picker/codex-hook-states.tsv"
+timeout_bin="$(command -v gtimeout 2>/dev/null || command -v timeout 2>/dev/null || true)"
 
 payload="$(cat)"
 now="$(date +%s)"
 cwd="${PWD:-}"
 
-payload_cwd="$(printf '%s' "$payload" | /usr/bin/python3 -c '
-import json, sys
-try:
-    data = json.load(sys.stdin)
-except Exception:
-    sys.exit(0)
-for key in ("cwd", "current_dir", "working_directory", "workspace", "project_dir"):
-    value = data.get(key)
-    if isinstance(value, str) and value:
-        print(value)
-        break
+payload_cwd="$(printf '%s' "$payload" | perl -MJSON::PP -0777 -ne '
+	eval {
+		my $data = decode_json($_);
+		for my $key (qw(cwd current_dir working_directory workspace project_dir)) {
+			my $value = $data->{$key};
+			if (defined $value && !ref($value) && length $value) {
+				print "$value\n";
+				last;
+			}
+		}
+	};
 ' 2>/dev/null || true)"
 
 [ -n "$payload_cwd" ] && cwd="$payload_cwd"
 [ -n "$cwd" ] || exit 0
 
 if command -v git >/dev/null 2>&1; then
-	root="$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || true)"
+	if [ -n "$timeout_bin" ]; then
+		root="$("$timeout_bin" 0.5 git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || true)"
+	else
+		root="$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || true)"
+	fi
 	[ -n "$root" ] && cwd="$root"
 fi
 
