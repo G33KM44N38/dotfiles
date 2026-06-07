@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+event=""
+while [ $# -gt 0 ]; do
+	case "$1" in
+		--event)
+			event="${2:-}"
+			shift 2
+			;;
+		*)
+			shift
+			;;
+	esac
+done
+
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/tmux-thread-picker/codex-hooks"
+mkdir -p "$state_dir"
+index_file="${XDG_STATE_HOME:-$HOME/.local/state}/tmux-thread-picker/codex-hook-states.tsv"
+
+payload="$(cat)"
+now="$(date +%s)"
+cwd="${PWD:-}"
+
+payload_cwd="$(printf '%s' "$payload" | /usr/bin/python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+for key in ("cwd", "current_dir", "working_directory", "workspace", "project_dir"):
+    value = data.get(key)
+    if isinstance(value, str) and value:
+        print(value)
+        break
+' 2>/dev/null || true)"
+
+[ -n "$payload_cwd" ] && cwd="$payload_cwd"
+[ -n "$cwd" ] || exit 0
+
+if command -v git >/dev/null 2>&1; then
+	root="$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || true)"
+	[ -n "$root" ] && cwd="$root"
+fi
+
+case "$event" in
+	SessionStart|UserPromptSubmit|PostToolUse)
+		state="running"
+		;;
+	PermissionRequest)
+		state="attention"
+		;;
+	Stop|SubagentStop)
+		state="done"
+		;;
+	*)
+		state="unknown"
+		;;
+esac
+
+key="$(printf '%s' "$cwd" | shasum -a 256 | awk '{print $1}')"
+state_file="$state_dir/$key.tsv"
+raw_file="$state_dir/$key.json"
+tmp_file="$state_file.$$"
+
+printf '%s\t%s\t%s\t%s\n' "$cwd" "$state" "$event" "$now" >"$tmp_file"
+mv "$tmp_file" "$state_file"
+printf '%s\n' "$payload" >"$raw_file" 2>/dev/null || true
+
+index_tmp="$index_file.$$"
+awk -F '\t' -v cwd="$cwd" '$1 != cwd' "$index_file" 2>/dev/null >"$index_tmp" || true
+printf '%s\t%s\t%s\t%s\n' "$cwd" "$state" "$event" "$now" >>"$index_tmp"
+mv "$index_tmp" "$index_file"

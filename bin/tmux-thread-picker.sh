@@ -43,8 +43,10 @@ repo_cache_file="$pin_state_dir/repo-candidates.tsv"
 worktree_cache_file="$pin_state_dir/worktrees.tsv"
 codex_state_cache_file="$pin_state_dir/codex-states.tsv"
 display_cache_file="$pin_state_dir/display-rows.tsv"
+codex_hook_state_dir="$pin_state_dir/codex-hooks"
+codex_hook_state_index="$pin_state_dir/codex-hook-states.tsv"
 repo_cache_ttl="${TMUX_THREAD_CACHE_TTL:-300}"
-codex_state_cache_ttl="${TMUX_THREAD_CODEX_CACHE_TTL:-15}"
+codex_state_cache_ttl="${TMUX_THREAD_CODEX_CACHE_TTL:-0}"
 
 toggle_pin() {
 	local key="$1"
@@ -150,7 +152,7 @@ if [ "$mode" = "--watch-fzf" ]; then
 	[ -n "$fzf_socket" ] || exit 0
 	(
 		last_checksum="$(cksum "$display_cache_file" 2>/dev/null || true)"
-		sleep "${TMUX_THREAD_WATCH_INITIAL_DELAY:-1}"
+		sleep "${TMUX_THREAD_WATCH_INITIAL_DELAY:-0}"
 		while [ -S "$fzf_socket" ]; do
 			"$0" --refresh-cache >/dev/null 2>&1 || true
 			[ -S "$fzf_socket" ] || exit 0
@@ -168,13 +170,17 @@ if [ "$mode" = "--watch-fzf" ]; then
 	exit 0
 fi
 
-source_session="$("$tmux_bin" display-message -p '#S' 2>/dev/null || true)"
+source_session="${TMUX_THREAD_SOURCE_SESSION:-}"
+source_pane="${TMUX_THREAD_SOURCE_PANE:-${TMUX_PANE:-}}"
+source_path="${TMUX_THREAD_SOURCE_PATH:-}"
+
+[ -n "$source_session" ] || source_session="$("$tmux_bin" display-message -p '#S' 2>/dev/null || true)"
 if [ -z "$source_session" ]; then
 	source_session="$("$tmux_bin" list-sessions -F '#{session_name}' 2>/dev/null | head -n1 || true)"
 fi
 [ -n "$source_session" ] || fail "thread picker: unable to resolve tmux session"
 
-source_path="$("$tmux_bin" display-message -p -t "${TMUX_PANE:-}" '#{pane_current_path}' 2>/dev/null || true)"
+[ -n "$source_path" ] || source_path="$("$tmux_bin" display-message -p -t "$source_pane" '#{pane_current_path}' 2>/dev/null || true)"
 [ -n "$source_path" ] || source_path="$PWD"
 
 if [ -n "${NO_COLOR:-}" ] && [ "${TMUX_THREAD_COLOR:-1}" != "1" ]; then
@@ -470,7 +476,7 @@ build_rows() {
 	: >"$repo_candidates_file"
 	: >"$open_paths_file"
 	: >"$rows_file"
-	"$tmux_bin" list-panes -a -F '#{window_id}'$'\t''#{pane_id}'$'\t''#{pane_current_command}' 2>/dev/null >"$pane_rows_file" || : >"$pane_rows_file"
+	"$tmux_bin" list-panes -a -F '#{window_id}'$'\t''#{pane_id}'$'\t''#{pane_current_command}'$'\t''#{pane_current_path}' 2>/dev/null >"$pane_rows_file" || : >"$pane_rows_file"
 	build_codex_state_cache
 
 	scan_roots=()
@@ -503,6 +509,91 @@ write_display_cache() {
 	[ -s "$display_rows_file" ] || return 0
 	mkdir -p "$pin_state_dir"
 	cp "$display_rows_file" "$display_cache_file" 2>/dev/null || true
+}
+
+refresh_live_state_overlay() {
+	local source_window_index overlay_file live_windows_file
+
+	[ -s "$display_rows_file" ] || return 0
+
+	"$tmux_bin" list-panes -a -F '#{window_id}'$'\t''#{pane_id}'$'\t''#{pane_current_command}'$'\t''#{pane_current_path}' 2>/dev/null >"$pane_rows_file" || : >"$pane_rows_file"
+	build_codex_state_cache
+
+	live_windows_file="$tmp_dir/live-windows.tsv"
+	"$tmux_bin" list-windows -a -F '#{session_name}:#{window_index}'$'\t''#{window_id}'$'\t''#{window_name}'$'\t''#{window_activity_flag}'$'\t''#{window_bell_flag}' 2>/dev/null >"$live_windows_file" || : >"$live_windows_file"
+	source_window_index="$("$tmux_bin" display-message -p -t "$source_pane" '#{window_index}' 2>/dev/null || true)"
+
+	overlay_file="$tmp_dir/display-rows-live.tsv"
+	awk -F '\t' \
+		-v live_windows_file="$live_windows_file" \
+		-v codex_state_rows_file="$codex_state_rows_file" \
+		-v source_session="$source_session" \
+		-v source_window_index="$source_window_index" \
+		-v c_reset="$c_reset" \
+		-v c_red="$c_red" \
+		-v c_green="$c_green" \
+		-v c_proc="$c_proc" \
+		-v c_dot_current="$c_dot_current" '
+		function strip_ansi(value) {
+			gsub(/\033\[[0-9;]*m/, "", value)
+			return value
+		}
+		function pad(value, width) {
+			return sprintf("%-" width "s", substr(value, 1, width))
+		}
+		function color(color_code, value) {
+			return color_code value c_reset
+		}
+		BEGIN {
+			OFS = FS
+			while ((getline line < live_windows_file) > 0) {
+				split(line, parts, "\t")
+				target = parts[1]
+				window_id_by_target[target] = parts[2]
+				activity_by_target[target] = parts[4]
+				bell_by_target[target] = parts[5]
+			}
+			close(live_windows_file)
+			while ((getline line < codex_state_rows_file) > 0) {
+				split(line, parts, "\t")
+				codex_state_by_window[parts[1]] = parts[2]
+			}
+			close(codex_state_rows_file)
+		}
+		{
+			kind = $1
+			display = $2
+			target = $3
+			if (kind != "OPEN" || target == "" || !(target in window_id_by_target)) {
+				print $0
+				next
+			}
+
+			plain = strip_ansi(display)
+			pin = substr(plain, 4, 2)
+			tail = substr(plain, 15)
+			split(target, target_parts, ":")
+			current_marker = (target_parts[1] == source_session && target_parts[2] == source_window_index) ? "*" : " "
+			state_label = "open" current_marker
+			dot = " "
+
+			window_id = window_id_by_target[target]
+			codex_state = codex_state_by_window[window_id]
+			if (codex_state == "running") {
+				dot = color(c_proc, "▶")
+				state_label = "run"
+			} else if (codex_state == "done") {
+				dot = color(c_dot_current, "●")
+				state_label = "wait"
+			}
+
+			proc = " "
+			display = dot proc " " color(c_red, pin) " " color(c_green, pad(state_label, 6)) "  " tail
+			$2 = display
+			print $0
+		}
+	' "$display_rows_file" >"$overlay_file"
+	mv "$overlay_file" "$display_rows_file"
 }
 
 refresh_display_cache_background() {
@@ -671,7 +762,7 @@ window_codex_state() {
 }
 
 build_codex_state_cache() {
-	local cache_age tmp_cache window_id pane_id pane_command pane_text state saw_window
+	local cache_age tmp_cache reduced_cache stale_after now
 
 	mkdir -p "$pin_state_dir"
 	cache_age="$(cache_age_seconds "$codex_state_cache_file" 2>/dev/null || true)"
@@ -681,22 +772,48 @@ build_codex_state_cache() {
 	fi
 
 	tmp_cache="${codex_state_cache_file}.$$"
+	reduced_cache="${tmp_cache}.reduced"
+	stale_after="${TMUX_THREAD_CODEX_HOOK_STALE_AFTER:-86400}"
+	now="$(date +%s)"
 	: >"$tmp_cache"
-	awk -F '\t' '$3 ~ /codex/ { print $1 "\t" $2 "\t" $3 }' "$pane_rows_file" | while IFS=$'\t' read -r window_id pane_id pane_command; do
-		[ -n "$pane_id" ] || continue
-		if awk -F '\t' -v window_id="$window_id" '$1 == window_id { found=1 } END { exit found ? 0 : 1 }' "$tmp_cache" 2>/dev/null; then
-			continue
-		fi
-		pane_text="$("$tmux_bin" capture-pane -p -t "$pane_id" -S -80 2>/dev/null || true)"
-		state="unknown"
-		if printf '%s\n' "$pane_text" | grep -q 'Working ('; then
-			state="running"
-		elif printf '%s\n' "$pane_text" | grep -q '^[[:space:]]*› '; then
-			state="done"
-		fi
-		printf '%s\t%s\n' "$window_id" "$state" >>"$tmp_cache"
-	done
-	mv "$tmp_cache" "$codex_state_cache_file"
+	awk -F '\t' -v states_file="$codex_hook_state_index" -v now="$now" -v stale_after="$stale_after" '
+		BEGIN {
+			while ((getline line < states_file) > 0) {
+				split(line, parts, "\t")
+				cwd = parts[1]
+				state = parts[2]
+				updated_at = parts[4] + 0
+				if (cwd == "" || updated_at == 0 || now - updated_at > stale_after) {
+					continue
+				}
+				if (state == "running") {
+					hook_state[cwd] = "running"
+				} else if (state == "attention" || state == "done") {
+					hook_state[cwd] = "done"
+				} else if (!(cwd in hook_state)) {
+					hook_state[cwd] = "unknown"
+				}
+			}
+			close(states_file)
+		}
+		$3 ~ /codex/ {
+			state = hook_state[$4]
+			if (state == "") state = "unknown"
+			print $1 "\t" state
+		}
+	' "$pane_rows_file" >"$tmp_cache"
+	awk -F '\t' '
+		$2 == "running" { state[$1] = "running"; next }
+		$2 == "done" && state[$1] != "running" { state[$1] = "done"; next }
+		!($1 in state) { state[$1] = "unknown" }
+		END {
+			for (window_id in state) {
+				print window_id "\t" state[window_id]
+			}
+		}
+	' "$tmp_cache" >"$reduced_cache"
+	mv "$reduced_cache" "$codex_state_cache_file"
+	rm -f "$tmp_cache"
 	cp "$codex_state_cache_file" "$codex_state_rows_file" 2>/dev/null || : >"$codex_state_rows_file"
 }
 
@@ -946,7 +1063,7 @@ add_current_repo_candidate() {
 emit_open_rows() {
 	local row session_name window_index window_id window_name activity_flag bell_flag pane_path tagged_path path root branch state target current_marker project row_signal codex_state process_signal metadata relative_path source_window_index
 
-	source_window_index="$("$tmux_bin" display-message -p '#{window_index}' 2>/dev/null || true)"
+	source_window_index="$("$tmux_bin" display-message -p -t "$source_pane" '#{window_index}' 2>/dev/null || true)"
 
 	while IFS=$'\t' read -r session_name window_index window_id window_name activity_flag bell_flag pane_path tagged_path; do
 		[ -n "$window_id" ] || continue
@@ -1126,9 +1243,10 @@ if [ "$mode" = "--refresh-cache" ]; then
 	exit 0
 fi
 
-if [ "$mode" = "pick" ] && [ -s "$display_cache_file" ]; then
+if { [ "$mode" = "pick" ] || [ "$mode" = "--rows" ]; } && [ "${TMUX_THREAD_USE_DISPLAY_CACHE:-1}" = "1" ] && [ "${TMUX_THREAD_SHOW_ARCHIVED:-0}" != "1" ] && [ -s "$display_cache_file" ]; then
 	cp "$display_cache_file" "$display_rows_file" 2>/dev/null || : >"$display_rows_file"
-	refresh_display_cache_background
+	refresh_live_state_overlay
+	[ "$mode" = "pick" ] && refresh_display_cache_background
 else
 	build_rows
 	write_display_cache
