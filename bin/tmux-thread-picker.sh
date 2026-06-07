@@ -1332,7 +1332,7 @@ selected="$(
 		--with-nth=2 \
 		--header="$header" \
 		--header-border=line \
-		--footer="Ctrl-n new | Ctrl-r refresh | Ctrl-o worktree picker | Ctrl-p pin | Ctrl-t title | Ctrl-a $archive_action | Ctrl-q kill | Alt-a archived | Enter open" \
+		--footer="Ctrl-n new | Ctrl-r refresh | Ctrl-o worktree picker | Ctrl-p pin | Ctrl-t title | Alt-a $archive_action | Ctrl-q kill | Alt-v archived | Enter open" \
 		--footer-border=line \
 		--layout=reverse \
 		--border \
@@ -1342,8 +1342,8 @@ selected="$(
 		--bind "start:execute-silent($0 --watch-fzf ${tmp_dir}/fzf.sock)" \
 		--bind "ctrl-p:execute-silent($0 --toggle-pin {5})+reload($0 --rows)" \
 		--bind "ctrl-q:execute-silent($0 --kill-window {1} {3} $source_target_q)+reload($0 --rows)" \
-		--bind "ctrl-a:execute-silent($0 --toggle-archive {5})+reload($archive_reload)" \
-		--bind "alt-a:reload(TMUX_THREAD_SHOW_ARCHIVED=1 $0 --rows)" \
+		--bind "alt-a:execute-silent($0 --toggle-archive {5})+reload($archive_reload)" \
+		--bind "alt-v:reload(TMUX_THREAD_SHOW_ARCHIVED=1 $0 --rows)" \
 		--bind "ctrl-t:execute($0 --edit-title {5})+reload($0 --rows)" \
 		--bind "ctrl-n:execute($0 --new-thread {5})+abort" \
 		--bind "ctrl-r:reload($0 --rows)" \
