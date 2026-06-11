@@ -368,7 +368,7 @@ emit_row() {
 	local row_signal="${10:-}"
 	local process_signal="${11:-}"
 	local detail_override="${12:-}"
-	local pinned archived archive_label pin_label state_label title detail branch_col display sort_key relative_path fallback_title dot proc_marker
+	local pinned archived archive_label pin_label state_label title detail branch_col display sort_key row_priority relative_path fallback_title dot proc_marker
 
 	if is_archived "$pin_key" && [ "${TMUX_THREAD_SHOW_ARCHIVED:-0}" != "1" ]; then
 		return 0
@@ -446,8 +446,15 @@ emit_row() {
 	[ "$pinned" = "P" ] && sort_key="0"
 	[ "$archived" = "A" ] && sort_key="9"
 
+	row_priority="5"
+	case "$row_signal" in
+		codex_done|codex_running|look) row_priority="0" ;;
+	esac
+	[[ "$state" == *"*"* ]] && [ "$row_priority" -gt 1 ] && row_priority="1"
+	[ "$process_signal" = "process" ] && [ "$row_priority" -gt 2 ] && row_priority="2"
+
 	printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-		"$sort_key|$(printf '%s' "$project" | tr '[:upper:]' '[:lower:]')|$kind|$path" \
+		"$sort_key|$(printf '%s' "$project" | tr '[:upper:]' '[:lower:]')|$row_priority|$kind|$path" \
 		"$kind" \
 		"$display" \
 		"$selection_target" \
@@ -1281,14 +1288,8 @@ if [ "$mode" = "--refresh-cache" ]; then
 	exit 0
 fi
 
-if { [ "$mode" = "pick" ] || [ "$mode" = "--rows" ]; } && [ "${TMUX_THREAD_USE_DISPLAY_CACHE:-1}" = "1" ] && [ "${TMUX_THREAD_SHOW_ARCHIVED:-0}" != "1" ] && [ -s "$display_cache_file" ]; then
-	cp "$display_cache_file" "$display_rows_file" 2>/dev/null || : >"$display_rows_file"
-	refresh_live_state_overlay
-	[ "$mode" = "pick" ] && refresh_display_cache_background
-else
-	build_rows
-	write_display_cache
-fi
+build_rows
+write_display_cache
 
 if [ ! -s "$display_rows_file" ]; then
 	fail "thread picker: no tmux windows or git worktrees found"
@@ -1337,9 +1338,13 @@ selected="$(
 		--layout=reverse \
 		--border \
 		--ansi \
-		--track \
 		--listen="${tmp_dir}/fzf.sock" \
 		--bind "start:execute-silent($0 --watch-fzf ${tmp_dir}/fzf.sock)" \
+		--bind 'load:transform:[[ {1} = GROUP ]] && echo down' \
+		--bind 'result:transform:[[ {1} = GROUP ]] && echo down' \
+		--bind 'focus:transform:[[ {1} = GROUP ]] && echo down' \
+		--bind "change:first" \
+		--bind 'enter:transform:[[ {1} = GROUP ]] && echo down || echo accept' \
 		--bind "ctrl-p:execute-silent($0 --toggle-pin {5})+reload($0 --rows)" \
 		--bind "ctrl-q:execute-silent($0 --kill-window {1} {3} $source_target_q)+reload($0 --rows)" \
 		--bind "alt-a:execute-silent($0 --toggle-archive {5})+reload($archive_reload)" \
