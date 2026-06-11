@@ -1288,8 +1288,14 @@ if [ "$mode" = "--refresh-cache" ]; then
 	exit 0
 fi
 
-build_rows
-write_display_cache
+if { [ "$mode" = "pick" ] || [ "$mode" = "--rows" ]; } && [ "${TMUX_THREAD_USE_DISPLAY_CACHE:-1}" = "1" ] && [ "${TMUX_THREAD_SHOW_ARCHIVED:-0}" != "1" ] && [ -s "$display_cache_file" ]; then
+	cp "$display_cache_file" "$display_rows_file" 2>/dev/null || : >"$display_rows_file"
+	refresh_live_state_overlay
+	[ "$mode" = "pick" ] && refresh_display_cache_background
+else
+	build_rows
+	write_display_cache
+fi
 
 if [ ! -s "$display_rows_file" ]; then
 	fail "thread picker: no tmux windows or git worktrees found"
