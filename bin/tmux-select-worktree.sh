@@ -143,6 +143,7 @@ cache_meta_file="${cache_file}.meta"
 # Keep the cache for days, but refresh it in the background after it ages out.
 cache_max_age_seconds="${TMUX_WORKTREE_CACHE_TTL:-604800}"
 cache_refresh_after_seconds="${TMUX_WORKTREE_CACHE_REFRESH_AFTER:-86400}"
+cache_block_on_stale="${TMUX_WORKTREE_BLOCK_ON_STALE:-0}"
 
 cache_age_seconds() {
 	local file="$1"
@@ -265,9 +266,15 @@ if [ -s "$cache_meta_file" ]; then
 fi
 current_stamp="$(repo_cache_stamp "$repo_root" 2>/dev/null || true)"
 
-if [ -z "$cache_age" ] || [ -z "$cache_stamp" ] || [ "$cache_stamp" != "$current_stamp" ]; then
+if [ -z "$cache_age" ] || [ -z "$cache_stamp" ]; then
 	refresh_worktree_cache || true
-elif [ "$cache_age" -gt "$cache_max_age_seconds" ]; then
+elif [ "$cache_stamp" != "$current_stamp" ]; then
+	if [ "$cache_block_on_stale" = "1" ]; then
+		refresh_worktree_cache || true
+	else
+		refresh_worktree_cache_background
+	fi
+elif [ "$cache_age" -gt "$cache_max_age_seconds" ] && [ "$cache_block_on_stale" = "1" ]; then
 	refresh_worktree_cache || true
 elif [ "$cache_age" -gt "$cache_refresh_after_seconds" ]; then
 	refresh_worktree_cache_background
