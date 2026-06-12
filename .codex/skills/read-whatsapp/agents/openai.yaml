@@ -1,0 +1,4 @@
+interface:
+  display_name: "Read WhatsApp"
+  short_description: "Read WhatsApp chats and transcribe voice notes"
+  default_prompt: "Use $read-whatsapp to inspect a WhatsApp chat and transcribe any voice notes locally."
