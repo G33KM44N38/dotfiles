@@ -5,6 +5,7 @@ set -euo pipefail
 tmux_bin="$(command -v tmux 2>/dev/null || true)"
 fzf_bin="$(command -v fzf 2>/dev/null || true)"
 git_bin="$(command -v git 2>/dev/null || true)"
+mode="${1:-pick}"
 
 fail() {
 	local message="$1"
@@ -20,6 +21,100 @@ fail() {
 	exit 1
 }
 
+filter_rows() {
+	local query="${1:-}"
+
+	awk -F '\t' -v query="$query" '
+		function strip_ansi(value) {
+			gsub(/\033\[[0-9;]*m/, "", value)
+			return value
+		}
+		function normalize(value) {
+			return tolower(strip_ansi(value))
+		}
+		function compact(value) {
+			value = normalize(value)
+			gsub(/[^[:alnum:]]+/, "", value)
+			return value
+		}
+		function query_match(value, needle,    term_count, terms, compact_value, compact_term, i) {
+			value = normalize(value)
+			needle = normalize(needle)
+			gsub(/[[:space:]]+/, " ", needle)
+			gsub(/^ | $/, "", needle)
+			if (needle == "") return 1
+
+			compact_value = compact(value)
+			term_count = split(needle, terms, /[[:space:]]+/)
+			for (i = 1; i <= term_count; i++) {
+				if (terms[i] == "") continue
+				compact_term = compact(terms[i])
+				if (index(value, terms[i]) == 0 && (compact_term == "" || index(compact_value, compact_term) == 0)) {
+					return 0
+				}
+			}
+			return 1
+		}
+		function row_matches(search_text) {
+			return query_match(search_text, query)
+		}
+		function reset_group(    i) {
+			group = ""
+			group_search = ""
+			group_label_search = ""
+			row_count = 0
+			for (i in rows) delete rows[i]
+			for (i in row_search) delete row_search[i]
+		}
+		function flush_group(    i, group_matches, child_match, any_match) {
+			if (group == "") return
+			if (query == "") {
+				print group
+				for (i = 1; i <= row_count; i++) print rows[i]
+				reset_group()
+				return
+			}
+			group_matches = row_matches(group_label_search)
+			child_match = 0
+			any_match = group_matches
+			for (i = 1; i <= row_count; i++) {
+				if (row_matches(row_search[i])) {
+					child_match = 1
+					any_match = 1
+				}
+			}
+			if (any_match) print group
+			for (i = 1; i <= row_count; i++) {
+				if (group_matches || row_matches(row_search[i])) print rows[i]
+			}
+			reset_group()
+		}
+		$1 == "GROUP" {
+			flush_group()
+			group = $0
+			group_search = ($7 != "" ? $7 : $2)
+			group_label_search = $2 " " $6
+			next
+		}
+		{
+			if (group == "") {
+				if (query == "" || row_matches($0)) print
+				next
+			}
+			rows[++row_count] = $0
+			row_search[row_count] = $0 " " $7
+		}
+		END {
+			flush_group()
+		}
+	'
+}
+
+if [ "$mode" = "--filter-rows" ]; then
+	filter_rows "${2:-}"
+	exit 0
+fi
+
 for candidate in /opt/homebrew/bin/tmux /usr/local/bin/tmux /usr/bin/tmux; do
 	[ -n "$tmux_bin" ] && break
 	[ -x "$candidate" ] && tmux_bin="$candidate"
@@ -32,8 +127,6 @@ done
 
 [ -n "$tmux_bin" ] && "$tmux_bin" list-sessions >/dev/null 2>&1 || fail "thread picker: tmux server not available"
 [ -n "$git_bin" ] || fail "thread picker: git not found in PATH"
-
-mode="${1:-pick}"
 pin_state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/tmux-thread-picker"
 pin_file="$pin_state_dir/pins"
 title_file="$pin_state_dir/titles"
@@ -205,8 +298,9 @@ if [ "$mode" = "--watch-fzf" ]; then
 				checksum="$(cksum "$display_cache_file" 2>/dev/null || true)"
 				if [ -n "$checksum" ] && [ "$checksum" != "$last_checksum" ]; then
 					last_checksum="$checksum"
+					printf -v display_cache_file_q '%q' "$display_cache_file"
 					curl --silent --show-error --max-time 1 --unix-socket "$fzf_socket" http \
-						--data-binary "reload(cat '$display_cache_file')" >/dev/null 2>&1 || exit 0
+						--data-binary "reload($0 --filter-rows {q} < $display_cache_file_q)" >/dev/null 2>&1 || exit 0
 				fi
 			fi
 			sleep "${TMUX_THREAD_WATCH_INTERVAL:-5}"
@@ -409,7 +503,7 @@ emit_row() {
 
 	case "$row_signal" in
 		codex_open)
-			dot="$(color_text "$c_proc" "▶")"
+			dot=" "
 			state_label="codex"
 			;;
 		codex_done)
@@ -540,6 +634,52 @@ render_grouped_rows() {
 	fi
 }
 
+add_group_search_column() {
+	local rows_file="$1" output_file="$2"
+
+	awk -F '\t' '
+		function strip_ansi(value) {
+			gsub(/\033\[[0-9;]*m/, "", value)
+			return value
+		}
+		function search_text(value) {
+			value = strip_ansi(value)
+			gsub(/\t+/, " ", value)
+			gsub(/[[:space:]]+/, " ", value)
+			return value
+		}
+		function append_row(row_index, text) {
+			rows[row_index] = text
+			count = row_index
+		}
+		function base_row() {
+			return $1 FS $2 FS $3 FS $4 FS $5 FS $6
+		}
+		function append_search(row_index, text) {
+			search[row_index] = search[row_index] " " search_text(text)
+		}
+		{
+			if ($1 == "GROUP") {
+				current_group = NR
+				append_row(NR, base_row())
+				append_search(NR, $2)
+			} else {
+				row_search = base_row()
+				append_row(NR, row_search)
+				append_search(NR, row_search)
+				if (current_group > 0) {
+					append_search(current_group, row_search)
+				}
+			}
+		}
+		END {
+			for (i = 1; i <= count; i++) {
+				print rows[i] FS search[i]
+			}
+		}
+	' "$rows_file" >"$output_file"
+}
+
 build_rows() {
 	: >"$repo_candidates_file"
 	: >"$open_paths_file"
@@ -572,6 +712,8 @@ build_rows() {
 	emit_worktree_rows >>"$rows_file"
 	sort -t "$(printf '\t')" -k1,1 "$rows_file" >"$sorted_rows_file"
 	render_grouped_rows "$sorted_rows_file" >"$display_rows_file"
+	add_group_search_column "$display_rows_file" "$tmp_dir/display-rows-search.tsv"
+	mv "$tmp_dir/display-rows-search.tsv" "$display_rows_file"
 }
 
 write_display_cache() {
@@ -684,6 +826,8 @@ refresh_live_state_overlay() {
 		}
 	' "$display_rows_file" >"$overlay_file"
 	mv "$overlay_file" "$display_rows_file"
+	add_group_search_column "$display_rows_file" "$tmp_dir/display-rows-search.tsv"
+	mv "$tmp_dir/display-rows-search.tsv" "$display_rows_file"
 }
 
 refresh_display_cache_background() {
@@ -1440,6 +1584,7 @@ open_paths_file="$tmp_dir/open-paths.txt"
 rows_file="$tmp_dir/rows.tsv"
 sorted_rows_file="$tmp_dir/sorted-rows.tsv"
 display_rows_file="$tmp_dir/display-rows.tsv"
+fzf_rows_file="$tmp_dir/fzf-rows.tsv"
 pane_rows_file="$tmp_dir/panes.tsv"
 codex_state_rows_file="$tmp_dir/codex-states.tsv"
 process_window_rows_file="$tmp_dir/process-windows.txt"
@@ -1447,7 +1592,13 @@ process_window_rows_file="$tmp_dir/process-windows.txt"
 if [ "$mode" = "--refresh-cache" ]; then
 	refresh_lock_dir="$pin_state_dir/display-refresh.lock"
 	if ! mkdir "$refresh_lock_dir" 2>/dev/null; then
-		exit 0
+		refresh_lock_age="$(file_age_seconds "$refresh_lock_dir" 2>/dev/null || true)"
+		if [ -n "$refresh_lock_age" ] && [ "$refresh_lock_age" -gt 60 ]; then
+			rmdir "$refresh_lock_dir" 2>/dev/null || true
+			mkdir "$refresh_lock_dir" 2>/dev/null || exit 0
+		else
+			exit 0
+		fi
 	fi
 	trap 'rmdir "$refresh_lock_dir" 2>/dev/null || true; rm -rf "$tmp_dir"' EXIT
 	build_rows
@@ -1456,7 +1607,17 @@ if [ "$mode" = "--refresh-cache" ]; then
 fi
 
 display_cache_has_groups() {
-	awk -F '\t' '$1 == "GROUP" { found = 1 } END { exit found ? 0 : 1 }' "$display_cache_file" 2>/dev/null
+	awk -F '\t' '
+		$1 == "GROUP" {
+			found = 1
+			if ($7 == "") {
+				missing_search = 1
+			}
+		}
+		END {
+			exit found && !missing_search ? 0 : 1
+		}
+	' "$display_cache_file" 2>/dev/null
 }
 
 if [ "$mode" = "pick" ] &&
@@ -1490,6 +1651,8 @@ fi
 
 [ -n "$fzf_bin" ] || fail "thread picker: fzf not found in PATH"
 
+filter_rows "" <"$display_rows_file" >"$fzf_rows_file"
+
 archive_action="archive"
 archive_reload="$0 --rows"
 if [ "${TMUX_THREAD_SHOW_ARCHIVED:-0}" = "1" ]; then
@@ -1499,6 +1662,10 @@ fi
 source_window_index="$("$tmux_bin" display-message -p -t "$source_pane" '#{window_index}' 2>/dev/null || true)"
 source_target="${source_session}:${source_window_index}"
 printf -v source_target_q '%q' "$source_target"
+printf -v fzf_rows_file_q '%q' "$fzf_rows_file"
+filter_current_query="$0 --filter-rows {q}"
+filtered_rows_command="$filter_current_query < $fzf_rows_file_q"
+reload_rows_command="$0 --rows | tee $fzf_rows_file_q | $filter_current_query"
 
 header="$(
 	printf '      %s  %s  %s  %s' \
@@ -1520,26 +1687,27 @@ selected="$(
 		--layout=reverse \
 		--border \
 		--ansi \
+		--disabled \
 		--listen="${tmp_dir}/fzf.sock" \
 		--bind "start:execute-silent($0 --watch-fzf ${tmp_dir}/fzf.sock)" \
 		--bind 'load:transform:[[ {1} = GROUP ]] && echo down' \
 		--bind 'result:transform:[[ {1} = GROUP ]] && echo down' \
-		--bind "change:first" \
+		--bind "change:reload($filtered_rows_command)+first" \
 		--bind 'enter:transform:[[ {1} = GROUP ]] && echo down || echo accept' \
-		--bind "ctrl-p:execute-silent($0 --toggle-pin {5})+reload($0 --rows)" \
-		--bind "ctrl-q:execute-silent($0 --kill-window {1} {3} $source_target_q)+reload($0 --rows)" \
-		--bind "alt-a:execute-silent($0 --toggle-archive {5})+reload($archive_reload)" \
-		--bind "ctrl-x:execute-silent($0 --toggle-archive {5})+reload($archive_reload)" \
-		--bind "alt-f:reload(TMUX_THREAD_ATTENTION_ONLY=0 $0 --rows)" \
-		--bind "alt-v:reload(TMUX_THREAD_SHOW_ARCHIVED=1 $0 --rows)" \
-		--bind "ctrl-t:execute($0 --edit-title {5})+reload($0 --rows)" \
+		--bind "ctrl-p:execute-silent($0 --toggle-pin {5})+reload($reload_rows_command)" \
+		--bind "ctrl-q:execute-silent($0 --kill-window {1} {3} $source_target_q)+reload($reload_rows_command)" \
+		--bind "alt-a:execute-silent($0 --toggle-archive {5})+reload($archive_reload | tee $fzf_rows_file_q | $filter_current_query)" \
+		--bind "ctrl-x:execute-silent($0 --toggle-archive {5})+reload($archive_reload | tee $fzf_rows_file_q | $filter_current_query)" \
+		--bind "alt-f:reload(TMUX_THREAD_ATTENTION_ONLY=0 $0 --rows | tee $fzf_rows_file_q | $filter_current_query)" \
+		--bind "alt-v:reload(TMUX_THREAD_SHOW_ARCHIVED=1 $0 --rows | tee $fzf_rows_file_q | $filter_current_query)" \
+		--bind "ctrl-t:execute($0 --edit-title {5})+reload($reload_rows_command)" \
 		--bind "ctrl-n:execute($0 --new-thread {5})+abort" \
-		--bind "ctrl-r:reload($0 --rows)" \
+		--bind "ctrl-r:reload($reload_rows_command)" \
 		--bind "ctrl-o:execute($HOME/.dotfiles/bin/tmux-select-worktree.sh)" \
 		--bind "):clear-query+search(::)" \
 		--bind "(:clear-query+search(::)" \
 		--height=100% \
-		<"$display_rows_file" || true
+		<"$fzf_rows_file" || true
 )"
 
 [ -n "$selected" ] || exit 0

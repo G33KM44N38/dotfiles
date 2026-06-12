@@ -29,7 +29,7 @@ assert_contains() {
 	local needle="$2"
 	local name="$3"
 
-	if printf '%s' "$haystack" | grep -Fq "$needle"; then
+	if printf '%s' "$haystack" | grep -Fq -- "$needle"; then
 		pass "$name"
 	else
 		fail "$name"
@@ -42,7 +42,7 @@ assert_not_contains() {
 	local needle="$2"
 	local name="$3"
 
-	if printf '%s' "$haystack" | grep -Fq "$needle"; then
+	if printf '%s' "$haystack" | grep -Fq -- "$needle"; then
 		fail "$name"
 		printf '  expected not to contain: %s\n' "$needle" >&2
 	else
@@ -293,6 +293,60 @@ rows="$(run_script --rows)"
 plain_rows="$(printf '%s' "$rows" | perl -pe 's/\e\[[0-9;]*m//g')"
 assert_contains "$plain_rows" $'GROUP\t:: Pinned' "rows include Pinned group"
 assert_contains "$plain_rows" $'GROUP\t:: demo' "rows include project group"
+assert_contains "$plain_rows" "GROUP"$'\t'":: demo"$'\t\t\t\t'"demo"$'\t'" :: demo" "project group carries hidden search text"
+assert_contains "$plain_rows" "demo-feature" "project group search text includes matching child path token"
+assert_contains "$plain_rows" $'\ttest:2\tfeature\t' "data row search text keeps target and branch searchable"
+assert_contains "$plain_rows" "codex   demo-feature" "open codex cli is shown"
+assert_not_contains "$plain_rows" "run     demo-feature" "open codex cli is not shown as running"
+assert_not_contains "$plain_rows" "▶     codex   demo-feature" "open codex cli does not show active arrow"
+now="$(date +%s)"
+printf '%s\trunning\tUserPromptSubmit\t%s\n' "$TEST_WORKTREE" "$now" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+running_rows="$(run_script --rows)"
+stale_running_cache_rows="$running_rows"
+plain_running_rows="$(printf '%s' "$running_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+assert_contains "$plain_running_rows" "▶     run     demo-feature" "running codex hook shows active arrow"
+assert_not_contains "$plain_running_rows" "codex   demo-feature" "running codex hook is not shown as idle codex"
+printf '%s\tdone\tStop\t%s\n' "$TEST_WORKTREE" "$now" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+done_rows="$(run_script --rows)"
+plain_done_rows="$(printf '%s' "$done_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+assert_contains "$plain_done_rows" "●     wait    demo-feature" "done codex hook shows wait status"
+assert_not_contains "$plain_done_rows" "▶     wait    demo-feature" "done codex hook does not show active arrow"
+: >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+if printf '%s\n' "$plain_rows" | awk -F '\t' 'NF != 7 { exit 1 }'; then
+	pass "hidden search text is tab-safe single field"
+else
+	fail "hidden search text is tab-safe single field"
+fi
+filtered_rows="$(printf '%s\n' "$rows" | run_script --filter-rows feature)"
+assert_contains "$filtered_rows" $'GROUP\t:: demo' "script filter keeps group for matching child"
+assert_contains "$filtered_rows" $'\ttest:2\tfeature\t' "script filter keeps matching child row"
+release_rows=$(
+	cat <<EOF
+GROUP	:: babacoiffure_monorepo				babacoiffure_monorepo	 :: babacoiffure_monorepo OPEN release- codex-/release- release babacoiffure_monorepo_git:7 release /tmp/release babacoiffure_monorepo
+OPEN	      open    admin-refund                    codex-/admin-refund                                      admin-refund                                            	babacoiffure_monorepo_git:8	admin-refund	/tmp/admin-refund	babacoiffure_monorepo	 OPEN open admin-refund codex-/admin-refund admin-refund babacoiffure_monorepo_git:8 admin-refund /tmp/admin-refund babacoiffure_monorepo
+OPEN	      open    release-                        codex-/release-                                           release                                                 	babacoiffure_monorepo_git:7	release	/tmp/release	babacoiffure_monorepo	 OPEN open release- codex-/release- release babacoiffure_monorepo_git:7 release /tmp/release babacoiffure_monorepo
+GROUP	:: mainonly				mainonly	 :: mainonly OPEN main
+OPEN	      open    main                            .                                                         main                                                    	test:1	main	/tmp/main	mainonly	 OPEN open main . main test:1 main /tmp/main mainonly
+GROUP	:: dorali				dorali	 :: dorali OPEN run dorali . codex/setup-sentry-observability dorali:6 codex/setup-sentry-observability /Users/boss/coding/work/dorali dorali
+OPEN	      open    dorali                          .                                                         codex/setup-sentry-observability                        	dorali:6	codex/setup-sentry-observability	/Users/boss/coding/work/dorali	dorali	 OPEN open dorali . codex/setup-sentry-observability dorali:6 codex/setup-sentry-observability /Users/boss/coding/work/dorali dorali
+EOF
+)
+filtered_release_rows="$(printf '%s\n' "$release_rows" | run_script --filter-rows rele)"
+assert_contains "$filtered_release_rows" $'GROUP\t:: babacoiffure_monorepo' "script filter keeps group for rele child match"
+assert_contains "$filtered_release_rows" "release-" "script filter keeps rele child row"
+assert_contains "$filtered_release_rows" "open    release-" "script filter keeps visible thread status"
+assert_not_contains "$filtered_release_rows" "admin-refund" "script filter hides nonmatching sibling rows"
+assert_not_contains "$filtered_release_rows" $'GROUP\t:: mainonly' "script filter hides unrelated group for rele query"
+assert_not_contains "$filtered_release_rows" $'GROUP\t:: dorali' "script filter does not fuzzy-match release across unrelated paths"
+filtered_compact_rows="$(printf '%s\n' "$release_rows" | run_script --filter-rows babacoiffuremonorepo)"
+assert_contains "$filtered_compact_rows" $'GROUP\t:: babacoiffure_monorepo' "script filter matches punctuation-insensitive project names"
+assert_contains "$filtered_compact_rows" "admin-refund" "script filter shows whole group when group label matches"
+if command -v fzf >/dev/null 2>&1; then
+	filtered_rows="$(printf '%s\n' "$rows" | fzf --delimiter=$'\t' --with-nth=2 --filter=Main || true)"
+	assert_contains "$filtered_rows" "Main Thread" "real fzf filter matches visible row text"
+else
+	pass "real fzf filter matches visible row text (fzf unavailable)"
+fi
 
 attention_rows="$(TMUX_THREAD_ATTENTION_ONLY=1 TMUX_MOCK_WORKTREE_ACTIVITY=0 TMUX_MOCK_WORKTREE_COMMAND=zsh run_script --rows)"
 plain_attention_rows="$(printf '%s' "$attention_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
@@ -310,6 +364,24 @@ codex_attention_rows="$(TMUX_THREAD_ATTENTION_ONLY=1 TMUX_MOCK_WORKTREE_ACTIVITY
 plain_codex_attention_rows="$(printf '%s' "$codex_attention_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
 assert_contains "$plain_codex_attention_rows" "$TEST_WORKTREE" "attention mode keeps open codex cli"
 run_script --toggle-pin "$TEST_WORKTREE"
+
+now="$(date +%s)"
+printf '%s\tdone\tStop\t%s\n' "$TEST_WORKTREE" "$now" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+printf '%s\n' "$stale_running_cache_rows" >"$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv"
+: >"$FZF_MOCK_INPUT"
+TMUX_THREAD_USE_DISPLAY_CACHE=1 FZF_MOCK_MODE=none run_script >/dev/null
+cached_picker_input="$(cat "$FZF_MOCK_INPUT")"
+plain_cached_picker_input="$(printf '%s' "$cached_picker_input" | perl -pe 's/\e\[[0-9;]*m//g')"
+assert_contains "$plain_cached_picker_input" $'OPEN\t●     wait' "cached picker overlay updates visible codex status"
+assert_contains "$plain_cached_picker_input" "demo-feature" "cached picker overlay keeps thread title"
+assert_not_contains "$plain_cached_picker_input" "run     demo-feature" "cached picker overlay removes stale visible run status"
+assert_not_contains "$plain_cached_picker_input" "OPEN ▶ run demo-feature" "cached picker overlay rebuilds stale hidden run search text"
+if printf '%s\n' "$plain_cached_picker_input" | awk -F '\t' 'NF != 7 { exit 1 }'; then
+	pass "cached picker overlay keeps hidden search text tab-safe"
+else
+	fail "cached picker overlay keeps hidden search text tab-safe"
+fi
+: >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
 
 run_script --toggle-archive "$TEST_WORKTREE"
 rows="$(run_script --rows)"
@@ -330,6 +402,12 @@ assert_contains "$list_output" "Main Thread" "list mode strips ansi and includes
 : >"$FZF_MOCK_INPUT"
 FZF_MOCK_MODE=first-data run_script >/dev/null
 fzf_args="$(cat "$FZF_MOCK_ARGS")"
+fzf_input="$(cat "$FZF_MOCK_INPUT")"
+assert_contains "$fzf_args" "--with-nth=2" "fzf displays only visible row text"
+assert_contains "$fzf_args" "--disabled" "fzf delegates filtering to script"
+assert_contains "$fzf_args" "change:reload($SCRIPT --filter-rows {q}" "fzf reloads filtered grouped rows on query change"
+assert_not_contains "$fzf_args" "--nth=2,7" "fzf does not hide normal search fields behind nth"
+assert_not_contains "$fzf_input" $'\033[8m' "fzf input does not rely on concealed search text"
 assert_contains "$fzf_args" "load:transform:[[ {1} = GROUP ]] && echo down" "fzf skips group on initial load"
 assert_contains "$fzf_args" "result:transform:[[ {1} = GROUP ]] && echo down" "fzf skips group after filtering"
 assert_contains "$fzf_args" "enter:transform:[[ {1} = GROUP ]] && echo down || echo accept" "enter does not accept group rows"
@@ -343,6 +421,13 @@ printf 'OPEN\tstale cache row\ttest:9\tmain\t%s\tdemo\n' "$TEST_REPO" >"$XDG_STA
 TMUX_THREAD_USE_DISPLAY_CACHE=1 FZF_MOCK_MODE=none run_script >/dev/null
 cached_picker_input="$(cat "$FZF_MOCK_INPUT")"
 assert_contains "$cached_picker_input" $'GROUP\t:: Pinned' "pick mode rebuilds stale cache without group rows"
+
+printf 'GROUP\t:: Old Cache\t\t\t\told\nOPEN\told cache row\ttest:9\tmain\t%s\tdemo\n' "$TEST_REPO" >"$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv"
+: >"$FZF_MOCK_INPUT"
+TMUX_THREAD_USE_DISPLAY_CACHE=1 FZF_MOCK_MODE=none run_script >/dev/null
+cached_picker_input="$(cat "$FZF_MOCK_INPUT")"
+assert_not_contains "$cached_picker_input" "Old Cache" "pick mode rebuilds grouped cache without hidden search text"
+assert_contains "$cached_picker_input" $'GROUP\t:: Pinned' "rebuilt grouped cache includes fresh group rows"
 
 run_script --kill-window OPEN test:2 test:1
 assert_file_contains_line "$TMUX_MOCK_LOG" "kill-window -t test:2" "kill-window kills selected open window"
