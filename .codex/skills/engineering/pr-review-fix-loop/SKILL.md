@@ -30,6 +30,7 @@ Use this workflow for PRs where review and remediation both matter.
 - If the user asked to fix review comments too, continue.
 - Leave comments directly on the affected code lines whenever the issue maps to a changed diff line.
 - Use a general review summary only for findings that GitHub cannot attach inline, and include path and line refs there.
+- Include a merge readiness score in the posted review summary, using `Merge readiness: N/10` with a one-sentence rationale.
 - Do not approve your own PR unless the user explicitly asks.
 
 5. Implement fixes:
@@ -60,5 +61,6 @@ Review PR <number-or-url> in <repo-path>. Focus on bugs, regressions, security/p
 ## Output
 
 - Lead with findings or "No findings".
+- Include the merge readiness score and rationale that was posted to the PR.
 - Then list fixes made, tests run, push status, and PR comments replied to.
 - Keep summary short.
