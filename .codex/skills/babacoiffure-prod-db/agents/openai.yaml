@@ -1,0 +1,6 @@
+interface:
+  display_name: "BabaCoiffure Prod DB"
+  short_description: "Safely verify BabaCoiffure prod DB"
+  default_prompt: "Use $babacoiffure-prod-db to find and safely verify the BabaCoiffure production database connection."
+policy:
+  allow_implicit_invocation: true
