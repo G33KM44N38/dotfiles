@@ -476,7 +476,7 @@ emit_group_header() {
 
 render_grouped_rows() {
 	local sorted_file="$1"
-	local row sort_key kind display target branch pin_key project current_project has_pinned=0 has_archived=0 printed_projects_file
+	local sort_key kind display target branch pin_key project current_project has_pinned=0 has_archived=0 printed_projects_file
 
 	printed_projects_file="$tmp_dir/printed-projects.txt"
 	: >"$printed_projects_file"
@@ -1411,10 +1411,15 @@ if [ "$mode" = "--refresh-cache" ]; then
 	exit 0
 fi
 
+display_cache_has_groups() {
+	awk -F '\t' '$1 == "GROUP" { found = 1 } END { exit found ? 0 : 1 }' "$display_cache_file" 2>/dev/null
+}
+
 if [ "$mode" = "pick" ] &&
 	[ "${TMUX_THREAD_USE_DISPLAY_CACHE:-1}" = "1" ] &&
 	[ "${TMUX_THREAD_SHOW_ARCHIVED:-0}" != "1" ] &&
-	[ -s "$display_cache_file" ]; then
+	[ -s "$display_cache_file" ] &&
+	display_cache_has_groups; then
 	cp "$display_cache_file" "$display_rows_file" 2>/dev/null || : >"$display_rows_file"
 	refresh_live_state_overlay
 	refresh_display_cache_background
@@ -1474,7 +1479,6 @@ selected="$(
 		--bind "start:execute-silent($0 --watch-fzf ${tmp_dir}/fzf.sock)" \
 		--bind 'load:transform:[[ {1} = GROUP ]] && echo down' \
 		--bind 'result:transform:[[ {1} = GROUP ]] && echo down' \
-		--bind 'focus:transform:[[ {1} = GROUP ]] && echo down' \
 		--bind "change:first" \
 		--bind 'enter:transform:[[ {1} = GROUP ]] && echo down || echo accept' \
 		--bind "ctrl-p:execute-silent($0 --toggle-pin {5})+reload($0 --rows)" \

@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-# Test runner for tmux-navigate.sh
-# Runs unit tests and provides a summary
+# Test runner for dotfiles shell scripts.
 
 # Colors for output
 RED='\033[0;31m'
@@ -10,41 +9,43 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}🧪 Running tmux-navigate.sh Test Suite${NC}"
-echo "======================================="
+echo -e "${BLUE}Running dotfiles test suite${NC}"
+echo "==========================="
 
 # Get the directory of this script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Run unit tests
-echo -e "\n${YELLOW}📋 Running Unit Tests...${NC}"
-if "$SCRIPT_DIR/test-tmux-navigate.sh"; then
-    echo -e "${GREEN}✅ Unit tests completed successfully${NC}"
-    unit_success=true
-else
-    echo -e "${RED}❌ Unit tests failed${NC}"
-    unit_success=false
-fi
+overall_success=true
+
+run_test() {
+    local name="$1"
+    local path="$2"
+
+    if [ ! -x "$path" ]; then
+        echo -e "${YELLOW}skip${NC} $name ($path not found)"
+        return 0
+    fi
+
+    echo -e "\n${YELLOW}Running $name...${NC}"
+    if "$path"; then
+        echo -e "${GREEN}pass${NC} $name"
+    else
+        echo -e "${RED}fail${NC} $name"
+        overall_success=false
+    fi
+}
+
+run_test "tmux-thread-picker" "$SCRIPT_DIR/test-tmux-thread-picker.sh"
+run_test "tmux-navigate" "$SCRIPT_DIR/test-tmux-navigate.sh"
 
 # Summary
-echo -e "\n${BLUE}📊 Test Summary${NC}"
-echo "==============="
+echo -e "\n${BLUE}Test summary${NC}"
+echo "============"
 
-if $unit_success; then
-    echo -e "${GREEN}✅ All tests passed!${NC}"
-    echo ""
-    echo "The tmux-navigate.sh script has been tested for:"
-    echo "• Path expansion and validation"
-    echo "• Directory basename conflict resolution" 
-    echo "• FZF input generation"
-    echo "• Session name sanitization"
-    echo "• Integration scenarios"
-    echo ""
-    echo "🚀 Your script is ready to use!"
+if $overall_success; then
+    echo -e "${GREEN}All tests passed${NC}"
     exit 0
 else
-    echo -e "${RED}❌ Some tests failed${NC}"
-    echo ""
-    echo "Please check the test output above for details."
+    echo -e "${RED}Some tests failed${NC}"
     exit 1
 fi
