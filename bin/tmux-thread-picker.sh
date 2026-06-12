@@ -51,6 +51,10 @@ codex_state_cache_ttl="${TMUX_THREAD_CODEX_CACHE_TTL:-0}"
 display_refresh_ttl="${TMUX_THREAD_DISPLAY_REFRESH_TTL:-3}"
 process_window_cache_ttl="${TMUX_THREAD_PROCESS_CACHE_TTL:-3}"
 
+attention_mode_enabled() {
+	[ "${TMUX_THREAD_ATTENTION_ONLY:-0}" = "1" ] && [ "${TMUX_THREAD_SHOW_ARCHIVED:-0}" != "1" ]
+}
+
 toggle_pin() {
 	local key="$1"
 	local tmp_file
@@ -384,6 +388,18 @@ emit_row() {
 		pinned="P"
 	fi
 
+	if attention_mode_enabled; then
+		case "$row_signal" in
+			codex_done|codex_running|codex_open|current)
+				;;
+			*)
+				if [ "$process_signal" != "process" ]; then
+					return 0
+				fi
+				;;
+		esac
+	fi
+
 	pin_label=" "
 	[ "$pinned" = "P" ] && pin_label="P"
 	archive_label=" "
@@ -392,6 +408,10 @@ emit_row() {
 	[ "$state" = "open " ] && state_label="open"
 
 	case "$row_signal" in
+		codex_open)
+			dot="$(color_text "$c_proc" "▶")"
+			state_label="codex"
+			;;
 		codex_done)
 			dot="$(color_text "$c_dot_current" "●")"
 			state_label="wait"
@@ -451,7 +471,7 @@ emit_row() {
 
 	row_priority="5"
 	case "$row_signal" in
-		codex_done|codex_running|look) row_priority="0" ;;
+		codex_done|codex_running|codex_open|look) row_priority="0" ;;
 	esac
 	[[ "$state" == *"*"* ]] && [ "$row_priority" -gt 1 ] && row_priority="1"
 	[ "$process_signal" = "process" ] && [ "$row_priority" -gt 2 ] && row_priority="2"
@@ -556,6 +576,8 @@ build_rows() {
 
 write_display_cache() {
 	[ -s "$display_rows_file" ] || return 0
+	attention_mode_enabled && return 0
+	[ "${TMUX_THREAD_SHOW_ARCHIVED:-0}" = "1" ] && return 0
 	mkdir -p "$pin_state_dir"
 	cp "$display_rows_file" "$display_cache_file" 2>/dev/null || true
 }
@@ -834,6 +856,22 @@ window_codex_state() {
 	state="$(awk -F '\t' -v window_id="$window_id" '$1 == window_id { print $2; exit }' "$codex_state_rows_file" 2>/dev/null || true)"
 	[ -n "$state" ] && printf '%s\n' "$state"
 	return 0
+}
+
+window_has_codex_cli() {
+	local window_id="$1"
+	local cmd
+
+	while IFS=$'\t' read -r pane_window _pane_id cmd _pane_path _pane_pid; do
+		[ "$pane_window" = "$window_id" ] || continue
+		case "$(basename "$cmd")" in
+			codex|codex-*)
+				return 0
+				;;
+		esac
+	done <"$pane_rows_file"
+
+	return 1
 }
 
 build_codex_state_cache() {
@@ -1278,6 +1316,12 @@ emit_open_rows() {
 				row_signal="codex_running"
 				;;
 		esac
+		if window_has_codex_cli "$window_id"; then
+			case "$row_signal" in
+				codex_running|codex_done|current) ;;
+				*) row_signal="codex_open" ;;
+			esac
+		fi
 		process_signal=""
 		if window_has_running_process "$window_id"; then
 			process_signal="process"
@@ -1416,6 +1460,7 @@ display_cache_has_groups() {
 }
 
 if [ "$mode" = "pick" ] &&
+	! attention_mode_enabled &&
 	[ "${TMUX_THREAD_USE_DISPLAY_CACHE:-1}" = "1" ] &&
 	[ "${TMUX_THREAD_SHOW_ARCHIVED:-0}" != "1" ] &&
 	[ -s "$display_cache_file" ] &&
@@ -1470,7 +1515,7 @@ selected="$(
 		--with-nth=2 \
 		--header="$header" \
 		--header-border=line \
-		--footer="Ctrl-n new | Ctrl-r refresh | Ctrl-o worktree picker | Ctrl-p pin | Ctrl-t title | Alt-a $archive_action | Ctrl-q kill | Alt-v archived | Enter open" \
+		--footer="Ctrl-n new | Ctrl-r refresh | Ctrl-o worktrees | Ctrl-p pin | Ctrl-t title | Ctrl-x $archive_action | Alt-f all | Alt-v archived | Enter open" \
 		--footer-border=line \
 		--layout=reverse \
 		--border \
@@ -1484,6 +1529,8 @@ selected="$(
 		--bind "ctrl-p:execute-silent($0 --toggle-pin {5})+reload($0 --rows)" \
 		--bind "ctrl-q:execute-silent($0 --kill-window {1} {3} $source_target_q)+reload($0 --rows)" \
 		--bind "alt-a:execute-silent($0 --toggle-archive {5})+reload($archive_reload)" \
+		--bind "ctrl-x:execute-silent($0 --toggle-archive {5})+reload($archive_reload)" \
+		--bind "alt-f:reload(TMUX_THREAD_ATTENTION_ONLY=0 $0 --rows)" \
 		--bind "alt-v:reload(TMUX_THREAD_SHOW_ARCHIVED=1 $0 --rows)" \
 		--bind "ctrl-t:execute($0 --edit-title {5})+reload($0 --rows)" \
 		--bind "ctrl-n:execute($0 --new-thread {5})+abort" \

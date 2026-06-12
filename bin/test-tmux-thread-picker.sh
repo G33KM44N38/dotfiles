@@ -122,7 +122,7 @@ case "$cmd" in
 		;;
 	list-panes)
 		printf '@1\t%%1\tzsh\t%s\t1001\n' "$TEST_REPO"
-		printf '@2\t%%2\tcodex\t%s\t1002\n' "$TEST_WORKTREE"
+		printf '@2\t%%2\t%s\t%s\t1002\n' "${TMUX_MOCK_WORKTREE_COMMAND:-codex}" "$TEST_WORKTREE"
 		;;
 	list-windows)
 		format=""
@@ -145,15 +145,15 @@ case "$cmd" in
 				;;
 			'#{window_id}'$'\t''#{pane_id}'$'\t''#{pane_current_command}'$'\t''#{pane_current_path}'$'\t''#{pane_pid}')
 				printf '@1\t%%1\tzsh\t%s\t1001\n' "$TEST_REPO"
-				printf '@2\t%%2\tcodex\t%s\t1002\n' "$TEST_WORKTREE"
+				printf '@2\t%%2\t%s\t%s\t1002\n' "${TMUX_MOCK_WORKTREE_COMMAND:-codex}" "$TEST_WORKTREE"
 				;;
 			'#{session_name}:#{window_index}'$'\t''#{window_id}'$'\t''#{window_name}'$'\t''#{window_activity_flag}'$'\t''#{window_bell_flag}')
 				printf 'test:1\t@1\tmain\t0\t0\n'
-				printf 'test:2\t@2\tfeature\t1\t0\n'
+				printf 'test:2\t@2\tfeature\t%s\t0\n' "${TMUX_MOCK_WORKTREE_ACTIVITY:-1}"
 				;;
 			'#{session_name}'$'\t''#{window_index}'$'\t''#{window_id}'$'\t''#{window_name}'$'\t''#{window_activity_flag}'$'\t''#{window_bell_flag}'$'\t''#{pane_current_path}'$'\t''#{@secondary-worktree-path}')
 				printf 'test\t1\t@1\tmain\t0\t0\t%s\t\n' "$TEST_REPO"
-				printf 'test\t2\t@2\tfeature\t1\t0\t%s\t\n' "$TEST_WORKTREE"
+				printf 'test\t2\t@2\tfeature\t%s\t0\t%s\t\n' "${TMUX_MOCK_WORKTREE_ACTIVITY:-1}" "$TEST_WORKTREE"
 				;;
 			*)
 				printf '1\n2\n'
@@ -294,6 +294,23 @@ plain_rows="$(printf '%s' "$rows" | perl -pe 's/\e\[[0-9;]*m//g')"
 assert_contains "$plain_rows" $'GROUP\t:: Pinned' "rows include Pinned group"
 assert_contains "$plain_rows" $'GROUP\t:: demo' "rows include project group"
 
+attention_rows="$(TMUX_THREAD_ATTENTION_ONLY=1 TMUX_MOCK_WORKTREE_ACTIVITY=0 TMUX_MOCK_WORKTREE_COMMAND=zsh run_script --rows)"
+plain_attention_rows="$(printf '%s' "$attention_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+assert_contains "$plain_attention_rows" "$TEST_REPO" "attention mode keeps current thread"
+assert_not_contains "$plain_attention_rows" "$TEST_WORKTREE" "attention mode hides inactive unpinned thread"
+
+run_script --toggle-pin "$TEST_WORKTREE"
+pinned_attention_rows="$(TMUX_THREAD_ATTENTION_ONLY=1 TMUX_MOCK_WORKTREE_ACTIVITY=0 TMUX_MOCK_WORKTREE_COMMAND=zsh run_script --rows)"
+plain_pinned_attention_rows="$(printf '%s' "$pinned_attention_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+assert_not_contains "$plain_pinned_attention_rows" "$TEST_WORKTREE" "attention mode hides pinned inactive thread"
+activity_attention_rows="$(TMUX_THREAD_ATTENTION_ONLY=1 TMUX_MOCK_WORKTREE_ACTIVITY=1 TMUX_MOCK_WORKTREE_COMMAND=zsh run_script --rows)"
+plain_activity_attention_rows="$(printf '%s' "$activity_attention_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+assert_not_contains "$plain_activity_attention_rows" "$TEST_WORKTREE" "attention mode ignores tmux activity flag"
+codex_attention_rows="$(TMUX_THREAD_ATTENTION_ONLY=1 TMUX_MOCK_WORKTREE_ACTIVITY=0 TMUX_MOCK_WORKTREE_COMMAND=codex run_script --rows)"
+plain_codex_attention_rows="$(printf '%s' "$codex_attention_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+assert_contains "$plain_codex_attention_rows" "$TEST_WORKTREE" "attention mode keeps open codex cli"
+run_script --toggle-pin "$TEST_WORKTREE"
+
 run_script --toggle-archive "$TEST_WORKTREE"
 rows="$(run_script --rows)"
 plain_rows="$(printf '%s' "$rows" | perl -pe 's/\e\[[0-9;]*m//g')"
@@ -316,6 +333,8 @@ fzf_args="$(cat "$FZF_MOCK_ARGS")"
 assert_contains "$fzf_args" "load:transform:[[ {1} = GROUP ]] && echo down" "fzf skips group on initial load"
 assert_contains "$fzf_args" "result:transform:[[ {1} = GROUP ]] && echo down" "fzf skips group after filtering"
 assert_contains "$fzf_args" "enter:transform:[[ {1} = GROUP ]] && echo down || echo accept" "enter does not accept group rows"
+assert_contains "$fzf_args" "ctrl-x:execute-silent" "fzf has single-key hide binding"
+assert_contains "$fzf_args" "alt-f:reload(TMUX_THREAD_ATTENTION_ONLY=0" "fzf can reload full inventory"
 assert_not_contains "$fzf_args" "focus:transform" "ctrl-k can move upward across group rows"
 assert_file_contains_line "$TMUX_MOCK_LOG" "switch-client -t test:1" "OPEN selection switches tmux client"
 
