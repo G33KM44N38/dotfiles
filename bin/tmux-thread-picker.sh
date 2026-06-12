@@ -43,11 +43,13 @@ repo_cache_file="$pin_state_dir/repo-candidates.tsv"
 worktree_cache_file="$pin_state_dir/worktrees.tsv"
 codex_state_cache_file="$pin_state_dir/codex-states.tsv"
 display_cache_file="$pin_state_dir/display-rows.tsv"
+process_window_cache_file="$pin_state_dir/process-windows.tsv"
 codex_hook_state_dir="$pin_state_dir/codex-hooks"
 codex_hook_state_index="$pin_state_dir/codex-hook-states.tsv"
 repo_cache_ttl="${TMUX_THREAD_CACHE_TTL:-300}"
 codex_state_cache_ttl="${TMUX_THREAD_CODEX_CACHE_TTL:-0}"
-display_cache_ttl="${TMUX_THREAD_DISPLAY_CACHE_TTL:-2}"
+display_refresh_ttl="${TMUX_THREAD_DISPLAY_REFRESH_TTL:-3}"
+process_window_cache_ttl="${TMUX_THREAD_PROCESS_CACHE_TTL:-3}"
 
 toggle_pin() {
 	local key="$1"
@@ -522,8 +524,9 @@ build_rows() {
 	: >"$repo_candidates_file"
 	: >"$open_paths_file"
 	: >"$rows_file"
-	"$tmux_bin" list-panes -a -F '#{window_id}'$'\t''#{pane_id}'$'\t''#{pane_current_command}'$'\t''#{pane_current_path}' 2>/dev/null >"$pane_rows_file" || : >"$pane_rows_file"
+	"$tmux_bin" list-panes -a -F '#{window_id}'$'\t''#{pane_id}'$'\t''#{pane_current_command}'$'\t''#{pane_current_path}'$'\t''#{pane_pid}' 2>/dev/null >"$pane_rows_file" || : >"$pane_rows_file"
 	build_codex_state_cache
+	ensure_process_window_index
 
 	scan_roots=()
 	source_path="$(normalize_existing_path "$source_path" || true)"
@@ -562,8 +565,9 @@ refresh_live_state_overlay() {
 
 	[ -s "$display_rows_file" ] || return 0
 
-	"$tmux_bin" list-panes -a -F '#{window_id}'$'\t''#{pane_id}'$'\t''#{pane_current_command}'$'\t''#{pane_current_path}' 2>/dev/null >"$pane_rows_file" || : >"$pane_rows_file"
+	"$tmux_bin" list-panes -a -F '#{window_id}'$'\t''#{pane_id}'$'\t''#{pane_current_command}'$'\t''#{pane_current_path}'$'\t''#{pane_pid}' 2>/dev/null >"$pane_rows_file" || : >"$pane_rows_file"
 	build_codex_state_cache
+	ensure_process_window_index
 
 	live_windows_file="$tmp_dir/live-windows.tsv"
 	"$tmux_bin" list-windows -a -F '#{session_name}:#{window_index}'$'\t''#{window_id}'$'\t''#{window_name}'$'\t''#{window_activity_flag}'$'\t''#{window_bell_flag}' 2>/dev/null >"$live_windows_file" || : >"$live_windows_file"
@@ -573,6 +577,8 @@ refresh_live_state_overlay() {
 	awk -F '\t' \
 		-v live_windows_file="$live_windows_file" \
 		-v codex_state_rows_file="$codex_state_rows_file" \
+		-v process_window_rows_file="$process_window_rows_file" \
+		-v seen_file="$seen_file" \
 		-v source_session="$source_session" \
 		-v source_window_index="$source_window_index" \
 		-v c_reset="$c_reset" \
@@ -605,11 +611,20 @@ refresh_live_state_overlay() {
 				codex_state_by_window[parts[1]] = parts[2]
 			}
 			close(codex_state_rows_file)
+			while ((getline window_id < process_window_rows_file) > 0) {
+				process_by_window[window_id] = 1
+			}
+			close(process_window_rows_file)
+			while ((getline key < seen_file) > 0) {
+				seen_finished[key] = 1
+			}
+			close(seen_file)
 		}
 		{
 			kind = $1
 			display = $2
 			target = $3
+			pin_key = $5
 			if (kind != "OPEN" || target == "" || !(target in window_id_by_target)) {
 				print $0
 				next
@@ -629,11 +644,18 @@ refresh_live_state_overlay() {
 				dot = color(c_proc, "▶")
 				state_label = "run"
 			} else if (codex_state == "done") {
-				dot = color(c_dot_current, "●")
-				state_label = "wait"
+				if (pin_key in seen_finished) {
+					state_label = "open" current_marker
+				} else {
+					dot = color(c_dot_current, "●")
+					state_label = "wait"
+				}
 			}
 
 			proc = " "
+			if (window_id in process_by_window) {
+				proc = color(c_proc, "!")
+			}
 			display = dot proc " " color(c_red, pin) " " color(c_green, pad(state_label, 6)) "  " tail
 			$2 = display
 			print $0
@@ -643,6 +665,13 @@ refresh_live_state_overlay() {
 }
 
 refresh_display_cache_background() {
+	local cache_age
+
+	cache_age="$(file_age_seconds "$display_cache_file" 2>/dev/null || true)"
+	if [ -n "$cache_age" ] && [ "$cache_age" -lt "$display_refresh_ttl" ]; then
+		return 0
+	fi
+
 	(
 		"$0" --refresh-cache
 	) >/dev/null 2>&1 &
@@ -874,17 +903,103 @@ is_ignored_running_command() {
 	esac
 }
 
+build_process_window_index() {
+	local process_rows_file="$tmp_dir/processes.tsv"
+	local tmp_cache
+
+	mkdir -p "$pin_state_dir"
+	tmp_cache="${process_window_cache_file}.${BASHPID:-$$}"
+
+	ps -axo pid=,ppid=,comm=,command= 2>/dev/null |
+		awk '
+			{
+				pid = $1
+				ppid = $2
+				comm = $3
+				line = $0
+				sub(/^[[:space:]]*[0-9]+[[:space:]]+[0-9]+[[:space:]]+[^[:space:]]+[[:space:]]*/, "", line)
+				print pid "\t" ppid "\t" comm "\t" line
+			}
+		' >"$process_rows_file"
+
+	awk -F '\t' -v pane_rows_file="$pane_rows_file" '
+		function basename(value, parts, count) {
+			count = split(value, parts, "/")
+			return parts[count]
+		}
+		function is_ignored_process(command, line, base) {
+			base = basename(command)
+			if (base == "" || base == "tmux" || base == "nvim" || base == "vim" || base == "vi") return 1
+			if (base == "ps" || base == "awk" || base == "sed" || base == "grep" || base == "perl") return 1
+			if (base ~ /^codex/) return 1
+			if (line ~ /codex/) return 1
+			if (line ~ /supermaven/) return 1
+			if (base == "zsh" || base == "bash" || base == "sh" || base == "dash" || base == "fish" || base == "ksh" || base == "nu" || base == "pwsh") {
+				return line !~ /(pnpm|npm|yarn|bun|node|python|ruby|go[[:space:]]|cargo|make|docker|eas|expo|vite|next|jest|vitest|pytest|gradle|mvn|java|deno|tsx|ts-node)/
+			}
+			return 0
+		}
+		function is_ignored_container(pid) {
+			return command[pid] ~ /(nvim|vim|vi|codex)/
+		}
+		function pane_ancestor(pid, seen) {
+			while (pid != "" && pid != "0") {
+				if (pid in pane_window) return pane_window[pid]
+				if (is_ignored_container(pid)) return ""
+				if (pid in seen) return ""
+				seen[pid] = 1
+				pid = parent[pid]
+			}
+			return ""
+		}
+		BEGIN {
+			while ((getline line < pane_rows_file) > 0) {
+				split(line, parts, "\t")
+				if (parts[5] != "") {
+					pane_window[parts[5]] = parts[1]
+				}
+			}
+			close(pane_rows_file)
+		}
+		{
+			parent[$1] = $2
+			command[$1] = $3
+			command_line[$1] = $4
+			process_ids[++process_count] = $1
+		}
+		END {
+			for (idx = 1; idx <= process_count; idx++) {
+				pid = process_ids[idx]
+				window_id = pane_ancestor(parent[pid])
+				if (window_id != "" && !is_ignored_process(command[pid], command_line[pid])) {
+					busy[window_id] = 1
+				}
+			}
+			for (window_id in busy) print window_id
+		}
+	' "$process_rows_file" >"$tmp_cache"
+	mv "$tmp_cache" "$process_window_cache_file"
+	cp "$process_window_cache_file" "$process_window_rows_file" 2>/dev/null || : >"$process_window_rows_file"
+}
+
 window_has_running_process() {
 	local window_id="$1"
-	local pane_command
 
-	while IFS= read -r pane_command; do
-		if ! is_ignored_running_command "$pane_command"; then
-			return 0
-		fi
-	done < <(awk -F '\t' -v window_id="$window_id" '$1 == window_id { print $3 }' "$pane_rows_file" 2>/dev/null)
+	grep -Fxq "$window_id" "$process_window_rows_file" 2>/dev/null
+	return $?
+}
 
-	return 1
+ensure_process_window_index() {
+	local cache_age
+
+	[ -s "$process_window_rows_file" ] && return 0
+	cache_age="$(file_age_seconds "$process_window_cache_file" 2>/dev/null || true)"
+	if [ -n "$cache_age" ] && [ "$cache_age" -lt "$process_window_cache_ttl" ]; then
+		cp "$process_window_cache_file" "$process_window_rows_file" 2>/dev/null || : >"$process_window_rows_file"
+		return 0
+	fi
+
+	build_process_window_index
 }
 
 open_thread_window() {
@@ -1058,6 +1173,12 @@ collect_repo_candidates() {
 cache_age_seconds() {
 	local file="$1"
 	[ -s "$file" ] || return 1
+	perl -e 'print time - (stat($ARGV[0]))[9]' "$file" 2>/dev/null
+}
+
+file_age_seconds() {
+	local file="$1"
+	[ -e "$file" ] || return 1
 	perl -e 'print time - (stat($ARGV[0]))[9]' "$file" 2>/dev/null
 }
 
@@ -1277,6 +1398,7 @@ sorted_rows_file="$tmp_dir/sorted-rows.tsv"
 display_rows_file="$tmp_dir/display-rows.tsv"
 pane_rows_file="$tmp_dir/panes.tsv"
 codex_state_rows_file="$tmp_dir/codex-states.tsv"
+process_window_rows_file="$tmp_dir/process-windows.txt"
 
 if [ "$mode" = "--refresh-cache" ]; then
 	refresh_lock_dir="$pin_state_dir/display-refresh.lock"
@@ -1289,13 +1411,10 @@ if [ "$mode" = "--refresh-cache" ]; then
 	exit 0
 fi
 
-display_cache_age="$(cache_age_seconds "$display_cache_file" 2>/dev/null || true)"
 if [ "$mode" = "pick" ] &&
 	[ "${TMUX_THREAD_USE_DISPLAY_CACHE:-1}" = "1" ] &&
 	[ "${TMUX_THREAD_SHOW_ARCHIVED:-0}" != "1" ] &&
-	[ -s "$display_cache_file" ] &&
-	[ -n "$display_cache_age" ] &&
-	[ "$display_cache_age" -lt "$display_cache_ttl" ]; then
+	[ -s "$display_cache_file" ]; then
 	cp "$display_cache_file" "$display_rows_file" 2>/dev/null || : >"$display_rows_file"
 	refresh_live_state_overlay
 	refresh_display_cache_background
