@@ -1,0 +1,4 @@
+interface:
+  display_name: "Diagram to /tmp"
+  short_description: "Create diagram artifacts in /tmp"
+  default_prompt: "Use $diagram-to-tmp to create a standalone diagram artifact in /tmp."
