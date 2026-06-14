@@ -13,3 +13,11 @@
        month: "{{ cron_time.split(' ')[3] }}"
        weekday: "{{ cron_time.split(' ')[4] }}"
        state: present
+
+- name: Add cron job for codex-auth list
+  cron:
+       name: "Run codex-auth list"
+       job: "/opt/homebrew/bin/codex-auth list > /dev/null 2>&1"
+       minute: "0"
+       hour: "*/5"
+       state: present
