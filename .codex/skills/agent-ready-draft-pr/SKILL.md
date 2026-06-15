@@ -58,6 +58,10 @@ Prefer using the local thread picker to create and manage the worktree session:
 bin/tmux-thread-picker.sh --new-thread
 ```
 
+Try once to create the new worktree window in the current tmux session. If that fails, do not keep
+retrying in the same session; fall back to the script's normal new-thread/session behavior or create
+the worktree manually and report the fallback.
+
 Use the Linear issue id and short title as the thread title so the generated branch and tmux window are traceable. If the script cannot be used in the current environment, create the worktree manually with `git worktree add -b <branch> <path>` and report that fallback.
 
 Use a conventional, traceable name:
