@@ -48,9 +48,17 @@ Do not remove `agent:ready` at claim time unless the team's workflow explicitly 
 
 For batch work, claim all selected issues before coding so other workers do not pick the same queue items. Keep each issue on its own branch and PR.
 
-### Step 3 - Create A Separate Worktree
+### Step 3 - Create A Separate Worktree Session
 
 Create a dedicated git worktree for each selected issue, with a dedicated branch from the repository's default integration branch. Never implement an `agent:ready` issue in the caller's current worktree.
+
+Prefer using the local thread picker to create and manage the worktree session:
+
+```bash
+bin/tmux-thread-picker.sh --new-thread
+```
+
+Use the Linear issue id and short title as the thread title so the generated branch and tmux window are traceable. If the script cannot be used in the current environment, create the worktree manually with `git worktree add -b <branch> <path>` and report that fallback.
 
 Use a conventional, traceable name:
 - `fix/<linear-id>-short-title` for bugs
@@ -60,6 +68,8 @@ Use a conventional, traceable name:
 Keep the Linear issue id in the branch name and PR title.
 
 For batch work, every issue must have its own separate worktree, branch, commit, and draft PR. Do not combine unrelated Linear issues into one branch or PR.
+
+Use `bin/tmux-thread-picker.sh` to switch between and monitor active worktree sessions when multiple issues are in progress.
 
 ### Step 4 - Implement Narrowly
 
@@ -115,6 +125,7 @@ Do not close the Linear issue from this skill. Closure belongs to merge/completi
 - Never work more than three issues in one run.
 - Work only one issue by default unless the user explicitly asks for parallel or batch work.
 - Never implement an issue in the caller's current worktree; always create a separate worktree.
+- Prefer `bin/tmux-thread-picker.sh --new-thread` for new worktree sessions when available.
 - Never merge the PR.
 - Never publish releases, run production migrations, rotate secrets, spend money, or delete branches.
 - Never overwrite or revert unrelated user changes.
@@ -126,6 +137,7 @@ Do not close the Linear issue from this skill. Closure belongs to merge/completi
 End with:
 - Linear issues worked
 - Worktree paths
+- Tmux session/window or thread title when used
 - Branch names
 - Draft PR URLs
 - Summary of changes
