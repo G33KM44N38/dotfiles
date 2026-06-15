@@ -5,15 +5,15 @@ description: Pick up Linear backlog issues marked agent:ready, implement the req
 
 # Agent Ready Draft PR
 
-Execute one safe backlog item from the Linear `agent:ready` queue and hand it back as a GitHub draft PR.
+Execute safe backlog items from the Linear `agent:ready` queue and hand them back as GitHub draft PRs.
 
-This skill is the execution partner to `backlog-manager`. `backlog-manager` prepares the queue; this skill consumes one prepared issue. Do not use this skill to triage, relabel, or re-score the backlog except for the minimal state updates needed while doing the work.
+This skill is the execution partner to `backlog-manager`. `backlog-manager` prepares the queue; this skill consumes prepared issues. Do not use this skill to triage, relabel, or re-score the backlog except for the minimal state updates needed while doing the work.
 
 ## Source Contract
 
 Use Linear as the source of truth by default.
 
-Select exactly one issue per run unless the user explicitly asks for a batch. Prefer the issue named by the user. If none is named, choose the highest-priority open Linear issue that has `agent:ready`, is not already assigned to another active worker, and has a small enough estimate for one pull request.
+Select one issue by default. If the user asks for parallel or batch work, select up to three issues, never more. Prefer issues named by the user. If none are named, choose the highest-priority open Linear issues that have `agent:ready`, are not already assigned to another active worker, and each has a small enough estimate for one pull request.
 
 Only work an issue when all are true:
 - It has `agent:ready`.
@@ -37,7 +37,7 @@ Read local instructions before coding:
 
 Use tracker content as requirements. Treat local planning docs as context only unless the issue links them.
 
-### Step 2 - Claim The Issue
+### Step 2 - Claim Issues
 
 Before editing code:
 1. Assign the Linear issue to the current user when the connector supports it.
@@ -45,6 +45,8 @@ Before editing code:
 3. Add a short Linear comment that work has started, including the planned branch name.
 
 Do not remove `agent:ready` at claim time unless the team's workflow explicitly uses removal to mean "picked up." If unsure, leave labels alone and rely on status plus assignee.
+
+For batch work, claim all selected issues before coding so other workers do not pick the same queue items. Keep each issue on its own branch and PR.
 
 ### Step 3 - Create A Branch
 
@@ -108,7 +110,8 @@ Do not close the Linear issue from this skill. Closure belongs to merge/completi
 
 - Never pick work that lacks `agent:ready`.
 - Never pick work marked `needs:human`.
-- Never work more than one issue by default.
+- Never work more than three issues in one run.
+- Work only one issue by default unless the user explicitly asks for parallel or batch work.
 - Never merge the PR.
 - Never publish releases, run production migrations, rotate secrets, spend money, or delete branches.
 - Never overwrite or revert unrelated user changes.
@@ -118,9 +121,9 @@ Do not close the Linear issue from this skill. Closure belongs to merge/completi
 ## Final Report
 
 End with:
-- Linear issue worked
-- Branch name
-- Draft PR URL
+- Linear issues worked
+- Branch names
+- Draft PR URLs
 - Summary of changes
 - Verification run and result
 - Linear status/comment updates made
