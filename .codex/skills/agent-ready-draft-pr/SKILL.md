@@ -48,9 +48,9 @@ Do not remove `agent:ready` at claim time unless the team's workflow explicitly 
 
 For batch work, claim all selected issues before coding so other workers do not pick the same queue items. Keep each issue on its own branch and PR.
 
-### Step 3 - Create A Branch
+### Step 3 - Create A Separate Worktree
 
-Create a dedicated branch from the repository's default integration branch.
+Create a dedicated git worktree for each selected issue, with a dedicated branch from the repository's default integration branch. Never implement an `agent:ready` issue in the caller's current worktree.
 
 Use a conventional, traceable name:
 - `fix/<linear-id>-short-title` for bugs
@@ -58,6 +58,8 @@ Use a conventional, traceable name:
 - `chore/<linear-id>-short-title` for chores, docs, tests, refactors, and maintenance
 
 Keep the Linear issue id in the branch name and PR title.
+
+For batch work, every issue must have its own separate worktree, branch, commit, and draft PR. Do not combine unrelated Linear issues into one branch or PR.
 
 ### Step 4 - Implement Narrowly
 
@@ -112,6 +114,7 @@ Do not close the Linear issue from this skill. Closure belongs to merge/completi
 - Never pick work marked `needs:human`.
 - Never work more than three issues in one run.
 - Work only one issue by default unless the user explicitly asks for parallel or batch work.
+- Never implement an issue in the caller's current worktree; always create a separate worktree.
 - Never merge the PR.
 - Never publish releases, run production migrations, rotate secrets, spend money, or delete branches.
 - Never overwrite or revert unrelated user changes.
@@ -122,6 +125,7 @@ Do not close the Linear issue from this skill. Closure belongs to merge/completi
 
 End with:
 - Linear issues worked
+- Worktree paths
 - Branch names
 - Draft PR URLs
 - Summary of changes
