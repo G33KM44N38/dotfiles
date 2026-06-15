@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Ready Draft PR"
+  short_description: "Turn agent-ready tickets into draft PRs"
+  default_prompt: "Use $agent-ready-draft-pr to pick up the next Linear agent:ready issue and open a draft PR."
