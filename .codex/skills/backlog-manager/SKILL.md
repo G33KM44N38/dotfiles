@@ -12,7 +12,7 @@ Manage an engineering backlog for humans and AI agents.
 Think of this skill as a lightweight product manager for the backlog. The goal is to keep engineering
 work clear, sequenced, classified, and safe to route to either humans or AI agents. A core job is to
 label safe, well-scoped tickets so AI agents know which work they are allowed to pick up, while
-marking ambiguous, risky, or judgement-heavy work for humans. This is backlog review and project-state
+marking ambiguous, oversized, or judgement-heavy work for humans. This is backlog review and project-state
 hygiene, not implementation. It labels issues, improves issue quality, identifies missing follow-up
 tickets, creates evidence-backed maintenance tickets when allowed, and syncs issue state with linked
 pull requests.
@@ -37,7 +37,7 @@ Run the whole workflow by default rather than asking the user to orchestrate sev
 workflow has three simple phases:
 
 1. **Triage the backlog** — inspect open issues, current labels, stale state, linked PRs, and recent tracker changes.
-2. **Prepare the queue** — classify issues by risk/type, mark safe work as `agent:ready`, route judgement-heavy work to `needs:human`, and add/update Agent Assessments.
+2. **Prepare the queue** — classify issues by estimate/type, mark safe work as `agent:ready`, route judgement-heavy work to `needs:human`, and add/update Agent Assessments.
 3. **Maintain and report** — sync clearly completed issues from PR evidence, propose or create evidence-backed maintenance tickets, report branch cleanup candidates, verify the result, and summarize the next human decision.
 
 The skill is not a coding agent. Its main output is a clean backlog and a safe queue that a separate execution loop can consume.
@@ -75,16 +75,16 @@ unless the user explicitly asks to normalize or remove legacy labels.
 
 Managed labels are additive by default. Trackers do not record who added a label, so treat every
 existing managed label as if a human set it deliberately. Never remove or change an existing
-`risk:*`, `type:*`, `agent:ready`, or `needs:human` label during classification; only add managed
+`estimate:*`, `type:*`, `agent:ready`, or `needs:human` label during classification; only add managed
 labels that are missing. The single exception is PR-evidence sync (Step 5), where `agent:ready` is
 removed because the work is demonstrably in progress or finished. If a run disagrees with an
 existing label, keep the label and raise the disagreement in the run report instead.
 
-### Risk
+### Estimation
 
-- `risk:low` - Safe for agent execution when the issue is also `agent:ready`.
-- `risk:medium` - Possibly agent-suitable later, but do not execute unattended by default.
-- `risk:high` - Human-led. Agents may investigate or plan, but should not execute unattended.
+- `estimate:small` - Small, bounded work suitable for agent execution when the issue is also `agent:ready`.
+- `estimate:medium` - Moderately scoped work that may become agent-suitable with more confidence or human review.
+- `estimate:large` - Large or broad work that should be human-led unless explicitly broken down.
 
 ### Type
 
@@ -112,15 +112,15 @@ If a repository already has a completion/routing convention such as `agent:compl
 `agent:blocked`, respect it only when the user asks this skill to sync that convention or when the
 repo docs clearly define it. Do not create those labels from this skill unless explicitly requested.
 
-## Risk And Routing Rules
+## Estimation And Routing Rules
 
 Use a simple contract. The execution loop should be able to query `agent:ready` and trust that the
-issue is safe to attempt without re-litigating product risk.
+issue is safe to attempt without re-litigating product judgement.
 
 ### `agent:ready`
 
 Only add `agent:ready` when all are true:
-- risk is `risk:low`
+- estimate is `estimate:small`
 - scope is clear
 - the work is small enough for one pull request
 - expected output is clear
@@ -128,7 +128,7 @@ Only add `agent:ready` when all are true:
 - no product, UX, architecture, security, data, billing, auth, or deployment judgement is required
 - the issue is not already linked to active work
 
-Good low-risk examples:
+Good small examples:
 - docs updates
 - broken links
 - stale README commands
@@ -149,16 +149,17 @@ Add `needs:human` when any are true:
 - the agent cannot classify the issue with confidence
 - a previous agent attempt failed and the next step is unclear
 
-### Risk levels
+### Estimate levels
 
-Use `risk:low` for small, bounded changes with clear verification and low blast radius.
+Use `estimate:small` for small, bounded changes with clear verification and low blast radius.
 
-Use `risk:medium` when the change may be agent-suitable later, but needs more confidence, stronger
-tests, or close human review. Do not mark medium-risk issues `agent:ready` unless the user explicitly
-asks this workflow to include medium-risk work.
+Use `estimate:medium` when the change may be agent-suitable later, but needs more confidence, stronger
+tests, or close human review. Do not mark medium-estimate issues `agent:ready` unless the user
+explicitly asks this workflow to include medium-estimate work.
 
-Use `risk:high` when unattended execution could create meaningful product, security, operational, or
-data risk. Add `needs:human` to high-risk issues unless they are already clearly human-owned.
+Use `estimate:large` when the issue is too broad for one safe agent pull request or could require
+meaningful product, security, operational, or data judgement. Add `needs:human` to large-estimate issues
+unless they are already clearly human-owned.
 
 ## Agent Assessment
 
@@ -172,7 +173,7 @@ Add or update this block:
 ```md
 ## Agent Assessment
 
-Risk: low | medium | high
+Estimate: small | medium | large
 Type: bug | feature | docs | test | refactor | chore
 Agent-ready: yes | no
 
@@ -208,7 +209,7 @@ Read repository or workspace instructions first:
 - issue templates
 - local roadmap/backlog docs only as context, unless the user explicitly provides one as the backlog source
 
-Use this context to classify risk and write issue assessments. Do not make up project policy.
+Use this context to classify estimate and write issue assessments. Do not make up project policy.
 
 If repo docs disagree with the selected backlog source, treat that as quality drift. Do not let local roadmap or ticket files override GitHub Issues, GitHub Projects, or Linear unless the user explicitly made the local path authoritative.
 
@@ -244,9 +245,9 @@ In `dry-run`, report missing labels.
 In `apply`, create missing labels where the tracker supports it.
 
 Recommended GitHub colors:
-- `risk:low` - `0E8A16`
-- `risk:medium` - `FBCA04`
-- `risk:high` - `B60205`
+- `estimate:small` - `0E8A16`
+- `estimate:medium` - `FBCA04`
+- `estimate:large` - `B60205`
 - `type:*` - `5319E7`
 - `agent:*` - `1D76DB`
 - `needs:human` - `D93F0B`
@@ -258,7 +259,7 @@ Fetch open issues with title, body, labels, comments, status/project fields when
 Classification fills gaps; it never overrides existing managed labels.
 
 For each open issue:
-1. If it has no managed `risk:*` label, assign exactly one.
+1. If it has no managed `estimate:*` label, assign exactly one.
 2. If it has no managed `type:*` label, assign exactly one.
 3. If it has no routing label, decide whether to add `agent:ready`, `needs:human`, or neither.
 4. Never remove or change managed labels that are already present. If the classification disagrees
@@ -266,7 +267,7 @@ For each open issue:
 5. Add or update the Agent Assessment only if it changed.
 6. Avoid marking an issue `agent:ready` when confidence is low. Use `needs:human` and explain why.
 
-Do not mark medium-risk or high-risk issues `agent:ready` unless the user explicitly asks for that policy change. Agents should be able to use `agent:ready` as their default pickup queue without re-litigating product risk.
+Do not mark medium-estimate or large-estimate issues `agent:ready` unless the user explicitly asks for that policy change. Agents should be able to use `agent:ready` as their default pickup queue without re-litigating product judgement.
 
 ### Step 5 — Sync Issue State With Pull Requests
 
@@ -282,7 +283,7 @@ If a linked PR is merged:
 - remove `agent:ready`
 - close the issue when the PR clearly resolves it
 - move the issue/project item to the done state when status/project fields are available
-- preserve audit labels such as `risk:*`, `type:*`, and any repo-approved completion label
+- preserve audit labels such as `estimate:*`, `type:*`, and any repo-approved completion label
 
 If a linked PR is closed without merge:
 - remove `agent:ready`
@@ -339,7 +340,7 @@ Why it matters:
 <short explanation>
 Suggested fix:
 <small reviewable fix>
-Risk: low | medium | high
+Estimate: small | medium | large
 Type: bug | feature | docs | test | refactor | chore
 Agent-ready: yes | no
 Confidence: high | medium | low
@@ -369,12 +370,12 @@ separate explicit branch-cleanup workflow or a human.
 ### Step 9 — Verify Apply Runs
 
 After an `apply` run, verify the tracker state before reporting:
-- Every remaining open issue has a managed `risk:*` label and a managed `type:*` label.
-- Any issue where `agent:ready` appears without `risk:low`, or alongside `needs:human`, is flagged
+- Every remaining open issue has a managed `estimate:*` label and a managed `type:*` label.
+- Any issue where `agent:ready` appears without `estimate:small`, or alongside `needs:human`, is flagged
   in the report, not auto-corrected. A human may have set those labels deliberately.
-- Every `risk:high` issue has `needs:human` unless there is a clear reason not to.
+- Every `estimate:large` issue has `needs:human` unless there is a clear reason not to.
 - Every classified open issue has an `## Agent Assessment` block in the issue body or an equivalent comment.
-- Any stale completed issue closed during sync still keeps its final risk/type labels and assessment for auditability.
+- Any stale completed issue closed during sync still keeps its final estimate/type labels and assessment for auditability.
 - Any issues created by the sweep are deduplicated and include evidence.
 - Issues with open linked PRs are in the review state when the tracker has one.
 - Issues closed because a linked PR merged are in the done state when the tracker has one.
@@ -420,7 +421,7 @@ Cron prompts must be self-contained. Include:
 - verification requirements
 - delivery target
 
-Default scheduled behaviour should not merge PRs, publish releases, change secrets, spend money, delete branches, or make high-risk changes.
+Default scheduled behaviour should not merge PRs, publish releases, change secrets, spend money, delete branches, or make large-estimate changes.
 
 ## GitHub Adapter
 
@@ -431,9 +432,9 @@ Useful commands:
 ```bash
 gh repo view --json nameWithOwner,url
 gh label list --limit 200
-gh label create "risk:low" --color "0E8A16" --description "Low-risk issue suitable for agent execution when agent-ready"
+gh label create "estimate:small" --color "0E8A16" --description "Small issue suitable for agent execution when agent-ready"
 gh issue list --state open --limit 100 --json number,title,body,labels,url,createdAt,updatedAt,comments
-gh issue edit <number> --add-label "risk:low,type:docs,agent:ready"
+gh issue edit <number> --add-label "estimate:small,type:docs,agent:ready"
 gh issue comment <number> --body-file <file>
 gh issue close <number> --comment "Closed because linked PR <url> was merged."
 gh project list --owner <owner>
@@ -452,13 +453,13 @@ verify the final status.
 
 ## Linear Adapter
 
-Use Linear when the user asks for Linear and the connector/tool is available.
+Use Linear by default when the connector/tool is available and a team, project, or board can be
+resolved.
 
-Map labels directly:
-- `risk:*`
-- `type:*`
-- `agent:ready`
-- `needs:human`
+Map Linear fields and labels as follows:
+- Use Linear's estimate field for `small`, `medium`, and `large` when estimates are enabled.
+- If Linear estimates are unavailable, fall back to `estimate:*` labels.
+- Map `type:*`, `agent:ready`, and `needs:human` as labels.
 
 Map issue status to the workspace's existing workflow states. Do not create new status states unless
 the user asks.
@@ -481,7 +482,7 @@ $backlog-manager dry-run backlog from ./BACKLOG.md as the source of truth
 - Do not mutate trackers unless the user asks for `apply`.
 - Never remove or downgrade existing managed labels during classification; only fill gaps.
   PR-evidence sync (Step 5) is the only step allowed to remove `agent:ready`.
-- Do not add `agent:ready` to high-risk issues.
+- Do not add `agent:ready` to large-estimate issues.
 - Do not auto-close issues without clear linked merged PR evidence.
 - Do not mark a ticket done while linked PR checks are failing, pending, or unresolved review threads
   remain actionable.
@@ -495,8 +496,8 @@ $backlog-manager dry-run backlog from ./BACKLOG.md as the source of truth
 
 - [ ] Uses the small fixed label set.
 - [ ] Existing managed labels were respected; classification only filled gaps.
-- [ ] Each classified issue has one managed risk label and one managed type label.
-- [ ] `agent:ready` only appears on low-risk, clear, verifiable work.
+- [ ] Each classified issue has one managed estimate label and one managed type label.
+- [ ] `agent:ready` only appears on small, clear, verifiable work.
 - [ ] Human decisions are routed through `needs:human`, not extra labels.
 - [ ] Issue reasoning lives in Agent Assessment, not label sprawl.
 - [ ] Merged PR cleanup only happens with clear evidence.
