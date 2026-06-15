@@ -2,7 +2,11 @@ return {
 	"nvimdev/lspsaga.nvim",
 	branch = "main",
 	config = function()
-		require("lspsaga").setup({})
+		require("lspsaga").setup({
+			lightbulb = {
+				virtual_text = false,
+			},
+		})
 
 		local opts = { noremap = true, silent = true }
 
