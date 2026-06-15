@@ -406,7 +406,7 @@ End with a compact summary:
 For scheduled backlog management, run the full engineering-backlog loop every time so the repo stays in a healthy state: review backlog, label tickets, find repo drift, create/propose missing issues, sync ticket state, close stale/completed tickets, report safe branch-cleanup candidates, verify, and report.
 
 The trigger can be an always-on assistant running this skill on a schedule, or a GitHub Actions
-workflow. For Actions, copy this skill into the target repo at `.claude/skills/backlog-manager/SKILL.md`
+workflow. For Actions, copy this skill into the target repo at `.codex/skills/backlog-manager/SKILL.md`
 and have the workflow prompt invoke it with an explicit mode; a `workflow_dispatch` input makes
 dry-run vs apply a manual choice. Note that the default `GITHUB_TOKEN` cannot edit user-level GitHub
 Projects, so Actions runs should treat project board mutations as report-only.
