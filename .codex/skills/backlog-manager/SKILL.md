@@ -52,11 +52,13 @@ Supported sources:
 - **Linear** when the user provides the team/project/board path and a Linear connector is available.
 - **Explicit local backlog path** only when the user provides that path and says it is the source of truth.
 
-Default to GitHub Issues when the current repository has a GitHub remote and `gh` is installed and
-authenticated. If `gh` is missing or unauthenticated, stop and report the prerequisite instead of
-falling back to local planning files.
+Default to Linear when a Linear connector/tool is available and the workspace context can resolve a
+team, project, or board. If Linear is unavailable or cannot be resolved, fall back to GitHub Issues
+when the current repository has a GitHub remote and `gh` is installed and authenticated. If neither
+Linear nor GitHub Issues can be resolved, stop and report the missing prerequisite instead of falling
+back to local planning files.
 
-If the user does not name a tracker and no GitHub Issues source can be inferred, ask for the backlog
+If the user does not name a tracker and no Linear source can be resolved, ask for the backlog
 path/URL. Examples: a Linear board, a GitHub Project, a GitHub repo, or an explicit local backlog file.
 
 Local roadmap files, ticket files, planning docs, and README sections are context only unless the user
@@ -215,9 +217,9 @@ If repo docs disagree with the selected backlog source, treat that as quality dr
 Use the backlog source the user names.
 
 Otherwise:
+- Use Linear first when a Linear connector/tool is available and the workspace context can resolve a team, project, or board.
 - Use GitHub Issues only when `gh` is installed, authenticated, and the current directory has a GitHub remote.
 - Use GitHub Projects only when the user provides a project URL/path and `gh` can access it.
-- Use Linear only when the user provides a Linear team/project/board path and a Linear connector/tool is available.
 - Use a local backlog file only when the user explicitly provides the file path and says it is the source of truth.
 - If no backlog source can be resolved, stop and ask for the backlog path/URL or the missing setup.
 
