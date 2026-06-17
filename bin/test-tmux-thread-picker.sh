@@ -489,8 +489,13 @@ fi
 run_script --toggle-archive "$TEST_WORKTREE"
 rows="$(run_script --rows)"
 plain_rows="$(printf '%s' "$rows" | perl -pe 's/\e\[[0-9;]*m//g')"
-assert_not_contains "$plain_rows" "$TEST_WORKTREE" "archived worktree hidden by default"
+assert_contains "$plain_rows" "$TEST_WORKTREE" "archived open thread visible by default"
+assert_contains "$plain_rows" " A " "archived open thread keeps archive marker"
 assert_not_contains "$plain_rows" $'GROUP\t:: Archived' "Archived group hidden by default"
+
+archived_attention_rows="$(TMUX_THREAD_ATTENTION_ONLY=1 TMUX_MOCK_WORKTREE_ACTIVITY=0 TMUX_MOCK_WORKTREE_COMMAND=codex run_script --rows)"
+plain_archived_attention_rows="$(printf '%s' "$archived_attention_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+assert_contains "$plain_archived_attention_rows" "$TEST_WORKTREE" "attention mode keeps archived open codex thread"
 
 archived_rows="$(TMUX_THREAD_SHOW_ARCHIVED=1 run_script --rows)"
 plain_archived_rows="$(printf '%s' "$archived_rows" | perl -pe 's/\e\[[0-9;]*m//g')"

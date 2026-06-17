@@ -664,11 +664,13 @@ func (a *app) emitWorktreeRows() []row {
 }
 
 func (a *app) emitRow(kind, state, branch, target, window, path, selectionTarget, project, pinKey, rowSignal, processSignal, detailOverride string) (row, bool) {
-	if a.isArchived(pinKey) && os.Getenv("TMUX_THREAD_SHOW_ARCHIVED") != "1" {
+	archivedThread := a.isArchived(pinKey)
+	showArchived := os.Getenv("TMUX_THREAD_SHOW_ARCHIVED") == "1"
+	if archivedThread && kind != "OPEN" && !showArchived {
 		return row{}, false
 	}
 	archived := " "
-	if a.isArchived(pinKey) {
+	if archivedThread {
 		archived = "A"
 	}
 	pinned := " "
@@ -725,7 +727,7 @@ func (a *app) emitRow(kind, state, branch, target, window, path, selectionTarget
 	if pinned == "P" {
 		sortKey = "0"
 	}
-	if archived == "A" {
+	if archived == "A" && (kind != "OPEN" || showArchived) {
 		sortKey = "9"
 	}
 	rowPriority := "5"
