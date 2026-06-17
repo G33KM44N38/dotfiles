@@ -1,0 +1,4 @@
+interface:
+  display_name: "Send WhatsApp Jules"
+  short_description: "Draft and send confirmed WhatsApp messages to Jules."
+  default_prompt: "Send this message to Jules on WhatsApp after showing me the draft for confirmation."
