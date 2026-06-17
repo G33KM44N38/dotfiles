@@ -55,6 +55,7 @@ type app struct {
 	displayCacheFile       string
 	processWindowCacheFile string
 	codexHookStateIndex    string
+	activeFZFFile          string
 
 	repoCacheTTL          int
 	codexStateCacheTTL    int
@@ -132,6 +133,7 @@ func newApp(args []string) *app {
 		displayCacheFile:       filepath.Join(stateDir, "display-rows.tsv"),
 		processWindowCacheFile: filepath.Join(stateDir, "process-windows.tsv"),
 		codexHookStateIndex:    filepath.Join(stateDir, "codex-hook-states.tsv"),
+		activeFZFFile:          filepath.Join(stateDir, "active-fzf.tsv"),
 		repoCacheTTL:           getenvInt("TMUX_THREAD_CACHE_TTL", 300),
 		codexStateCacheTTL:     getenvInt("TMUX_THREAD_CODEX_CACHE_TTL", 0),
 		displayRefreshTTL:      getenvInt("TMUX_THREAD_DISPLAY_REFRESH_TTL", 3),
@@ -159,6 +161,8 @@ func (a *app) run() error {
 		return a.promptTitle(arg(a.args, 1))
 	case "--edit-title":
 		return a.editTitle(arg(a.args, 1))
+	case "--notify-fzf":
+		return a.notifyFZF()
 	}
 
 	if a.gitBin == "" {
@@ -210,6 +214,15 @@ func (a *app) run() error {
 
 	if a.mode == "--refresh-cache" {
 		return a.refreshCacheLocked()
+	}
+	if a.mode == "--live-rows" {
+		if target := arg(a.args, 1); target != "" {
+			a.displayRowsFile = target
+		}
+		_ = a.refreshLiveStateOverlay()
+		data, _ := os.ReadFile(a.displayRowsFile)
+		_, err := os.Stdout.Write(data)
+		return err
 	}
 
 	if a.shouldUseDisplayCache() {
@@ -525,13 +538,45 @@ while [ -S %s ]; do
       curl --silent --show-error --max-time 1 --unix-socket %s http --data-binary %s >/dev/null 2>&1 || exit 0
     fi
   fi
-  sleep "${TMUX_THREAD_WATCH_INTERVAL:-5}"
+  sleep "${TMUX_THREAD_WATCH_INTERVAL:-30}"
 done`, shellQuote(a.displayCacheFile), shellQuote(socket), shellQuote(a.self), shellQuote(socket), shellQuote(a.displayCacheFile), shellQuote(a.displayCacheFile), shellQuote(socket), shellQuote("reload("+a.self+" --filter-rows {q} < "+shellQuote(a.displayCacheFile)+")"))
 	cmd := exec.Command("sh", "-c", script)
 	cmd.Stdout = io.Discard
 	cmd.Stderr = io.Discard
 	_ = cmd.Start()
 	return nil
+}
+
+func (a *app) registerActiveFZF(socket, displayRowsFile, fzfRowsFile string) error {
+	if socket == "" || displayRowsFile == "" || fzfRowsFile == "" {
+		return nil
+	}
+	if err := os.MkdirAll(a.stateDir, 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(a.activeFZFFile, []byte(strings.Join([]string{socket, displayRowsFile, fzfRowsFile}, "\t")+"\n"), 0o644)
+}
+
+func (a *app) clearActiveFZF(socket string) {
+	line := firstLine(a.activeFZFFile)
+	parts := strings.Split(line, "\t")
+	if len(parts) > 0 && parts[0] == socket {
+		_ = os.Remove(a.activeFZFFile)
+	}
+}
+
+func (a *app) notifyFZF() error {
+	line := firstLine(a.activeFZFFile)
+	parts := strings.Split(line, "\t")
+	if len(parts) < 3 {
+		return nil
+	}
+	socket, displayRowsFile, fzfRowsFile := parts[0], parts[1], parts[2]
+	if socket == "" || displayRowsFile == "" || fzfRowsFile == "" || !isSocket(socket) {
+		return nil
+	}
+	command := "reload(" + a.self + " --live-rows " + shellQuote(displayRowsFile) + " | tee " + shellQuote(fzfRowsFile) + " | " + a.self + " --filter-rows {q})"
+	return exec.Command("curl", "--silent", "--show-error", "--max-time", "1", "--unix-socket", socket, "http", "--data-binary", command).Run()
 }
 
 func (a *app) buildRows() error {
@@ -862,7 +907,7 @@ func (a *app) buildCodexStateCache() error {
 		if len(parts) < 4 || !strings.Contains(parts[2], "codex") {
 			continue
 		}
-		state := hook[parts[3]]
+		state := a.hookStateForPath(hook, parts[3])
 		if state == "" {
 			state = "unknown"
 		}
@@ -904,6 +949,16 @@ func (a *app) readHookStates() map[string]string {
 		}
 	}
 	return result
+}
+
+func (a *app) hookStateForPath(hook map[string]string, path string) string {
+	if state := hook[path]; state != "" {
+		return state
+	}
+	if root := a.repoRoot(path); root != "" && root != path {
+		return hook[root]
+	}
+	return ""
 }
 
 func (a *app) ensureProcessWindowIndex() error {
@@ -1585,6 +1640,7 @@ func (a *app) pick() error {
 	sourceWindowIndex := strings.TrimSpace(a.output(a.tmuxBin, "display-message", "-p", "-t", a.sourcePane, "#{window_index}"))
 	sourceTarget := a.sourceSess + ":" + sourceWindowIndex
 	fzfRowsFileQ := shellQuote(a.fzfRowsFile)
+	fzfSocket := filepath.Join(a.tmpDir, "fzf.sock")
 	filterCurrentQuery := a.self + " --filter-rows {q}"
 	filteredRowsCommand := filterCurrentQuery + " < " + fzfRowsFileQ
 	reloadRowsCommand := a.self + " --rows | tee " + fzfRowsFileQ + " | " + filterCurrentQuery
@@ -1602,8 +1658,8 @@ func (a *app) pick() error {
 		"--border",
 		"--ansi",
 		"--disabled",
-		"--listen=" + filepath.Join(a.tmpDir, "fzf.sock"),
-		"--bind", "start:execute-silent(" + a.self + " --watch-fzf " + filepath.Join(a.tmpDir, "fzf.sock") + ")",
+		"--listen=" + fzfSocket,
+		"--bind", "start:execute-silent(" + a.self + " --watch-fzf " + fzfSocket + ")",
 		"--bind", "load:transform:[[ {1} = GROUP ]] && echo down",
 		"--bind", "result:transform:[[ {1} = GROUP ]] && echo down",
 		"--bind", "change:reload(" + filteredRowsCommand + ")+first",
@@ -1622,6 +1678,8 @@ func (a *app) pick() error {
 		"--bind", "(:clear-query+search(::)",
 		"--height=100%",
 	}
+	_ = a.registerActiveFZF(fzfSocket, a.displayRowsFile, a.fzfRowsFile)
+	defer a.clearActiveFZF(fzfSocket)
 	selected, _ := runInput(a.fzfBin, readLines(a.fzfRowsFile), args...)
 	if selected == "" {
 		return nil
@@ -1812,6 +1870,18 @@ func copyFile(src, dst string) error {
 func fileEmpty(path string) bool {
 	info, err := os.Stat(path)
 	return err != nil || info.Size() == 0
+}
+
+func firstLine(path string) string {
+	for _, line := range readLines(path) {
+		return line
+	}
+	return ""
+}
+
+func isSocket(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.Mode()&os.ModeSocket != 0
 }
 
 func cacheAgeSeconds(path string) (int, bool) {

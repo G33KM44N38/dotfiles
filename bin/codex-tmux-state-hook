@@ -77,3 +77,12 @@ index_tmp="$index_file.$$"
 awk -F '\t' -v cwd="$cwd" '$1 != cwd' "$index_file" 2>/dev/null >"$index_tmp" || true
 printf '%s\t%s\t%s\t%s\n' "$cwd" "$state" "$event" "$now" >>"$index_tmp"
 mv "$index_tmp" "$index_file"
+
+picker="$HOME/.dotfiles/bin/tmux-thread-picker.sh"
+if [ -x "$picker" ]; then
+	if [ -n "$timeout_bin" ]; then
+		"$timeout_bin" 1 "$picker" --notify-fzf >/dev/null 2>&1 || true
+	else
+		"$picker" --notify-fzf >/dev/null 2>&1 || true
+	fi
+fi
