@@ -199,6 +199,9 @@ case "${FZF_MOCK_MODE:-first-data}" in
 	query)
 		printf '%s\n' "${FZF_MOCK_QUERY:-new thread}"
 		;;
+	kind)
+		printf '%s\n' "$input" | awk -F '\t' -v kind="${FZF_MOCK_KIND:-OPEN}" '$1 == kind { print; exit }'
+		;;
 	first-data|*)
 		printf '%s\n' "$input" | awk -F '\t' '$1 != "GROUP" && NF { print; exit }'
 		;;
@@ -213,6 +216,18 @@ write_mock_curl() {
 exit 0
 EOF
 	chmod +x "$mock_bin/curl"
+}
+
+write_mock_ps() {
+	cat >"$mock_bin/ps" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "${TMUX_MOCK_BUSY_PROCESS:-0}" = "1" ]; then
+	printf '2000 1002 node node server.js\n'
+fi
+EOF
+	chmod +x "$mock_bin/ps"
 }
 
 setup_fixture() {
@@ -257,6 +272,7 @@ setup_fixture() {
 	write_mock_tmux
 	write_mock_fzf
 	write_mock_curl
+	write_mock_ps
 	export PATH="$mock_bin:$PATH"
 }
 
@@ -285,6 +301,56 @@ if [ ! -s "$XDG_STATE_HOME/tmux-thread-picker/titles" ]; then
 	pass "set-title clears title on empty value"
 else
 	fail "set-title clears title on empty value"
+fi
+
+: >"$TMUX_MOCK_LOG"
+run_script --prompt-title "$TEST_REPO"
+prompt_log="$(cat "$TMUX_MOCK_LOG")"
+assert_contains "$prompt_log" "command-prompt -p thread title run-shell" "prompt-title opens tmux command prompt"
+assert_contains "$prompt_log" "--set-title" "prompt-title command sets title"
+assert_contains "$prompt_log" "$TEST_REPO" "prompt-title passes selected key"
+
+rm -f "$XDG_STATE_HOME/tmux-thread-picker/repo-candidates.tsv" \
+	"$XDG_STATE_HOME/tmux-thread-picker/worktrees.tsv" \
+	"$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv"
+run_script --refresh-repo-cache
+repo_cache_content="$(cat "$XDG_STATE_HOME/tmux-thread-picker/repo-candidates.tsv")"
+assert_contains "$repo_cache_content" "$TEST_REPO" "refresh-repo-cache populates repo cache"
+if [ ! -e "$XDG_STATE_HOME/tmux-thread-picker/worktrees.tsv" ] &&
+	[ ! -e "$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv" ]; then
+	pass "refresh-repo-cache skips worktree and display caches"
+else
+	fail "refresh-repo-cache skips worktree and display caches"
+fi
+
+repo_snapshot="$tmp_root/repo-candidates-snapshot.tsv"
+cp "$XDG_STATE_HOME/tmux-thread-picker/repo-candidates.tsv" "$repo_snapshot"
+run_script --refresh-worktree-cache "$repo_snapshot"
+worktree_cache_content="$(cat "$XDG_STATE_HOME/tmux-thread-picker/worktrees.tsv")"
+assert_contains "$worktree_cache_content" "$TEST_WORKTREE"$'\t'"feature" "refresh-worktree-cache populates worktree cache"
+if [ ! -e "$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv" ]; then
+	pass "refresh-worktree-cache skips display cache"
+else
+	fail "refresh-worktree-cache skips display cache"
+fi
+
+rm -f "$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv"
+run_script --refresh-cache
+if [ -s "$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv" ]; then
+	pass "refresh-cache writes display cache in full mode"
+else
+	fail "refresh-cache writes display cache in full mode"
+fi
+rm -f "$XDG_STATE_HOME/tmux-thread-picker/repo-candidates.tsv" \
+	"$XDG_STATE_HOME/tmux-thread-picker/worktrees.tsv" \
+	"$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv"
+TMUX_THREAD_ATTENTION_ONLY=1 run_script --refresh-cache
+if [ ! -e "$XDG_STATE_HOME/tmux-thread-picker/repo-candidates.tsv" ] &&
+	[ ! -e "$XDG_STATE_HOME/tmux-thread-picker/worktrees.tsv" ] &&
+	[ ! -e "$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv" ]; then
+	pass "attention refresh-cache skips inventory caches"
+else
+	fail "attention refresh-cache skips inventory caches"
 fi
 
 run_script --toggle-pin "$TEST_REPO"
@@ -348,6 +414,27 @@ else
 	pass "real fzf filter matches visible row text (fzf unavailable)"
 fi
 
+printf '%s\n' "$rows" >"$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv"
+rm -f "$XDG_STATE_HOME/tmux-thread-picker/repo-candidates.tsv" \
+	"$XDG_STATE_HOME/tmux-thread-picker/worktrees.tsv"
+: >"$FZF_MOCK_INPUT"
+TMUX_THREAD_USE_DISPLAY_CACHE=1 FZF_MOCK_MODE=none run_script >/dev/null
+cached_picker_input="$(cat "$FZF_MOCK_INPUT")"
+assert_contains "$cached_picker_input" "Main Thread" "fresh display cache feeds picker input"
+if [ ! -e "$XDG_STATE_HOME/tmux-thread-picker/repo-candidates.tsv" ] &&
+	[ ! -e "$XDG_STATE_HOME/tmux-thread-picker/worktrees.tsv" ]; then
+	pass "fresh display cache skips inventory caches"
+else
+	fail "fresh display cache skips inventory caches"
+fi
+
+printf 'GROUP\t:: Old Cache\t\t\t\told\t :: Old Cache\nOPEN\told cache row\ttest:9\tmain\t%s\tdemo\t OPEN old cache row\n' "$TEST_REPO" >"$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv"
+: >"$FZF_MOCK_INPUT"
+TMUX_THREAD_USE_DISPLAY_CACHE=0 FZF_MOCK_MODE=none run_script >/dev/null
+cache_bypass_input="$(cat "$FZF_MOCK_INPUT")"
+assert_not_contains "$cache_bypass_input" "Old Cache" "cache disabled bypasses valid display cache"
+assert_contains "$cache_bypass_input" "Main Thread" "cache disabled rebuilds picker rows"
+
 rm -f "$XDG_STATE_HOME/tmux-thread-picker/repo-candidates.tsv" \
 	"$XDG_STATE_HOME/tmux-thread-picker/worktrees.tsv" \
 	"$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv"
@@ -370,6 +457,12 @@ assert_not_contains "$plain_pinned_attention_rows" "$TEST_WORKTREE" "attention m
 activity_attention_rows="$(TMUX_THREAD_ATTENTION_ONLY=1 TMUX_MOCK_WORKTREE_ACTIVITY=1 TMUX_MOCK_WORKTREE_COMMAND=zsh run_script --rows)"
 plain_activity_attention_rows="$(printf '%s' "$activity_attention_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
 assert_not_contains "$plain_activity_attention_rows" "$TEST_WORKTREE" "attention mode ignores tmux activity flag"
+rm -f "$XDG_STATE_HOME/tmux-thread-picker/process-windows.tsv"
+busy_attention_rows="$(TMUX_THREAD_ATTENTION_ONLY=1 TMUX_MOCK_BUSY_PROCESS=1 TMUX_MOCK_WORKTREE_ACTIVITY=0 TMUX_MOCK_WORKTREE_COMMAND=zsh run_script --rows)"
+plain_busy_attention_rows="$(printf '%s' "$busy_attention_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+assert_contains "$plain_busy_attention_rows" "$TEST_WORKTREE" "attention mode keeps busy process thread"
+assert_contains "$plain_busy_attention_rows" "!" "attention mode marks busy process thread"
+rm -f "$XDG_STATE_HOME/tmux-thread-picker/process-windows.tsv"
 codex_attention_rows="$(TMUX_THREAD_ATTENTION_ONLY=1 TMUX_MOCK_WORKTREE_ACTIVITY=0 TMUX_MOCK_WORKTREE_COMMAND=codex run_script --rows)"
 plain_codex_attention_rows="$(printf '%s' "$codex_attention_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
 assert_contains "$plain_codex_attention_rows" "$TEST_WORKTREE" "attention mode keeps open codex cli"
@@ -403,6 +496,10 @@ archived_rows="$(TMUX_THREAD_SHOW_ARCHIVED=1 run_script --rows)"
 plain_archived_rows="$(printf '%s' "$archived_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
 assert_contains "$plain_archived_rows" $'GROUP\t:: Archived' "archived mode includes Archived group"
 assert_contains "$plain_archived_rows" "$TEST_WORKTREE" "archived mode includes archived worktree"
+attention_archived_rows="$(TMUX_THREAD_ATTENTION_ONLY=1 TMUX_THREAD_SHOW_ARCHIVED=1 run_script --rows)"
+plain_attention_archived_rows="$(printf '%s' "$attention_archived_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+assert_contains "$plain_attention_archived_rows" $'GROUP\t:: Archived' "archived mode disables attention filter"
+assert_contains "$plain_attention_archived_rows" "$TEST_WORKTREE" "archived attention mode includes archived worktree"
 
 list_output="$(run_script --list)"
 assert_contains "$list_output" ":: Pinned" "list mode includes readable group headers"
@@ -441,6 +538,10 @@ assert_contains "$cached_picker_input" $'GROUP\t:: Pinned' "rebuilt grouped cach
 
 run_script --kill-window OPEN test:2 test:1
 assert_file_contains_line "$TMUX_MOCK_LOG" "kill-window -t test:2" "kill-window kills selected open window"
+: >"$TMUX_MOCK_LOG"
+run_script --kill-window OPEN test:2 test:2
+assert_file_contains_line "$TMUX_MOCK_LOG" "switch-client -t test:1" "kill-window switches away from current window"
+assert_file_contains_line "$TMUX_MOCK_LOG" "kill-window -t test:2" "kill-window kills current window after fallback"
 
 printf '\n%d passed, %d failed\n' "$pass_count" "$fail_count"
 [ "$fail_count" -eq 0 ]

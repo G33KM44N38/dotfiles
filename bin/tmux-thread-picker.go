@@ -161,11 +161,19 @@ func (a *app) run() error {
 		return a.editTitle(arg(a.args, 1))
 	}
 
-	if a.tmuxBin == "" || !a.tmuxAvailable() {
-		return errors.New("thread picker: tmux server not available")
-	}
 	if a.gitBin == "" {
 		return errors.New("thread picker: git not found in PATH")
+	}
+	switch a.mode {
+	case "--refresh-repo-cache":
+		a.setupScanRoots()
+		return a.refreshRepoCache()
+	case "--refresh-worktree-cache":
+		return a.refreshWorktreeCache(arg(a.args, 1))
+	}
+
+	if a.tmuxBin == "" || !a.tmuxAvailable() {
+		return errors.New("thread picker: tmux server not available")
 	}
 
 	switch a.mode {
@@ -505,7 +513,7 @@ func (a *app) watchFZF(socket string) error {
 	if socket == "" {
 		return nil
 	}
-	script := fmt.Sprintf(`last=""
+	script := fmt.Sprintf(`last="$(cksum %s 2>/dev/null || true)"
 sleep "${TMUX_THREAD_WATCH_INITIAL_DELAY:-0}"
 while [ -S %s ]; do
   %s --refresh-cache >/dev/null 2>&1 || true
@@ -518,7 +526,7 @@ while [ -S %s ]; do
     fi
   fi
   sleep "${TMUX_THREAD_WATCH_INTERVAL:-5}"
-done`, shellQuote(socket), shellQuote(a.self), shellQuote(socket), shellQuote(a.displayCacheFile), shellQuote(a.displayCacheFile), shellQuote(socket), shellQuote("reload("+a.self+" --filter-rows {q} < "+shellQuote(a.displayCacheFile)+")"))
+done`, shellQuote(a.displayCacheFile), shellQuote(socket), shellQuote(a.self), shellQuote(socket), shellQuote(a.displayCacheFile), shellQuote(a.displayCacheFile), shellQuote(socket), shellQuote("reload("+a.self+" --filter-rows {q} < "+shellQuote(a.displayCacheFile)+")"))
 	cmd := exec.Command("sh", "-c", script)
 	cmd.Stdout = io.Discard
 	cmd.Stderr = io.Discard
@@ -544,16 +552,7 @@ func (a *app) buildRows() error {
 	if !a.attentionModeEnabled() {
 		_ = a.addCurrentRepoCandidate(a.sourcePath)
 		_ = a.addCurrentRepoCandidate(filepath.Join(a.home, ".dotfiles"))
-		if roots := os.Getenv("TMUX_THREAD_ROOTS"); roots != "" {
-			for _, root := range strings.Split(roots, ":") {
-				a.addScanRoot(root)
-			}
-		} else {
-			a.addScanRoot(filepath.Join(a.home, "coding"))
-			a.addScanRoot(filepath.Join(a.home, "Projects"))
-			a.addScanRoot(filepath.Join(a.home, "dev"))
-			a.addScanRoot(filepath.Join(a.home, "Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain"))
-		}
+		a.setupScanRoots()
 		_ = a.collectCachedRepoCandidates()
 		_ = a.ensureWorktreeCache()
 	}
@@ -1093,6 +1092,20 @@ func (a *app) addScanRoot(path string) {
 	a.scanRoots = append(a.scanRoots, real)
 }
 
+func (a *app) setupScanRoots() {
+	a.scanRoots = nil
+	if roots := os.Getenv("TMUX_THREAD_ROOTS"); roots != "" {
+		for _, root := range strings.Split(roots, ":") {
+			a.addScanRoot(root)
+		}
+		return
+	}
+	a.addScanRoot(filepath.Join(a.home, "coding"))
+	a.addScanRoot(filepath.Join(a.home, "Projects"))
+	a.addScanRoot(filepath.Join(a.home, "dev"))
+	a.addScanRoot(filepath.Join(a.home, "Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain"))
+}
+
 func (a *app) collectCachedRepoCandidates() error {
 	_ = os.MkdirAll(a.stateDir, 0o755)
 	if !fileEmpty(a.repoCacheFile) {
@@ -1112,7 +1125,7 @@ func (a *app) collectCachedRepoCandidates() error {
 }
 
 func (a *app) refreshRepoCacheBackground() {
-	cmd := exec.Command(a.self, "--refresh-cache")
+	cmd := exec.Command(a.self, "--refresh-repo-cache")
 	cmd.Env = append(os.Environ(), "TMUX_THREAD_PICKER_ENTRYPOINT="+a.self)
 	cmd.Stdout = io.Discard
 	cmd.Stderr = io.Discard
@@ -1190,7 +1203,19 @@ func (a *app) ensureWorktreeCache() error {
 }
 
 func (a *app) refreshWorktreeCacheBackground() {
-	_ = a.refreshWorktreeCache(a.repoCandidatesFile)
+	_ = os.MkdirAll(a.stateDir, 0o755)
+	repoSnapshot := filepath.Join(a.stateDir, "repo-candidates-for-worktrees."+strconv.Itoa(os.Getpid())+".tsv")
+	data, err := os.ReadFile(a.repoCandidatesFile)
+	if err != nil {
+		data = nil
+	}
+	_ = os.WriteFile(repoSnapshot, data, 0o644)
+	script := shellQuote(a.self) + " --refresh-worktree-cache " + shellQuote(repoSnapshot) + "; rm -f " + shellQuote(repoSnapshot)
+	cmd := exec.Command("sh", "-c", script)
+	cmd.Env = append(os.Environ(), "TMUX_THREAD_PICKER_ENTRYPOINT="+a.self)
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
+	_ = cmd.Start()
 }
 
 func (a *app) refreshWorktreeCache(repoSource string) error {
