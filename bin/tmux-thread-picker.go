@@ -539,24 +539,28 @@ func (a *app) buildRows() error {
 	if p := normalizeExistingPath(a.sourcePath); p != "" {
 		a.sourcePath = p
 	}
-	_ = a.addCurrentRepoCandidate(a.sourcePath)
-	_ = a.addCurrentRepoCandidate(filepath.Join(a.home, ".dotfiles"))
-	if roots := os.Getenv("TMUX_THREAD_ROOTS"); roots != "" {
-		for _, root := range strings.Split(roots, ":") {
-			a.addScanRoot(root)
-		}
-	} else {
-		a.addScanRoot(filepath.Join(a.home, "coding"))
-		a.addScanRoot(filepath.Join(a.home, "Projects"))
-		a.addScanRoot(filepath.Join(a.home, "dev"))
-		a.addScanRoot(filepath.Join(a.home, "Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain"))
-	}
-	_ = a.collectCachedRepoCandidates()
-	_ = a.ensureWorktreeCache()
 
 	var rows []row
+	if !a.attentionModeEnabled() {
+		_ = a.addCurrentRepoCandidate(a.sourcePath)
+		_ = a.addCurrentRepoCandidate(filepath.Join(a.home, ".dotfiles"))
+		if roots := os.Getenv("TMUX_THREAD_ROOTS"); roots != "" {
+			for _, root := range strings.Split(roots, ":") {
+				a.addScanRoot(root)
+			}
+		} else {
+			a.addScanRoot(filepath.Join(a.home, "coding"))
+			a.addScanRoot(filepath.Join(a.home, "Projects"))
+			a.addScanRoot(filepath.Join(a.home, "dev"))
+			a.addScanRoot(filepath.Join(a.home, "Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain"))
+		}
+		_ = a.collectCachedRepoCandidates()
+		_ = a.ensureWorktreeCache()
+	}
 	rows = append(rows, a.emitOpenRows()...)
-	rows = append(rows, a.emitWorktreeRows()...)
+	if !a.attentionModeEnabled() {
+		rows = append(rows, a.emitWorktreeRows()...)
+	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].sortKey < rows[j].sortKey })
 	display := a.renderGroupedRows(rows)
 	display = a.addGroupSearchColumn(display)

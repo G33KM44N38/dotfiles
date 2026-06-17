@@ -348,10 +348,20 @@ else
 	pass "real fzf filter matches visible row text (fzf unavailable)"
 fi
 
+rm -f "$XDG_STATE_HOME/tmux-thread-picker/repo-candidates.tsv" \
+	"$XDG_STATE_HOME/tmux-thread-picker/worktrees.tsv" \
+	"$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv"
 attention_rows="$(TMUX_THREAD_ATTENTION_ONLY=1 TMUX_MOCK_WORKTREE_ACTIVITY=0 TMUX_MOCK_WORKTREE_COMMAND=zsh run_script --rows)"
 plain_attention_rows="$(printf '%s' "$attention_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
 assert_contains "$plain_attention_rows" "$TEST_REPO" "attention mode keeps current thread"
 assert_not_contains "$plain_attention_rows" "$TEST_WORKTREE" "attention mode hides inactive unpinned thread"
+if [ ! -e "$XDG_STATE_HOME/tmux-thread-picker/repo-candidates.tsv" ] &&
+	[ ! -e "$XDG_STATE_HOME/tmux-thread-picker/worktrees.tsv" ] &&
+	[ ! -e "$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv" ]; then
+	pass "attention mode skips full inventory caches"
+else
+	fail "attention mode skips full inventory caches"
+fi
 
 run_script --toggle-pin "$TEST_WORKTREE"
 pinned_attention_rows="$(TMUX_THREAD_ATTENTION_ONLY=1 TMUX_MOCK_WORKTREE_ACTIVITY=0 TMUX_MOCK_WORKTREE_COMMAND=zsh run_script --rows)"
