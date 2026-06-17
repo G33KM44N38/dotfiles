@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sentry Issue Manager"
+  short_description: "Triage Sentry issues into safe engineering work"
+  default_prompt: "Use $sentry-issue-manager dry-run for my Sentry project and report which issues need fixes, tracking tickets, or human decisions."
