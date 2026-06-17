@@ -1,7 +1,16 @@
 model = "gpt-5.5"
 model_reasoning_effort = "low"
-notify = ["/Users/boss/.dotfiles/bin/codex-glow-notify"]
 service_tier = "fast"
+notify = [
+	"/Users/boss/.dotfiles/.codex/computer-use/Codex Computer Use.app/Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient",
+	"turn-ended",
+	"--previous-notify",
+	"[\"\\/Users\\/boss\\/.dotfiles\\/bin\\/codex-glow-notify\"]",
+]
+approval_policy = "never"
+approvals_reviewer = "user"
+sandbox_mode = "danger-full-access"
+
 [projects."/Users/boss/coding/work/babacoiffure_monorepo.git/main"]
 trust_level = "trusted"
 
@@ -53,8 +62,65 @@ trust_level = "trusted"
 [projects."/Users/boss/coding/work/dorali"]
 trust_level = "trusted"
 
-[mcp_servers.linear]
-url = "https://mcp.linear.app/mcp"
+[projects."/Volumes/LAB/GOLD"]
+trust_level = "trusted"
+
+[projects."/Users/boss/Documents/Playground"]
+trust_level = "trusted"
+
+[projects."/Users/boss/Documents/Codex/2026-05-25/how-do-i-use-computer-use"]
+trust_level = "trusted"
+
+[projects."/Volumes/LAB/GOLD/video-feed-app"]
+trust_level = "trusted"
+
+[projects."/Users/boss/Documents/Codex/2026-05-25/computer-use-computer-use-users-boss"]
+trust_level = "trusted"
+
+[projects."/Users/boss/Documents/DORALI"]
+trust_level = "trusted"
+
+[projects."/Users/boss/Documents/Codex/2026-05-26/trouve-moi-un-glacier-sur-bourgoin"]
+trust_level = "trusted"
+
+[projects."/Users/boss/Documents/Codex/2026-05-27/met-moi-un-rappel-pour-ce"]
+trust_level = "trusted"
+
+[projects."/Users/boss/coding/work/babacoiffure_monorepo"]
+trust_level = "trusted"
+
+[projects."/Volumes/LAB/.GOLD"]
+trust_level = "trusted"
+
+[projects."/Users/boss/coding/work/aircomplain"]
+trust_level = "trusted"
+
+[projects."/Users/boss/Documents/Codex/2026-05-29/modifie-mon-calendrier-et-reporte-mon"]
+trust_level = "trusted"
+
+[projects."/Users/boss/Documents/Codex/2026-05-29/je-veux-tester-un-truc-tu"]
+trust_level = "trusted"
+
+[projects."/Users/boss/Documents/Codex/2026-05-29/tu-penses-que-tu-pourrais-m"]
+trust_level = "trusted"
+
+[projects."/Users/boss/Documents/Codex/2026-05-29/files-mentioned-by-the-user-img"]
+trust_level = "trusted"
+
+[projects."/Users/boss/Documents/Codex/2026-06-02/fais-moi-un-pdf-avec-ces"]
+trust_level = "trusted"
+
+[projects."/Users/boss/.oh-my-zsh"]
+trust_level = "trusted"
+
+[projects."/Users/boss/coding/work/dorali.git"]
+trust_level = "trusted"
+
+# [mcp_servers.linear]
+# url = "https://mcp.linear.app/mcp"
+
+# [mcp_servers.linear.tools.save_issue]
+# approval_mode = "approve"
 
 [mcp_servers.axiom]
 url = "https://mcp.axiom.co/mcp?org-id=babacoiffure-zp6k"
@@ -63,6 +129,24 @@ bearer_token_env_var = "AXIOM_MCP_TOKEN"
 [mcp_servers.sentry]
 command = "true"
 enabled = false
+
+[mcp_servers.node_repl]
+args = []
+command = "/Applications/Codex.app/Contents/Resources/cua_node/bin/node_repl"
+startup_timeout_sec = 120
+
+[mcp_servers.node_repl.env]
+NODE_REPL_NATIVE_PIPE_CONNECT_TIMEOUT_MS = "1000"
+NODE_REPL_NODE_MODULE_DIRS = "/Applications/Codex.app/Contents/Resources/cua_node/lib/node_modules"
+NODE_REPL_NODE_PATH = "/Applications/Codex.app/Contents/Resources/cua_node/bin/node"
+NODE_REPL_TRUSTED_CODE_PATHS = "/Users/boss/.codex"
+CODEX_HOME = "/Users/boss/.codex"
+NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S = "a3f3ca79fe2bff56076b895f1f13a8f673168160bd79d880cc34b4500e08a71c"
+BROWSER_USE_AVAILABLE_BACKENDS = "iab"
+NODE_REPL_INSTRUCTIONS_USE_CASE_BROWSER = "Control the in-app browser in conjunction with the Browser Plugin."
+BROWSER_USE_CODEX_APP_BUILD_FLAVOR = "prod"
+BROWSER_USE_CODEX_APP_VERSION = "26.609.30741"
+CODEX_CLI_PATH = "/Applications/Codex.app/Contents/Resources/codex"
 
 # [mcp_servers.codebase-retrieval]
 # command = "auggie"
@@ -84,6 +168,18 @@ fast_default_opt_out = true
 [plugins."github@openai-curated"]
 enabled = true
 
+[plugins."documents@openai-primary-runtime"]
+enabled = true
+
+[plugins."spreadsheets@openai-primary-runtime"]
+enabled = true
+
+[plugins."presentations@openai-primary-runtime"]
+enabled = true
+
+[plugins."browser@openai-bundled"]
+enabled = true
+
 [tui]
 theme = "ansi"
 terminal_title = []
@@ -102,19 +198,79 @@ status_line = [
 hooks = true
 goals = true
 apps = true
+js_repl = false
 
 [hooks.state]
 
 [hooks.state."/Users/boss/.codex/hooks.json:permission_request:0:0"]
-trusted_hash = "sha256:f6254a62ddefb39d032df7cb63c28be155b1b4f1ad12881730fe837ad7ccb89e"
+trusted_hash = "sha256:99a31184d1fc22b3d6b9b17a2910e43e111646c882a71f6e32d7eb8ebc0bbba2"
+
+[hooks.state."/Users/boss/.codex/hooks.json:post_tool_use:0:0"]
+trusted_hash = "sha256:70e3404ba710ae88997a454400955d04290f91109ad7629c374d959b5f554fc1"
 
 [hooks.state."/Users/boss/.codex/hooks.json:session_start:0:0"]
-trusted_hash = "sha256:dccb2d1d9a57f51945d9ce19fb514874df49f09a21421e56acb2eeaf023f8849"
+trusted_hash = "sha256:5488e6d4d779a534f43583dc5d8366bb8ac69351073dc94de1fc1a5be4e5d32a"
 
 [hooks.state."/Users/boss/.codex/hooks.json:stop:0:0"]
-trusted_hash = "sha256:144bcbfbfed57b117eb5bc1cc3ea7e79f1cccc7ff183be324b06589fc31d24ad"
+trusted_hash = "sha256:36a65b37668bd50add1694e060901d4d1d2b8273f9cd3402f41e3dd4bc693f63"
 
 [hooks.state."/Users/boss/.codex/hooks.json:user_prompt_submit:0:0"]
 enabled = true
+trusted_hash = "sha256:cf9c48c973a651179667994905ad563c97f603f5e4b8ab507efea8586c02aaef"
+
+[hooks.state."/Users/boss/Documents/DORALI/.codex/hooks.json:stop:0:0"]
+trusted_hash = "sha256:9392b698078efa56e730fab3a975cccc168d788be979068301106049a16da160"
+
+[hooks.state."/Users/boss/coding/work/dorali/.codex/hooks.json:stop:0:0"]
+trusted_hash = "sha256:27e19050e1eb7844614572a8735160a74dae7efeb30c700785cf86731be7bd6c"
+
+[hooks.state."/Users/boss/.codex/hooks.json:permission_request:0:1"]
+trusted_hash = "sha256:99a31184d1fc22b3d6b9b17a2910e43e111646c882a71f6e32d7eb8ebc0bbba2"
+
+[hooks.state."/Users/boss/.codex/hooks.json:post_tool_use:0:1"]
+trusted_hash = "sha256:70e3404ba710ae88997a454400955d04290f91109ad7629c374d959b5f554fc1"
+
+[hooks.state."/Users/boss/.codex/hooks.json:session_start:0:1"]
+trusted_hash = "sha256:5488e6d4d779a534f43583dc5d8366bb8ac69351073dc94de1fc1a5be4e5d32a"
+
+[hooks.state."/Users/boss/.codex/hooks.json:user_prompt_submit:0:1"]
+trusted_hash = "sha256:cf9c48c973a651179667994905ad563c97f603f5e4b8ab507efea8586c02aaef"
+
+[hooks.state."/Users/boss/.codex/hooks.json:stop:0:1"]
+trusted_hash = "sha256:36a65b37668bd50add1694e060901d4d1d2b8273f9cd3402f41e3dd4bc693f63"
+
+[hooks.state."/Users/boss/.codex/hooks.json:permission_request:1:0"]
+trusted_hash = "sha256:f6254a62ddefb39d032df7cb63c28be155b1b4f1ad12881730fe837ad7ccb89e"
+
+[hooks.state."/Users/boss/.codex/hooks.json:post_tool_use:1:0"]
+trusted_hash = "sha256:d0d2b14744cd3e502fec948a7d325d48a77bda3396fe5a6b3fd0b582e50ca7d3"
+
+[hooks.state."/Users/boss/.codex/hooks.json:session_start:1:0"]
+trusted_hash = "sha256:dccb2d1d9a57f51945d9ce19fb514874df49f09a21421e56acb2eeaf023f8849"
+
+[hooks.state."/Users/boss/.codex/hooks.json:user_prompt_submit:1:0"]
 trusted_hash = "sha256:0964f451705304ad5334bcaacd42201929be8c31210a527b1b2d4f9fe7549658"
+
+[hooks.state."/Users/boss/.codex/hooks.json:stop:1:0"]
+trusted_hash = "sha256:144bcbfbfed57b117eb5bc1cc3ea7e79f1cccc7ff183be324b06589fc31d24ad"
+
+[desktop]
+git-branch-prefix = "codex/r"
+keepRemoteControlAwakeWhilePluggedIn = true
+
+[desktop.open-in-target-preferences]
+global = "ghostty"
+
+[desktop.open-in-target-preferences.perPath]
+"/Users/boss/coding/work/babacoiffure_monorepo.git/main" = "ghostty"
+
+[marketplaces.openai-bundled]
+last_updated = "2026-06-13T19:20:31Z"
+source_type = "local"
+source = "/Users/boss/.dotfiles/.codex/.tmp/bundled-marketplaces/openai-bundled"
+
+[marketplaces.openai-primary-runtime]
+last_updated = "2026-06-01T19:21:14Z"
+source_type = "local"
+source = "/Users/boss/.cache/codex-runtimes/codex-primary-runtime/plugins/openai-primary-runtime"
 # multi_agent = true
