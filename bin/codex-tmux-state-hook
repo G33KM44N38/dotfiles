@@ -69,13 +69,26 @@ state_file="$state_dir/$key.tsv"
 raw_file="$state_dir/$key.json"
 tmp_file="$state_file.$$"
 
-printf '%s\t%s\t%s\t%s\n' "$cwd" "$state" "$event" "$now" >"$tmp_file"
+started="$now"
+if [ -s "$state_file" ]; then
+	previous="$(cat "$state_file" 2>/dev/null || true)"
+	previous_state="$(printf '%s\n' "$previous" | awk -F '\t' 'NR == 1 { print $2 }')"
+	previous_started="$(printf '%s\n' "$previous" | awk -F '\t' 'NR == 1 { print $5 }')"
+	previous_updated="$(printf '%s\n' "$previous" | awk -F '\t' 'NR == 1 { print $4 }')"
+	case "$event:$previous_state" in
+		PostToolUse:running|PermissionRequest:running|Stop:running|SubagentStop:running|Stop:attention|SubagentStop:attention)
+			started="${previous_started:-$previous_updated}"
+			;;
+	esac
+fi
+
+printf '%s\t%s\t%s\t%s\t%s\n' "$cwd" "$state" "$event" "$now" "$started" >"$tmp_file"
 mv "$tmp_file" "$state_file"
 printf '%s\n' "$payload" >"$raw_file" 2>/dev/null || true
 
 index_tmp="$index_file.$$"
 awk -F '\t' -v cwd="$cwd" '$1 != cwd' "$index_file" 2>/dev/null >"$index_tmp" || true
-printf '%s\t%s\t%s\t%s\n' "$cwd" "$state" "$event" "$now" >>"$index_tmp"
+printf '%s\t%s\t%s\t%s\t%s\n' "$cwd" "$state" "$event" "$now" "$started" >>"$index_tmp"
 mv "$index_tmp" "$index_file"
 
 picker="$HOME/.dotfiles/bin/tmux-thread-picker.sh"

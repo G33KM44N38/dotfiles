@@ -92,6 +92,12 @@ type worktreeRow struct {
 	relative string
 }
 
+type hookInfo struct {
+	state   string
+	updated int64
+	started int64
+}
+
 func main() {
 	a := newApp(os.Args[1:])
 	if err := a.run(); err != nil {
@@ -148,6 +154,12 @@ func (a *app) run() error {
 			query = a.args[1]
 		}
 		return filterRows(os.Stdin, os.Stdout, query)
+	}
+	if a.mode == "--has-running-row" {
+		if rowsHaveRunningState(arg(a.args, 1)) {
+			fmt.Println("1")
+		}
+		return nil
 	}
 
 	switch a.mode {
@@ -527,9 +539,14 @@ func (a *app) watchFZF(socket string) error {
 		return nil
 	}
 	script := fmt.Sprintf(`last="$(cksum %s 2>/dev/null || true)"
+last_cache_check="$(date +%%s)"
 sleep "${TMUX_THREAD_WATCH_INITIAL_DELAY:-0}"
 while [ -S %s ]; do
-  %s --refresh-cache >/dev/null 2>&1 || true
+  now="$(date +%%s)"
+  if [ "$((now - last_cache_check))" -ge "${TMUX_THREAD_WATCH_INTERVAL:-30}" ]; then
+    last_cache_check="$now"
+    %s --refresh-cache >/dev/null 2>&1 || true
+  fi
   [ -S %s ] || exit 0
   if [ -s %s ]; then
     checksum="$(cksum %s 2>/dev/null || true)"
@@ -538,8 +555,15 @@ while [ -S %s ]; do
       curl --silent --show-error --max-time 1 --unix-socket %s http --data-binary %s >/dev/null 2>&1 || exit 0
     fi
   fi
-  sleep "${TMUX_THREAD_WATCH_INTERVAL:-30}"
-done`, shellQuote(a.displayCacheFile), shellQuote(socket), shellQuote(a.self), shellQuote(socket), shellQuote(a.displayCacheFile), shellQuote(a.displayCacheFile), shellQuote(socket), shellQuote("reload("+a.self+" --filter-rows {q} < "+shellQuote(a.displayCacheFile)+")"))
+  active_line="$(cat %s 2>/dev/null || true)"
+  active_socket="$(printf '%%s\n' "$active_line" | awk -F '\t' 'NR == 1 { print $1 }')"
+  display_rows="$(printf '%%s\n' "$active_line" | awk -F '\t' 'NR == 1 { print $2 }')"
+  fzf_rows="$(printf '%%s\n' "$active_line" | awk -F '\t' 'NR == 1 { print $3 }')"
+  if [ "$active_socket" = %s ] && [ -n "$display_rows" ] && [ -n "$fzf_rows" ] && [ "$(%s --has-running-row "$display_rows")" = "1" ]; then
+    curl --silent --show-error --max-time 1 --unix-socket %s http --data-binary "reload(%s --live-rows '$display_rows' | tee '$fzf_rows' | %s --filter-rows {q})" >/dev/null 2>&1 || exit 0
+  fi
+  sleep "${TMUX_THREAD_WORK_TIMER_INTERVAL:-1}"
+done`, shellQuote(a.displayCacheFile), shellQuote(socket), shellQuote(a.self), shellQuote(socket), shellQuote(a.displayCacheFile), shellQuote(a.displayCacheFile), shellQuote(socket), shellQuote("reload("+a.self+" --filter-rows {q} < "+shellQuote(a.displayCacheFile)+")"), shellQuote(a.activeFZFFile), shellQuote(socket), shellQuote(a.self), shellQuote(socket), shellQuote(a.self), shellQuote(a.self))
 	cmd := exec.Command("sh", "-c", script)
 	cmd.Stdout = io.Discard
 	cmd.Stderr = io.Discard
@@ -652,8 +676,10 @@ func (a *app) emitOpenRows() []row {
 		if activityFlag == "1" || bellFlag == "1" {
 			rowSignal = "look"
 		}
-		switch a.windowCodexState(windowID) {
+		workDuration := ""
+		switch info := a.windowCodexInfo(windowID); info.state {
 		case "done":
+			workDuration = workDurationBetween(info.started, info.updated)
 			if a.hasSeenFinished(path) {
 				rowSignal = "open"
 				if currentMarker == "*" {
@@ -665,6 +691,7 @@ func (a *app) emitOpenRows() []row {
 		case "running":
 			_ = a.clearSeenFinished(path)
 			rowSignal = "codex_running"
+			workDuration = workDurationSince(info.started)
 		}
 		if a.windowHasCodexCLI(windowID) {
 			if rowSignal != "codex_running" && rowSignal != "codex_done" && rowSignal != "current" {
@@ -675,7 +702,7 @@ func (a *app) emitOpenRows() []row {
 		if a.windowHasRunningProcess(windowID) {
 			processSignal = "process"
 		}
-		if r, ok := a.emitRow("OPEN", state, branch, target, windowName, path, target, project, path, rowSignal, processSignal, relative); ok {
+		if r, ok := a.emitRow("OPEN", state, branch, target, windowName, path, target, project, path, rowSignal, processSignal, relative, workDuration); ok {
 			out = append(out, r)
 		}
 		appendLine(a.openPathsFile, path)
@@ -701,14 +728,14 @@ func (a *app) emitWorktreeRows() []row {
 		if relative == "" {
 			relative = a.projectRelativePath(wt.path)
 		}
-		if r, ok := a.emitRow("WT", "work", wt.branch, "<open>", filepath.Base(wt.path), wt.path, wt.path, project, wt.path, "work", "", relative); ok {
+		if r, ok := a.emitRow("WT", "work", wt.branch, "<open>", filepath.Base(wt.path), wt.path, wt.path, project, wt.path, "work", "", relative, ""); ok {
 			out = append(out, r)
 		}
 	}
 	return out
 }
 
-func (a *app) emitRow(kind, state, branch, target, window, path, selectionTarget, project, pinKey, rowSignal, processSignal, detailOverride string) (row, bool) {
+func (a *app) emitRow(kind, state, branch, target, window, path, selectionTarget, project, pinKey, rowSignal, processSignal, detailOverride, workDuration string) (row, bool) {
 	archivedThread := a.isArchived(pinKey)
 	showArchived := os.Getenv("TMUX_THREAD_SHOW_ARCHIVED") == "1"
 	if archivedThread && kind != "OPEN" && !showArchived {
@@ -759,7 +786,8 @@ func (a *app) emitRow(kind, state, branch, target, window, path, selectionTarget
 	title := padText(a.threadTitle(pinKey, fallbackTitle), 30)
 	detail := padText(relative, 56)
 	branchCol := padText(branch, 56)
-	display := fmt.Sprintf("%s%s %s %s  %s  %s  %s",
+	workCol := padText(workDuration, 11)
+	display := fmt.Sprintf("%s%s %s %s  %s  %s  %s  %s",
 		dot,
 		procMarker,
 		a.colorText(a.c.red, pinned+archived),
@@ -767,6 +795,7 @@ func (a *app) emitRow(kind, state, branch, target, window, path, selectionTarget
 		title,
 		a.colorText(a.c.dim, detail),
 		a.colorText(a.c.magenta, branchCol),
+		a.colorText(a.c.dim, workCol),
 	)
 	sortKey := "1"
 	if pinned == "P" {
@@ -901,32 +930,40 @@ func (a *app) buildCodexStateCache() error {
 		return copyFile(a.codexStateCacheFile, a.codexStateRowsFile)
 	}
 	hook := a.readHookStates()
-	stateByWindow := map[string]string{}
+	stateByWindow := map[string]hookInfo{}
 	for _, line := range readLines(a.paneRowsFile) {
 		parts := strings.Split(line, "\t")
 		if len(parts) < 4 || !strings.Contains(parts[2], "codex") {
 			continue
 		}
-		state := a.hookStateForPath(hook, parts[3])
-		if state == "" {
-			state = "unknown"
+		info := a.hookStateForPath(hook, parts[3])
+		if info.state == "" {
+			info.state = "unknown"
 		}
 		window := parts[0]
-		if state == "running" || (state == "done" && stateByWindow[window] != "running") || stateByWindow[window] == "" {
-			stateByWindow[window] = state
+		current := stateByWindow[window]
+		if info.state == "running" || (info.state == "done" && current.state != "running") || current.state == "" {
+			stateByWindow[window] = info
 		}
 	}
 	var lines []string
-	for window, state := range stateByWindow {
-		lines = append(lines, window+"\t"+state)
+	for window, info := range stateByWindow {
+		line := window + "\t" + info.state
+		if info.updated > 0 {
+			line += "\t" + strconv.FormatInt(info.updated, 10)
+			if info.started > 0 {
+				line += "\t" + strconv.FormatInt(info.started, 10)
+			}
+		}
+		lines = append(lines, line)
 	}
 	sort.Strings(lines)
 	_ = writeLines(a.codexStateCacheFile, lines)
 	return copyFile(a.codexStateCacheFile, a.codexStateRowsFile)
 }
 
-func (a *app) readHookStates() map[string]string {
-	result := map[string]string{}
+func (a *app) readHookStates() map[string]hookInfo {
+	result := map[string]hookInfo{}
 	now := time.Now().Unix()
 	staleAfter := int64(getenvInt("TMUX_THREAD_CODEX_HOOK_STALE_AFTER", 86400))
 	for _, line := range readLines(a.codexHookStateIndex) {
@@ -938,27 +975,32 @@ func (a *app) readHookStates() map[string]string {
 		if parts[0] == "" || updated == 0 || now-updated > staleAfter {
 			continue
 		}
+		started, _ := strconv.ParseInt(field(parts, 4), 10, 64)
+		if started == 0 {
+			started = updated
+		}
 		state := "unknown"
 		if parts[1] == "running" {
 			state = "running"
 		} else if parts[1] == "attention" || parts[1] == "done" {
 			state = "done"
 		}
-		if state == "running" || (state == "done" && result[parts[0]] != "running") || result[parts[0]] == "" {
-			result[parts[0]] = state
+		current := result[parts[0]]
+		if state == "running" || (state == "done" && current.state != "running") || current.state == "" {
+			result[parts[0]] = hookInfo{state: state, updated: updated, started: started}
 		}
 	}
 	return result
 }
 
-func (a *app) hookStateForPath(hook map[string]string, path string) string {
-	if state := hook[path]; state != "" {
-		return state
+func (a *app) hookStateForPath(hook map[string]hookInfo, path string) hookInfo {
+	if info := hook[path]; info.state != "" {
+		return info
 	}
 	if root := a.repoRoot(path); root != "" && root != path {
 		return hook[root]
 	}
-	return ""
+	return hookInfo{}
 }
 
 func (a *app) ensureProcessWindowIndex() error {
@@ -1076,13 +1118,22 @@ func isShellName(base string) bool {
 }
 
 func (a *app) windowCodexState(windowID string) string {
+	return a.windowCodexInfo(windowID).state
+}
+
+func (a *app) windowCodexInfo(windowID string) hookInfo {
 	for _, line := range readLines(a.codexStateRowsFile) {
 		parts := strings.Split(line, "\t")
 		if len(parts) >= 2 && parts[0] == windowID {
-			return parts[1]
+			updated, _ := strconv.ParseInt(field(parts, 2), 10, 64)
+			started, _ := strconv.ParseInt(field(parts, 3), 10, 64)
+			if started == 0 {
+				started = updated
+			}
+			return hookInfo{state: parts[1], updated: updated, started: started}
 		}
 	}
-	return ""
+	return hookInfo{}
 }
 
 func (a *app) windowHasCodexCLI(windowID string) bool {
@@ -1541,6 +1592,15 @@ func displayCacheHasGroups(path string) bool {
 	return found
 }
 
+func rowsHaveRunningState(path string) bool {
+	for _, r := range readRows(path) {
+		if r.kind == "OPEN" && strings.TrimSpace(substr(stripANSI(r.display), 6, 12)) == "run" {
+			return true
+		}
+	}
+	return false
+}
+
 func (a *app) writeDisplayCache() error {
 	if fileEmpty(a.displayRowsFile) || a.attentionModeEnabled() || os.Getenv("TMUX_THREAD_SHOW_ARCHIVED") == "1" {
 		return nil
@@ -1576,7 +1636,7 @@ func (a *app) refreshLiveStateOverlay() error {
 		}
 		plain := stripANSI(r.display)
 		pin := substr(plain, 3, 5)
-		tail := substr(plain, 14, len(plain))
+		columns := splitDisplayColumns(plain)
 		targetParts := strings.SplitN(r.target, ":", 2)
 		currentMarker := " "
 		if len(targetParts) == 2 && targetParts[0] == a.sourceSess && targetParts[1] == sourceWindowIndex {
@@ -1584,12 +1644,15 @@ func (a *app) refreshLiveStateOverlay() error {
 		}
 		stateLabel := "open" + currentMarker
 		dot := " "
+		workDuration := ""
 		windowID := windowIDByTarget[r.target]
-		switch a.windowCodexState(windowID) {
+		switch info := a.windowCodexInfo(windowID); info.state {
 		case "running":
 			dot = a.colorText(a.c.proc, "▶")
 			stateLabel = "run"
+			workDuration = workDurationSince(info.started)
 		case "done":
+			workDuration = workDurationBetween(info.started, info.updated)
 			if !a.hasSeenFinished(r.pinKey) {
 				dot = a.colorText(a.c.dotCurrent, "●")
 				stateLabel = "wait"
@@ -1599,7 +1662,16 @@ func (a *app) refreshLiveStateOverlay() error {
 		if a.windowHasRunningProcess(windowID) {
 			proc = a.colorText(a.c.proc, "!")
 		}
-		r.display = dot + proc + " " + a.colorText(a.c.red, pin) + " " + a.colorText(a.c.green, padText(stateLabel, 6)) + "  " + tail
+		r.display = fmt.Sprintf("%s%s %s %s  %s  %s  %s  %s",
+			dot,
+			proc,
+			a.colorText(a.c.red, pin),
+			a.colorText(a.c.green, padText(stateLabel, 6)),
+			a.colorText(a.c.reset, padText(field(columns, 0), 30)),
+			a.colorText(a.c.dim, padText(field(columns, 1), 56)),
+			a.colorText(a.c.magenta, padText(field(columns, 2), 56)),
+			a.colorText(a.c.dim, padText(workDuration, 11)),
+		)
 		out = append(out, r)
 	}
 	out = a.addGroupSearchColumn(out)
@@ -1644,7 +1716,7 @@ func (a *app) pick() error {
 	filterCurrentQuery := a.self + " --filter-rows {q}"
 	filteredRowsCommand := filterCurrentQuery + " < " + fzfRowsFileQ
 	reloadRowsCommand := a.self + " --rows | tee " + fzfRowsFileQ + " | " + filterCurrentQuery
-	header := fmt.Sprintf("      %s  %s  %s  %s", padText("state", 6), padText("title", 30), padText("path", 56), padText("branch", 56))
+	header := fmt.Sprintf("      %s  %s  %s  %s  %s", padText("state", 6), padText("title", 30), padText("path", 56), padText("branch", 56), padText("work", 11))
 
 	args := []string{
 		"--prompt=thread > ",
@@ -1788,6 +1860,52 @@ func padText(value string, width int) string {
 		}
 	}
 	return fmt.Sprintf("%-*s", width, value)
+}
+
+func splitDisplayColumns(plain string) []string {
+	return []string{
+		strings.TrimSpace(substr(plain, 14, 44)),
+		strings.TrimSpace(substr(plain, 46, 102)),
+		strings.TrimSpace(substr(plain, 104, 160)),
+		strings.TrimSpace(substr(plain, 162, 173)),
+	}
+}
+
+func workDurationSince(started int64) string {
+	if started <= 0 {
+		return ""
+	}
+	return formatWorkDuration(time.Since(time.Unix(started, 0)))
+}
+
+func workDurationBetween(started, updated int64) string {
+	if started <= 0 || updated <= 0 {
+		return ""
+	}
+	return formatWorkDuration(time.Unix(updated, 0).Sub(time.Unix(started, 0)))
+}
+
+func formatWorkDuration(d time.Duration) string {
+	if d < 0 {
+		d = 0
+	}
+	total := int(d.Seconds())
+	if total < 60 {
+		return fmt.Sprintf("%ds", total)
+	}
+	minutes := total / 60
+	seconds := total % 60
+	if minutes < 60 {
+		return fmt.Sprintf("%dm%02ds", minutes, seconds)
+	}
+	hours := minutes / 60
+	minutes %= 60
+	if hours < 24 {
+		return fmt.Sprintf("%dh%02dm%02ds", hours, minutes, seconds)
+	}
+	days := hours / 24
+	hours %= 24
+	return fmt.Sprintf("%dd%02dh%02dm", days, hours, minutes)
 }
 
 func normalizeExistingPath(p string) string {
