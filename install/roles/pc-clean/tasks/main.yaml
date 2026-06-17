@@ -1,0 +1,42 @@
+---
+- name: PC Clean | Check Go source exists
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/.dotfiles/dev/pc_clean_go/go.mod"
+  register: pc_clean_go_mod
+
+- name: PC Clean | Ensure bin directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/.dotfiles/bin"
+    state: directory
+    mode: "0755"
+  when: pc_clean_go_mod.stat.exists
+
+- name: PC Clean | Build native binary
+  ansible.builtin.shell: |
+    set -euo pipefail
+
+    GO_BIN="$(command -v go || true)"
+    if [ -z "$GO_BIN" ] && [ -x /opt/homebrew/bin/go ]; then GO_BIN=/opt/homebrew/bin/go; fi
+    if [ -z "$GO_BIN" ] && [ -x /opt/homebrew/opt/go/bin/go ]; then GO_BIN=/opt/homebrew/opt/go/bin/go; fi
+    if [ -z "$GO_BIN" ] && [ -x /opt/homebrew/opt/go@1.21/bin/go ]; then GO_BIN=/opt/homebrew/opt/go@1.21/bin/go; fi
+    if [ -z "$GO_BIN" ] && [ -x /usr/local/bin/go ]; then GO_BIN=/usr/local/bin/go; fi
+    if [ -z "$GO_BIN" ] && [ -x /usr/local/go/bin/go ]; then GO_BIN=/usr/local/go/bin/go; fi
+    if [ -z "$GO_BIN" ] && [ -x /snap/bin/go ]; then GO_BIN=/snap/bin/go; fi
+
+    if [ -z "$GO_BIN" ]; then
+      echo "go not found; install the go role before pc-clean"
+      exit 1
+    fi
+
+    "$GO_BIN" build -trimpath -buildvcs=false -o "{{ ansible_facts.env.HOME }}/.dotfiles/bin/pc_clean" .
+  args:
+    chdir: "{{ ansible_facts.env.HOME }}/.dotfiles/dev/pc_clean_go"
+    executable: /bin/bash
+  changed_when: true
+  when: pc_clean_go_mod.stat.exists
+
+- name: PC Clean | Ensure binary is executable
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/.dotfiles/bin/pc_clean"
+    mode: "0755"
+  when: pc_clean_go_mod.stat.exists
