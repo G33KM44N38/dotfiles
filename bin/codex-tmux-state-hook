@@ -23,6 +23,7 @@ timeout_bin="$(command -v gtimeout 2>/dev/null || command -v timeout 2>/dev/null
 payload="$(cat)"
 now="$(date +%s)"
 cwd="${PWD:-}"
+pane_id="${TMUX_PANE:-}"
 
 payload_cwd="$(printf '%s' "$payload" | perl -MJSON::PP -0777 -ne '
 	eval {
@@ -95,7 +96,8 @@ case "$event" in
 		;;
 esac
 
-key="$(printf '%s' "$cwd" | shasum -a 256 | awk '{print $1}')"
+state_key="${pane_id:-$cwd}"
+key="$(printf '%s' "$state_key" | shasum -a 256 | awk '{print $1}')"
 state_file="$state_dir/$key.tsv"
 raw_file="$state_dir/$key.json"
 tmp_file="$state_file.$$"
@@ -113,13 +115,17 @@ if [ -s "$state_file" ]; then
 	esac
 fi
 
-printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$cwd" "$state" "$event" "$now" "$started" "$session_id" >"$tmp_file"
+printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$cwd" "$state" "$event" "$now" "$started" "$session_id" "$pane_id" >"$tmp_file"
 mv "$tmp_file" "$state_file"
 printf '%s\n' "$payload" >"$raw_file" 2>/dev/null || true
 
 index_tmp="$index_file.$$"
-awk -F '\t' -v cwd="$cwd" '$1 != cwd' "$index_file" 2>/dev/null >"$index_tmp" || true
-printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$cwd" "$state" "$event" "$now" "$started" "$session_id" >>"$index_tmp"
+if [ -n "$pane_id" ]; then
+	awk -F '\t' -v pane="$pane_id" -v cwd="$cwd" '($7 != pane) && !($7 == "" && $1 == cwd)' "$index_file" 2>/dev/null >"$index_tmp" || true
+else
+	awk -F '\t' -v cwd="$cwd" '$1 != cwd' "$index_file" 2>/dev/null >"$index_tmp" || true
+fi
+printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$cwd" "$state" "$event" "$now" "$started" "$session_id" "$pane_id" >>"$index_tmp"
 mv "$index_tmp" "$index_file"
 
 picker="$HOME/.dotfiles/bin/tmux-thread-picker.sh"

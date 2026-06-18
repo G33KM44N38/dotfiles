@@ -100,6 +100,7 @@ type hookInfo struct {
 	updated   int64
 	started   int64
 	sessionID string
+	paneID    string
 }
 
 type paneInfo struct {
@@ -783,7 +784,9 @@ func (a *app) emitOpenRows() []row {
 					paneRelative = a.projectRelativePath(panePath)
 				}
 				pinKey := panePath
-				if len(titleKeys) > 0 {
+				if paneKey := a.codexTitleKeyForPane(pane.paneID); paneKey != "" {
+					pinKey = paneKey
+				} else if len(titleKeys) > 0 {
 					pinKey = titleKeys[0]
 					titleKeys = titleKeys[1:]
 				}
@@ -1320,12 +1323,56 @@ func (a *app) readHookStates() map[string]hookInfo {
 		} else if parts[1] == "attention" || parts[1] == "done" {
 			state = "done"
 		}
+		info := hookInfo{state: state, updated: updated, started: started, sessionID: field(parts, 5), paneID: field(parts, 6)}
 		current := result[parts[0]]
 		if state == "running" || (state == "done" && current.state != "running") || current.state == "" {
-			result[parts[0]] = hookInfo{state: state, updated: updated, started: started, sessionID: field(parts, 5)}
+			result[parts[0]] = info
 		}
 	}
 	return result
+}
+
+func (a *app) readHookStatesByPane() map[string]hookInfo {
+	result := map[string]hookInfo{}
+	now := time.Now().Unix()
+	staleAfter := int64(getenvInt("TMUX_THREAD_CODEX_HOOK_STALE_AFTER", 86400))
+	for _, line := range readLines(a.codexHookStateIndex) {
+		parts := strings.Split(line, "\t")
+		paneID := field(parts, 6)
+		if len(parts) < 7 || paneID == "" {
+			continue
+		}
+		updated, _ := strconv.ParseInt(parts[3], 10, 64)
+		if updated == 0 || now-updated > staleAfter {
+			continue
+		}
+		started, _ := strconv.ParseInt(field(parts, 4), 10, 64)
+		if started == 0 {
+			started = updated
+		}
+		state := "unknown"
+		if parts[1] == "running" {
+			state = "running"
+		} else if parts[1] == "attention" || parts[1] == "done" {
+			state = "done"
+		}
+		current := result[paneID]
+		if updated >= current.updated {
+			result[paneID] = hookInfo{state: state, updated: updated, started: started, sessionID: field(parts, 5), paneID: paneID}
+		}
+	}
+	return result
+}
+
+func (a *app) codexTitleKeyForPane(paneID string) string {
+	if paneID == "" {
+		return ""
+	}
+	info := a.readHookStatesByPane()[paneID]
+	if info.sessionID == "" {
+		return ""
+	}
+	return "codex:" + info.sessionID
 }
 
 func (a *app) hookStateForPath(hook map[string]hookInfo, path string) hookInfo {
