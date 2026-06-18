@@ -86,12 +86,19 @@ window_for_worktree() {
 		[ -n "$window_id" ] || continue
 
 		tagged_path="$("$tmux_bin" show-options -w -t "$window_id" -v @secondary-worktree-path 2>/dev/null || true)"
-		if [ "$tagged_path" = "$worktree" ]; then
+		if [ -n "$tagged_path" ] && [ ! -d "$tagged_path" ]; then
+			"$tmux_bin" set-option -wuq -t "$window_id" @secondary-worktree-path >/dev/null 2>&1 || true
+			tagged_path=""
+		fi
+		if [ -n "$tagged_path" ] && [ "$tagged_path" = "$worktree" ]; then
 			"$tmux_bin" display-message -p -t "$window_id" '#{session_name}:#{window_index}'
 			return 0
 		fi
 
-		pane_root="$(repo_root "$pane_path")"
+		pane_root=""
+		if [ -d "$pane_path" ]; then
+			pane_root="$(repo_root "$pane_path")"
+		fi
 		if [ -n "$pane_root" ] && [ "$pane_root" = "$worktree" ]; then
 			"$tmux_bin" display-message -p -t "$window_id" '#{session_name}:#{window_index}'
 			return 0

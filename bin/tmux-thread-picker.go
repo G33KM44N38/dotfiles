@@ -713,8 +713,14 @@ func (a *app) emitOpenRows() []row {
 		if windowID == "" {
 			continue
 		}
+		if taggedPath != "" && !isDir(taggedPath) {
+			_ = exec.Command(a.tmuxBin, "set-option", "-wuq", "-t", windowID, "@secondary-worktree-path").Run()
+			taggedPath = ""
+		}
 		path := firstNonEmpty(taggedPath, panePath)
-		path = normalizeExistingPath(path)
+		if path == "" || !isDir(path) {
+			continue
+		}
 		if path == "" {
 			continue
 		}
@@ -770,8 +776,8 @@ func (a *app) emitOpenRows() []row {
 		if len(codexPanes) > 1 {
 			titleKeys := a.codexTitleKeysForPath(path, len(codexPanes))
 			for _, pane := range codexPanes {
-				panePath := normalizeExistingPath(firstNonEmpty(pane.path, path))
-				if panePath == "" {
+				panePath := firstNonEmpty(pane.path, path)
+				if panePath == "" || !isDir(panePath) {
 					panePath = path
 				}
 				paneBranch, paneProject, paneRelative := a.worktreeMetadata(panePath)
@@ -1923,7 +1929,7 @@ func (a *app) newWorktreeBaseDir(path string) (string, error) {
 	}
 	base := filepath.Base(common)
 	if base != ".git" && strings.HasSuffix(base, ".git") {
-		return filepath.Join(common, "worktrees", "threads"), nil
+		return filepath.Join(common, "threads"), nil
 	}
 	return filepath.Join(filepath.Dir(path), "worktrees", "threads"), nil
 }

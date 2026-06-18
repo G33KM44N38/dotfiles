@@ -282,13 +282,15 @@ fi
 if [ ! -s "$cache_file" ]; then
 	fail "secondary picker: unable to build worktree cache for $repo_root"
 fi
-
 worktree_entries=()
 remote_branch_entries=()
 while IFS=$'\t' read -r entry_kind entry_value entry_extra; do
 	[ -z "$entry_kind" ] && continue
 	case "$entry_kind" in
-		WT) worktree_entries+=("${entry_value}"$'\t'"${entry_extra}") ;;
+		WT)
+			[ -d "$entry_value" ] || continue
+			worktree_entries+=("${entry_value}"$'\t'"${entry_extra}")
+			;;
 		RB) remote_branch_entries+=("$entry_value") ;;
 	esac
 done <"$cache_file"
@@ -395,6 +397,23 @@ sanitize_branch_path() {
 pick_worktree_base_dir() {
 	local root="$1"
 	local preferred="$2"
+	local common_dir common_base
+	common_dir="$(git -C "$root" rev-parse --git-common-dir 2>/dev/null || true)"
+	if [ -n "$common_dir" ]; then
+		if [ "${common_dir#/}" = "$common_dir" ]; then
+			common_dir="$(cd "$root" && cd "$common_dir" 2>/dev/null && pwd || true)"
+		fi
+		if [ -n "$common_dir" ] && [ -d "$common_dir" ]; then
+			common_base="$(basename "$common_dir")"
+			if [ "$common_base" != ".git" ] && [[ "$common_base" == *.git ]]; then
+				printf '%s\n' "$common_dir/branches"
+			else
+				printf '%s\n' "$(dirname "$common_dir")/worktrees/branches"
+			fi
+			return 0
+		fi
+	fi
+
 	local normalized top preferred_parent
 	normalized="$(normalize_existing_path "$preferred" || true)"
 	if [ -n "$normalized" ] && [ -d "$normalized" ]; then
@@ -430,6 +449,7 @@ if [ "$selected_kind" = "RB" ]; then
 
 	if [ -z "$selected_path" ]; then
 		base_dir="$(pick_worktree_base_dir "$repo_root" "$source_path")"
+		mkdir -p "$base_dir"
 		branch_dir="$(sanitize_branch_path "$local_branch")"
 		[ -z "$branch_dir" ] && branch_dir="wt"
 		target_path="$base_dir/$branch_dir"
