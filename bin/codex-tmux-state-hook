@@ -37,6 +37,37 @@ payload_cwd="$(printf '%s' "$payload" | perl -MJSON::PP -0777 -ne '
 	};
 ' 2>/dev/null || true)"
 
+session_id="$(printf '%s' "$payload" | perl -MJSON::PP -0777 -ne '
+	eval {
+		my $data = decode_json($_);
+		my %wanted = map { $_ => 1 } qw(session_id sessionID conversation_id conversationID thread_id threadID);
+		my $find;
+		$find = sub {
+			my ($node) = @_;
+			if (ref($node) eq "HASH") {
+				for my $key (keys %$node) {
+					my $value = $node->{$key};
+					if ($wanted{$key} && defined $value && !ref($value) && length $value) {
+						return $value;
+					}
+				}
+				for my $value (values %$node) {
+					my $found = $find->($value);
+					return $found if defined $found && length $found;
+				}
+			} elsif (ref($node) eq "ARRAY") {
+				for my $value (@$node) {
+					my $found = $find->($value);
+					return $found if defined $found && length $found;
+				}
+			}
+			return undef;
+		};
+		my $found = $find->($data);
+		print "$found\n" if defined $found && length $found;
+	};
+' 2>/dev/null || true)"
+
 [ -n "$payload_cwd" ] && cwd="$payload_cwd"
 [ -n "$cwd" ] || exit 0
 
@@ -82,13 +113,13 @@ if [ -s "$state_file" ]; then
 	esac
 fi
 
-printf '%s\t%s\t%s\t%s\t%s\n' "$cwd" "$state" "$event" "$now" "$started" >"$tmp_file"
+printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$cwd" "$state" "$event" "$now" "$started" "$session_id" >"$tmp_file"
 mv "$tmp_file" "$state_file"
 printf '%s\n' "$payload" >"$raw_file" 2>/dev/null || true
 
 index_tmp="$index_file.$$"
 awk -F '\t' -v cwd="$cwd" '$1 != cwd' "$index_file" 2>/dev/null >"$index_tmp" || true
-printf '%s\t%s\t%s\t%s\t%s\n' "$cwd" "$state" "$event" "$now" "$started" >>"$index_tmp"
+printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$cwd" "$state" "$event" "$now" "$started" "$session_id" >>"$index_tmp"
 mv "$index_tmp" "$index_file"
 
 picker="$HOME/.dotfiles/bin/tmux-thread-picker.sh"

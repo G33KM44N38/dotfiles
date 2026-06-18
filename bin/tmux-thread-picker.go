@@ -3,12 +3,14 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -47,6 +49,7 @@ type app struct {
 
 	pinFile                string
 	titleFile              string
+	autoTitleFile          string
 	archiveFile            string
 	seenFile               string
 	repoCacheFile          string
@@ -93,9 +96,18 @@ type worktreeRow struct {
 }
 
 type hookInfo struct {
-	state   string
-	updated int64
-	started int64
+	state     string
+	updated   int64
+	started   int64
+	sessionID string
+}
+
+type paneInfo struct {
+	windowID string
+	paneID   string
+	command  string
+	path     string
+	pid      string
 }
 
 func main() {
@@ -131,6 +143,7 @@ func newApp(args []string) *app {
 		sourcePath:             os.Getenv("TMUX_THREAD_SOURCE_PATH"),
 		pinFile:                filepath.Join(stateDir, "pins"),
 		titleFile:              filepath.Join(stateDir, "titles"),
+		autoTitleFile:          filepath.Join(stateDir, "auto-titles"),
 		archiveFile:            filepath.Join(stateDir, "archives"),
 		seenFile:               filepath.Join(stateDir, "seen-finished"),
 		repoCacheFile:          filepath.Join(stateDir, "repo-candidates.tsv"),
@@ -195,6 +208,8 @@ func (a *app) run() error {
 	switch a.mode {
 	case "--kill-window":
 		return a.killThreadWindow(arg(a.args, 1), arg(a.args, 2), arg(a.args, 3))
+	case "--regen-title":
+		return a.regenerateTitle(arg(a.args, 1), arg(a.args, 2))
 	case "--watch-fzf":
 		return a.watchFZF(arg(a.args, 1))
 	}
@@ -487,6 +502,52 @@ func (a *app) setTitle(key, title string) error {
 	return writeLines(a.titleFile, out)
 }
 
+func (a *app) clearTitleInFile(path, key string) error {
+	if key == "" {
+		return nil
+	}
+	var out []string
+	for _, line := range readLines(path) {
+		parts := strings.SplitN(line, "\t", 2)
+		if len(parts) > 0 && parts[0] == key {
+			continue
+		}
+		if line != "" {
+			out = append(out, line)
+		}
+	}
+	return writeLines(path, out)
+}
+
+func (a *app) regenerateTitle(key, target string) error {
+	if key == "" {
+		return nil
+	}
+	_ = a.clearTitleInFile(a.titleFile, key)
+	_ = a.clearTitleInFile(a.autoTitleFile, key)
+	pane := paneTarget(target)
+	if strings.HasPrefix(key, "codex:") {
+		title := a.codexLocalThreadTitle(strings.TrimPrefix(key, "codex:"))
+		if title == "" && pane != "" {
+			captured := a.capturePaneText(pane)
+			title = linearTitleFromText(captured)
+			if title == "" && os.Getenv("TMUX_THREAD_AI_TITLE") != "0" {
+				title = a.summarizePaneSubject(captured, "")
+			}
+		}
+		title = cleanGeneratedTitle(title)
+		if title != "" {
+			return a.setGeneratedTitle(key, title)
+		}
+		return nil
+	}
+	if sessionKey := a.codexTitleKeyForPath(key); sessionKey != "" {
+		_ = a.clearTitleInFile(a.autoTitleFile, sessionKey)
+	}
+	a.ensureGeneratedTitle(key, pane, key, filepath.Base(key))
+	return nil
+}
+
 func (a *app) promptTitle(key string) error {
 	if key == "" {
 		return nil
@@ -511,6 +572,8 @@ func (a *app) editTitle(key string) error {
 }
 
 func (a *app) killThreadWindow(kind, target, sourceTarget string) error {
+	target = windowTarget(target)
+	sourceTarget = windowTarget(sourceTarget)
 	if kind != "OPEN" || target == "" || !strings.Contains(target, ":") {
 		return nil
 	}
@@ -702,6 +765,41 @@ func (a *app) emitOpenRows() []row {
 		if a.windowHasRunningProcess(windowID) {
 			processSignal = "process"
 		}
+		codexPanes := a.windowCodexPanes(windowID)
+		if len(codexPanes) > 1 {
+			titleKeys := a.codexTitleKeysForPath(path, len(codexPanes))
+			for _, pane := range codexPanes {
+				panePath := normalizeExistingPath(firstNonEmpty(pane.path, path))
+				if panePath == "" {
+					panePath = path
+				}
+				paneBranch, paneProject, paneRelative := a.worktreeMetadata(panePath)
+				if paneBranch == "" {
+					if root := a.repoRoot(panePath); root != "" {
+						panePath = root
+					}
+					paneBranch = a.branchName(panePath)
+					paneProject = a.projectName(panePath)
+					paneRelative = a.projectRelativePath(panePath)
+				}
+				pinKey := panePath
+				if len(titleKeys) > 0 {
+					pinKey = titleKeys[0]
+					titleKeys = titleKeys[1:]
+				}
+				a.ensureGeneratedTitle(pinKey, pane.paneID, panePath, filepath.Base(panePath))
+				if r, ok := a.emitRow("OPEN", state, paneBranch, target, windowName, panePath, targetWithPane(target, pane.paneID), paneProject, pinKey, rowSignal, processSignal, paneRelative, workDuration); ok {
+					out = append(out, r)
+				}
+				appendLine(a.openPathsFile, panePath)
+			}
+			continue
+		}
+		paneID := ""
+		if len(codexPanes) == 1 {
+			paneID = codexPanes[0].paneID
+		}
+		a.ensureGeneratedTitle(path, paneID, path, filepath.Base(path))
 		if r, ok := a.emitRow("OPEN", state, branch, target, windowName, path, target, project, path, rowSignal, processSignal, relative, workDuration); ok {
 			out = append(out, r)
 		}
@@ -912,8 +1010,245 @@ func (a *app) threadTitle(key, fallback string) string {
 				return parts[1]
 			}
 		}
+		if sessionKey := a.codexTitleKeyForPath(key); sessionKey != "" {
+			if title := titleForKey(a.autoTitleFile, sessionKey); title != "" {
+				return title
+			}
+		}
+		for _, line := range readLines(a.autoTitleFile) {
+			parts := strings.SplitN(line, "\t", 2)
+			if len(parts) == 2 && parts[0] == key && parts[1] != "" {
+				return parts[1]
+			}
+		}
 	}
 	return fallback
+}
+
+func (a *app) hasManualTitle(key string) bool {
+	if key == "" {
+		return false
+	}
+	for _, line := range readLines(a.titleFile) {
+		parts := strings.SplitN(line, "\t", 2)
+		if len(parts) == 2 && parts[0] == key && parts[1] != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *app) ensureGeneratedTitle(key, paneID, path, fallback string) {
+	if key == "" || paneID == "" || a.hasManualTitle(key) {
+		return
+	}
+	titleKey := firstNonEmpty(a.codexTitleKeyForPath(path), key)
+	if containsTitle(a.autoTitleFile, titleKey) {
+		return
+	}
+	title := ""
+	if strings.HasPrefix(titleKey, "codex:") {
+		title = a.codexLocalThreadTitle(strings.TrimPrefix(titleKey, "codex:"))
+	}
+	captured := ""
+	if title == "" {
+		captured = a.capturePaneText(paneID)
+		title = linearTitleFromText(captured)
+	}
+	if title == "" && os.Getenv("TMUX_THREAD_AI_TITLE") != "0" {
+		title = a.summarizePaneSubject(captured, fallback)
+	}
+	title = cleanGeneratedTitle(firstNonEmpty(title, fallback))
+	if title == "" || title == fallback {
+		return
+	}
+	_ = a.setGeneratedTitle(titleKey, title)
+}
+
+func (a *app) codexTitleKeyForPath(path string) string {
+	if path == "" {
+		return ""
+	}
+	info := a.hookStateForPath(a.readHookStates(), path)
+	if info.sessionID == "" {
+		return ""
+	}
+	return "codex:" + info.sessionID
+}
+
+func (a *app) codexTitleKeysForPath(path string, limit int) []string {
+	if path == "" || limit <= 0 || lookPath("sqlite3") == "" {
+		return nil
+	}
+	db := filepath.Join(a.home, ".codex", "state_5.sqlite")
+	if !pathExists(db) {
+		return nil
+	}
+	query := fmt.Sprintf("select id from threads where cwd = %s order by updated_at_ms desc limit %d;", sqliteQuote(path), limit)
+	cmd := exec.Command("sqlite3", "-noheader", db, query)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = io.Discard
+	if cmd.Run() != nil {
+		return nil
+	}
+	var keys []string
+	for _, line := range strings.Split(strings.TrimSpace(out.String()), "\n") {
+		id := strings.TrimSpace(line)
+		if id != "" {
+			keys = append(keys, "codex:"+id)
+		}
+	}
+	return keys
+}
+
+func (a *app) codexLocalThreadTitle(sessionID string) string {
+	if sessionID == "" || lookPath("sqlite3") == "" {
+		return ""
+	}
+	db := filepath.Join(a.home, ".codex", "state_5.sqlite")
+	if !pathExists(db) {
+		return ""
+	}
+	query := fmt.Sprintf("select title, first_user_message from threads where id = %s limit 1;", sqliteQuote(sessionID))
+	cmd := exec.Command("sqlite3", "-separator", "\t", db, query)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = io.Discard
+	if cmd.Run() != nil {
+		return ""
+	}
+	parts := strings.SplitN(strings.TrimSpace(out.String()), "\t", 2)
+	source := strings.TrimSpace(strings.Join(parts, "\n"))
+	title := ""
+	if len(parts) > 1 {
+		title = linearTitleFromText(parts[1])
+	}
+	if title == "" && len(parts) > 0 {
+		title = linearTitleFromText(parts[0])
+	}
+	if title == "" && os.Getenv("TMUX_THREAD_AI_TITLE") != "0" {
+		title = a.summarizePaneSubject(source, "")
+	}
+	if title == "" {
+		title = cleanGeneratedTitle(source)
+	}
+	return title
+}
+
+func (a *app) setGeneratedTitle(key, title string) error {
+	var out []string
+	for _, line := range readLines(a.autoTitleFile) {
+		parts := strings.SplitN(line, "\t", 2)
+		if len(parts) >= 1 && parts[0] == key {
+			continue
+		}
+		if line != "" {
+			out = append(out, line)
+		}
+	}
+	if title != "" {
+		out = append(out, key+"\t"+title)
+	}
+	return writeLines(a.autoTitleFile, out)
+}
+
+func (a *app) capturePaneText(paneID string) string {
+	if paneID == "" {
+		return ""
+	}
+	start := "-" + strconv.Itoa(getenvInt("TMUX_THREAD_TITLE_CAPTURE_LINES", 220))
+	return a.output(a.tmuxBin, "capture-pane", "-p", "-t", paneID, "-S", start)
+}
+
+func linearTitleFromText(text string) string {
+	re := regexp.MustCompile(`\b([A-Z][A-Z0-9]+-\d+)\b\s*[:\-]?\s*([^\n\r]{3,120})?`)
+	lines := strings.Split(text, "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(stripANSI(lines[i]))
+		if line == "" || lineLooksLikeCode(line) {
+			continue
+		}
+		matches := re.FindAllStringSubmatch(line, -1)
+		for j := len(matches) - 1; j >= 0; j-- {
+			id := strings.TrimSpace(matches[j][1])
+			title := cleanGeneratedTitle(matches[j][2])
+			if id == "" {
+				continue
+			}
+			if title == "" || strings.Contains(title, " ") && strings.Contains(strings.ToLower(title), "linear") {
+				return id
+			}
+			return id + ": " + title
+		}
+	}
+	return ""
+}
+
+func lineLooksLikeCode(line string) bool {
+	lower := strings.ToLower(line)
+	return strings.Contains(line, "assert_") ||
+		strings.Contains(line, "expected") ||
+		strings.Contains(line, "fixture") ||
+		strings.Contains(line, "grep ") ||
+		strings.Contains(line, "printf ") ||
+		strings.Contains(line, "regexp.") ||
+		strings.Contains(line, "return ") ||
+		strings.Contains(line, ":=") ||
+		strings.Contains(line, "$(") ||
+		strings.Contains(lower, "test-tmux-thread-picker")
+}
+
+func (a *app) summarizePaneSubject(text, fallback string) string {
+	text = strings.TrimSpace(text)
+	if text == "" || a.self == "" || lookPath("codex") == "" {
+		return ""
+	}
+	if len(text) > 12000 {
+		text = text[len(text)-12000:]
+	}
+	prompt := "Name this Codex chat in the fewest words possible. Prioritize the first five user messages because they usually establish the topic. If a Linear ticket is present, answer exactly 'ID: title'. Otherwise answer only a short subject, max 5 words. No punctuation unless part of an ID.\n\n" + text
+	model := getenv("TMUX_THREAD_TITLE_MODEL", "gpt-5-nano")
+	outFile, err := os.CreateTemp(os.Getenv("TMPDIR"), "tmux-thread-title.*")
+	if err != nil {
+		return fallback
+	}
+	_ = outFile.Close()
+	defer os.Remove(outFile.Name())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(getenvInt("TMUX_THREAD_TITLE_TIMEOUT", 8))*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "codex", "exec", "--ephemeral", "--skip-git-repo-check", "--ignore-rules", "--model", model, "--output-last-message", outFile.Name(), "-")
+	cmd.Stdin = strings.NewReader(prompt)
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
+	if cmd.Run() != nil {
+		return fallback
+	}
+	data, err := os.ReadFile(outFile.Name())
+	if err != nil {
+		return fallback
+	}
+	return strings.TrimSpace(string(data))
+}
+
+func cleanGeneratedTitle(title string) string {
+	title = stripANSI(title)
+	title = strings.ReplaceAll(title, "\t", " ")
+	for _, sep := range []string{"\"", "'", "`", "\\n", "\\t", " | ", " && ", " || "} {
+		if idx := strings.Index(title, sep); idx > 0 {
+			title = title[:idx]
+		}
+	}
+	title = strings.Trim(title, " \r\n\t\"'`.,;")
+	title = strings.Join(strings.Fields(title), " ")
+	if title == "" {
+		return ""
+	}
+	r := []rune(title)
+	if len(r) > 60 {
+		title = string(r[:60])
+	}
+	return title
 }
 
 func (a *app) isArchived(key string) bool {
@@ -987,7 +1322,7 @@ func (a *app) readHookStates() map[string]hookInfo {
 		}
 		current := result[parts[0]]
 		if state == "running" || (state == "done" && current.state != "running") || current.state == "" {
-			result[parts[0]] = hookInfo{state: state, updated: updated, started: started}
+			result[parts[0]] = hookInfo{state: state, updated: updated, started: started, sessionID: field(parts, 5)}
 		}
 	}
 	return result
@@ -1137,16 +1472,27 @@ func (a *app) windowCodexInfo(windowID string) hookInfo {
 }
 
 func (a *app) windowHasCodexCLI(windowID string) bool {
+	return len(a.windowCodexPanes(windowID)) > 0
+}
+
+func (a *app) windowCodexPanes(windowID string) []paneInfo {
+	var out []paneInfo
 	for _, line := range readLines(a.paneRowsFile) {
 		parts := strings.Split(line, "\t")
 		if len(parts) >= 3 && parts[0] == windowID {
 			base := filepath.Base(parts[2])
 			if base == "codex" || strings.HasPrefix(base, "codex-") {
-				return true
+				out = append(out, paneInfo{
+					windowID: parts[0],
+					paneID:   field(parts, 1),
+					command:  field(parts, 2),
+					path:     field(parts, 3),
+					pid:      field(parts, 4),
+				})
 			}
 		}
 	}
-	return false
+	return out
 }
 
 func (a *app) windowHasRunningProcess(windowID string) bool {
@@ -1502,6 +1848,9 @@ func (a *app) createNewThread(key string) error {
 	if err != nil {
 		return errors.New("thread picker: unable to resolve worktree base")
 	}
+	if err := os.MkdirAll(baseDir, 0o755); err != nil {
+		return fmt.Errorf("thread picker: failed to create worktree base %s: %w", baseDir, err)
+	}
 	target := filepath.Join(baseDir, branch)
 	for suffix := 2; pathExists(target); suffix++ {
 		target = filepath.Join(baseDir, branch+"-"+strconv.Itoa(suffix))
@@ -1527,21 +1876,9 @@ func (a *app) newWorktreeBaseDir(path string) (string, error) {
 	}
 	base := filepath.Base(common)
 	if base != ".git" && strings.HasSuffix(base, ".git") {
-		if strings.HasPrefix(path, common+string(os.PathSeparator)) {
-			parent := filepath.Dir(path)
-			if isDir(parent) && parent != common {
-				return parent, nil
-			}
-		}
-		if isDir(filepath.Join(common, "codex-")) {
-			return filepath.Join(common, "codex-"), nil
-		}
-		if isDir(filepath.Join(common, "codex")) {
-			return filepath.Join(common, "codex"), nil
-		}
-		return common, nil
+		return filepath.Join(common, "worktrees", "threads"), nil
 	}
-	return filepath.Dir(path), nil
+	return filepath.Join(filepath.Dir(path), "worktrees", "threads"), nil
 }
 
 func (a *app) openThreadWindow(path, branch string) error {
@@ -1630,14 +1967,15 @@ func (a *app) refreshLiveStateOverlay() error {
 	}
 	var out []row
 	for _, r := range readRows(a.displayRowsFile) {
-		if r.kind != "OPEN" || r.target == "" || live[r.target] == "" {
+		liveTarget := windowTarget(r.target)
+		if r.kind != "OPEN" || liveTarget == "" || live[liveTarget] == "" {
 			out = append(out, r)
 			continue
 		}
 		plain := stripANSI(r.display)
 		pin := substr(plain, 3, 5)
 		columns := splitDisplayColumns(plain)
-		targetParts := strings.SplitN(r.target, ":", 2)
+		targetParts := strings.SplitN(liveTarget, ":", 2)
 		currentMarker := " "
 		if len(targetParts) == 2 && targetParts[0] == a.sourceSess && targetParts[1] == sourceWindowIndex {
 			currentMarker = "*"
@@ -1645,7 +1983,7 @@ func (a *app) refreshLiveStateOverlay() error {
 		stateLabel := "open" + currentMarker
 		dot := " "
 		workDuration := ""
-		windowID := windowIDByTarget[r.target]
+		windowID := windowIDByTarget[liveTarget]
 		switch info := a.windowCodexInfo(windowID); info.state {
 		case "running":
 			dot = a.colorText(a.c.proc, "▶")
@@ -1724,7 +2062,7 @@ func (a *app) pick() error {
 		"--with-nth=2",
 		"--header=" + header,
 		"--header-border=line",
-		"--footer=Ctrl-n new | Ctrl-r refresh | Ctrl-o worktrees | Ctrl-p pin | Ctrl-t title | Ctrl-x " + archiveAction + " | Alt-f all | Alt-v archived | Enter open",
+		"--footer=Ctrl-n new | Ctrl-r refresh | Ctrl-o worktrees | Ctrl-p pin | Ctrl-t title | Ctrl-y auto-title | Ctrl-x " + archiveAction + " | Alt-f all | Alt-v archived | Enter open",
 		"--footer-border=line",
 		"--layout=reverse",
 		"--border",
@@ -1743,6 +2081,7 @@ func (a *app) pick() error {
 		"--bind", "alt-f:reload(TMUX_THREAD_ATTENTION_ONLY=0 " + a.self + " --rows | tee " + fzfRowsFileQ + " | " + filterCurrentQuery + ")",
 		"--bind", "alt-v:reload(TMUX_THREAD_SHOW_ARCHIVED=1 " + a.self + " --rows | tee " + fzfRowsFileQ + " | " + filterCurrentQuery + ")",
 		"--bind", "ctrl-t:execute(" + a.self + " --edit-title {5})+reload(" + reloadRowsCommand + ")",
+		"--bind", "ctrl-y:execute-silent(" + a.self + " --regen-title {5} {3})+reload(" + reloadRowsCommand + ")",
 		"--bind", "ctrl-n:execute(" + a.self + " --new-thread {5})+abort",
 		"--bind", "ctrl-r:reload(" + reloadRowsCommand + ")",
 		"--bind", "ctrl-o:execute(" + filepath.Join(a.home, ".dotfiles", "bin", "tmux-select-worktree.sh") + ")",
@@ -1765,12 +2104,26 @@ func (a *app) pick() error {
 		return syscall.Exec(script, []string{script, a.sourceSess, field(parts, 2)}, os.Environ())
 	case "OPEN":
 		_ = a.markSeenFinished(field(parts, 4))
-		return exec.Command(a.tmuxBin, "switch-client", "-t", field(parts, 2)).Run()
+		return a.openExistingThread(field(parts, 2))
 	case "WT":
 		return a.openThreadWindow(field(parts, 2), field(parts, 3))
 	default:
 		return errors.New("thread picker: invalid selection")
 	}
+}
+
+func (a *app) openExistingThread(target string) error {
+	window := windowTarget(target)
+	if window == "" {
+		return nil
+	}
+	if err := exec.Command(a.tmuxBin, "switch-client", "-t", window).Run(); err != nil {
+		return err
+	}
+	if pane := paneTarget(target); pane != "" {
+		_ = exec.Command(a.tmuxBin, "select-pane", "-t", pane).Run()
+	}
+	return nil
 }
 
 func (a *app) output(name string, args ...string) string {
@@ -2026,6 +2379,20 @@ func containsLine(path, needle string) bool {
 	return false
 }
 
+func containsTitle(path, key string) bool {
+	return titleForKey(path, key) != ""
+}
+
+func titleForKey(path, key string) string {
+	for _, line := range readLines(path) {
+		parts := strings.SplitN(line, "\t", 2)
+		if len(parts) == 2 && parts[0] == key && parts[1] != "" {
+			return parts[1]
+		}
+	}
+	return ""
+}
+
 func unique(lines []string) []string {
 	seen := map[string]bool{}
 	var out []string
@@ -2119,6 +2486,29 @@ func shellQuote(s string) string {
 		return "''"
 	}
 	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
+}
+
+func sqliteQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
+}
+
+func targetWithPane(window, pane string) string {
+	if window == "" || pane == "" {
+		return window
+	}
+	return window + "," + pane
+}
+
+func windowTarget(target string) string {
+	return strings.SplitN(target, ",", 2)[0]
+}
+
+func paneTarget(target string) string {
+	parts := strings.SplitN(target, ",", 2)
+	if len(parts) == 2 {
+		return parts[1]
+	}
+	return ""
 }
 
 func isTerminal(fd uintptr) bool {

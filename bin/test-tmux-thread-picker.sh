@@ -122,7 +122,12 @@ case "$cmd" in
 		;;
 	list-panes)
 		printf '@1\t%%1\tzsh\t%s\t1001\n' "$TEST_REPO"
-		printf '@2\t%%2\t%s\t%s\t1002\n' "${TMUX_MOCK_WORKTREE_COMMAND:-codex}" "$TEST_WORKTREE"
+		if [ "${TMUX_MOCK_TWO_CODEX_PANES:-0}" = "1" ]; then
+			printf '@2\t%%2\tcodex\t%s\t1002\n' "$TEST_WORKTREE"
+			printf '@2\t%%3\tcodex\t%s\t1003\n' "$TEST_REPO"
+		else
+			printf '@2\t%%2\t%s\t%s\t1002\n' "${TMUX_MOCK_WORKTREE_COMMAND:-codex}" "$TEST_WORKTREE"
+		fi
 		;;
 	list-windows)
 		format=""
@@ -145,7 +150,12 @@ case "$cmd" in
 				;;
 			'#{window_id}'$'\t''#{pane_id}'$'\t''#{pane_current_command}'$'\t''#{pane_current_path}'$'\t''#{pane_pid}')
 				printf '@1\t%%1\tzsh\t%s\t1001\n' "$TEST_REPO"
-				printf '@2\t%%2\t%s\t%s\t1002\n' "${TMUX_MOCK_WORKTREE_COMMAND:-codex}" "$TEST_WORKTREE"
+				if [ "${TMUX_MOCK_TWO_CODEX_PANES:-0}" = "1" ]; then
+					printf '@2\t%%2\tcodex\t%s\t1002\n' "$TEST_WORKTREE"
+					printf '@2\t%%3\tcodex\t%s\t1003\n' "$TEST_REPO"
+				else
+					printf '@2\t%%2\t%s\t%s\t1002\n' "${TMUX_MOCK_WORKTREE_COMMAND:-codex}" "$TEST_WORKTREE"
+				fi
 				;;
 			'#{session_name}:#{window_index}'$'\t''#{window_id}'$'\t''#{window_name}'$'\t''#{window_activity_flag}'$'\t''#{window_bell_flag}')
 				printf 'test:1\t@1\tmain\t0\t0\n'
@@ -169,11 +179,32 @@ case "$cmd" in
 	select-window)
 		printf 'select-window %s\n' "$*" >>"$TMUX_MOCK_LOG"
 		;;
+	select-pane)
+		printf 'select-pane %s\n' "$*" >>"$TMUX_MOCK_LOG"
+		;;
 	kill-window)
 		printf 'kill-window %s\n' "$*" >>"$TMUX_MOCK_LOG"
 		;;
 	command-prompt)
 		printf 'command-prompt %s\n' "$*" >>"$TMUX_MOCK_LOG"
+		;;
+	capture-pane)
+		target=""
+		while [ "$#" -gt 0 ]; do
+			case "$1" in
+				-t) target="${2:-}"; shift 2 ;;
+				*) shift ;;
+			esac
+		done
+		case "$target" in
+			%2)
+				if [ "${TMUX_MOCK_TWO_CODEX_PANES:-0}" = "1" ]; then
+					printf 'User asks for LIN-42: Add refund flow\n'
+				fi
+				;;
+			%3) printf 'Investigate session picker naming\n' ;;
+			*) printf '\n' ;;
+		esac
 		;;
 	*)
 		printf 'tmux mock: unhandled %s %s\n' "$cmd" "$*" >>"$TMUX_MOCK_LOG"
@@ -201,6 +232,9 @@ case "${FZF_MOCK_MODE:-first-data}" in
 		;;
 	kind)
 		printf '%s\n' "$input" | awk -F '\t' -v kind="${FZF_MOCK_KIND:-OPEN}" '$1 == kind { print; exit }'
+		;;
+	target)
+		printf '%s\n' "$input" | awk -F '\t' -v target="${FZF_MOCK_TARGET:-}" '$3 ~ target { print; exit }'
 		;;
 	first-data|*)
 		printf '%s\n' "$input" | awk -F '\t' '$1 != "GROUP" && NF { print; exit }'
@@ -261,6 +295,7 @@ setup_fixture() {
 	export TMUX_THREAD_CACHE_TTL="999999"
 	export TMUX_THREAD_USE_DISPLAY_CACHE="0"
 	export TMUX_THREAD_COLOR="0"
+	export TMUX_THREAD_AI_TITLE="0"
 	export NO_COLOR="1"
 	export TMUX_MOCK_LOG="$tmp_root/tmux.log"
 	export FZF_MOCK_ARGS="$tmp_root/fzf-args.log"
@@ -365,6 +400,29 @@ assert_contains "$plain_rows" $'\ttest:2\tfeature\t' "data row search text keeps
 assert_contains "$plain_rows" "codex   demo-feature" "open codex cli is shown"
 assert_not_contains "$plain_rows" "run     demo-feature" "open codex cli is not shown as running"
 assert_not_contains "$plain_rows" "▶     codex   demo-feature" "open codex cli does not show active arrow"
+two_pane_rows="$(TMUX_MOCK_TWO_CODEX_PANES=1 run_script --rows)"
+plain_two_pane_rows="$(printf '%s' "$two_pane_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+assert_contains "$plain_two_pane_rows" "LIN-42: Add refund flow" "two codex panes use captured Linear ticket title"
+assert_contains "$plain_two_pane_rows" "Main Thread" "two codex panes preserve manual title priority"
+if [ "$(printf '%s\n' "$plain_two_pane_rows" | awk -F '\t' '$1 == "OPEN" && $3 ~ /^test:2,%[0-9]+$/ { count++ } END { print count + 0 }')" = "2" ]; then
+	pass "two codex panes in one window produce separate rows"
+else
+	fail "two codex panes in one window produce separate rows"
+fi
+rm -f "$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
+printf '%s\trunning\tUserPromptSubmit\t%s\t%s\tsession-test\n' "$TEST_WORKTREE" "$(date +%s)" "$(date +%s)" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+printf 'codex:session-test\tCached Session Title\n' >"$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
+session_title_rows="$(TMUX_MOCK_TWO_CODEX_PANES=1 run_script --rows)"
+plain_session_title_rows="$(printf '%s' "$session_title_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+assert_contains "$plain_session_title_rows" "Cached Session Title" "generated titles reuse codex session id cache"
+assert_not_contains "$plain_session_title_rows" "LIN-42: Add refund flow" "codex session id cache prevents repeated title generation"
+if ! grep -Fq "$TEST_WORKTREE"$'\t' "$XDG_STATE_HOME/tmux-thread-picker/auto-titles"; then
+	pass "generated titles are not duplicated under path when codex session id exists"
+else
+	fail "generated titles are not duplicated under path when codex session id exists"
+fi
+: >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+rm -f "$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
 now="$(date +%s)"
 started=$((now - 125))
 printf '%s\trunning\tUserPromptSubmit\t%s\t%s\n' "$TEST_WORKTREE" "$now" "$started" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
@@ -530,9 +588,17 @@ assert_contains "$fzf_args" "load:transform:[[ {1} = GROUP ]] && echo down" "fzf
 assert_contains "$fzf_args" "result:transform:[[ {1} = GROUP ]] && echo down" "fzf skips group after filtering"
 assert_contains "$fzf_args" "enter:transform:[[ {1} = GROUP ]] && echo down || echo accept" "enter does not accept group rows"
 assert_contains "$fzf_args" "ctrl-x:execute-silent" "fzf has single-key hide binding"
+assert_contains "$fzf_args" "Ctrl-y auto-title" "fzf footer advertises auto-title binding"
+assert_contains "$fzf_args" "ctrl-y:execute-silent($SCRIPT --regen-title {5} {3})" "fzf can rerun title logic for selected row"
 assert_contains "$fzf_args" "alt-f:reload(TMUX_THREAD_ATTENTION_ONLY=0" "fzf can reload full inventory"
 assert_not_contains "$fzf_args" "focus:transform" "ctrl-k can move upward across group rows"
 assert_file_contains_line "$TMUX_MOCK_LOG" "switch-client -t test:1" "OPEN selection switches tmux client"
+
+: >"$TMUX_MOCK_LOG"
+: >"$FZF_MOCK_INPUT"
+TMUX_MOCK_TWO_CODEX_PANES=1 FZF_MOCK_MODE=target FZF_MOCK_TARGET='^test:2,%2$' run_script >/dev/null
+assert_file_contains_line "$TMUX_MOCK_LOG" "switch-client -t test:2" "pane-specific OPEN selection switches tmux window"
+assert_file_contains_line "$TMUX_MOCK_LOG" "select-pane -t %2" "pane-specific OPEN selection focuses selected codex pane"
 
 printf 'OPEN\tstale cache row\ttest:9\tmain\t%s\tdemo\n' "$TEST_REPO" >"$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv"
 : >"$FZF_MOCK_INPUT"
