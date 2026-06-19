@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"os"
 	"os/exec"
@@ -211,6 +212,8 @@ func (a *app) run() error {
 		return a.killThreadWindow(arg(a.args, 1), arg(a.args, 2), arg(a.args, 3))
 	case "--regen-title":
 		return a.regenerateTitle(arg(a.args, 1), arg(a.args, 2))
+	case "--ensure-title":
+		return a.ensureGeneratedTitleNow(arg(a.args, 1), arg(a.args, 2), arg(a.args, 3), arg(a.args, 4))
 	case "--watch-fzf":
 		return a.watchFZF(arg(a.args, 1))
 	}
@@ -1055,6 +1058,44 @@ func (a *app) ensureGeneratedTitle(key, paneID, path, fallback string) {
 	if containsTitle(a.autoTitleFile, titleKey) {
 		return
 	}
+	if a.mode == "pick" {
+		a.ensureGeneratedTitleBackground(titleKey, paneID, path, fallback)
+		return
+	}
+	_ = a.ensureGeneratedTitleNow(key, paneID, path, fallback)
+}
+
+func (a *app) ensureGeneratedTitleBackground(titleKey, paneID, path, fallback string) {
+	lock := a.titleLockPath(titleKey)
+	if err := os.MkdirAll(filepath.Dir(lock), 0o755); err != nil {
+		return
+	}
+	if err := os.Mkdir(lock, 0o755); err != nil {
+		return
+	}
+	cmd := exec.Command(a.self, "--ensure-title", titleKey, paneID, path, fallback)
+	cmd.Env = append(os.Environ(), "TMUX_THREAD_PICKER_ENTRYPOINT="+a.self)
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
+	if err := cmd.Start(); err != nil {
+		_ = os.Remove(lock)
+	}
+}
+
+func (a *app) ensureGeneratedTitleNow(key, paneID, path, fallback string) error {
+	if key == "" || paneID == "" || a.hasManualTitle(key) {
+		return nil
+	}
+	titleKey := key
+	if !strings.HasPrefix(titleKey, "codex:") {
+		titleKey = firstNonEmpty(a.codexTitleKeyForPath(path), key)
+	}
+	if lock := a.titleLockPath(titleKey); lock != "" {
+		defer os.Remove(lock)
+	}
+	if containsTitle(a.autoTitleFile, titleKey) {
+		return nil
+	}
 	title := ""
 	if strings.HasPrefix(titleKey, "codex:") {
 		title = a.codexLocalThreadTitle(strings.TrimPrefix(titleKey, "codex:"))
@@ -1069,9 +1110,22 @@ func (a *app) ensureGeneratedTitle(key, paneID, path, fallback string) {
 	}
 	title = cleanGeneratedTitle(firstNonEmpty(title, fallback))
 	if title == "" || title == fallback {
-		return
+		return nil
 	}
-	_ = a.setGeneratedTitle(titleKey, title)
+	if err := a.setGeneratedTitle(titleKey, title); err != nil {
+		return err
+	}
+	_ = a.notifyFZF()
+	return nil
+}
+
+func (a *app) titleLockPath(key string) string {
+	if key == "" {
+		return ""
+	}
+	h := fnv.New64a()
+	_, _ = h.Write([]byte(key))
+	return filepath.Join(a.stateDir, "title-locks", strconv.FormatUint(h.Sum64(), 16))
 }
 
 func (a *app) codexTitleKeyForPath(path string) string {
