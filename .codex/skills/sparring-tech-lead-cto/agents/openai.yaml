@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sparring Tech Lead / CTO"
+  short_description: "Coaching exigeant Tech Lead / CTO sur une issue réelle."
+  default_prompt: "sparring\n\nIssue du jour :"
