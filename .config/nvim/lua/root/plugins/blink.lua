@@ -1,3 +1,33 @@
+local workspace_path = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/"
+
+local function normalize_path(path)
+	if not path or path == "" then
+		return ""
+	end
+
+	path = vim.fs.normalize(path)
+	if path:sub(-1) ~= "/" then
+		path = path .. "/"
+	end
+	return path
+end
+
+local function path_is_under(path, target_path)
+	if not path or path == "" or not target_path or target_path == "" then
+		return false
+	end
+
+	path = normalize_path(path)
+	target_path = normalize_path(target_path)
+
+	return path:sub(1, #target_path) == target_path
+end
+
+local function in_obsidian_workspace()
+	local current_file = vim.api.nvim_buf_get_name(0)
+	return path_is_under(current_file, workspace_path)
+end
+
 return {
 	"saghen/blink.cmp",
 	version = "1.*",
@@ -79,10 +109,10 @@ return {
 					min_keyword_length = 0,
 					max_items = 15,
 					opts = {
-						workspace_path = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/",
+						workspace_path = workspace_path,
 					},
 					should_show_items = function()
-						if vim.bo.filetype ~= "markdown" then
+						if vim.bo.filetype ~= "markdown" or not in_obsidian_workspace() then
 							return false
 						end
 						local line = vim.api.nvim_get_current_line()
@@ -98,10 +128,13 @@ return {
 				min_keyword_length = 2,
 				max_items = 15,
 				opts = {
-					workspace_path = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/",
+					workspace_path = workspace_path,
 				},
 				-- Only check if we're inside [[ ]] brackets - source:enabled() handles filetype
 				should_show_items = function()
+					if vim.bo.filetype ~= "markdown" or not in_obsidian_workspace() then
+						return false
+					end
 					local line = vim.api.nvim_get_current_line()
 					local col = vim.api.nvim_win_get_cursor(0)[2]
 					local line_to_cursor = line:sub(1, col + 1)

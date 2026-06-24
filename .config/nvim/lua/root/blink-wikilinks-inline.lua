@@ -6,6 +6,34 @@
 --- @class blink.cmp.Source
 local source = {}
 
+local function normalize_path(path)
+	if not path or path == "" then
+		return ""
+	end
+
+	path = vim.fs.normalize(path)
+	if path:sub(-1) ~= "/" then
+		path = path .. "/"
+	end
+	return path
+end
+
+local function path_is_under(path, target_path)
+	if not path or path == "" or not target_path or target_path == "" then
+		return false
+	end
+
+	path = normalize_path(path)
+	target_path = normalize_path(target_path)
+
+	return path:sub(1, #target_path) == target_path
+end
+
+local function in_workspace(workspace_path)
+	local current_file = vim.api.nvim_buf_get_name(0)
+	return path_is_under(current_file, workspace_path)
+end
+
 -- File cache
 local file_cache = {
 	files = {},
@@ -65,7 +93,7 @@ function source.new(opts)
 end
 
 function source:enabled()
-	return vim.bo.filetype == "markdown"
+	return vim.bo.filetype == "markdown" and in_workspace(self.workspace_path)
 end
 
 -- No trigger characters - rely on keyword detection
