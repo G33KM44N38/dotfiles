@@ -108,41 +108,24 @@ window_for_worktree() {
 	return 1
 }
 
-open_layout() {
-	local source_session="$1"
+create_layout_window() {
+	local target_session="$1"
 	local worktree="$2"
-	local branch="${3:-}"
-	local target_session existing_window window_index window_name created_window
+	local name_hint="${3:-}"
+	local switch_after="${4:-1}"
+	local preferred_index="${5:-}"
+	local window_index window_name created_window
 	local top_left_pane top_right_pane bottom_left_pane bottom_right_pane
-	local vi_cmd co_cmd bootstrap_cmd project_path
+	local vi_cmd co_cmd bootstrap_cmd
 
 	[ -d "$worktree" ] || fail "worktree layout: invalid worktree path: $worktree"
 
-	existing_window="$(window_for_worktree "$worktree" || true)"
-	if [ -n "$existing_window" ]; then
-		"$tmux_bin" switch-client -t "$existing_window" >/dev/null 2>&1 || "$tmux_bin" select-window -t "$existing_window" >/dev/null 2>&1 || true
-		if [ "$("$tmux_bin" display-message -p -t "$existing_window" '#{window_zoomed_flag}' 2>/dev/null || true)" = "1" ]; then
-			"$tmux_bin" resize-pane -Z -t "$existing_window" >/dev/null 2>&1 || true
-		fi
-		return 0
+	if [ -n "$preferred_index" ] && ! "$tmux_bin" list-windows -t "$target_session" -F '#{window_index}' | grep -qx "$preferred_index"; then
+		window_index="$preferred_index"
+	else
+		window_index="$(next_window_index "$target_session" 6)"
 	fi
-
-	target_session="$(session_for_path "$worktree")"
-	if ! "$tmux_bin" has-session -t "$target_session" 2>/dev/null; then
-		project_path="$(project_root "$worktree")"
-		[ -n "$project_path" ] || project_path="$worktree"
-		"$tmux_bin" new-session -d -s "$target_session" -c "$project_path"
-	fi
-
-	"$tmux_bin" set-option -q -t "$target_session" @secondary-worktree "$worktree"
-	"$tmux_bin" set-option -q -t "$target_session" @secondary-session "$target_session"
-	if [ -n "$source_session" ] && "$tmux_bin" has-session -t "$source_session" 2>/dev/null; then
-		"$tmux_bin" set-option -q -t "$source_session" @secondary-worktree "$worktree"
-		"$tmux_bin" set-option -q -t "$source_session" @secondary-session "$target_session"
-	fi
-
-	window_index="$(next_window_index "$target_session" 6)"
-	window_name="$(sanitize_name "$branch")"
+	window_name="$(sanitize_name "$name_hint")"
 	if [ -z "$window_name" ] || [ "$window_name" = "-" ]; then
 		window_name="$(sanitize_name "$(basename "$worktree")")"
 	fi
@@ -168,17 +151,109 @@ open_layout() {
 	"$tmux_bin" send-keys -t "$top_right_pane" -R "$bootstrap_cmd" C-m
 	"$tmux_bin" send-keys -t "$bottom_left_pane" -R "$co_cmd" C-m
 
-	"$tmux_bin" switch-client -t "${target_session}:${created_window}" >/dev/null 2>&1 || "$tmux_bin" select-window -t "${target_session}:${created_window}" >/dev/null 2>&1 || true
-	"$tmux_bin" select-pane -t "$bottom_left_pane"
+	if [ "$switch_after" = "1" ]; then
+		"$tmux_bin" switch-client -t "${target_session}:${created_window}" >/dev/null 2>&1 || "$tmux_bin" select-window -t "${target_session}:${created_window}" >/dev/null 2>&1 || true
+		"$tmux_bin" select-pane -t "$bottom_left_pane"
+	fi
 	[ -n "$bottom_right_pane" ] || true
+}
+
+move_window_to_index() {
+	local target="$1"
+	local preferred_index="$2"
+	local current_target target_session current_index next_free
+
+	[ -n "$preferred_index" ] || return 0
+
+	current_target="$("$tmux_bin" display-message -p -t "$target" '#{session_name}:#{window_index}' 2>/dev/null || true)"
+	[ -n "$current_target" ] || return 0
+
+	target_session="${current_target%%:*}"
+	current_index="${current_target##*:}"
+	[ "$current_index" != "$preferred_index" ] || return 0
+
+	if "$tmux_bin" list-windows -t "$target_session" -F '#{window_index}' | grep -qx "$preferred_index"; then
+		next_free="$(next_window_index "$target_session" 6)"
+		"$tmux_bin" move-window -s "${target_session}:${preferred_index}" -t "${target_session}:${next_free}" >/dev/null 2>&1 || true
+	fi
+
+	"$tmux_bin" move-window -s "$current_target" -t "${target_session}:${preferred_index}" >/dev/null 2>&1 || true
+}
+
+ensure_target_session() {
+	local source_session="$1"
+	local worktree="$2"
+	local target_session="$3"
+	local project_path
+
+	if ! "$tmux_bin" has-session -t "$target_session" 2>/dev/null; then
+		project_path="$(project_root "$worktree")"
+		[ -n "$project_path" ] || project_path="$worktree"
+		"$tmux_bin" new-session -d -s "$target_session" -c "$project_path"
+	fi
+
+	"$tmux_bin" set-option -q -t "$target_session" @secondary-worktree "$worktree"
+	"$tmux_bin" set-option -q -t "$target_session" @secondary-session "$target_session"
+	if [ -n "$source_session" ] && "$tmux_bin" has-session -t "$source_session" 2>/dev/null; then
+		"$tmux_bin" set-option -q -t "$source_session" @secondary-worktree "$worktree"
+		"$tmux_bin" set-option -q -t "$source_session" @secondary-session "$target_session"
+	fi
+}
+
+open_layout() {
+	local source_session="$1"
+	local worktree="$2"
+	local branch="${3:-}"
+	local preferred_index="${4:-}"
+	local target_session existing_window
+
+	[ -d "$worktree" ] || fail "worktree layout: invalid worktree path: $worktree"
+
+	existing_window="$(window_for_worktree "$worktree" || true)"
+	if [ -n "$existing_window" ]; then
+		move_window_to_index "$existing_window" "$preferred_index"
+		if [ -n "$preferred_index" ]; then
+			existing_window="${existing_window%%:*}:$preferred_index"
+		fi
+		"$tmux_bin" switch-client -t "$existing_window" >/dev/null 2>&1 || "$tmux_bin" select-window -t "$existing_window" >/dev/null 2>&1 || true
+		if [ "$("$tmux_bin" display-message -p -t "$existing_window" '#{window_zoomed_flag}' 2>/dev/null || true)" = "1" ]; then
+			"$tmux_bin" resize-pane -Z -t "$existing_window" >/dev/null 2>&1 || true
+		fi
+		return 0
+	fi
+
+	target_session="$(session_for_path "$worktree")"
+	ensure_target_session "$source_session" "$worktree" "$target_session"
+	create_layout_window "$target_session" "$worktree" "$branch" 1 "$preferred_index"
+}
+
+duplicate_layout() {
+	local source_session="$1"
+	local worktree="$2"
+	local name_hint="${3:-}"
+	local target_session
+
+	[ -d "$worktree" ] || fail "worktree layout: invalid worktree path: $worktree"
+
+	if [ -n "$source_session" ] && "$tmux_bin" has-session -t "$source_session" 2>/dev/null; then
+		target_session="$source_session"
+	else
+		target_session="$(session_for_path "$worktree")"
+	fi
+	ensure_target_session "$source_session" "$worktree" "$target_session"
+	create_layout_window "$target_session" "$worktree" "$name_hint" 0
 }
 
 case "${1:-}" in
 	open)
-		open_layout "${2:-}" "${3:-}" "${4:-}"
+		open_layout "${2:-}" "${3:-}" "${4:-}" "${5:-}"
+		;;
+	duplicate)
+		duplicate_layout "${2:-}" "${3:-}" "${4:-}"
 		;;
 	*)
 		echo "Usage: tmux-worktree-layout.sh open <source-session> <worktree-path> [branch]" >&2
+		echo "       tmux-worktree-layout.sh duplicate <source-session> <worktree-path> [name]" >&2
 		exit 2
 		;;
 esac
