@@ -3,7 +3,7 @@ name: commit-stage
 description: >
   Stage changes, generate a conventional commit message, and create the commit.
 agent: build
-created: 2026-04-24
+created: "2026-04-24"
 ---
 
 Prépare un commit propre à partir de l’état courant du dépôt.

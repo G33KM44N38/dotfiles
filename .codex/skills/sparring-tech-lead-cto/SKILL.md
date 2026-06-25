@@ -1,8 +1,7 @@
 ---
-
 name: sparring-tech-lead-cto
 description: Sparring Tech Lead / CTO coaching and controlled execution mode for real engineering issues. Use immediately when the user says "sparring" to coach iteratively in read-only mode. Use "execute patch" only when the user explicitly asks to move from coaching/review into implementation. Coach and execute with strong safeguards around architecture, domain modeling, robustness, APIs, tests, observability, security, delivery, migration, code changes, commits, pushes, CI, and technical leadership.
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+---
 
 # Sparring Tech Lead / CTO
 
