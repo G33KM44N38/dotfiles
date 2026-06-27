@@ -954,7 +954,8 @@ func (a *app) emitOpenRows(hooks hookIndex) []row {
 			relative = a.projectRelativePath(path)
 		}
 		currentMarker := " "
-		if sessionName == a.sourceSess && windowIndex == sourceWindowIndex {
+		sourcePathMatches := a.sourcePath != "" && cleanAbs(path) == cleanAbs(a.sourcePath)
+		if (sessionName == a.sourceSess && windowIndex == sourceWindowIndex) || (sourcePathMatches && (a.sourceSess == "" || sessionName == a.sourceSess)) {
 			currentMarker = "*"
 		}
 		state := "open" + currentMarker
@@ -1049,14 +1050,15 @@ func (a *app) emitOpenRows(hooks hookIndex) []row {
 		}
 		pinKey := path
 		if paneID != "" {
+			paneFallbackSignal := "codex_open"
+			if currentMarker == "*" {
+				paneFallbackSignal = "current"
+			}
+			rowSignal = paneFallbackSignal
 			if paneKey := a.canonicalTitleKeyForLivePane(hooks, paneID, path, nil, nil); paneKey != "" {
 				pinKey = paneKey
 			}
 			if paneInfo := hooks.liveByPane[paneID]; paneInfo.state != "" {
-				paneFallbackSignal := "codex_open"
-				if currentMarker == "*" {
-					paneFallbackSignal = "current"
-				}
 				rowSignal, workDuration = a.codexRowSignal(currentMarker, paneFallbackSignal, pinKey, paneInfo)
 			}
 		}
@@ -1320,6 +1322,9 @@ func (a *app) codexRowSignal(currentMarker, fallbackSignal, seenKey string, info
 		if a.hasSeenFinishedForHook(seenKey, info) {
 			if currentMarker == "*" {
 				return "current", workDuration
+			}
+			if fallbackSignal == "codex_open" {
+				return fallbackSignal, workDuration
 			}
 			return "open", workDuration
 		}
@@ -3324,7 +3329,19 @@ func (a *app) openExistingThread(target string) error {
 	if pane := paneTarget(target); pane != "" {
 		_ = exec.Command(a.tmuxBin, "select-pane", "-t", pane).Run()
 	}
+	_ = a.ensureTargetZoomed(firstNonEmpty(paneTarget(target), window))
 	return nil
+}
+
+func (a *app) ensureTargetZoomed(target string) error {
+	if target == "" {
+		return nil
+	}
+	zoomed := strings.TrimSpace(a.output(a.tmuxBin, "display-message", "-p", "-t", target, "#{window_zoomed_flag}"))
+	if zoomed == "1" {
+		return nil
+	}
+	return exec.Command(a.tmuxBin, "resize-pane", "-Z", "-t", target).Run()
 }
 
 func (a *app) openCodexHistoryThread(sessionID, cwd string) error {
