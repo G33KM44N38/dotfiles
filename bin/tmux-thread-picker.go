@@ -1249,9 +1249,6 @@ func (a *app) emitPinnedAttentionRows(openRows []row) []row {
 			continue
 		}
 		if strings.HasPrefix(pinKey, "codex:") {
-			if r, ok := a.emitPinnedCodexHistoryRow(pinKey); ok {
-				out = append(out, r)
-			}
 			continue
 		}
 		path := pinKey
@@ -1371,7 +1368,19 @@ func (a *app) emitRow(kind, state, branch, target, window, path, selectionTarget
 		pinned = "P"
 	}
 	if a.attentionModeEnabled() {
-		if pinned != "P" && kind != "OPEN" && rowSignal != "codex_done" && rowSignal != "codex_running" && rowSignal != "codex_open" && rowSignal != "current" && processSignal != "process" {
+		if kind == "HIST" {
+			return row{}, false
+		}
+		hasAttentionSignal := rowSignal == "codex_done" ||
+			rowSignal == "codex_running" ||
+			rowSignal == "codex_open" ||
+			rowSignal == "current" ||
+			rowSignal == "look" ||
+			processSignal == "process"
+		if kind == "OPEN" && !hasAttentionSignal {
+			return row{}, false
+		}
+		if pinned != "P" && kind != "OPEN" && !hasAttentionSignal {
 			return row{}, false
 		}
 	}
