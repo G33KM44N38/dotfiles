@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"hash/fnv"
@@ -118,6 +119,14 @@ type hookIndex struct {
 	byPath        map[string]hookInfo
 	liveByPane    map[string]hookInfo
 	sessionByPane map[string]hookInfo
+}
+
+type codexHistoryItem struct {
+	ID               string `json:"id"`
+	Cwd              string `json:"cwd"`
+	UpdatedAtMS      int64  `json:"updated_at_ms"`
+	Title            string `json:"title"`
+	FirstUserMessage string `json:"first_user_message"`
 }
 
 type paneInfo struct {
@@ -601,8 +610,8 @@ func (a *app) promptTitle(key string) error {
 	if key == "" {
 		return nil
 	}
-	command := shellQuote(a.self) + " --set-title " + shellQuote(key) + " '%'"
-	return exec.Command(a.tmuxBin, "command-prompt", "-p", "thread title", "run-shell "+command).Run()
+	command := shellQuote(a.self) + " --set-title " + shellQuote(key) + " " + shellQuote("%")
+	return exec.Command(a.tmuxBin, "command-prompt", "-p", "thread title", "run-shell -b "+shellQuote(command)).Run()
 }
 
 func (a *app) editTitle(key string) error {
@@ -738,8 +747,10 @@ func (a *app) buildRows() error {
 		_ = a.collectCachedRepoCandidates()
 		_ = a.ensureWorktreeCache()
 	}
-	rows = append(rows, a.emitOpenRows(hooks)...)
+	openRows := a.emitOpenRows(hooks)
+	rows = append(rows, openRows...)
 	if !a.attentionModeEnabled() {
+		rows = append(rows, a.emitCodexHistoryRows(openRows)...)
 		rows = append(rows, a.emitWorktreeRows()...)
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].sortKey < rows[j].sortKey })
@@ -858,9 +869,21 @@ func (a *app) emitOpenRows(hooks hookIndex) []row {
 		if len(codexPanes) == 1 {
 			paneID = codexPanes[0].paneID
 		}
-		a.ensureGeneratedTitle(path, paneID, path, filepath.Base(path))
 		pinKey := path
-		if a.windowHasCodexCLI(windowID) && a.hasManualTitle(target) {
+		if paneID != "" {
+			if paneKey := titleKeyForPane(hooks, paneID, path); paneKey != "" {
+				pinKey = paneKey
+			}
+			if paneInfo := hooks.liveByPane[paneID]; paneInfo.state != "" {
+				paneFallbackSignal := "codex_open"
+				if currentMarker == "*" {
+					paneFallbackSignal = "current"
+				}
+				rowSignal, workDuration = a.codexRowSignal(currentMarker, paneFallbackSignal, pinKey, paneInfo)
+			}
+		}
+		a.ensureGeneratedTitle(pinKey, paneID, path, filepath.Base(path))
+		if !strings.HasPrefix(pinKey, "codex:") && a.windowHasCodexCLI(windowID) && a.hasManualTitle(target) {
 			pinKey = target
 		}
 		if r, ok := a.emitRow("OPEN", state, branch, target, windowName, path, target, project, pinKey, rowSignal, processSignal, relative, workDuration); ok {
@@ -869,6 +892,82 @@ func (a *app) emitOpenRows(hooks hookIndex) []row {
 		appendLine(a.openPathsFile, path)
 	}
 	return out
+}
+
+func (a *app) emitCodexHistoryRows(openRows []row) []row {
+	open := map[string]bool{}
+	for _, r := range openRows {
+		if r.kind == "OPEN" && strings.HasPrefix(r.pinKey, "codex:") {
+			open[r.pinKey] = true
+		}
+	}
+	var out []row
+	for _, item := range a.readCodexHistoryItems() {
+		if item.ID == "" || item.Cwd == "" {
+			continue
+		}
+		pinKey := "codex:" + item.ID
+		if open[pinKey] {
+			continue
+		}
+		path := item.Cwd
+		if normalized := normalizeExistingPath(path); normalized != "" {
+			path = normalized
+		}
+		branch, project, relative := a.worktreeMetadata(path)
+		if branch == "" {
+			branch = a.branchName(path)
+			project = a.projectName(path)
+			relative = a.projectRelativePath(path)
+		}
+		if project == "" {
+			project = a.projectName(path)
+		}
+		historyProject := "Codex History"
+		historyDetail := project
+		if historyDetail == "" {
+			historyDetail = relative
+		} else if relative != "" && relative != "." {
+			historyDetail = filepath.Join(historyDetail, relative)
+		}
+		title := cleanGeneratedTitle(firstNonEmpty(item.Title, linearTitleFromText(item.FirstUserMessage), item.FirstUserMessage, item.ID))
+		if title == "" {
+			title = item.ID
+		}
+		if r, ok := a.emitRow("HIST", "chat", branch, path, title, path, path, historyProject, pinKey, "history", "", historyDetail, historyDate(item.UpdatedAtMS)); ok {
+			r.sortKey = historySortKey(r.sortKey, item.UpdatedAtMS, pinKey)
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+func historySortKey(current string, updatedAtMS int64, pinKey string) string {
+	prefix := "1"
+	if strings.HasPrefix(current, "0|") {
+		prefix = "0"
+	} else if strings.HasPrefix(current, "9|") {
+		prefix = "9"
+	}
+	return prefix + "|codex history|3|HIST|" + reverseTimeKey(updatedAtMS) + "|" + pinKey
+}
+
+func reverseTimeKey(value int64) string {
+	if value <= 0 {
+		return "9999999999999999999"
+	}
+	return fmt.Sprintf("%019d", int64(9223372036854775807)-value)
+}
+
+func historyDate(updatedAtMS int64) string {
+	if updatedAtMS <= 0 {
+		return ""
+	}
+	t := time.Unix(updatedAtMS/1000, (updatedAtMS%1000)*int64(time.Millisecond)).Local()
+	if t.Year() == time.Now().Year() {
+		return t.Format("Jan 02")
+	}
+	return t.Format("2006-01")
 }
 
 func (a *app) emitWorktreeRows() []row {
@@ -1094,6 +1193,8 @@ func (a *app) colorState(kind, state string) string {
 		return a.c.bold + a.c.cyan + state + a.c.reset
 	case "OPEN":
 		return a.c.green + state + a.c.reset
+	case "HIST":
+		return a.c.cyan + state + a.c.reset
 	case "WT":
 		return a.c.yellow + state + a.c.reset
 	default:
@@ -1272,6 +1373,45 @@ func (a *app) codexLocalThreadTitle(sessionID string) string {
 		title = cleanGeneratedTitle(source)
 	}
 	return title
+}
+
+func (a *app) readCodexHistoryItems() []codexHistoryItem {
+	if lookPath("sqlite3") == "" {
+		return nil
+	}
+	db := filepath.Join(a.home, ".codex", "state_5.sqlite")
+	if !pathExists(db) {
+		return nil
+	}
+	query := `select json_object(
+		'id', id,
+		'cwd', cwd,
+		'updated_at_ms', updated_at_ms,
+		'title', title,
+		'first_user_message', first_user_message
+	) from threads where id is not null and id != '' and cwd is not null and cwd != '' order by updated_at_ms desc;`
+	cmd := exec.Command("sqlite3", "-readonly", db, query)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = io.Discard
+	if cmd.Run() != nil {
+		return nil
+	}
+	var items []codexHistoryItem
+	scanner := bufio.NewScanner(&out)
+	scanner.Buffer(make([]byte, 1024), 1024*1024)
+	for scanner.Scan() {
+		var item codexHistoryItem
+		if json.Unmarshal(scanner.Bytes(), &item) != nil {
+			continue
+		}
+		item.ID = strings.TrimSpace(item.ID)
+		item.Cwd = strings.TrimSpace(item.Cwd)
+		if item.ID != "" && item.Cwd != "" {
+			items = append(items, item)
+		}
+	}
+	return items
 }
 
 func (a *app) setGeneratedTitle(key, title string) error {
@@ -2340,6 +2480,9 @@ func (a *app) pick() error {
 	case "OPEN":
 		_ = a.markSeenFinished(field(parts, 4))
 		return a.openExistingThread(field(parts, 2))
+	case "HIST":
+		_ = a.markSeenFinished(field(parts, 4))
+		return a.openCodexHistoryThread(strings.TrimPrefix(field(parts, 4), "codex:"), field(parts, 2))
 	case "WT":
 		return a.openThreadWindow(field(parts, 2), field(parts, 3))
 	default:
@@ -2359,6 +2502,30 @@ func (a *app) openExistingThread(target string) error {
 		_ = exec.Command(a.tmuxBin, "select-pane", "-t", pane).Run()
 	}
 	return nil
+}
+
+func (a *app) openCodexHistoryThread(sessionID, cwd string) error {
+	sessionID = strings.TrimSpace(sessionID)
+	if sessionID == "" {
+		return nil
+	}
+	codexBin := lookPath("codex")
+	if codexBin == "" {
+		return errors.New("thread picker: codex not found in PATH")
+	}
+	if cwd == "" || !isDir(cwd) {
+		cwd = a.home
+	}
+	title := cleanGeneratedTitle(a.threadTitle("codex:"+sessionID, filepath.Base(cwd)))
+	if title == "" {
+		title = filepath.Base(cwd)
+	}
+	args := []string{"new-window"}
+	if a.sourceSess != "" {
+		args = append(args, "-t", a.sourceSess+":")
+	}
+	args = append(args, "-c", cwd, "-n", sanitizeWindowName(title), shellQuote(codexBin)+" resume "+shellQuote(sessionID))
+	return exec.Command(a.tmuxBin, args...).Run()
 }
 
 func (a *app) output(name string, args ...string) string {
@@ -2436,6 +2603,14 @@ func sanitizeBranchPath(raw string) string {
 		return "thread"
 	}
 	return strings.Join(parts, "/")
+}
+
+func sanitizeWindowName(raw string) string {
+	name := strings.ReplaceAll(sanitizeBranchPath(raw), "/", "-")
+	if name == "" {
+		return "codex"
+	}
+	return name
 }
 
 func padText(value string, width int) string {
@@ -2517,6 +2692,9 @@ func cleanAbs(path string) string {
 	abs, err := filepath.Abs(path)
 	if err != nil {
 		return path
+	}
+	if resolved, err := filepath.EvalSymlinks(abs); err == nil {
+		return resolved
 	}
 	return abs
 }

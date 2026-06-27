@@ -196,6 +196,9 @@ case "$cmd" in
 	command-prompt)
 		printf 'command-prompt %s\n' "$*" >>"$TMUX_MOCK_LOG"
 		;;
+	new-window)
+		printf 'new-window %s\n' "$*" >>"$TMUX_MOCK_LOG"
+		;;
 	capture-pane)
 		target=""
 		while [ "$#" -gt 0 ]; do
@@ -252,6 +255,14 @@ EOF
 	chmod +x "$mock_bin/fzf"
 }
 
+write_mock_codex() {
+	cat >"$mock_bin/codex" <<'EOF'
+#!/usr/bin/env bash
+printf 'codex %s\n' "$*" >>"${CODEX_MOCK_LOG:-/dev/null}"
+EOF
+	chmod +x "$mock_bin/codex"
+}
+
 write_mock_curl() {
 	cat >"$mock_bin/curl" <<'EOF'
 #!/usr/bin/env bash
@@ -306,14 +317,17 @@ setup_fixture() {
 	export TMUX_THREAD_AI_TITLE="0"
 	export NO_COLOR="1"
 	export TMUX_MOCK_LOG="$tmp_root/tmux.log"
+	export CODEX_MOCK_LOG="$tmp_root/codex.log"
 	export FZF_MOCK_ARGS="$tmp_root/fzf-args.log"
 	export FZF_MOCK_INPUT="$tmp_root/fzf-input.tsv"
 	: >"$TMUX_MOCK_LOG"
+	: >"$CODEX_MOCK_LOG"
 	: >"$FZF_MOCK_ARGS"
 	: >"$FZF_MOCK_INPUT"
 
 	write_mock_tmux
 	write_mock_fzf
+	write_mock_codex
 	write_mock_curl
 	write_mock_ps
 	export PATH="$mock_bin:$PATH"
@@ -355,8 +369,15 @@ rm -f "$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
 run_script --prompt-title "$TEST_REPO"
 prompt_log="$(cat "$TMUX_MOCK_LOG")"
 assert_contains "$prompt_log" "command-prompt -p thread title run-shell" "prompt-title opens tmux command prompt"
+assert_contains "$prompt_log" "run-shell -b" "prompt-title wraps set-title command for tmux run-shell"
+assert_not_contains "$prompt_log" "run-shell '$SCRIPT' --set-title" "prompt-title does not pass extra run-shell arguments"
 assert_contains "$prompt_log" "--set-title" "prompt-title command sets title"
 assert_contains "$prompt_log" "$TEST_REPO" "prompt-title passes selected key"
+: >"$TMUX_MOCK_LOG"
+run_script --prompt-title "codex:thread with spaces"
+space_prompt_log="$(cat "$TMUX_MOCK_LOG")"
+assert_contains "$space_prompt_log" "codex:thread with spaces" "prompt-title preserves keys with spaces"
+assert_contains "$space_prompt_log" "run-shell -b" "prompt-title with spaced key wraps run-shell command"
 
 rm -f "$XDG_STATE_HOME/tmux-thread-picker/repo-candidates.tsv" \
 	"$XDG_STATE_HOME/tmux-thread-picker/worktrees.tsv" \
@@ -422,6 +443,16 @@ if [ "$(printf '%s\n' "$plain_two_pane_rows" | awk -F '\t' '$1 == "OPEN" && $3 ~
 else
 	fail "two codex panes in one window produce separate rows"
 fi
+: >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+rm -f "$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
+now="$(date +%s)"
+started=$((now - 30))
+printf '%s\trunning\tUserPromptSubmit\t%s\t%s\tsingle-pane-session\t%%2\n' "$TEST_WORKTREE" "$now" "$started" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+printf 'codex:single-pane-session\tSingle Pane Session\n' >"$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
+single_pane_session_rows="$(run_script --rows)"
+plain_single_pane_session_rows="$(printf '%s' "$single_pane_session_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+assert_contains "$plain_single_pane_session_rows" "Single Pane Session" "single codex pane uses session-specific title"
+assert_contains "$plain_single_pane_session_rows" $'test:2\tfeature\tcodex:single-pane-session' "single codex pane row uses codex session key"
 : >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
 rm -f "$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
 now="$(date +%s)"
@@ -503,6 +534,58 @@ EOF
 	rm -f "$HOME/.codex/state_5.sqlite"
 else
 	pass "ambiguous sibling pane does not claim fallback title key (sqlite3 unavailable)"
+fi
+if command -v sqlite3 >/dev/null 2>&1; then
+	mkdir -p "$HOME/.codex"
+	rm -f "$HOME/.codex/state_5.sqlite"
+	sqlite3 "$HOME/.codex/state_5.sqlite" <<EOF
+create table threads(id text, cwd text, updated_at_ms integer, title text, first_user_message text);
+insert into threads values ('history-one', '$TEST_WORKTREE', 300, 'History One', 'first one');
+insert into threads values ('history-two', '$TEST_WORKTREE', 200, 'History Two', 'first two');
+EOF
+	: >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+	rm -f "$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
+	history_rows="$(run_script --rows)"
+	plain_history_rows="$(printf '%s' "$history_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+	assert_contains "$plain_history_rows" $'GROUP\t:: Codex History' "codex history rows use dedicated date-sorted group"
+	assert_contains "$plain_history_rows" $'HIST\t' "codex history rows are listed"
+	assert_contains "$plain_history_rows" "History One" "codex history includes first same-cwd chat"
+	assert_contains "$plain_history_rows" "History Two" "codex history includes second same-cwd chat"
+	assert_contains "$plain_history_rows" "1970-01" "codex history rows show last updated date"
+	if [ "$(printf '%s\n' "$plain_history_rows" | awk -F '\t' '$1 == "HIST" { print $5 }' | paste -sd ' ' -)" = "codex:history-one codex:history-two" ]; then
+		pass "codex history rows sort newest first"
+	else
+		fail "codex history rows sort newest first"
+	fi
+	if [ "$(printf '%s\n' "$plain_history_rows" | awk -F '\t' -v cwd="$TEST_WORKTREE" '$1 == "HIST" && $3 == cwd { count++ } END { print count + 0 }')" = "2" ]; then
+		pass "codex history keeps same-cwd chats separate"
+	else
+		fail "codex history keeps same-cwd chats separate"
+	fi
+	printf '%s\trunning\tUserPromptSubmit\t%s\t%s\thistory-one\t%%2\n' "$TEST_WORKTREE" "$(date +%s)" "$(date +%s)" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+	live_history_rows="$(run_script --rows)"
+	plain_live_history_rows="$(printf '%s' "$live_history_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+	if printf '%s\n' "$plain_live_history_rows" | awk -F '\t' '$1 == "OPEN" && $5 == "codex:history-one" { found = 1 } END { exit(found ? 0 : 1) }'; then
+		pass "open codex session claims matching history identity"
+	else
+		fail "open codex session claims matching history identity"
+	fi
+	if ! printf '%s\n' "$plain_live_history_rows" | awk -F '\t' '$1 == "HIST" && $5 == "codex:history-one" { found = 1 } END { exit(found ? 0 : 1) }'; then
+		pass "open codex session suppresses duplicate history row"
+	else
+		fail "open codex session suppresses duplicate history row"
+	fi
+	: >"$TMUX_MOCK_LOG"
+	: >"$FZF_MOCK_INPUT"
+	TMUX_THREAD_USE_DISPLAY_CACHE=0 FZF_MOCK_MODE=kind FZF_MOCK_KIND=HIST run_script >/dev/null
+	assert_contains "$(cat "$TMUX_MOCK_LOG")" "new-window -t test: -c $TEST_WORKTREE" "codex history selection opens a tmux window in the chat cwd"
+	assert_contains "$(cat "$TMUX_MOCK_LOG")" "resume 'history-" "codex history selection resumes selected session"
+	rm -f "$HOME/.codex/state_5.sqlite"
+	: >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+else
+	pass "codex history rows are listed (sqlite3 unavailable)"
+	pass "codex history keeps same-cwd chats separate (sqlite3 unavailable)"
+	pass "codex history selection resumes selected session (sqlite3 unavailable)"
 fi
 rm -f "$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
 printf '%s\trunning\tUserPromptSubmit\t%s\t%s\tsession-pane-2\t%%2\n' "$TEST_WORKTREE" "$(date +%s)" "$(date +%s)" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
