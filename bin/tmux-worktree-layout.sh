@@ -28,6 +28,42 @@ repo_root() {
 	git -C "$1" rev-parse --show-toplevel 2>/dev/null || true
 }
 
+canonical_dir() {
+	[ -d "$1" ] || return 1
+	(cd "$1" && pwd -P)
+}
+
+same_path_or_child() {
+	local path="$1"
+	local parent="$2"
+
+	[ "$path" = "$parent" ] && return 0
+	case "$path" in
+		"$parent"/*) return 0 ;;
+	esac
+	return 1
+}
+
+secondary_tag_valid_for_pane() {
+	local tagged_path="$1"
+	local pane_path="$2"
+	local tagged_real pane_real tagged_root pane_root
+
+	tagged_real="$(canonical_dir "$tagged_path" 2>/dev/null || true)"
+	[ -n "$tagged_real" ] || return 1
+	pane_real="$(canonical_dir "$pane_path" 2>/dev/null || true)"
+	[ -n "$pane_real" ] || return 0
+
+	tagged_root="$(repo_root "$tagged_real")"
+	pane_root="$(repo_root "$pane_real")"
+	if [ -n "$tagged_root" ] || [ -n "$pane_root" ]; then
+		[ -n "$tagged_root" ] && [ -n "$pane_root" ] && [ "$tagged_root" = "$pane_root" ]
+		return $?
+	fi
+
+	same_path_or_child "$pane_real" "$tagged_real"
+}
+
 project_root() {
 	local path="$1"
 	local common_dir top
@@ -87,6 +123,10 @@ window_for_worktree() {
 
 		tagged_path="$("$tmux_bin" show-options -w -t "$window_id" -v @secondary-worktree-path 2>/dev/null || true)"
 		if [ -n "$tagged_path" ] && [ ! -d "$tagged_path" ]; then
+			"$tmux_bin" set-option -wuq -t "$window_id" @secondary-worktree-path >/dev/null 2>&1 || true
+			tagged_path=""
+		fi
+		if [ -n "$tagged_path" ] && ! secondary_tag_valid_for_pane "$tagged_path" "$pane_path"; then
 			"$tmux_bin" set-option -wuq -t "$window_id" @secondary-worktree-path >/dev/null 2>&1 || true
 			tagged_path=""
 		fi

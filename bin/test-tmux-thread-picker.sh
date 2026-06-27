@@ -83,6 +83,8 @@ set -euo pipefail
 
 cmd="${1:-}"
 shift || true
+worktree_path="${TMUX_MOCK_WORKTREE_PATH:-$TEST_WORKTREE}"
+secondary_worktree_path="${TMUX_MOCK_SECONDARY_WORKTREE_PATH:-}"
 
 case "$cmd" in
 	list-sessions)
@@ -123,14 +125,14 @@ case "$cmd" in
 	list-panes)
 		printf '@1\t%%1\tzsh\t%s\t1001\n' "$TEST_REPO"
 		if [ "${TMUX_MOCK_TWO_CODEX_PANES:-0}" = "1" ]; then
-			printf '@2\t%%2\tcodex\t%s\t1002\n' "$TEST_WORKTREE"
+			printf '@2\t%%2\tcodex\t%s\t1002\n' "$worktree_path"
 			if [ "${TMUX_MOCK_TWO_CODEX_SAME_PATH:-0}" = "1" ]; then
-				printf '@2\t%%3\tcodex\t%s\t1003\n' "$TEST_WORKTREE"
+				printf '@2\t%%3\tcodex\t%s\t1003\n' "$worktree_path"
 			else
 				printf '@2\t%%3\tcodex\t%s\t1003\n' "$TEST_REPO"
 			fi
 		else
-			printf '@2\t%%2\t%s\t%s\t1002\n' "${TMUX_MOCK_WORKTREE_COMMAND:-codex}" "$TEST_WORKTREE"
+			printf '@2\t%%2\t%s\t%s\t1002\n' "${TMUX_MOCK_WORKTREE_COMMAND:-codex}" "$worktree_path"
 		fi
 		;;
 	list-windows)
@@ -150,19 +152,19 @@ case "$cmd" in
 				;;
 			'#{window_id}'$'\t''#{pane_current_path}')
 				printf '@1\t%s\n' "$TEST_REPO"
-				printf '@2\t%s\n' "$TEST_WORKTREE"
+				printf '@2\t%s\n' "$worktree_path"
 				;;
 			'#{window_id}'$'\t''#{pane_id}'$'\t''#{pane_current_command}'$'\t''#{pane_current_path}'$'\t''#{pane_pid}')
 				printf '@1\t%%1\tzsh\t%s\t1001\n' "$TEST_REPO"
 				if [ "${TMUX_MOCK_TWO_CODEX_PANES:-0}" = "1" ]; then
-					printf '@2\t%%2\tcodex\t%s\t1002\n' "$TEST_WORKTREE"
+					printf '@2\t%%2\tcodex\t%s\t1002\n' "$worktree_path"
 					if [ "${TMUX_MOCK_TWO_CODEX_SAME_PATH:-0}" = "1" ]; then
-						printf '@2\t%%3\tcodex\t%s\t1003\n' "$TEST_WORKTREE"
+						printf '@2\t%%3\tcodex\t%s\t1003\n' "$worktree_path"
 					else
 						printf '@2\t%%3\tcodex\t%s\t1003\n' "$TEST_REPO"
 					fi
 				else
-					printf '@2\t%%2\t%s\t%s\t1002\n' "${TMUX_MOCK_WORKTREE_COMMAND:-codex}" "$TEST_WORKTREE"
+					printf '@2\t%%2\t%s\t%s\t1002\n' "${TMUX_MOCK_WORKTREE_COMMAND:-codex}" "$worktree_path"
 				fi
 				;;
 			'#{session_name}:#{window_index}'$'\t''#{window_id}'$'\t''#{window_name}'$'\t''#{window_activity_flag}'$'\t''#{window_bell_flag}')
@@ -171,7 +173,7 @@ case "$cmd" in
 				;;
 			'#{session_name}'$'\t''#{window_index}'$'\t''#{window_id}'$'\t''#{window_name}'$'\t''#{window_activity_flag}'$'\t''#{window_bell_flag}'$'\t''#{pane_current_path}'$'\t''#{@secondary-worktree-path}')
 				printf 'test\t1\t@1\tmain\t0\t0\t%s\t\n' "$TEST_REPO"
-				printf 'test\t2\t@2\tfeature\t%s\t0\t%s\t\n' "${TMUX_MOCK_WORKTREE_ACTIVITY:-1}" "$TEST_WORKTREE"
+				printf 'test\t2\t@2\tfeature\t%s\t0\t%s\t%s\n' "${TMUX_MOCK_WORKTREE_ACTIVITY:-1}" "$worktree_path" "$secondary_worktree_path"
 				;;
 			*)
 				printf '1\n2\n'
@@ -180,6 +182,9 @@ case "$cmd" in
 		;;
 	show-options)
 		exit 0
+		;;
+	set-option)
+		printf 'set-option %s\n' "$*" >>"$TMUX_MOCK_LOG"
 		;;
 	switch-client)
 		printf 'switch-client %s\n' "$*" >>"$TMUX_MOCK_LOG"
@@ -359,6 +364,32 @@ if [ ! -s "$XDG_STATE_HOME/tmux-thread-picker/titles" ]; then
 else
 	fail "set-title clears title on empty value"
 fi
+if command -v sqlite3 >/dev/null 2>&1; then
+	mkdir -p "$HOME/.codex"
+	rm -f "$HOME/.codex/state_5.sqlite"
+	sqlite3 "$HOME/.codex/state_5.sqlite" <<EOF
+create table threads(id text primary key, title text not null, first_user_message text not null default '');
+insert into threads(id, title, first_user_message) values ('rename-session', 'Old Codex Title', 'first prompt');
+insert into threads(id, title, first_user_message) values ('auto-session', '', '');
+EOF
+	printf 'codex:rename-session\tStale Local Title\n' >"$XDG_STATE_HOME/tmux-thread-picker/titles"
+	run_script --set-title "codex:rename-session" "Renamed Codex's Chat"
+	assert_file_missing_line "$XDG_STATE_HOME/tmux-thread-picker/titles" "codex:rename-session"$'\t'"Stale Local Title" "set-title removes stale local codex title"
+	assert_file_missing_line "$XDG_STATE_HOME/tmux-thread-picker/titles" "codex:rename-session"$'\t'"Renamed Codex's Chat" "set-title avoids duplicate local codex title"
+	codex_db_title="$(sqlite3 "$HOME/.codex/state_5.sqlite" "select title from threads where id = 'rename-session';")"
+	assert_contains "$codex_db_title" "Renamed Codex's Chat" "set-title syncs codex internal title"
+	run_script --set-title "codex:rename-session" ""
+	codex_db_title_after_clear="$(sqlite3 "$HOME/.codex/state_5.sqlite" "select title from threads where id = 'rename-session';")"
+	assert_contains "$codex_db_title_after_clear" "Renamed Codex's Chat" "clearing picker title leaves codex internal title intact"
+	TMUX_MOCK_CAPTURE_PANE2=1 run_script --regen-title "codex:auto-session" "test:2"
+	auto_codex_db_title="$(sqlite3 "$HOME/.codex/state_5.sqlite" "select title from threads where id = 'auto-session';")"
+	assert_contains "$auto_codex_db_title" "LIN-42: Add refund flow" "regen-title syncs codex internal title"
+	assert_file_missing_line "$XDG_STATE_HOME/tmux-thread-picker/auto-titles" "codex:auto-session"$'\t'"LIN-42: Add refund flow" "regen-title avoids duplicate local codex auto-title"
+	rm -f "$HOME/.codex/state_5.sqlite"
+else
+	pass "set-title syncs codex internal title (sqlite3 unavailable)"
+	pass "regen-title syncs codex internal title (sqlite3 unavailable)"
+fi
 
 rm -f "$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
 TMUX_MOCK_CAPTURE_PANE2=1 run_script --regen-title "$TEST_WORKTREE" "test:2"
@@ -434,6 +465,45 @@ assert_contains "$plain_rows" $'\ttest:2\tfeature\t' "data row search text keeps
 assert_contains "$plain_rows" "codex   demo-feature" "open codex cli is shown"
 assert_not_contains "$plain_rows" "run     demo-feature" "open codex cli is not shown as running"
 assert_not_contains "$plain_rows" "▶     codex   demo-feature" "open codex cli does not show active arrow"
+: >"$TMUX_MOCK_LOG"
+wrong_secondary_rows="$(TMUX_MOCK_SECONDARY_WORKTREE_PATH="$TEST_REPO" run_script --rows)"
+plain_wrong_secondary_rows="$(printf '%s' "$wrong_secondary_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+if printf '%s\n' "$plain_wrong_secondary_rows" | awk -F '\t' -v worktree="$TEST_WORKTREE" '$1 == "OPEN" && $3 == "test:2" && $4 == "feature" && $5 == worktree { found = 1 } END { exit(found ? 0 : 1) }'; then
+	pass "stale secondary path cannot override live pane cwd"
+else
+	fail "stale secondary path cannot override live pane cwd"
+fi
+assert_contains "$(cat "$TMUX_MOCK_LOG")" "set-option -wuq -t @2 @secondary-worktree-path" "stale secondary path is cleared"
+: >"$TMUX_MOCK_LOG"
+missing_secondary="$tmp_root/missing-secondary-worktree"
+missing_secondary_rows="$(TMUX_MOCK_SECONDARY_WORKTREE_PATH="$missing_secondary" run_script --rows)"
+plain_missing_secondary_rows="$(printf '%s' "$missing_secondary_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+if printf '%s\n' "$plain_missing_secondary_rows" | awk -F '\t' -v worktree="$TEST_WORKTREE" '$1 == "OPEN" && $3 == "test:2" && $5 == worktree { found = 1 } END { exit(found ? 0 : 1) }'; then
+	pass "missing secondary path falls back to live pane cwd"
+else
+	fail "missing secondary path falls back to live pane cwd"
+fi
+assert_contains "$(cat "$TMUX_MOCK_LOG")" "set-option -wuq -t @2 @secondary-worktree-path" "missing secondary path is cleared"
+: >"$TMUX_MOCK_LOG"
+missing_pane_cwd="$tmp_root/missing-pane-cwd"
+tagged_secondary_rows="$(TMUX_MOCK_WORKTREE_PATH="$missing_pane_cwd" TMUX_MOCK_SECONDARY_WORKTREE_PATH="$TEST_WORKTREE" run_script --rows)"
+plain_tagged_secondary_rows="$(printf '%s' "$tagged_secondary_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+if printf '%s\n' "$plain_tagged_secondary_rows" | awk -F '\t' -v worktree="$TEST_WORKTREE" '$1 == "OPEN" && $3 == "test:2" && $4 == "feature" && $5 == worktree { found = 1 } END { exit(found ? 0 : 1) }'; then
+	pass "secondary path remains authoritative when pane cwd is unavailable"
+else
+	fail "secondary path remains authoritative when pane cwd is unavailable"
+fi
+assert_not_contains "$(cat "$TMUX_MOCK_LOG")" "set-option -wuq -t @2 @secondary-worktree-path" "valid secondary path with unavailable pane cwd is kept"
+run_script --set-title "test:2" "Legacy Target Title"
+legacy_target_rows="$(run_script --rows)"
+plain_legacy_target_rows="$(printf '%s' "$legacy_target_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+assert_contains "$plain_legacy_target_rows" "Legacy Target Title" "legacy tmux target title remains a display alias"
+if printf '%s\n' "$plain_legacy_target_rows" | awk -F '\t' -v path="$TEST_WORKTREE" '$1 == "OPEN" && $3 == "test:2" && $5 == path { found = 1 } END { exit(found ? 0 : 1) }'; then
+	pass "legacy tmux target title does not replace stable row key"
+else
+	fail "legacy tmux target title does not replace stable row key"
+fi
+run_script --set-title "test:2" ""
 two_pane_rows="$(TMUX_MOCK_TWO_CODEX_PANES=1 run_script --rows)"
 plain_two_pane_rows="$(printf '%s' "$two_pane_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
 assert_contains "$plain_two_pane_rows" "LIN-42: Add refund flow" "two codex panes use captured Linear ticket title"
@@ -453,6 +523,54 @@ single_pane_session_rows="$(run_script --rows)"
 plain_single_pane_session_rows="$(printf '%s' "$single_pane_session_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
 assert_contains "$plain_single_pane_session_rows" "Single Pane Session" "single codex pane uses session-specific title"
 assert_contains "$plain_single_pane_session_rows" $'test:2\tfeature\tcodex:single-pane-session' "single codex pane row uses codex session key"
+printf '%s\n' "$single_pane_session_rows" >"$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv"
+printf '%s\trunning\tUserPromptSubmit\t%s\t%s\treplaced-pane-session\t%%2\n' "$TEST_WORKTREE" "$now" "$started" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+printf 'codex:replaced-pane-session\tReplaced Pane Session\n' >"$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
+: >"$FZF_MOCK_INPUT"
+TMUX_THREAD_USE_DISPLAY_CACHE=1 FZF_MOCK_MODE=none run_script >/dev/null
+rekeyed_cache_input="$(cat "$FZF_MOCK_INPUT")"
+plain_rekeyed_cache_input="$(printf '%s' "$rekeyed_cache_input" | perl -pe 's/\e\[[0-9;]*m//g')"
+assert_contains "$plain_rekeyed_cache_input" "Replaced Pane Session" "stale display cache rebuilds after codex identity title changes"
+assert_contains "$plain_rekeyed_cache_input" $'test:2\tfeature\tcodex:replaced-pane-session' "stale display cache rebuilds after codex identity key changes"
+assert_not_contains "$plain_rekeyed_cache_input" "Single Pane Session" "stale display cache does not preserve old codex title"
+assert_not_contains "$plain_rekeyed_cache_input" "codex:single-pane-session" "stale display cache does not preserve old codex identity key"
+printf '%s\trunning\tUserPromptSubmit\t%s\t%s\tsingle-pane-session\t%%2\n' "$TEST_WORKTREE" "$now" "$started" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+printf 'codex:single-pane-session\tSingle Pane Session\n' >"$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
+printf '%s\n' "$TEST_WORKTREE" >"$XDG_STATE_HOME/tmux-thread-picker/pins"
+legacy_path_pin_rows="$(run_script --rows)"
+plain_legacy_path_pin_rows="$(printf '%s' "$legacy_path_pin_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+if printf '%s\n' "$plain_legacy_path_pin_rows" | awk -F '\t' '$1 == "OPEN" && $5 == "codex:single-pane-session" && $2 ~ / P / { found = 1 } END { exit(found ? 0 : 1) }'; then
+	pass "codex row recognizes legacy path pin"
+else
+	fail "codex row recognizes legacy path pin"
+fi
+assert_file_contains_line "$XDG_STATE_HOME/tmux-thread-picker/pins" "codex:single-pane-session" "legacy path pin migrates to codex key"
+assert_file_missing_line "$XDG_STATE_HOME/tmux-thread-picker/pins" "$TEST_WORKTREE" "legacy path pin alias is removed after migration"
+printf '%s\n' "$TEST_REPO" >"$XDG_STATE_HOME/tmux-thread-picker/pins"
+printf '%s\n' "$TEST_WORKTREE" >"$XDG_STATE_HOME/tmux-thread-picker/archives"
+legacy_path_archive_rows="$(run_script --rows)"
+plain_legacy_path_archive_rows="$(printf '%s' "$legacy_path_archive_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+if printf '%s\n' "$plain_legacy_path_archive_rows" | awk -F '\t' '$1 == "OPEN" && $5 == "codex:single-pane-session" && $2 ~ / A / { found = 1 } END { exit(found ? 0 : 1) }'; then
+	pass "codex row recognizes legacy path archive"
+else
+	fail "codex row recognizes legacy path archive"
+fi
+assert_file_contains_line "$XDG_STATE_HOME/tmux-thread-picker/archives" "codex:single-pane-session" "legacy path archive migrates to codex key"
+assert_file_missing_line "$XDG_STATE_HOME/tmux-thread-picker/archives" "$TEST_WORKTREE" "legacy path archive alias is removed after migration"
+printf '%s\n' "$TEST_REPO" >"$XDG_STATE_HOME/tmux-thread-picker/pins"
+: >"$XDG_STATE_HOME/tmux-thread-picker/archives"
+: >"$XDG_STATE_HOME/tmux-thread-picker/pins"
+printf '%s\trunning\tUserPromptSubmit\t%s\t%s\twrite-canonical-session\t%%2\n' "$TEST_WORKTREE" "$now" "$started" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+run_script --toggle-pin "$TEST_WORKTREE"
+assert_file_contains_line "$XDG_STATE_HOME/tmux-thread-picker/pins" "codex:write-canonical-session" "toggle-pin writes canonical codex key"
+assert_file_missing_line "$XDG_STATE_HOME/tmux-thread-picker/pins" "$TEST_WORKTREE" "toggle-pin avoids legacy path key for codex row"
+: >"$XDG_STATE_HOME/tmux-thread-picker/archives"
+run_script --toggle-archive "$TEST_WORKTREE"
+assert_file_contains_line "$XDG_STATE_HOME/tmux-thread-picker/archives" "codex:write-canonical-session" "toggle-archive writes canonical codex key"
+assert_file_missing_line "$XDG_STATE_HOME/tmux-thread-picker/archives" "$TEST_WORKTREE" "toggle-archive avoids legacy path key for codex row"
+printf '%s\n' "$TEST_REPO" >"$XDG_STATE_HOME/tmux-thread-picker/pins"
+: >"$XDG_STATE_HOME/tmux-thread-picker/archives"
+rm -f "$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv"
 : >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
 rm -f "$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
 now="$(date +%s)"
@@ -481,6 +599,19 @@ if printf '%s\n' "$plain_same_path_mixed_pane_status_rows" | awk -F '\t' '$1 == 
 	pass "same-path pane hook does not mark sibling pane as running"
 else
 	fail "same-path pane hook does not mark sibling pane as running"
+fi
+if awk -F '\t' '$1 == "@2" && $2 == "running" && $5 == "%2" { running = 1 } $1 == "@2" && $2 == "unknown" && $5 == "%3" { sibling = 1 } END { exit(running && sibling ? 0 : 1) }' "$XDG_STATE_HOME/tmux-thread-picker/codex-states.tsv"; then
+	pass "codex state cache keeps same-path pane statuses separate"
+else
+	fail "codex state cache keeps same-path pane statuses separate"
+fi
+printf '%s\n' "$rows" >"$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv"
+same_path_window_overlay_rows="$(TMUX_MOCK_TWO_CODEX_PANES=1 TMUX_MOCK_TWO_CODEX_SAME_PATH=1 run_script --live-rows "$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv")"
+plain_same_path_window_overlay_rows="$(printf '%s' "$same_path_window_overlay_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+if printf '%s\n' "$plain_same_path_window_overlay_rows" | awk -F '\t' '$1 == "OPEN" && $3 == "test:2" && $2 !~ /run/ && $2 !~ /wait/ { found = 1 } END { exit(found ? 0 : 1) }'; then
+	pass "same-path pane hook does not collapse onto cached window row"
+else
+	fail "same-path pane hook does not collapse onto cached window row"
 fi
 printf '%s\n' "$two_pane_rows" >"$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv"
 : >"$FZF_MOCK_INPUT"
@@ -515,6 +646,7 @@ if command -v sqlite3 >/dev/null 2>&1; then
 create table threads(id text, cwd text, updated_at_ms integer, title text, first_user_message text);
 insert into threads values ('explicit-pane-session', '$TEST_WORKTREE', 200, '', '');
 insert into threads values ('fallback-pane-session', '$TEST_WORKTREE', 100, '', '');
+insert into threads values ('target-alias-session', '$TEST_WORKTREE', 300, 'Fresh Codex SQLite Title', '');
 EOF
 	: >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
 	printf '%s\tdone\tStop\t%s\t%s\texplicit-pane-session\t%%2\n' "$TEST_WORKTREE" "$old" "$old" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
@@ -531,6 +663,16 @@ EOF
 	else
 		fail "ambiguous sibling pane does not claim fallback title key"
 	fi
+	run_script --set-title "test:2" "Stale Target Alias"
+	printf '%s\trunning\tUserPromptSubmit\t%s\t%s\ttarget-alias-session\t%%2\n' "$TEST_WORKTREE" "$(date +%s)" "$(date +%s)" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+	target_alias_rows="$(TMUX_MOCK_TWO_CODEX_PANES=1 run_script --rows)"
+	plain_target_alias_rows="$(printf '%s' "$target_alias_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+	if printf '%s\n' "$plain_target_alias_rows" | awk -F '\t' '$1 == "OPEN" && $3 == "test:2,%2" && $5 == "codex:target-alias-session" && $2 ~ /Fresh Codex SQLite Title/ && $2 !~ /Stale Target Alias/ { found = 1 } END { exit(found ? 0 : 1) }'; then
+		pass "codex sqlite title beats stale tmux target alias"
+	else
+		fail "codex sqlite title beats stale tmux target alias"
+	fi
+	run_script --set-title "test:2" ""
 	rm -f "$HOME/.codex/state_5.sqlite"
 else
 	pass "ambiguous sibling pane does not claim fallback title key (sqlite3 unavailable)"
@@ -540,19 +682,99 @@ if command -v sqlite3 >/dev/null 2>&1; then
 	rm -f "$HOME/.codex/state_5.sqlite"
 	sqlite3 "$HOME/.codex/state_5.sqlite" <<EOF
 create table threads(id text, cwd text, updated_at_ms integer, title text, first_user_message text);
+insert into threads values ('history-pane-three', '$TEST_REPO', 300, 'Investigate session picker naming', '');
+EOF
+	: >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+	rm -f "$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
+	history_matched_pane_rows="$(TMUX_MOCK_TWO_CODEX_PANES=1 run_script --rows)"
+	plain_history_matched_pane_rows="$(printf '%s' "$history_matched_pane_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+	if printf '%s\n' "$plain_history_matched_pane_rows" | awk -F '\t' '$1 == "OPEN" && $3 == "test:2,%3" && $5 == "codex:history-pane-three" { found = 1 } END { exit(found ? 0 : 1) }'; then
+		pass "idle codex pane recovers session key from matching history"
+	else
+		fail "idle codex pane recovers session key from matching history"
+	fi
+	printf '%s\trunning\tUserPromptSubmit\t%s\t%s\thook-pane-three\t%%3\n' "$TEST_REPO" "$(date +%s)" "$(date +%s)" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+	hook_precedence_rows="$(TMUX_MOCK_TWO_CODEX_PANES=1 run_script --rows)"
+	plain_hook_precedence_rows="$(printf '%s' "$hook_precedence_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+	if printf '%s\n' "$plain_hook_precedence_rows" | awk -F '\t' '$1 == "OPEN" && $3 == "test:2,%3" && $5 == "codex:hook-pane-three" { found = 1 } END { exit(found ? 0 : 1) }'; then
+		pass "hook pane session key wins over matching history"
+	else
+		fail "hook pane session key wins over matching history"
+	fi
+	printf '%s\trunning\tUserPromptSubmit\t%s\t%s\thook-path-three\n' "$TEST_REPO" "$(date +%s)" "$(date +%s)" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+	hook_path_precedence_rows="$(TMUX_MOCK_TWO_CODEX_PANES=1 run_script --rows)"
+	plain_hook_path_precedence_rows="$(printf '%s' "$hook_path_precedence_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+	if printf '%s\n' "$plain_hook_path_precedence_rows" | awk -F '\t' '$1 == "OPEN" && $3 == "test:2,%3" && $5 == "codex:hook-path-three" { found = 1 } END { exit(found ? 0 : 1) }'; then
+		pass "hook path session key wins over matching history"
+	else
+		fail "hook path session key wins over matching history"
+	fi
+	rm -f "$HOME/.codex/state_5.sqlite"
+	sqlite3 "$HOME/.codex/state_5.sqlite" <<EOF
+create table threads(id text, cwd text, updated_at_ms integer, title text, first_user_message text);
+insert into threads values ('low-confidence-history', '$TEST_REPO', 300, 'Investigate picker naming session', '');
+EOF
+	: >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+	low_confidence_rows="$(TMUX_MOCK_TWO_CODEX_PANES=1 run_script --rows)"
+	plain_low_confidence_rows="$(printf '%s' "$low_confidence_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+	if printf '%s\n' "$plain_low_confidence_rows" | awk -F '\t' -v repo="$TEST_REPO" '$1 == "OPEN" && $3 == "test:2,%3" && $5 == repo { found = 1 } END { exit(found ? 0 : 1) }'; then
+		pass "low-confidence history match does not claim live row identity"
+	else
+		fail "low-confidence history match does not claim live row identity"
+	fi
+	rm -f "$HOME/.codex/state_5.sqlite"
+	sqlite3 "$HOME/.codex/state_5.sqlite" <<EOF
+create table threads(id text, cwd text, updated_at_ms integer, title text, first_user_message text);
+insert into threads values ('ambiguous-history-one', '$TEST_REPO', 300, 'Investigate session picker naming', '');
+insert into threads values ('ambiguous-history-two', '$TEST_REPO', 200, 'Investigate session picker naming', '');
+EOF
+	ambiguous_history_rows="$(TMUX_MOCK_TWO_CODEX_PANES=1 run_script --rows)"
+	plain_ambiguous_history_rows="$(printf '%s' "$ambiguous_history_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+	if printf '%s\n' "$plain_ambiguous_history_rows" | awk -F '\t' -v repo="$TEST_REPO" '$1 == "OPEN" && $3 == "test:2,%3" && $5 == repo { found = 1 } END { exit(found ? 0 : 1) }'; then
+		pass "ambiguous history match does not claim live row identity"
+	else
+		fail "ambiguous history match does not claim live row identity"
+	fi
+	rm -f "$HOME/.codex/state_5.sqlite"
+else
+	pass "idle codex pane recovers session key from matching history (sqlite3 unavailable)"
+	pass "hook pane session key wins over matching history (sqlite3 unavailable)"
+	pass "hook path session key wins over matching history (sqlite3 unavailable)"
+	pass "low-confidence history match does not claim live row identity (sqlite3 unavailable)"
+	pass "ambiguous history match does not claim live row identity (sqlite3 unavailable)"
+fi
+if command -v sqlite3 >/dev/null 2>&1; then
+	mkdir -p "$HOME/.codex"
+	rm -f "$HOME/.codex/state_5.sqlite"
+	sqlite3 "$HOME/.codex/state_5.sqlite" <<EOF
+create table threads(id text, cwd text, updated_at_ms integer, title text, first_user_message text);
 insert into threads values ('history-one', '$TEST_WORKTREE', 300, 'History One', 'first one');
 insert into threads values ('history-two', '$TEST_WORKTREE', 200, 'History Two', 'first two');
+insert into threads values ('history-whatsapp', '$TEST_REPO', 100, 'Could you look at my conversation with beautyhairmaiidi on Whatsapp and identify the problem that she has?', '');
 EOF
 	: >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
 	rm -f "$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
 	history_rows="$(run_script --rows)"
 	plain_history_rows="$(printf '%s' "$history_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
-	assert_contains "$plain_history_rows" $'GROUP\t:: Codex History' "codex history rows use dedicated date-sorted group"
+	assert_not_contains "$plain_history_rows" $'GROUP\t:: Codex History' "codex history rows do not use dedicated group"
+	assert_contains "$plain_history_rows" $'GROUP\t:: demo' "codex history rows use project group"
 	assert_contains "$plain_history_rows" $'HIST\t' "codex history rows are listed"
 	assert_contains "$plain_history_rows" "History One" "codex history includes first same-cwd chat"
 	assert_contains "$plain_history_rows" "History Two" "codex history includes second same-cwd chat"
+	assert_not_contains "$plain_history_rows" "Could you look at my conversation" "codex history hides raw prompt prefixes"
 	assert_contains "$plain_history_rows" "1970-01" "codex history rows show last updated date"
-	if [ "$(printf '%s\n' "$plain_history_rows" | awk -F '\t' '$1 == "HIST" { print $5 }' | paste -sd ' ' -)" = "codex:history-one codex:history-two" ]; then
+	if printf '%s\n' "$plain_history_rows" | awk -F '\t' '$1 == "GROUP" { group = $2 } $1 == "HIST" && $5 == "codex:history-one" && group == ":: demo" { found = 1 } END { exit(found ? 0 : 1) }'; then
+		pass "codex history rows appear under relevant project group"
+	else
+		fail "codex history rows appear under relevant project group"
+	fi
+	limited_group_rows="$(TMUX_THREAD_GROUP_SEARCH_LIMIT=80 run_script --rows)"
+	if printf '%s\n' "$limited_group_rows" | awk -F '\t' '$1 == "GROUP" && $2 ~ /:: demo/ { if (length($7) <= 120) found = 1 } END { exit(found ? 0 : 1) }'; then
+		pass "project group search text with codex history is capped"
+	else
+		fail "project group search text with codex history is capped"
+	fi
+	if [ "$(printf '%s\n' "$plain_history_rows" | awk -F '\t' '$1 == "HIST" { print $5 }' | head -n 2 | paste -sd ' ' -)" = "codex:history-one codex:history-two" ]; then
 		pass "codex history rows sort newest first"
 	else
 		fail "codex history rows sort newest first"
@@ -579,7 +801,34 @@ EOF
 	: >"$FZF_MOCK_INPUT"
 	TMUX_THREAD_USE_DISPLAY_CACHE=0 FZF_MOCK_MODE=kind FZF_MOCK_KIND=HIST run_script >/dev/null
 	assert_contains "$(cat "$TMUX_MOCK_LOG")" "new-window -t test: -c $TEST_WORKTREE" "codex history selection opens a tmux window in the chat cwd"
+	assert_contains "$(cat "$TMUX_MOCK_LOG")" "-n History-Two" "codex history selection reuses displayed history title for tmux window"
 	assert_contains "$(cat "$TMUX_MOCK_LOG")" "resume 'history-" "codex history selection resumes selected session"
+	rm -f "$HOME/.codex/state_5.sqlite"
+	sqlite3 "$HOME/.codex/state_5.sqlite" <<EOF
+create table threads(id text, cwd text, updated_at_ms integer, title text, first_user_message text);
+with recursive seq(n) as (
+	select 1
+	union all
+	select n + 1 from seq where n < 255
+)
+insert into threads
+select printf('bulk-%03d', n), '$TEST_REPO', n, printf('Bulk History %03d', n), ''
+from seq;
+EOF
+	bounded_history_rows="$(run_script --rows)"
+	plain_bounded_history_rows="$(printf '%s' "$bounded_history_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+	if [ "$(printf '%s\n' "$plain_bounded_history_rows" | awk -F '\t' '$1 == "HIST" { count++ } END { print count + 0 }')" = "250" ]; then
+		pass "codex history defaults to bounded row volume"
+	else
+		fail "codex history defaults to bounded row volume"
+	fi
+	unlimited_history_rows="$(TMUX_THREAD_CODEX_HISTORY_LIMIT=0 run_script --rows)"
+	plain_unlimited_history_rows="$(printf '%s' "$unlimited_history_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+	if [ "$(printf '%s\n' "$plain_unlimited_history_rows" | awk -F '\t' '$1 == "HIST" { count++ } END { print count + 0 }')" = "255" ]; then
+		pass "codex history limit can be disabled with env override"
+	else
+		fail "codex history limit can be disabled with env override"
+	fi
 	rm -f "$HOME/.codex/state_5.sqlite"
 	: >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
 else
@@ -610,6 +859,8 @@ if ! grep -Fq "$TEST_WORKTREE"$'\t' "$XDG_STATE_HOME/tmux-thread-picker/auto-tit
 else
 	fail "generated titles are not duplicated under path when codex session id exists"
 fi
+printf '%s\n' "$TEST_REPO" >"$XDG_STATE_HOME/tmux-thread-picker/pins"
+rm -f "$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv"
 : >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
 rm -f "$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
 now="$(date +%s)"
@@ -628,20 +879,40 @@ done_rows="$(run_script --rows)"
 plain_done_rows="$(printf '%s' "$done_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
 assert_contains "$plain_done_rows" "●     wait    demo-feature" "done codex hook shows wait status"
 assert_contains "$plain_done_rows" "2m05s" "done codex hook shows final work duration"
-assert_not_contains "$plain_done_rows" "▶     wait    demo-feature" "done codex hook does not show active arrow"
-: >"$TMUX_MOCK_LOG"
-FZF_MOCK_MODE=target FZF_MOCK_TARGET='^test:2$' run_script >/dev/null
-if awk -F '\t' -v key="$TEST_WORKTREE" '$1 == key && $2 ~ /^[0-9]+$/ { found = 1 } END { exit(found ? 0 : 1) }' "$XDG_STATE_HOME/tmux-thread-picker/seen-finished"; then
-	pass "seen finished marker stores timestamp"
-else
-	fail "seen finished marker stores timestamp"
-fi
-seen_done_rows="$(run_script --rows)"
-plain_seen_done_rows="$(printf '%s' "$seen_done_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
-assert_not_contains "$plain_seen_done_rows" "●     wait    demo-feature" "seen finished thread hides wait status"
-new_done=$((now + 10))
-printf '%s\tdone\tStop\t%s\t%s\n' "$TEST_WORKTREE" "$new_done" "$started" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
-new_done_rows="$(run_script --rows)"
+	assert_not_contains "$plain_done_rows" "▶     wait    demo-feature" "done codex hook does not show active arrow"
+	: >"$TMUX_MOCK_LOG"
+	FZF_MOCK_MODE=target FZF_MOCK_TARGET='^test:2$' run_script >/dev/null
+	if awk -F '\t' -v key="$TEST_WORKTREE@$now" '$1 == key && $2 ~ /^[0-9]+$/ { found = 1 } END { exit(found ? 0 : 1) }' "$XDG_STATE_HOME/tmux-thread-picker/seen-finished"; then
+		pass "seen finished marker stores path event timestamp"
+	else
+		fail "seen finished marker stores path event timestamp"
+	fi
+	seen_done_rows="$(run_script --rows)"
+	plain_seen_done_rows="$(printf '%s' "$seen_done_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+	assert_not_contains "$plain_seen_done_rows" "●     wait    demo-feature" "seen finished thread hides wait status"
+	printf '%s\tdone\tStop\t%s\t%s\ttransition-session\t%%2\n' "$TEST_WORKTREE" "$now" "$started" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+	transition_rows="$(run_script --rows)"
+	plain_transition_rows="$(printf '%s' "$transition_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+	assert_contains "$plain_transition_rows" $'test:2\tfeature\tcodex:transition-session' "path seen marker can transition to codex session key"
+	assert_not_contains "$plain_transition_rows" "●     wait    demo-feature" "path seen marker hides same finish after session id appears"
+	rm -f "$XDG_STATE_HOME/tmux-thread-picker/seen-finished"
+	FZF_MOCK_MODE=target FZF_MOCK_TARGET='^test:2$' run_script >/dev/null
+	if awk -F '\t' -v key="codex:transition-session@$now" '$1 == key && $2 ~ /^[0-9]+$/ { found = 1 } END { exit(found ? 0 : 1) }' "$XDG_STATE_HOME/tmux-thread-picker/seen-finished"; then
+		pass "seen finished marker stores session event timestamp"
+	else
+		fail "seen finished marker stores session event timestamp"
+	fi
+	session_seen_rows="$(run_script --rows)"
+	plain_session_seen_rows="$(printf '%s' "$session_seen_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+	assert_not_contains "$plain_session_seen_rows" "●     wait    demo-feature" "session seen marker hides same finished event"
+	session_new_done=$((now + 20))
+	printf '%s\tdone\tStop\t%s\t%s\ttransition-session\t%%2\n' "$TEST_WORKTREE" "$session_new_done" "$started" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+	session_new_rows="$(run_script --rows)"
+	plain_session_new_rows="$(printf '%s' "$session_new_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+	assert_contains "$plain_session_new_rows" "●     wait    demo-feature" "newer session finish ignores stale seen marker"
+	new_done=$((now + 10))
+	printf '%s\tdone\tStop\t%s\t%s\n' "$TEST_WORKTREE" "$new_done" "$started" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+	new_done_rows="$(run_script --rows)"
 plain_new_done_rows="$(printf '%s' "$new_done_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
 assert_contains "$plain_new_done_rows" "●     wait    demo-feature" "newer finish ignores stale seen marker"
 printf '%s\n' "$TEST_WORKTREE" >"$XDG_STATE_HOME/tmux-thread-picker/seen-finished"
@@ -706,6 +977,33 @@ else
 	fail "fresh display cache skips inventory caches"
 fi
 
+printf '%s\n' "$rows" >"$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv"
+: >"$FZF_MOCK_INPUT"
+TMUX_THREAD_USE_DISPLAY_CACHE=1 TMUX_MOCK_WORKTREE_PATH="$TEST_REPO" FZF_MOCK_MODE=none run_script >/dev/null
+changed_path_cache_input="$(cat "$FZF_MOCK_INPUT")"
+plain_changed_path_cache_input="$(printf '%s' "$changed_path_cache_input" | perl -pe 's/\e\[[0-9;]*m//g')"
+if printf '%s\n' "$plain_changed_path_cache_input" | awk -F '\t' -v repo="$TEST_REPO" '$1 == "OPEN" && $3 == "test:2" && $4 == "main" && $5 == repo { found = 1 } END { exit(found ? 0 : 1) }'; then
+	pass "stale display cache rebuilds after live target path changes"
+else
+	fail "stale display cache rebuilds after live target path changes"
+fi
+if ! printf '%s\n' "$plain_changed_path_cache_input" | awk -F '\t' -v worktree="$TEST_WORKTREE" '$1 == "OPEN" && $3 == "test:2" && $4 == "feature" && $5 == worktree { found = 1 } END { exit(found ? 0 : 1) }'; then
+	pass "stale display cache does not preserve old target identity"
+else
+	fail "stale display cache does not preserve old target identity"
+fi
+
+printf '%s\n' "$rows" >"$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv"
+run_script --set-title "$TEST_REPO" "Renamed Thread"
+: >"$FZF_MOCK_INPUT"
+TMUX_THREAD_USE_DISPLAY_CACHE=1 FZF_MOCK_MODE=none run_script >/dev/null
+renamed_cache_input="$(cat "$FZF_MOCK_INPUT")"
+plain_renamed_cache_input="$(printf '%s' "$renamed_cache_input" | perl -pe 's/\e\[[0-9;]*m//g')"
+assert_contains "$plain_renamed_cache_input" "Renamed Thread" "stale display cache rebuilds after manual title changes"
+assert_not_contains "$plain_renamed_cache_input" $'OPEN\t      open*   Main Thread' "stale display cache does not preserve old title"
+run_script --set-title "$TEST_REPO" "Main Thread"
+rows="$(run_script --rows)"
+
 printf 'GROUP\t:: Old Cache\t\t\t\told\t :: Old Cache\nOPEN\told cache row\ttest:9\tmain\t%s\tdemo\t OPEN old cache row\n' "$TEST_REPO" >"$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv"
 : >"$FZF_MOCK_INPUT"
 TMUX_THREAD_USE_DISPLAY_CACHE=0 FZF_MOCK_MODE=none run_script >/dev/null
@@ -716,10 +1014,13 @@ assert_contains "$cache_bypass_input" "Main Thread" "cache disabled rebuilds pic
 rm -f "$XDG_STATE_HOME/tmux-thread-picker/repo-candidates.tsv" \
 	"$XDG_STATE_HOME/tmux-thread-picker/worktrees.tsv" \
 	"$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv"
+inactive_worktree="$(dirname "$TEST_REPO")/demo-inactive"
+git -C "$TEST_REPO" worktree add -b inactive "$inactive_worktree" >/dev/null 2>&1
 attention_rows="$(TMUX_THREAD_ATTENTION_ONLY=1 TMUX_MOCK_WORKTREE_ACTIVITY=0 TMUX_MOCK_WORKTREE_COMMAND=zsh run_script --rows)"
 plain_attention_rows="$(printf '%s' "$attention_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
 assert_contains "$plain_attention_rows" "$TEST_REPO" "attention mode keeps current thread"
-assert_not_contains "$plain_attention_rows" "$TEST_WORKTREE" "attention mode hides inactive unpinned thread"
+assert_contains "$plain_attention_rows" "$TEST_WORKTREE" "attention mode keeps open inactive thread"
+assert_not_contains "$plain_attention_rows" "$inactive_worktree" "attention mode hides inactive unpinned worktree"
 if [ ! -e "$XDG_STATE_HOME/tmux-thread-picker/repo-candidates.tsv" ] &&
 	[ ! -e "$XDG_STATE_HOME/tmux-thread-picker/worktrees.tsv" ] &&
 	[ ! -e "$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv" ]; then
@@ -728,13 +1029,14 @@ else
 	fail "attention mode skips full inventory caches"
 fi
 
-run_script --toggle-pin "$TEST_WORKTREE"
+run_script --toggle-pin "$inactive_worktree"
 pinned_attention_rows="$(TMUX_THREAD_ATTENTION_ONLY=1 TMUX_MOCK_WORKTREE_ACTIVITY=0 TMUX_MOCK_WORKTREE_COMMAND=zsh run_script --rows)"
 plain_pinned_attention_rows="$(printf '%s' "$pinned_attention_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
-assert_not_contains "$plain_pinned_attention_rows" "$TEST_WORKTREE" "attention mode hides pinned inactive thread"
+assert_contains "$plain_pinned_attention_rows" "$inactive_worktree" "attention mode keeps pinned inactive worktree"
+run_script --toggle-pin "$inactive_worktree"
 activity_attention_rows="$(TMUX_THREAD_ATTENTION_ONLY=1 TMUX_MOCK_WORKTREE_ACTIVITY=1 TMUX_MOCK_WORKTREE_COMMAND=zsh run_script --rows)"
 plain_activity_attention_rows="$(printf '%s' "$activity_attention_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
-assert_not_contains "$plain_activity_attention_rows" "$TEST_WORKTREE" "attention mode ignores tmux activity flag"
+assert_contains "$plain_activity_attention_rows" "$TEST_WORKTREE" "attention mode keeps open thread with tmux activity flag"
 rm -f "$XDG_STATE_HOME/tmux-thread-picker/process-windows.tsv"
 busy_attention_rows="$(TMUX_THREAD_ATTENTION_ONLY=1 TMUX_MOCK_BUSY_PROCESS=1 TMUX_MOCK_WORKTREE_ACTIVITY=0 TMUX_MOCK_WORKTREE_COMMAND=zsh run_script --rows)"
 plain_busy_attention_rows="$(printf '%s' "$busy_attention_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
@@ -744,7 +1046,6 @@ rm -f "$XDG_STATE_HOME/tmux-thread-picker/process-windows.tsv"
 codex_attention_rows="$(TMUX_THREAD_ATTENTION_ONLY=1 TMUX_MOCK_WORKTREE_ACTIVITY=0 TMUX_MOCK_WORKTREE_COMMAND=codex run_script --rows)"
 plain_codex_attention_rows="$(printf '%s' "$codex_attention_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
 assert_contains "$plain_codex_attention_rows" "$TEST_WORKTREE" "attention mode keeps open codex cli"
-run_script --toggle-pin "$TEST_WORKTREE"
 
 now="$(date +%s)"
 printf '%s\tdone\tStop\t%s\n' "$TEST_WORKTREE" "$now" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
@@ -803,7 +1104,7 @@ assert_contains "$fzf_args" "load:transform:[[ {1} = GROUP ]] && echo down" "fzf
 assert_contains "$fzf_args" "result:transform:[[ {1} = GROUP ]] && echo down" "fzf skips group after filtering"
 assert_contains "$fzf_args" "enter:transform:[[ {1} = GROUP ]] && echo down || echo accept" "enter does not accept group rows"
 assert_contains "$fzf_args" "ctrl-x:execute-silent" "fzf has single-key hide binding"
-assert_contains "$fzf_args" "ctrl-t:execute-silent($SCRIPT --prompt-title {5})" "fzf edits title without leaving popup"
+assert_contains "$fzf_args" "ctrl-t:execute($SCRIPT --edit-title {5})+reload" "fzf edits title with interactive prompt and reloads"
 assert_contains "$fzf_args" "Ctrl-y auto-title" "fzf footer advertises auto-title binding"
 assert_contains "$fzf_args" "ctrl-y:execute-silent($SCRIPT --regen-title {5} {3})" "fzf can rerun title logic for selected row"
 assert_contains "$fzf_args" "alt-f:reload(TMUX_THREAD_ATTENTION_ONLY=0" "fzf can reload full inventory"

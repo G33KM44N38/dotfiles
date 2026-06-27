@@ -21,6 +21,8 @@ import (
 	"unicode"
 )
 
+const defaultCodexHistoryLimit = 250
+
 type colors struct {
 	reset      string
 	bold       string
@@ -79,6 +81,10 @@ type app struct {
 	scanRoots             []string
 	seenFinished          map[string]int64
 	seenFinishedLoaded    bool
+	codexHistoryItems     []codexHistoryItem
+	codexHistoryLoaded    bool
+	manualTitles          map[string]string
+	autoTitles            map[string]string
 }
 
 type row struct {
@@ -119,6 +125,7 @@ type hookIndex struct {
 	byPath        map[string]hookInfo
 	liveByPane    map[string]hookInfo
 	sessionByPane map[string]hookInfo
+	panePaths     map[string]bool
 }
 
 type codexHistoryItem struct {
@@ -204,9 +211,9 @@ func (a *app) run() error {
 
 	switch a.mode {
 	case "--toggle-pin":
-		return toggleLine(a.pinFile, arg(a.args, 1))
+		return a.toggleMetadataLine(a.pinFile, arg(a.args, 1))
 	case "--toggle-archive":
-		return toggleLine(a.archiveFile, arg(a.args, 1))
+		return a.toggleMetadataLine(a.archiveFile, arg(a.args, 1))
 	case "--set-title":
 		return a.setTitle(arg(a.args, 1), arg(a.args, 2))
 	case "--prompt-title":
@@ -284,7 +291,14 @@ func (a *app) run() error {
 	if a.shouldUseDisplayCache() {
 		_ = copyFile(a.displayCacheFile, a.displayRowsFile)
 		_ = a.refreshLiveStateOverlay()
-		a.refreshDisplayCacheBackground()
+		if !a.displayCacheMatchesLiveOpenRows() {
+			if err := a.buildRows(); err != nil {
+				return err
+			}
+			_ = a.writeDisplayCache()
+		} else {
+			a.refreshDisplayCacheBackground()
+		}
 	} else {
 		if err := a.buildRows(); err != nil {
 			return err
@@ -508,8 +522,124 @@ func toggleLine(path, key string) error {
 	return writeLines(path, unique(next))
 }
 
+func (a *app) toggleMetadataLine(path, key string) error {
+	canonical := a.canonicalMetadataKey(key)
+	if canonical == "" {
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	matches := a.metadataIdentityKeys(canonical, key)
+	lines := readLines(path)
+	found := false
+	var next []string
+	for _, line := range lines {
+		if matches[line] {
+			found = true
+			continue
+		}
+		if line != "" {
+			next = append(next, line)
+		}
+	}
+	if !found {
+		next = append(next, canonical)
+	}
+	sort.Strings(next)
+	return writeLines(path, unique(next))
+}
+
+func (a *app) canonicalMetadataKey(key string) string {
+	if key == "" || strings.HasPrefix(key, "codex:") {
+		return key
+	}
+	if codexKey := a.codexTitleKeyForPath(key); codexKey != "" {
+		return codexKey
+	}
+	return key
+}
+
+func (a *app) metadataIdentityKeys(canonical string, aliases ...string) map[string]bool {
+	keys := map[string]bool{}
+	add := func(key string) {
+		if key != "" {
+			keys[key] = true
+		}
+	}
+	add(canonical)
+	for _, alias := range aliases {
+		add(alias)
+	}
+	return keys
+}
+
+func (a *app) hasMetadataLine(path, canonical, rowPath string) bool {
+	if canonical == "" {
+		return false
+	}
+	matches := a.metadataIdentityKeys(canonical)
+	if strings.HasPrefix(canonical, "codex:") {
+		for _, alias := range pathAliases(rowPath) {
+			matches[alias] = true
+		}
+	}
+	found := false
+	hasCanonical := false
+	droppedAlias := false
+	var next []string
+	for _, line := range readLines(path) {
+		if line == canonical {
+			found = true
+			hasCanonical = true
+			next = append(next, line)
+			continue
+		}
+		if matches[line] {
+			found = true
+			droppedAlias = true
+			continue
+		}
+		if line != "" {
+			next = append(next, line)
+		}
+	}
+	if found && strings.HasPrefix(canonical, "codex:") && (!hasCanonical || droppedAlias) {
+		next = append(next, canonical)
+		sort.Strings(next)
+		_ = writeLines(path, unique(next))
+	}
+	return found
+}
+
+func pathAliases(path string) []string {
+	if path == "" {
+		return nil
+	}
+	aliases := []string{path}
+	if clean := cleanAbs(path); clean != path {
+		aliases = append(aliases, clean)
+	}
+	return aliases
+}
+
 func (a *app) setTitle(key, title string) error {
 	if key == "" {
+		return nil
+	}
+	if isCodexTitleKey(key) {
+		if title != "" {
+			if _, err := a.setCodexInternalTitle(key, title); err != nil {
+				return err
+			}
+		}
+		if err := a.clearTitleInFile(a.titleFile, key); err != nil {
+			return err
+		}
+		if err := a.clearTitleInFile(a.autoTitleFile, key); err != nil {
+			return err
+		}
+		_ = a.notifyFZF()
 		return nil
 	}
 	if err := os.MkdirAll(a.stateDir, 0o755); err != nil {
@@ -531,8 +661,37 @@ func (a *app) setTitle(key, title string) error {
 	if err := writeLines(a.titleFile, out); err != nil {
 		return err
 	}
+	a.clearTitleCaches()
 	_ = a.notifyFZF()
 	return nil
+}
+
+func (a *app) setCodexInternalTitle(key, title string) (bool, error) {
+	if title == "" || !isCodexTitleKey(key) || lookPath("sqlite3") == "" {
+		return false, nil
+	}
+	sessionID := strings.TrimPrefix(key, "codex:")
+	if sessionID == "" {
+		return false, nil
+	}
+	db := filepath.Join(a.home, ".codex", "state_5.sqlite")
+	if !pathExists(db) {
+		return false, nil
+	}
+	query := fmt.Sprintf("update threads set title = %s where id = %s; select changes();", sqliteQuote(title), sqliteQuote(sessionID))
+	cmd := exec.Command("sqlite3", "-cmd", ".timeout 1000", db, query)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = io.Discard
+	if err := cmd.Run(); err != nil {
+		return false, err
+	}
+	changed, _ := strconv.Atoi(strings.TrimSpace(out.String()))
+	if changed > 0 {
+		a.codexHistoryLoaded = false
+		return true, nil
+	}
+	return false, nil
 }
 
 func (a *app) clearTitleInFile(path, key string) error {
@@ -549,7 +708,9 @@ func (a *app) clearTitleInFile(path, key string) error {
 			out = append(out, line)
 		}
 	}
-	return writeLines(path, out)
+	err := writeLines(path, out)
+	a.clearTitleCaches()
+	return err
 }
 
 func (a *app) regenerateTitle(key, target string) error {
@@ -563,7 +724,7 @@ func (a *app) regenerateTitle(key, target string) error {
 		title := a.codexLocalThreadTitle(strings.TrimPrefix(key, "codex:"))
 		if title == "" && pane != "" {
 			captured := a.capturePaneText(pane)
-			title = linearTitleFromText(captured)
+			title = codexTitleFromText(captured)
 			if title == "" && os.Getenv("TMUX_THREAD_AI_TITLE") != "0" {
 				title = a.summarizePaneSubject(captured, "")
 			}
@@ -749,7 +910,9 @@ func (a *app) buildRows() error {
 	}
 	openRows := a.emitOpenRows(hooks)
 	rows = append(rows, openRows...)
-	if !a.attentionModeEnabled() {
+	if a.attentionModeEnabled() {
+		rows = append(rows, a.emitPinnedAttentionRows(openRows)...)
+	} else {
 		rows = append(rows, a.emitCodexHistoryRows(openRows)...)
 		rows = append(rows, a.emitWorktreeRows()...)
 	}
@@ -773,10 +936,7 @@ func (a *app) emitOpenRows(hooks hookIndex) []row {
 		if windowID == "" {
 			continue
 		}
-		if taggedPath != "" && !isDir(taggedPath) {
-			_ = exec.Command(a.tmuxBin, "set-option", "-wuq", "-t", windowID, "@secondary-worktree-path").Run()
-			taggedPath = ""
-		}
+		taggedPath = a.validSecondaryWorktreePath(windowID, panePath, taggedPath)
 		path := firstNonEmpty(taggedPath, panePath)
 		if path == "" || !isDir(path) {
 			continue
@@ -810,7 +970,7 @@ func (a *app) emitOpenRows(hooks hookIndex) []row {
 		switch info := a.windowCodexInfo(windowID); info.state {
 		case "done":
 			workDuration = workDurationBetween(info.started, info.updated)
-			if a.hasSeenFinished(path, info.updated) {
+			if a.hasSeenFinishedForHook(path, info) {
 				rowSignal = "open"
 				if currentMarker == "*" {
 					rowSignal = "current"
@@ -819,7 +979,7 @@ func (a *app) emitOpenRows(hooks hookIndex) []row {
 				rowSignal = "codex_done"
 			}
 		case "running":
-			_ = a.clearSeenFinished(path)
+			_ = a.clearSeenFinishedForHook(path, info)
 			rowSignal = "codex_running"
 			workDuration = workDurationSince(info.started)
 		}
@@ -834,6 +994,21 @@ func (a *app) emitOpenRows(hooks hookIndex) []row {
 		}
 		codexPanes := a.windowCodexPanes(windowID)
 		if len(codexPanes) > 1 {
+			usedCodexKeys := map[string]bool{}
+			codexPathCounts := map[string]int{}
+			for _, pane := range codexPanes {
+				panePath := firstNonEmpty(pane.path, path)
+				if panePath == "" || !isDir(panePath) {
+					panePath = path
+				}
+				codexPathCounts[cleanAbs(panePath)]++
+			}
+			for _, pane := range codexPanes {
+				panePath := firstNonEmpty(pane.path, path)
+				if key := titleKeyForPane(hooks, pane.paneID, panePath); key != "" {
+					usedCodexKeys[key] = true
+				}
+			}
 			for _, pane := range codexPanes {
 				panePath := firstNonEmpty(pane.path, path)
 				if panePath == "" || !isDir(panePath) {
@@ -849,8 +1024,11 @@ func (a *app) emitOpenRows(hooks hookIndex) []row {
 					paneRelative = a.projectRelativePath(panePath)
 				}
 				pinKey := panePath
-				if paneKey := titleKeyForPane(hooks, pane.paneID, panePath); paneKey != "" {
+				if paneKey := a.canonicalTitleKeyForLivePane(hooks, pane.paneID, panePath, usedCodexKeys, codexPathCounts); paneKey != "" {
 					pinKey = paneKey
+				}
+				if strings.HasPrefix(pinKey, "codex:") {
+					usedCodexKeys[pinKey] = true
 				}
 				a.ensureGeneratedTitle(pinKey, pane.paneID, panePath, filepath.Base(panePath))
 				paneFallbackSignal := "codex_open"
@@ -871,7 +1049,7 @@ func (a *app) emitOpenRows(hooks hookIndex) []row {
 		}
 		pinKey := path
 		if paneID != "" {
-			if paneKey := titleKeyForPane(hooks, paneID, path); paneKey != "" {
+			if paneKey := a.canonicalTitleKeyForLivePane(hooks, paneID, path, nil, nil); paneKey != "" {
 				pinKey = paneKey
 			}
 			if paneInfo := hooks.liveByPane[paneID]; paneInfo.state != "" {
@@ -883,15 +1061,47 @@ func (a *app) emitOpenRows(hooks hookIndex) []row {
 			}
 		}
 		a.ensureGeneratedTitle(pinKey, paneID, path, filepath.Base(path))
-		if !strings.HasPrefix(pinKey, "codex:") && a.windowHasCodexCLI(windowID) && a.hasManualTitle(target) {
-			pinKey = target
-		}
 		if r, ok := a.emitRow("OPEN", state, branch, target, windowName, path, target, project, pinKey, rowSignal, processSignal, relative, workDuration); ok {
 			out = append(out, r)
 		}
 		appendLine(a.openPathsFile, path)
 	}
 	return out
+}
+
+func (a *app) validSecondaryWorktreePath(windowID, panePath, taggedPath string) string {
+	taggedPath = strings.TrimSpace(taggedPath)
+	if taggedPath == "" {
+		return ""
+	}
+	if !isDir(taggedPath) {
+		a.clearSecondaryWorktreePath(windowID)
+		return ""
+	}
+	if panePath == "" || !isDir(panePath) {
+		return taggedPath
+	}
+	if a.secondaryPathMatchesPane(panePath, taggedPath) {
+		return taggedPath
+	}
+	a.clearSecondaryWorktreePath(windowID)
+	return ""
+}
+
+func (a *app) clearSecondaryWorktreePath(windowID string) {
+	if windowID == "" {
+		return
+	}
+	_ = exec.Command(a.tmuxBin, "set-option", "-wuq", "-t", windowID, "@secondary-worktree-path").Run()
+}
+
+func (a *app) secondaryPathMatchesPane(panePath, taggedPath string) bool {
+	paneRoot := a.repoRoot(panePath)
+	taggedRoot := a.repoRoot(taggedPath)
+	if paneRoot != "" || taggedRoot != "" {
+		return paneRoot != "" && taggedRoot != "" && cleanAbs(paneRoot) == cleanAbs(taggedRoot)
+	}
+	return samePathOrChild(panePath, taggedPath)
 }
 
 func (a *app) emitCodexHistoryRows(openRows []row) []row {
@@ -902,6 +1112,7 @@ func (a *app) emitCodexHistoryRows(openRows []row) []row {
 		}
 	}
 	var out []row
+	worktrees := a.worktreeMetadataIndex()
 	for _, item := range a.readCodexHistoryItems() {
 		if item.ID == "" || item.Cwd == "" {
 			continue
@@ -911,30 +1122,12 @@ func (a *app) emitCodexHistoryRows(openRows []row) []row {
 			continue
 		}
 		path := item.Cwd
-		if normalized := normalizeExistingPath(path); normalized != "" {
-			path = normalized
-		}
-		branch, project, relative := a.worktreeMetadata(path)
-		if branch == "" {
-			branch = a.branchName(path)
-			project = a.projectName(path)
-			relative = a.projectRelativePath(path)
-		}
-		if project == "" {
-			project = a.projectName(path)
-		}
-		historyProject := "Codex History"
-		historyDetail := project
-		if historyDetail == "" {
-			historyDetail = relative
-		} else if relative != "" && relative != "." {
-			historyDetail = filepath.Join(historyDetail, relative)
-		}
-		title := cleanGeneratedTitle(firstNonEmpty(item.Title, linearTitleFromText(item.FirstUserMessage), item.FirstUserMessage, item.ID))
+		branch, project, historyDetail := a.codexHistoryMetadata(path, worktrees)
+		title := codexHistoryItemTitle(item)
 		if title == "" {
 			title = item.ID
 		}
-		if r, ok := a.emitRow("HIST", "chat", branch, path, title, path, path, historyProject, pinKey, "history", "", historyDetail, historyDate(item.UpdatedAtMS)); ok {
+		if r, ok := a.emitRow("HIST", "chat", branch, path, title, path, path, project, pinKey, "history", "", historyDetail, historyDate(item.UpdatedAtMS)); ok {
 			r.sortKey = historySortKey(r.sortKey, item.UpdatedAtMS, pinKey)
 			out = append(out, r)
 		}
@@ -942,14 +1135,54 @@ func (a *app) emitCodexHistoryRows(openRows []row) []row {
 	return out
 }
 
-func historySortKey(current string, updatedAtMS int64, pinKey string) string {
-	prefix := "1"
-	if strings.HasPrefix(current, "0|") {
-		prefix = "0"
-	} else if strings.HasPrefix(current, "9|") {
-		prefix = "9"
+func (a *app) worktreeMetadataIndex() map[string]worktreeRow {
+	out := map[string]worktreeRow{}
+	for _, wt := range a.readWorktreeCache() {
+		if wt.path != "" {
+			out[wt.path] = wt
+		}
 	}
-	return prefix + "|codex history|3|HIST|" + reverseTimeKey(updatedAtMS) + "|" + pinKey
+	return out
+}
+
+func (a *app) codexHistoryMetadata(path string, worktrees map[string]worktreeRow) (string, string, string) {
+	if wt, ok := worktrees[path]; ok {
+		return wt.branch, firstNonEmpty(wt.project, a.codexHistoryProject(path)), firstNonEmpty(wt.relative, a.codexHistoryPathDetail(path))
+	}
+	return "", a.codexHistoryProject(path), a.codexHistoryPathDetail(path)
+}
+
+func (a *app) codexHistoryProject(path string) string {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return "Codex History"
+	}
+	base := filepath.Base(path)
+	if base == "." || base == string(os.PathSeparator) || base == "" {
+		return "Codex History"
+	}
+	return strings.TrimSuffix(base, ".git")
+}
+
+func (a *app) codexHistoryPathDetail(path string) string {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return ""
+	}
+	if strings.HasPrefix(path, a.home+string(os.PathSeparator)) {
+		return "~/" + strings.TrimPrefix(path, a.home+string(os.PathSeparator))
+	}
+	return path
+}
+
+func historySortKey(current string, updatedAtMS int64, pinKey string) string {
+	parts := strings.Split(current, "|")
+	if len(parts) < 5 {
+		return current
+	}
+	parts[2] = "3"
+	parts[3] = "HIST"
+	return strings.Join(parts[:4], "|") + "|" + reverseTimeKey(updatedAtMS) + "|" + pinKey
 }
 
 func reverseTimeKey(value int64) string {
@@ -995,11 +1228,99 @@ func (a *app) emitWorktreeRows() []row {
 	return out
 }
 
+func (a *app) emitPinnedAttentionRows(openRows []row) []row {
+	openPaths := map[string]bool{}
+	openKeys := map[string]bool{}
+	for _, r := range openRows {
+		openKeys[r.pinKey] = true
+		for _, alias := range pathAliases(r.pinKey) {
+			openPaths[alias] = true
+		}
+	}
+	for _, path := range readLines(a.openPathsFile) {
+		for _, alias := range pathAliases(path) {
+			openPaths[alias] = true
+		}
+	}
+
+	var out []row
+	for _, pinKey := range readLines(a.pinFile) {
+		if pinKey == "" || openKeys[pinKey] {
+			continue
+		}
+		if strings.HasPrefix(pinKey, "codex:") {
+			if r, ok := a.emitPinnedCodexHistoryRow(pinKey); ok {
+				out = append(out, r)
+			}
+			continue
+		}
+		path := pinKey
+		if normalized := normalizeExistingPath(path); normalized != "" {
+			path = normalized
+		}
+		if path == "" || !isDir(path) || openPaths[path] {
+			continue
+		}
+		branch, project, relative := a.worktreeMetadata(path)
+		if branch == "" {
+			if root := a.repoRoot(path); root != "" {
+				path = root
+			}
+			branch = a.branchName(path)
+			project = a.projectName(path)
+			relative = a.projectRelativePath(path)
+		}
+		if r, ok := a.emitRow("WT", "work", branch, "<open>", filepath.Base(path), path, path, project, path, "work", "", relative, ""); ok {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+func (a *app) emitPinnedCodexHistoryRow(pinKey string) (row, bool) {
+	sessionID := strings.TrimPrefix(pinKey, "codex:")
+	if sessionID == "" {
+		return row{}, false
+	}
+	for _, item := range a.readCodexHistoryItems() {
+		if item.ID != sessionID || item.Cwd == "" {
+			continue
+		}
+		path := item.Cwd
+		if normalized := normalizeExistingPath(path); normalized != "" {
+			path = normalized
+		}
+		branch, project, relative := a.worktreeMetadata(path)
+		if branch == "" {
+			branch = a.branchName(path)
+			project = a.projectName(path)
+			relative = a.projectRelativePath(path)
+		}
+		if project == "" {
+			project = a.projectName(path)
+		}
+		detail := relative
+		if detail == "" {
+			detail = a.projectRelativePath(path)
+		}
+		title := codexTitleFromText(firstNonEmpty(item.Title, item.FirstUserMessage))
+		if title == "" {
+			title = item.ID
+		}
+		r, ok := a.emitRow("HIST", "chat", branch, path, title, path, path, project, pinKey, "history", "", detail, historyDate(item.UpdatedAtMS))
+		if ok {
+			r.sortKey = historySortKey(r.sortKey, item.UpdatedAtMS, pinKey)
+		}
+		return r, ok
+	}
+	return row{}, false
+}
+
 func (a *app) codexRowSignal(currentMarker, fallbackSignal, seenKey string, info hookInfo) (string, string) {
 	switch info.state {
 	case "done":
 		workDuration := workDurationBetween(info.started, info.updated)
-		if a.hasSeenFinished(seenKey, info.updated) {
+		if a.hasSeenFinishedForHook(seenKey, info) {
 			if currentMarker == "*" {
 				return "current", workDuration
 			}
@@ -1007,7 +1328,7 @@ func (a *app) codexRowSignal(currentMarker, fallbackSignal, seenKey string, info
 		}
 		return "codex_done", workDuration
 	case "running":
-		_ = a.clearSeenFinished(seenKey)
+		_ = a.clearSeenFinishedForHook(seenKey, info)
 		return "codex_running", workDurationSince(info.started)
 	default:
 		if currentMarker == "*" && fallbackSignal == "current" {
@@ -1036,7 +1357,7 @@ func (a *app) rowSignalDisplay(rowSignal, workDuration string) (string, string, 
 }
 
 func (a *app) emitRow(kind, state, branch, target, window, path, selectionTarget, project, pinKey, rowSignal, processSignal, detailOverride, workDuration string) (row, bool) {
-	archivedThread := a.isArchived(pinKey)
+	archivedThread := a.isArchived(pinKey, path)
 	showArchived := os.Getenv("TMUX_THREAD_SHOW_ARCHIVED") == "1"
 	if archivedThread && kind != "OPEN" && !showArchived {
 		return row{}, false
@@ -1046,11 +1367,11 @@ func (a *app) emitRow(kind, state, branch, target, window, path, selectionTarget
 		archived = "A"
 	}
 	pinned := " "
-	if pinKey != "" && containsLine(a.pinFile, pinKey) {
+	if a.isPinned(pinKey, path) {
 		pinned = "P"
 	}
 	if a.attentionModeEnabled() {
-		if rowSignal != "codex_done" && rowSignal != "codex_running" && rowSignal != "codex_open" && rowSignal != "current" && processSignal != "process" {
+		if pinned != "P" && kind != "OPEN" && rowSignal != "codex_done" && rowSignal != "codex_running" && rowSignal != "codex_open" && rowSignal != "current" && processSignal != "process" {
 			return row{}, false
 		}
 	}
@@ -1083,7 +1404,7 @@ func (a *app) emitRow(kind, state, branch, target, window, path, selectionTarget
 	} else if kind == "OPEN" || kind == "WT" {
 		fallbackTitle = filepath.Base(path)
 	}
-	title := padText(a.threadTitle(pinKey, fallbackTitle), threadTitleWidth)
+	title := padText(a.threadTitle(pinKey, fallbackTitle, target, selectionTarget), threadTitleWidth)
 	detail := padText(relative, threadPathWidth)
 	branchCol := padText(branch, threadBranchWidth)
 	workCol := padText(workDuration, threadWorkWidth)
@@ -1172,6 +1493,7 @@ func (a *app) groupHeader(label string) row {
 
 func (a *app) addGroupSearchColumn(rows []row) []row {
 	currentGroup := -1
+	groupSearchLimit := getenvInt("TMUX_THREAD_GROUP_SEARCH_LIMIT", 12000)
 	for i := range rows {
 		base := strings.Join([]string{rows[i].kind, rows[i].display, rows[i].target, rows[i].branch, rows[i].pinKey, rows[i].project}, "\t")
 		if rows[i].kind == "GROUP" {
@@ -1180,7 +1502,10 @@ func (a *app) addGroupSearchColumn(rows []row) []row {
 		} else {
 			rows[i].search = " " + searchText(base)
 			if currentGroup >= 0 {
-				rows[currentGroup].search += " " + searchText(base)
+				childSearch := " " + searchText(base)
+				if groupSearchLimit <= 0 || len(rows[currentGroup].search)+len(childSearch) <= groupSearchLimit {
+					rows[currentGroup].search += childSearch
+				}
 			}
 		}
 	}
@@ -1206,40 +1531,97 @@ func (a *app) colorText(color, value string) string {
 	return color + value + a.c.reset
 }
 
-func (a *app) threadTitle(key, fallback string) string {
-	if key != "" {
-		for _, line := range readLines(a.titleFile) {
-			parts := strings.SplitN(line, "\t", 2)
-			if len(parts) == 2 && parts[0] == key && parts[1] != "" {
-				return parts[1]
-			}
+func (a *app) threadTitle(key, fallback string, aliases ...string) string {
+	if isCodexTitleKey(key) {
+		if title := a.codexInternalTitle(key); title != "" {
+			return title
 		}
-		if sessionKey := a.codexTitleKeyForPath(key); sessionKey != "" {
-			if title := titleForKey(a.autoTitleFile, sessionKey); title != "" {
+	}
+	for _, candidate := range append([]string{key}, aliases...) {
+		if title := a.manualTitle(candidate); title != "" {
+			return title
+		}
+	}
+	if sessionKey := a.codexSessionTitleKeyForKey(key); sessionKey != "" {
+		if !isCodexTitleKey(key) {
+			if title := a.codexInternalTitle(sessionKey); title != "" {
 				return title
 			}
 		}
-		for _, line := range readLines(a.autoTitleFile) {
-			parts := strings.SplitN(line, "\t", 2)
-			if len(parts) == 2 && parts[0] == key && parts[1] != "" {
-				return parts[1]
-			}
+		if title := a.autoTitle(sessionKey); title != "" {
+			return a.refinedAutoTitle(sessionKey, title)
+		}
+	}
+	for _, candidate := range append([]string{key}, aliases...) {
+		if title := a.autoTitle(candidate); title != "" {
+			return a.refinedAutoTitle(candidate, title)
 		}
 	}
 	return fallback
 }
 
-func (a *app) hasManualTitle(key string) bool {
-	if key == "" {
-		return false
-	}
-	for _, line := range readLines(a.titleFile) {
-		parts := strings.SplitN(line, "\t", 2)
-		if len(parts) == 2 && parts[0] == key && parts[1] != "" {
-			return true
+func (a *app) refinedAutoTitle(key, title string) string {
+	if strings.HasPrefix(key, "codex:") && looksLikeWeakCodexTitle(title) {
+		if local := a.codexLocalThreadTitle(strings.TrimPrefix(key, "codex:")); local != "" {
+			return local
 		}
 	}
-	return false
+	return title
+}
+
+func (a *app) codexSessionTitleKeyForKey(key string) string {
+	if key == "" {
+		return ""
+	}
+	if isCodexTitleKey(key) {
+		return key
+	}
+	return a.codexTitleKeyForPath(key)
+}
+
+func (a *app) codexInternalTitle(key string) string {
+	if !isCodexTitleKey(key) {
+		return ""
+	}
+	return a.codexLocalThreadTitle(strings.TrimPrefix(key, "codex:"))
+}
+
+func (a *app) hasManualTitle(key string) bool {
+	return a.manualTitle(key) != ""
+}
+
+func (a *app) manualTitle(key string) string {
+	if key == "" || isCodexTitleKey(key) {
+		return ""
+	}
+	return a.titleMap(a.titleFile, &a.manualTitles)[key]
+}
+
+func (a *app) autoTitle(key string) string {
+	if key == "" {
+		return ""
+	}
+	return a.titleMap(a.autoTitleFile, &a.autoTitles)[key]
+}
+
+func (a *app) titleMap(path string, target *map[string]string) map[string]string {
+	if *target != nil {
+		return *target
+	}
+	values := map[string]string{}
+	for _, line := range readLines(path) {
+		parts := strings.SplitN(line, "\t", 2)
+		if len(parts) == 2 && parts[0] != "" && parts[1] != "" {
+			values[parts[0]] = parts[1]
+		}
+	}
+	*target = values
+	return values
+}
+
+func (a *app) clearTitleCaches() {
+	a.manualTitles = nil
+	a.autoTitles = nil
 }
 
 func (a *app) ensureGeneratedTitle(key, paneID, path, fallback string) {
@@ -1250,7 +1632,7 @@ func (a *app) ensureGeneratedTitle(key, paneID, path, fallback string) {
 	if !strings.HasPrefix(titleKey, "codex:") {
 		titleKey = firstNonEmpty(a.codexTitleKeyForPath(path), key)
 	}
-	if containsTitle(a.autoTitleFile, titleKey) {
+	if existing := a.autoTitle(titleKey); existing != "" && !looksLikeWeakCodexTitle(existing) {
 		return
 	}
 	if a.mode == "pick" {
@@ -1295,7 +1677,7 @@ func (a *app) ensureGeneratedTitleNow(key, paneID, path, fallback string) error 
 	if lock := a.titleLockPath(titleKey); lock != "" {
 		defer os.Remove(lock)
 	}
-	if containsTitle(a.autoTitleFile, titleKey) {
+	if existing := a.autoTitle(titleKey); existing != "" && !looksLikeWeakCodexTitle(existing) {
 		return nil
 	}
 	title := ""
@@ -1305,7 +1687,7 @@ func (a *app) ensureGeneratedTitleNow(key, paneID, path, fallback string) error 
 	captured := ""
 	if title == "" {
 		captured = a.capturePaneText(paneID)
-		title = linearTitleFromText(captured)
+		title = codexTitleFromText(captured)
 	}
 	if title == "" && os.Getenv("TMUX_THREAD_AI_TITLE") != "0" {
 		title = a.summarizePaneSubject(captured, fallback)
@@ -1331,10 +1713,14 @@ func (a *app) titleLockPath(key string) string {
 }
 
 func (a *app) codexTitleKeyForPath(path string) string {
+	return a.titleKeyForPath(a.readHookIndex(), path)
+}
+
+func (a *app) titleKeyForPath(hooks hookIndex, path string) string {
 	if path == "" {
 		return ""
 	}
-	info := a.hookStateForPath(a.readHookIndex().byPath, path)
+	info := a.hookStateForPath(hooks.byPath, path)
 	if info.sessionID == "" {
 		return ""
 	}
@@ -1342,7 +1728,17 @@ func (a *app) codexTitleKeyForPath(path string) string {
 }
 
 func (a *app) codexLocalThreadTitle(sessionID string) string {
-	if sessionID == "" || lookPath("sqlite3") == "" {
+	if sessionID == "" {
+		return ""
+	}
+	if a.codexHistoryLoaded {
+		for _, item := range a.codexHistoryItems {
+			if item.ID == sessionID {
+				return codexHistoryItemTitle(item)
+			}
+		}
+	}
+	if lookPath("sqlite3") == "" {
 		return ""
 	}
 	db := filepath.Join(a.home, ".codex", "state_5.sqlite")
@@ -1357,18 +1753,32 @@ func (a *app) codexLocalThreadTitle(sessionID string) string {
 	if cmd.Run() != nil {
 		return ""
 	}
-	parts := strings.SplitN(strings.TrimSpace(out.String()), "\t", 2)
-	source := strings.TrimSpace(strings.Join(parts, "\n"))
-	title := ""
+	parts := strings.SplitN(strings.TrimRight(out.String(), "\n"), "\t", 2)
+	rawTitle := strings.TrimSpace(parts[0])
+	firstMessage := ""
 	if len(parts) > 1 {
-		title = linearTitleFromText(parts[1])
+		firstMessage = strings.TrimSpace(parts[1])
 	}
-	if title == "" && len(parts) > 0 {
-		title = linearTitleFromText(parts[0])
+	if title := codexTitleFromText(rawTitle); title != "" && !looksLikeWeakCodexTitle(rawTitle) {
+		return title
+	}
+	source := strings.TrimSpace(firstNonEmpty(firstMessage, rawTitle))
+	title := codexTitleFromText(source)
+	if title == "" {
+		title = cleanGeneratedTitle(source)
 	}
 	if title == "" && os.Getenv("TMUX_THREAD_AI_TITLE") != "0" {
 		title = a.summarizePaneSubject(source, "")
 	}
+	return title
+}
+
+func codexHistoryItemTitle(item codexHistoryItem) string {
+	if title := codexTitleFromText(item.Title); title != "" && !looksLikeWeakCodexTitle(item.Title) {
+		return title
+	}
+	source := strings.TrimSpace(firstNonEmpty(item.FirstUserMessage, item.Title))
+	title := codexTitleFromText(source)
 	if title == "" {
 		title = cleanGeneratedTitle(source)
 	}
@@ -1376,6 +1786,10 @@ func (a *app) codexLocalThreadTitle(sessionID string) string {
 }
 
 func (a *app) readCodexHistoryItems() []codexHistoryItem {
+	if a.codexHistoryLoaded {
+		return a.codexHistoryItems
+	}
+	a.codexHistoryLoaded = true
 	if lookPath("sqlite3") == "" {
 		return nil
 	}
@@ -1388,8 +1802,11 @@ func (a *app) readCodexHistoryItems() []codexHistoryItem {
 		'cwd', cwd,
 		'updated_at_ms', updated_at_ms,
 		'title', title,
-		'first_user_message', first_user_message
+		'first_user_message', substr(first_user_message, 1, 1200)
 	) from threads where id is not null and id != '' and cwd is not null and cwd != '' order by updated_at_ms desc;`
+	if limit := getenvInt("TMUX_THREAD_CODEX_HISTORY_LIMIT", defaultCodexHistoryLimit); limit > 0 {
+		query = strings.TrimSuffix(query, ";") + " limit " + strconv.Itoa(limit) + ";"
+	}
 	cmd := exec.Command("sqlite3", "-readonly", db, query)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -1411,10 +1828,32 @@ func (a *app) readCodexHistoryItems() []codexHistoryItem {
 			items = append(items, item)
 		}
 	}
-	return items
+	a.codexHistoryItems = items
+	return a.codexHistoryItems
+}
+
+func (a *app) codexHistoryTitle(sessionID string) string {
+	if sessionID == "" {
+		return ""
+	}
+	for _, item := range a.readCodexHistoryItems() {
+		if item.ID == sessionID {
+			return codexHistoryItemTitle(item)
+		}
+	}
+	return ""
 }
 
 func (a *app) setGeneratedTitle(key, title string) error {
+	if isCodexTitleKey(key) && title != "" {
+		updated, err := a.setCodexInternalTitle(key, title)
+		if err != nil {
+			return err
+		}
+		if updated {
+			return a.clearTitleInFile(a.autoTitleFile, key)
+		}
+	}
 	var out []string
 	for _, line := range readLines(a.autoTitleFile) {
 		parts := strings.SplitN(line, "\t", 2)
@@ -1428,7 +1867,9 @@ func (a *app) setGeneratedTitle(key, title string) error {
 	if title != "" {
 		out = append(out, key+"\t"+title)
 	}
-	return writeLines(a.autoTitleFile, out)
+	err := writeLines(a.autoTitleFile, out)
+	a.clearTitleCaches()
+	return err
 }
 
 func (a *app) capturePaneText(paneID string) string {
@@ -1461,6 +1902,83 @@ func linearTitleFromText(text string) string {
 		}
 	}
 	return ""
+}
+
+func codexTitleFromText(text string) string {
+	text = strings.TrimSpace(stripANSI(text))
+	if text == "" {
+		return ""
+	}
+	if title := linearTitleFromText(text); title != "" {
+		return title
+	}
+	oneLine := strings.Join(strings.Fields(text), " ")
+	for _, pattern := range []struct {
+		re     string
+		suffix string
+	}{
+		{`(?i)\bPR for ([^.,;:]{3,70})`, ""},
+		{`(?i)\bconversation with ([A-Za-z0-9_.@-]{3,40})\b.*\bwhatsapp\b`, " WhatsApp"},
+		{`(?i)\bwhatsapp\b.*\b([A-Za-z0-9_.@-]{3,40})\b`, " WhatsApp"},
+	} {
+		re := regexp.MustCompile(pattern.re)
+		if match := re.FindStringSubmatch(oneLine); len(match) > 1 {
+			return compactTitleWords(match[1]+pattern.suffix, 6)
+		}
+	}
+	cleaned := regexp.MustCompile(`(?i)^\$[a-z0-9:_-]+\s+`).ReplaceAllString(oneLine, "")
+	cleaned = regexp.MustCompile(`(?i)\b/Users/[^ ]+`).ReplaceAllString(cleaned, " ")
+	cleaned = regexp.MustCompile(`(?i)^(could|can|would)\s+you\s+`).ReplaceAllString(cleaned, "")
+	cleaned = regexp.MustCompile(`(?i)^(please|alright|okay|ok|hey)\s+`).ReplaceAllString(cleaned, "")
+	cleaned = regexp.MustCompile(`(?i)^(look at|inspect|check|review|read-only task\.?|task:)\s+`).ReplaceAllString(cleaned, "")
+	return compactTitleWords(cleaned, 6)
+}
+
+func compactTitleWords(text string, maxWords int) string {
+	text = cleanGeneratedTitle(text)
+	if text == "" {
+		return ""
+	}
+	stop := map[string]bool{
+		"a": true, "an": true, "and": true, "are": true, "as": true, "at": true,
+		"for": true, "from": true, "how": true, "i": true, "in": true, "is": true,
+		"it": true, "me": true, "my": true, "of": true, "on": true, "or": true,
+		"that": true, "the": true, "this": true, "to": true, "with": true, "you": true,
+	}
+	var words []string
+	for _, word := range strings.Fields(text) {
+		trimmed := strings.Trim(word, ".,;:!?()[]{}\"'`")
+		if trimmed == "" || stop[strings.ToLower(trimmed)] {
+			continue
+		}
+		words = append(words, trimmed)
+		if len(words) >= maxWords {
+			break
+		}
+	}
+	if len(words) == 0 {
+		return cleanGeneratedTitle(text)
+	}
+	return cleanGeneratedTitle(strings.Join(words, " "))
+}
+
+func looksLikeWeakCodexTitle(title string) bool {
+	title = strings.TrimSpace(strings.ToLower(title))
+	if title == "" {
+		return false
+	}
+	if len([]rune(title)) >= 44 {
+		return true
+	}
+	for _, prefix := range []string{
+		"$", "could you ", "can you ", "would you ", "look at ", "in /users/",
+		"we need ", "you are ", "read-only task", "task:",
+	} {
+		if strings.HasPrefix(title, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func lineLooksLikeCode(line string) bool {
@@ -1529,8 +2047,12 @@ func cleanGeneratedTitle(title string) string {
 	return title
 }
 
-func (a *app) isArchived(key string) bool {
-	return key != "" && containsLine(a.archiveFile, key)
+func (a *app) isPinned(key, path string) bool {
+	return a.hasMetadataLine(a.pinFile, key, path)
+}
+
+func (a *app) isArchived(key, path string) bool {
+	return a.hasMetadataLine(a.archiveFile, key, path)
 }
 
 func (a *app) attentionModeEnabled() bool {
@@ -1542,34 +2064,29 @@ func (a *app) buildCodexStateCache(hooks hookIndex) error {
 	if age, ok := cacheAgeSeconds(a.codexStateCacheFile); ok && age < a.codexStateCacheTTL {
 		return copyFile(a.codexStateCacheFile, a.codexStateRowsFile)
 	}
-	stateByWindow := map[string]hookInfo{}
+	var lines []string
 	for _, line := range readLines(a.paneRowsFile) {
 		parts := strings.Split(line, "\t")
 		if len(parts) < 4 || !strings.Contains(parts[2], "codex") {
 			continue
 		}
-		info := hooks.liveByPane[field(parts, 1)]
-		if info.state == "" {
+		window, paneID, panePath := parts[0], field(parts, 1), parts[3]
+		info := hooks.liveByPane[paneID]
+		if info.state == "" && !hooks.panePaths[cleanAbs(panePath)] {
 			info = a.hookStateForPath(hooks.byPath, parts[3])
 		}
 		if info.state == "" {
 			info.state = "unknown"
 		}
-		window := parts[0]
-		current := stateByWindow[window]
-		if info.state == "running" || (info.state == "done" && current.state != "running") || current.state == "" {
-			stateByWindow[window] = info
-		}
-	}
-	var lines []string
-	for window, info := range stateByWindow {
-		line := window + "\t" + info.state
+		updated := ""
 		if info.updated > 0 {
-			line += "\t" + strconv.FormatInt(info.updated, 10)
-			if info.started > 0 {
-				line += "\t" + strconv.FormatInt(info.started, 10)
-			}
+			updated = strconv.FormatInt(info.updated, 10)
 		}
+		started := ""
+		if info.started > 0 {
+			started = strconv.FormatInt(info.started, 10)
+		}
+		line := strings.Join([]string{window, info.state, updated, started, paneID, info.sessionID, firstNonEmpty(info.path, panePath)}, "\t")
 		lines = append(lines, line)
 	}
 	sort.Strings(lines)
@@ -1582,6 +2099,7 @@ func (a *app) readHookIndex() hookIndex {
 		byPath:        map[string]hookInfo{},
 		liveByPane:    map[string]hookInfo{},
 		sessionByPane: map[string]hookInfo{},
+		panePaths:     map[string]bool{},
 	}
 	now := time.Now().Unix()
 	staleAfter := int64(getenvInt("TMUX_THREAD_CODEX_HOOK_STALE_AFTER", 86400))
@@ -1612,6 +2130,9 @@ func (a *app) readHookIndex() hookIndex {
 		if parts[0] == "" || updated == 0 || now-updated > staleAfter {
 			continue
 		}
+		if paneID != "" {
+			index.panePaths[cleanAbs(parts[0])] = true
+		}
 		current := index.byPath[parts[0]]
 		if state == "running" || (state == "done" && current.state != "running") || current.state == "" {
 			index.byPath[parts[0]] = info
@@ -1638,6 +2159,121 @@ func titleKeyForPane(hooks hookIndex, paneID, path string) string {
 		return ""
 	}
 	return "codex:" + info.sessionID
+}
+
+func (a *app) canonicalTitleKeyForLivePane(hooks hookIndex, paneID, path string, used map[string]bool, pathCounts map[string]int) string {
+	if key := titleKeyForPane(hooks, paneID, path); key != "" {
+		return key
+	}
+	if pathCounts == nil || pathCounts[cleanAbs(path)] <= 1 {
+		if key := a.titleKeyForPath(hooks, path); key != "" && (used == nil || !used[key]) {
+			return key
+		}
+	}
+	return a.codexHistoryTitleKeyForPane(paneID, path, used)
+}
+
+func (a *app) codexHistoryTitleKeyForPane(paneID, path string, used map[string]bool) string {
+	if paneID == "" || path == "" {
+		return ""
+	}
+	captured := a.capturePaneText(paneID)
+	if strings.TrimSpace(captured) == "" {
+		return ""
+	}
+	capturedMatchText := matchText(captured)
+	if capturedMatchText == "" {
+		return ""
+	}
+	path = cleanAbs(path)
+	matchedKey := ""
+	for _, item := range a.readCodexHistoryItems() {
+		key := "codex:" + item.ID
+		if used != nil && used[key] {
+			continue
+		}
+		itemPath := item.Cwd
+		if normalized := normalizeExistingPath(itemPath); normalized != "" {
+			itemPath = normalized
+		}
+		if cleanAbs(itemPath) != path {
+			continue
+		}
+		if codexHistoryMatchConfidence(capturedMatchText, item) == historyMatchHigh {
+			if matchedKey != "" {
+				return ""
+			}
+			matchedKey = key
+		}
+	}
+	return matchedKey
+}
+
+func historyMatchesPane(captured string, item codexHistoryItem) bool {
+	return codexHistoryMatchConfidence(captured, item) == historyMatchHigh
+}
+
+type historyMatchConfidence int
+
+const (
+	historyMatchNone historyMatchConfidence = iota
+	historyMatchLow
+	historyMatchHigh
+)
+
+func codexHistoryMatchConfidence(captured string, item codexHistoryItem) historyMatchConfidence {
+	source := matchText(item.Title + " " + item.FirstUserMessage)
+	if source == "" {
+		return historyMatchNone
+	}
+	if len(source) > 18 && strings.Contains(captured, source) {
+		return historyMatchHigh
+	}
+	if len(source) > 40 && strings.Contains(captured, source[:40]) {
+		return historyMatchHigh
+	}
+	seen := map[string]bool{}
+	matches := 0
+	total := 0
+	for _, token := range strings.Fields(source) {
+		if len(token) < 4 || weakMatchToken(token) || seen[token] {
+			continue
+		}
+		seen[token] = true
+		total++
+		if strings.Contains(captured, token) {
+			matches++
+		}
+	}
+	if total >= 4 && matches >= 4 {
+		return historyMatchLow
+	}
+	return historyMatchNone
+}
+
+func weakMatchToken(token string) bool {
+	switch token {
+	case "could", "would", "should", "please", "look", "with", "from", "that", "this", "have", "what", "when", "where", "there", "their", "thread", "session":
+		return true
+	default:
+		return false
+	}
+}
+
+func matchText(value string) string {
+	value = strings.ToLower(stripANSI(value))
+	var b strings.Builder
+	lastSpace := true
+	for _, r := range value {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			b.WriteRune(r)
+			lastSpace = false
+		} else if !lastSpace {
+			b.WriteByte(' ')
+			lastSpace = true
+		}
+	}
+	return strings.TrimSpace(b.String())
 }
 
 func (a *app) hookStateForPath(hook map[string]hookInfo, path string) hookInfo {
@@ -1769,16 +2405,32 @@ func (a *app) windowCodexState(windowID string) string {
 }
 
 func (a *app) windowCodexInfo(windowID string) hookInfo {
+	var matches []hookInfo
 	for _, line := range readLines(a.codexStateRowsFile) {
 		parts := strings.Split(line, "\t")
-		if len(parts) >= 2 && parts[0] == windowID {
-			updated, _ := strconv.ParseInt(field(parts, 2), 10, 64)
-			started, _ := strconv.ParseInt(field(parts, 3), 10, 64)
-			if started == 0 {
-				started = updated
-			}
-			return hookInfo{state: parts[1], updated: updated, started: started}
+		if len(parts) < 2 || parts[0] != windowID {
+			continue
 		}
+		updated, _ := strconv.ParseInt(field(parts, 2), 10, 64)
+		started, _ := strconv.ParseInt(field(parts, 3), 10, 64)
+		if started == 0 {
+			started = updated
+		}
+		info := hookInfo{
+			state:     parts[1],
+			updated:   updated,
+			started:   started,
+			paneID:    field(parts, 4),
+			sessionID: field(parts, 5),
+			path:      field(parts, 6),
+		}
+		if info.paneID == "" && len(parts) < 5 {
+			return info
+		}
+		matches = append(matches, info)
+	}
+	if len(matches) == 1 {
+		return matches[0]
 	}
 	return hookInfo{}
 }
@@ -1811,12 +2463,15 @@ func (a *app) windowHasRunningProcess(windowID string) bool {
 	return containsLine(a.processWindowRowsFile, windowID)
 }
 
-func (a *app) markSeenFinished(key string) error {
+func (a *app) markSeenFinished(key string, finishedAt ...int64) error {
 	if key == "" {
 		return nil
 	}
 	_ = os.MkdirAll(a.stateDir, 0o755)
 	seenAt := time.Now().Unix()
+	if len(finishedAt) > 0 {
+		key = seenFinishedEventKey(key, finishedAt[0])
+	}
 	seen := a.loadSeenFinished()
 	seen[key] = seenAt
 	var out []string
@@ -1854,7 +2509,13 @@ func (a *app) hasSeenFinished(key string, finishedAt int64) bool {
 	if key == "" {
 		return false
 	}
-	seenAt, ok := a.loadSeenFinished()[key]
+	seen := a.loadSeenFinished()
+	if finishedAt > 0 {
+		if _, ok := seen[seenFinishedEventKey(key, finishedAt)]; ok {
+			return true
+		}
+	}
+	seenAt, ok := seen[key]
 	if !ok {
 		return false
 	}
@@ -1862,6 +2523,95 @@ func (a *app) hasSeenFinished(key string, finishedAt int64) bool {
 		return true
 	}
 	return seenAt >= finishedAt
+}
+
+func seenFinishedEventKey(key string, finishedAt int64) string {
+	if key == "" || finishedAt <= 0 {
+		return key
+	}
+	return key + "@" + strconv.FormatInt(finishedAt, 10)
+}
+
+func seenFinishedKeyForHook(fallback string, info hookInfo) string {
+	if info.sessionID != "" {
+		return "codex:" + info.sessionID
+	}
+	if info.path != "" {
+		return info.path
+	}
+	return fallback
+}
+
+func (a *app) hasSeenFinishedForHook(fallback string, info hookInfo) bool {
+	key := seenFinishedKeyForHook(fallback, info)
+	if a.hasSeenFinished(key, info.updated) {
+		return true
+	}
+	if info.sessionID == "" {
+		return false
+	}
+	if info.path != "" && info.path != key && a.hasSeenFinished(info.path, info.updated) {
+		return true
+	}
+	if fallback != "" && fallback != key && !strings.HasPrefix(fallback, "codex:") {
+		return a.hasSeenFinished(fallback, info.updated)
+	}
+	return false
+}
+
+func (a *app) clearSeenFinishedForHook(fallback string, info hookInfo) error {
+	key := seenFinishedKeyForHook(fallback, info)
+	if err := a.clearSeenFinished(key); err != nil {
+		return err
+	}
+	if info.sessionID != "" && info.path != "" && info.path != key {
+		return a.clearSeenFinished(info.path)
+	}
+	return nil
+}
+
+func (a *app) markSeenFinishedForSelection(target, fallback string) error {
+	info := a.seenFinishedInfoForSelection(target, fallback)
+	key := seenFinishedKeyForHook(fallback, info)
+	if key == "" {
+		key = fallback
+	}
+	return a.markSeenFinished(key, info.updated)
+}
+
+func (a *app) seenFinishedInfoForSelection(target, fallback string) hookInfo {
+	hooks := a.readHookIndex()
+	if pane := paneTarget(target); pane != "" {
+		if info := hooks.liveByPane[pane]; info.updated > 0 {
+			return info
+		}
+	}
+	if window := windowTarget(target); window != "" {
+		if windowID := a.windowIDForTarget(window); windowID != "" {
+			if info := a.windowCodexInfo(windowID); info.updated > 0 {
+				return info
+			}
+		}
+	}
+	if fallback != "" && !strings.HasPrefix(fallback, "codex:") {
+		if info := a.hookStateForPath(hooks.byPath, fallback); info.updated > 0 {
+			return info
+		}
+	}
+	return hookInfo{path: fallback}
+}
+
+func (a *app) windowIDForTarget(target string) string {
+	if strings.HasPrefix(target, "@") {
+		return target
+	}
+	for _, line := range strings.Split(strings.TrimRight(a.output(a.tmuxBin, "list-windows", "-a", "-F", "#{session_name}:#{window_index}\t#{window_id}\t#{window_name}\t#{window_activity_flag}\t#{window_bell_flag}"), "\n"), "\n") {
+		parts := strings.Split(line, "\t")
+		if len(parts) >= 2 && parts[0] == target {
+			return parts[1]
+		}
+	}
+	return ""
 }
 
 func (a *app) loadSeenFinished() map[string]int64 {
@@ -2274,7 +3024,8 @@ func (a *app) shouldUseDisplayCache() bool {
 		getenv("TMUX_THREAD_USE_DISPLAY_CACHE", "1") == "1" &&
 		os.Getenv("TMUX_THREAD_SHOW_ARCHIVED") != "1" &&
 		!fileEmpty(a.displayCacheFile) &&
-		displayCacheHasGroups(a.displayCacheFile)
+		displayCacheHasGroups(a.displayCacheFile) &&
+		a.displayCacheFreshForMutableState()
 }
 
 func displayCacheHasGroups(path string) bool {
@@ -2289,6 +3040,69 @@ func displayCacheHasGroups(path string) bool {
 		}
 	}
 	return found
+}
+
+func (a *app) displayCacheFreshForMutableState() bool {
+	cacheInfo, err := os.Stat(a.displayCacheFile)
+	if err != nil {
+		return false
+	}
+	paths := []string{
+		a.pinFile,
+		a.titleFile,
+		a.autoTitleFile,
+		a.archiveFile,
+		a.seenFile,
+		a.codexHookStateIndex,
+		filepath.Join(a.home, ".codex", "state_5.sqlite"),
+	}
+	for _, path := range paths {
+		info, err := os.Stat(path)
+		if err == nil && info.ModTime().After(cacheInfo.ModTime()) {
+			return false
+		}
+	}
+	return true
+}
+
+func (a *app) displayCacheMatchesLiveOpenRows() bool {
+	cached := map[string]row{}
+	for _, r := range readRows(a.displayRowsFile) {
+		if r.kind == "OPEN" {
+			cached[r.target] = r
+		}
+	}
+	hooks := a.readHookIndex()
+	live := map[string]row{}
+	for _, r := range a.emitOpenRows(hooks) {
+		if r.kind == "OPEN" {
+			live[r.target] = r
+		}
+	}
+	if len(cached) != len(live) {
+		return false
+	}
+	for target, cachedRow := range cached {
+		liveRow, ok := live[target]
+		if !ok || !openRowIdentityMatches(cachedRow, liveRow) {
+			return false
+		}
+	}
+	return true
+}
+
+func openRowIdentityMatches(cached, live row) bool {
+	return cached.target == live.target &&
+		cached.branch == live.branch &&
+		cached.pinKey == live.pinKey &&
+		cached.project == live.project &&
+		displayTitle(cached.display) == displayTitle(live.display)
+}
+
+func displayTitle(display string) string {
+	plain := stripANSI(display)
+	columns := splitDisplayColumns(plain)
+	return field(columns, 0)
 }
 
 func rowsHaveRunningState(path string) bool {
@@ -2365,7 +3179,7 @@ func (a *app) refreshLiveStateOverlay() error {
 				workDuration = workDurationSince(info.started)
 			case "done":
 				workDuration = workDurationBetween(info.started, info.updated)
-				if !a.hasSeenFinished(r.pinKey, info.updated) {
+				if !a.hasSeenFinishedForHook(r.pinKey, info) {
 					dot = a.colorText(a.c.dotCurrent, "●")
 					stateLabel = "wait"
 				}
@@ -2437,7 +3251,7 @@ func (a *app) pick() error {
 		"--with-nth=2",
 		"--header=" + header,
 		"--header-border=line",
-		"--footer=Ctrl-n new | Ctrl-r refresh | Ctrl-o worktrees | Ctrl-p pin | Ctrl-t title | Ctrl-y auto-title | Ctrl-x " + archiveAction + " | Alt-f all | Alt-v archived | Enter open",
+		"--footer=Ctrl-n new | Ctrl-r refresh | Ctrl-o worktrees | Ctrl-p pin | Ctrl-t rename | Ctrl-y auto-title | Ctrl-x " + archiveAction + " | Alt-f all | Alt-v archived | Enter open",
 		"--footer-border=line",
 		"--layout=reverse",
 		"--border",
@@ -2455,7 +3269,7 @@ func (a *app) pick() error {
 		"--bind", "ctrl-x:execute-silent(" + a.self + " --toggle-archive {5})+reload(" + archiveReload + " | tee " + fzfRowsFileQ + " | " + filterCurrentQuery + ")",
 		"--bind", "alt-f:reload(TMUX_THREAD_ATTENTION_ONLY=0 " + a.self + " --rows | tee " + fzfRowsFileQ + " | " + filterCurrentQuery + ")",
 		"--bind", "alt-v:reload(TMUX_THREAD_SHOW_ARCHIVED=1 " + a.self + " --rows | tee " + fzfRowsFileQ + " | " + filterCurrentQuery + ")",
-		"--bind", "ctrl-t:execute-silent(" + a.self + " --prompt-title {5})",
+		"--bind", "ctrl-t:execute(" + a.self + " --edit-title {5})+reload(" + reloadRowsCommand + ")",
 		"--bind", "ctrl-y:execute-silent(" + a.self + " --regen-title {5} {3})+reload(" + reloadRowsCommand + ")",
 		"--bind", "ctrl-n:execute(" + a.self + " --new-thread {5})+abort",
 		"--bind", "ctrl-r:reload(" + reloadRowsCommand + ")",
@@ -2478,10 +3292,10 @@ func (a *app) pick() error {
 		script := filepath.Join(a.home, ".dotfiles", "bin", "tmux-select-worktree.sh")
 		return syscall.Exec(script, []string{script, a.sourceSess, field(parts, 2)}, os.Environ())
 	case "OPEN":
-		_ = a.markSeenFinished(field(parts, 4))
+		_ = a.markSeenFinishedForSelection(field(parts, 2), field(parts, 4))
 		return a.openExistingThread(field(parts, 2))
 	case "HIST":
-		_ = a.markSeenFinished(field(parts, 4))
+		_ = a.markSeenFinishedForSelection(field(parts, 2), field(parts, 4))
 		return a.openCodexHistoryThread(strings.TrimPrefix(field(parts, 4), "codex:"), field(parts, 2))
 	case "WT":
 		return a.openThreadWindow(field(parts, 2), field(parts, 3))
@@ -2516,7 +3330,8 @@ func (a *app) openCodexHistoryThread(sessionID, cwd string) error {
 	if cwd == "" || !isDir(cwd) {
 		cwd = a.home
 	}
-	title := cleanGeneratedTitle(a.threadTitle("codex:"+sessionID, filepath.Base(cwd)))
+	historyTitle := firstNonEmpty(a.codexHistoryTitle(sessionID), filepath.Base(cwd))
+	title := cleanGeneratedTitle(a.threadTitle("codex:"+sessionID, historyTitle))
 	if title == "" {
 		title = filepath.Base(cwd)
 	}
@@ -2697,6 +3512,16 @@ func cleanAbs(path string) string {
 		return resolved
 	}
 	return abs
+}
+
+func samePathOrChild(path, parent string) bool {
+	path = cleanAbs(path)
+	parent = cleanAbs(parent)
+	if path == parent {
+		return true
+	}
+	rel, err := filepath.Rel(parent, path)
+	return err == nil && rel != "." && rel != "" && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)) && rel != ".." && !filepath.IsAbs(rel)
 }
 
 func readLines(path string) []string {
@@ -2887,6 +3712,10 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func isCodexTitleKey(key string) bool {
+	return strings.HasPrefix(key, "codex:")
 }
 
 func containsAny(value string, needles []string) bool {
