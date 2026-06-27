@@ -198,7 +198,7 @@ case "$cmd" in
 		done
 		case "$target" in
 			%2)
-				if [ "${TMUX_MOCK_TWO_CODEX_PANES:-0}" = "1" ]; then
+				if [ "${TMUX_MOCK_TWO_CODEX_PANES:-0}" = "1" ] || [ "${TMUX_MOCK_CAPTURE_PANE2:-0}" = "1" ]; then
 					printf 'User asks for LIN-42: Add refund flow\n'
 				fi
 				;;
@@ -338,6 +338,11 @@ else
 	fail "set-title clears title on empty value"
 fi
 
+rm -f "$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
+TMUX_MOCK_CAPTURE_PANE2=1 run_script --regen-title "$TEST_WORKTREE" "test:2"
+assert_file_contains_line "$XDG_STATE_HOME/tmux-thread-picker/auto-titles" "$TEST_WORKTREE"$'\t'"LIN-42: Add refund flow" "regen-title resolves codex pane from window target"
+rm -f "$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
+
 : >"$TMUX_MOCK_LOG"
 run_script --prompt-title "$TEST_REPO"
 prompt_log="$(cat "$TMUX_MOCK_LOG")"
@@ -408,6 +413,61 @@ if [ "$(printf '%s\n' "$plain_two_pane_rows" | awk -F '\t' '$1 == "OPEN" && $3 ~
 	pass "two codex panes in one window produce separate rows"
 else
 	fail "two codex panes in one window produce separate rows"
+fi
+: >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+rm -f "$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
+now="$(date +%s)"
+started=$((now - 65))
+printf '%s\trunning\tUserPromptSubmit\t%s\t%s\tsession-pane-2\t%%2\n' "$TEST_WORKTREE" "$now" "$started" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+mixed_pane_status_rows="$(TMUX_MOCK_TWO_CODEX_PANES=1 run_script --rows)"
+plain_mixed_pane_status_rows="$(printf '%s' "$mixed_pane_status_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+if printf '%s\n' "$plain_mixed_pane_status_rows" | awk -F '\t' '$1 == "OPEN" && $3 == "test:2,%2" && $2 ~ /run/ { found = 1 } END { exit(found ? 0 : 1) }'; then
+	pass "pane-specific hook marks matching pane as running"
+else
+	fail "pane-specific hook marks matching pane as running"
+fi
+if printf '%s\n' "$plain_mixed_pane_status_rows" | awk -F '\t' '$1 == "OPEN" && $3 == "test:2,%3" && $2 ~ /codex/ && $2 !~ /run/ { found = 1 } END { exit(found ? 0 : 1) }'; then
+	pass "pane-specific hook does not mark sibling pane as running"
+else
+	fail "pane-specific hook does not mark sibling pane as running"
+fi
+: >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+old=$((now - 90000))
+printf '%s\tdone\tStop\t%s\t%s\tstale-pane-session\t%%3\n' "$TEST_REPO" "$old" "$old" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+printf 'codex:stale-pane-session\tStale Pane Title\n' >"$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
+stale_pane_title_rows="$(TMUX_MOCK_TWO_CODEX_PANES=1 run_script --rows)"
+plain_stale_pane_title_rows="$(printf '%s' "$stale_pane_title_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+if printf '%s\n' "$plain_stale_pane_title_rows" | awk -F '\t' '$1 == "OPEN" && $3 == "test:2,%3" && $5 == "codex:stale-pane-session" && $2 ~ /Stale Pane Title/ && $2 ~ /codex/ && $2 !~ /wait/ { found = 1 } END { exit(found ? 0 : 1) }'; then
+	pass "stale pane hook keeps title identity without stale status"
+else
+	fail "stale pane hook keeps title identity without stale status"
+fi
+if command -v sqlite3 >/dev/null 2>&1; then
+	mkdir -p "$HOME/.codex"
+	rm -f "$HOME/.codex/state_5.sqlite"
+	sqlite3 "$HOME/.codex/state_5.sqlite" <<EOF
+create table threads(id text, cwd text, updated_at_ms integer, title text, first_user_message text);
+insert into threads values ('explicit-pane-session', '$TEST_WORKTREE', 200, '', '');
+insert into threads values ('fallback-pane-session', '$TEST_WORKTREE', 100, '', '');
+EOF
+	: >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+	printf '%s\tdone\tStop\t%s\t%s\texplicit-pane-session\t%%2\n' "$TEST_WORKTREE" "$old" "$old" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+	printf 'codex:explicit-pane-session\tExplicit Pane Title\ncodex:fallback-pane-session\tFallback Pane Title\n' >"$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
+	fallback_title_rows="$(TMUX_MOCK_TWO_CODEX_PANES=1 run_script --rows)"
+	plain_fallback_title_rows="$(printf '%s' "$fallback_title_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+	if printf '%s\n' "$plain_fallback_title_rows" | awk -F '\t' '$1 == "OPEN" && $3 == "test:2,%2" && $5 == "codex:explicit-pane-session" && $2 ~ /Explicit Pane Title/ { found = 1 } END { exit(found ? 0 : 1) }'; then
+		pass "pane explicit title key remains on matching pane"
+	else
+		fail "pane explicit title key remains on matching pane"
+	fi
+	if printf '%s\n' "$plain_fallback_title_rows" | awk -F '\t' '$1 == "OPEN" && $3 == "test:2,%3" && $5 == "codex:fallback-pane-session" && $2 ~ /Fallback Pane Title/ { found = 1 } END { exit(found ? 0 : 1) }'; then
+		pass "fallback title key skips explicit sibling key"
+	else
+		fail "fallback title key skips explicit sibling key"
+	fi
+	rm -f "$HOME/.codex/state_5.sqlite"
+else
+	pass "fallback title key skips explicit sibling key (sqlite3 unavailable)"
 fi
 rm -f "$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
 printf '%s\trunning\tUserPromptSubmit\t%s\t%s\tsession-pane-2\t%%2\n' "$TEST_WORKTREE" "$(date +%s)" "$(date +%s)" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
@@ -599,6 +659,7 @@ assert_contains "$fzf_args" "load:transform:[[ {1} = GROUP ]] && echo down" "fzf
 assert_contains "$fzf_args" "result:transform:[[ {1} = GROUP ]] && echo down" "fzf skips group after filtering"
 assert_contains "$fzf_args" "enter:transform:[[ {1} = GROUP ]] && echo down || echo accept" "enter does not accept group rows"
 assert_contains "$fzf_args" "ctrl-x:execute-silent" "fzf has single-key hide binding"
+assert_contains "$fzf_args" "ctrl-t:execute-silent($SCRIPT --prompt-title {5})" "fzf edits title without leaving popup"
 assert_contains "$fzf_args" "Ctrl-y auto-title" "fzf footer advertises auto-title binding"
 assert_contains "$fzf_args" "ctrl-y:execute-silent($SCRIPT --regen-title {5} {3})" "fzf can rerun title logic for selected row"
 assert_contains "$fzf_args" "alt-f:reload(TMUX_THREAD_ATTENTION_ONLY=0" "fzf can reload full inventory"

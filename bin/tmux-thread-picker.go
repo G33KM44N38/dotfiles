@@ -89,6 +89,13 @@ type row struct {
 	search  string
 }
 
+const (
+	threadTitleWidth  = 24
+	threadPathWidth   = 38
+	threadBranchWidth = 32
+	threadWorkWidth   = 9
+)
+
 type worktreeRow struct {
 	path     string
 	branch   string
@@ -503,7 +510,11 @@ func (a *app) setTitle(key, title string) error {
 	if title != "" {
 		out = append(out, key+"\t"+title)
 	}
-	return writeLines(a.titleFile, out)
+	if err := writeLines(a.titleFile, out); err != nil {
+		return err
+	}
+	_ = a.notifyFZF()
+	return nil
 }
 
 func (a *app) clearTitleInFile(path, key string) error {
@@ -529,7 +540,7 @@ func (a *app) regenerateTitle(key, target string) error {
 	}
 	_ = a.clearTitleInFile(a.titleFile, key)
 	_ = a.clearTitleInFile(a.autoTitleFile, key)
-	pane := paneTarget(target)
+	pane := a.titlePaneTarget(target)
 	if strings.HasPrefix(key, "codex:") {
 		title := a.codexLocalThreadTitle(strings.TrimPrefix(key, "codex:"))
 		if title == "" && pane != "" {
@@ -550,6 +561,31 @@ func (a *app) regenerateTitle(key, target string) error {
 	}
 	a.ensureGeneratedTitle(key, pane, key, filepath.Base(key))
 	return nil
+}
+
+func (a *app) titlePaneTarget(target string) string {
+	if pane := paneTarget(target); pane != "" {
+		return pane
+	}
+	window := windowTarget(target)
+	if window == "" {
+		return ""
+	}
+	for _, line := range strings.Split(strings.TrimRight(a.output(a.tmuxBin, "list-panes", "-t", window, "-F", "#{pane_id}\t#{pane_current_command}"), "\n"), "\n") {
+		parts := strings.Split(line, "\t")
+		if len(parts) < 2 {
+			continue
+		}
+		paneID, commandName := parts[0], parts[1]
+		if len(parts) >= 3 && strings.HasPrefix(parts[1], "%") {
+			paneID, commandName = parts[1], parts[2]
+		}
+		command := filepath.Base(commandName)
+		if command == "codex" || strings.HasPrefix(command, "codex-") {
+			return paneID
+		}
+	}
+	return ""
 }
 
 func (a *app) promptTitle(key string) error {
@@ -778,6 +814,7 @@ func (a *app) emitOpenRows() []row {
 		codexPanes := a.windowCodexPanes(windowID)
 		if len(codexPanes) > 1 {
 			titleKeys := a.codexTitleKeysForPath(path, len(codexPanes))
+			hookStatesByPane := a.readHookStatesByPane()
 			for _, pane := range codexPanes {
 				panePath := firstNonEmpty(pane.path, path)
 				if panePath == "" || !isDir(panePath) {
@@ -795,12 +832,18 @@ func (a *app) emitOpenRows() []row {
 				pinKey := panePath
 				if paneKey := a.codexTitleKeyForPane(pane.paneID); paneKey != "" {
 					pinKey = paneKey
+					titleKeys = removeTitleKey(titleKeys, paneKey)
 				} else if len(titleKeys) > 0 {
 					pinKey = titleKeys[0]
 					titleKeys = titleKeys[1:]
 				}
 				a.ensureGeneratedTitle(pinKey, pane.paneID, panePath, filepath.Base(panePath))
-				if r, ok := a.emitRow("OPEN", state, paneBranch, target, windowName, panePath, targetWithPane(target, pane.paneID), paneProject, pinKey, rowSignal, processSignal, paneRelative, workDuration); ok {
+				paneFallbackSignal := "codex_open"
+				if currentMarker == "*" {
+					paneFallbackSignal = "current"
+				}
+				paneRowSignal, paneWorkDuration := a.codexRowSignal(currentMarker, paneFallbackSignal, pinKey, hookStatesByPane[pane.paneID])
+				if r, ok := a.emitRow("OPEN", state, paneBranch, target, windowName, panePath, targetWithPane(target, pane.paneID), paneProject, pinKey, paneRowSignal, processSignal, paneRelative, paneWorkDuration); ok {
 					out = append(out, r)
 				}
 				appendLine(a.openPathsFile, panePath)
@@ -812,7 +855,11 @@ func (a *app) emitOpenRows() []row {
 			paneID = codexPanes[0].paneID
 		}
 		a.ensureGeneratedTitle(path, paneID, path, filepath.Base(path))
-		if r, ok := a.emitRow("OPEN", state, branch, target, windowName, path, target, project, path, rowSignal, processSignal, relative, workDuration); ok {
+		pinKey := path
+		if a.windowHasCodexCLI(windowID) && a.hasManualTitle(target) {
+			pinKey = target
+		}
+		if r, ok := a.emitRow("OPEN", state, branch, target, windowName, path, target, project, pinKey, rowSignal, processSignal, relative, workDuration); ok {
 			out = append(out, r)
 		}
 		appendLine(a.openPathsFile, path)
@@ -843,6 +890,41 @@ func (a *app) emitWorktreeRows() []row {
 		}
 	}
 	return out
+}
+
+func removeTitleKey(keys []string, key string) []string {
+	if key == "" {
+		return keys
+	}
+	out := keys[:0]
+	for _, candidate := range keys {
+		if candidate != key {
+			out = append(out, candidate)
+		}
+	}
+	return out
+}
+
+func (a *app) codexRowSignal(currentMarker, fallbackSignal, seenKey string, info hookInfo) (string, string) {
+	switch info.state {
+	case "done":
+		workDuration := workDurationBetween(info.started, info.updated)
+		if a.hasSeenFinished(seenKey) {
+			if currentMarker == "*" {
+				return "current", workDuration
+			}
+			return "open", workDuration
+		}
+		return "codex_done", workDuration
+	case "running":
+		_ = a.clearSeenFinished(seenKey)
+		return "codex_running", workDurationSince(info.started)
+	default:
+		if currentMarker == "*" && fallbackSignal == "current" {
+			return "current", ""
+		}
+		return fallbackSignal, ""
+	}
 }
 
 func (a *app) emitRow(kind, state, branch, target, window, path, selectionTarget, project, pinKey, rowSignal, processSignal, detailOverride, workDuration string) (row, bool) {
@@ -893,10 +975,10 @@ func (a *app) emitRow(kind, state, branch, target, window, path, selectionTarget
 	} else if kind == "OPEN" || kind == "WT" {
 		fallbackTitle = filepath.Base(path)
 	}
-	title := padText(a.threadTitle(pinKey, fallbackTitle), 30)
-	detail := padText(relative, 56)
-	branchCol := padText(branch, 56)
-	workCol := padText(workDuration, 11)
+	title := padText(a.threadTitle(pinKey, fallbackTitle), threadTitleWidth)
+	detail := padText(relative, threadPathWidth)
+	branchCol := padText(branch, threadBranchWidth)
+	workCol := padText(workDuration, threadWorkWidth)
 	display := fmt.Sprintf("%s%s %s %s  %s  %s  %s  %s",
 		dot,
 		procMarker,
@@ -1428,11 +1510,28 @@ func (a *app) codexTitleKeyForPane(paneID string) string {
 	if paneID == "" {
 		return ""
 	}
-	info := a.readHookStatesByPane()[paneID]
+	info := a.readHookSessionsByPane()[paneID]
 	if info.sessionID == "" {
 		return ""
 	}
 	return "codex:" + info.sessionID
+}
+
+func (a *app) readHookSessionsByPane() map[string]hookInfo {
+	result := map[string]hookInfo{}
+	for _, line := range readLines(a.codexHookStateIndex) {
+		parts := strings.Split(line, "\t")
+		paneID := field(parts, 6)
+		if len(parts) < 7 || paneID == "" {
+			continue
+		}
+		updated, _ := strconv.ParseInt(parts[3], 10, 64)
+		current := result[paneID]
+		if updated >= current.updated {
+			result[paneID] = hookInfo{updated: updated, sessionID: field(parts, 5), paneID: paneID}
+		}
+	}
+	return result
 }
 
 func (a *app) hookStateForPath(hook map[string]hookInfo, path string) hookInfo {
@@ -2112,10 +2211,10 @@ func (a *app) refreshLiveStateOverlay() error {
 			proc,
 			a.colorText(a.c.red, pin),
 			a.colorText(a.c.green, padText(stateLabel, 6)),
-			a.colorText(a.c.reset, padText(field(columns, 0), 30)),
-			a.colorText(a.c.dim, padText(field(columns, 1), 56)),
-			a.colorText(a.c.magenta, padText(field(columns, 2), 56)),
-			a.colorText(a.c.dim, padText(workDuration, 11)),
+			a.colorText(a.c.reset, padText(field(columns, 0), threadTitleWidth)),
+			a.colorText(a.c.dim, padText(field(columns, 1), threadPathWidth)),
+			a.colorText(a.c.magenta, padText(field(columns, 2), threadBranchWidth)),
+			a.colorText(a.c.dim, padText(workDuration, threadWorkWidth)),
 		)
 		out = append(out, r)
 	}
@@ -2161,7 +2260,7 @@ func (a *app) pick() error {
 	filterCurrentQuery := a.self + " --filter-rows {q}"
 	filteredRowsCommand := filterCurrentQuery + " < " + fzfRowsFileQ
 	reloadRowsCommand := a.self + " --rows | tee " + fzfRowsFileQ + " | " + filterCurrentQuery
-	header := fmt.Sprintf("      %s  %s  %s  %s  %s", padText("state", 6), padText("title", 30), padText("path", 56), padText("branch", 56), padText("work", 11))
+	header := fmt.Sprintf("      %s  %s  %s  %s  %s", padText("state", 6), padText("title", threadTitleWidth), padText("path", threadPathWidth), padText("branch", threadBranchWidth), padText("work", threadWorkWidth))
 
 	args := []string{
 		"--prompt=thread > ",
@@ -2187,7 +2286,7 @@ func (a *app) pick() error {
 		"--bind", "ctrl-x:execute-silent(" + a.self + " --toggle-archive {5})+reload(" + archiveReload + " | tee " + fzfRowsFileQ + " | " + filterCurrentQuery + ")",
 		"--bind", "alt-f:reload(TMUX_THREAD_ATTENTION_ONLY=0 " + a.self + " --rows | tee " + fzfRowsFileQ + " | " + filterCurrentQuery + ")",
 		"--bind", "alt-v:reload(TMUX_THREAD_SHOW_ARCHIVED=1 " + a.self + " --rows | tee " + fzfRowsFileQ + " | " + filterCurrentQuery + ")",
-		"--bind", "ctrl-t:execute(" + a.self + " --edit-title {5})+reload(" + reloadRowsCommand + ")",
+		"--bind", "ctrl-t:execute-silent(" + a.self + " --prompt-title {5})",
 		"--bind", "ctrl-y:execute-silent(" + a.self + " --regen-title {5} {3})+reload(" + reloadRowsCommand + ")",
 		"--bind", "ctrl-n:execute(" + a.self + " --new-thread {5})+abort",
 		"--bind", "ctrl-r:reload(" + reloadRowsCommand + ")",
@@ -2323,11 +2422,15 @@ func padText(value string, width int) string {
 }
 
 func splitDisplayColumns(plain string) []string {
+	titleStart := 14
+	pathStart := titleStart + threadTitleWidth + 2
+	branchStart := pathStart + threadPathWidth + 2
+	workStart := branchStart + threadBranchWidth + 2
 	return []string{
-		strings.TrimSpace(substr(plain, 14, 44)),
-		strings.TrimSpace(substr(plain, 46, 102)),
-		strings.TrimSpace(substr(plain, 104, 160)),
-		strings.TrimSpace(substr(plain, 162, 173)),
+		strings.TrimSpace(substr(plain, titleStart, titleStart+threadTitleWidth)),
+		strings.TrimSpace(substr(plain, pathStart, pathStart+threadPathWidth)),
+		strings.TrimSpace(substr(plain, branchStart, branchStart+threadBranchWidth)),
+		strings.TrimSpace(substr(plain, workStart, workStart+threadWorkWidth)),
 	}
 }
 
