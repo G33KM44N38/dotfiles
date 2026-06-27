@@ -124,7 +124,11 @@ case "$cmd" in
 		printf '@1\t%%1\tzsh\t%s\t1001\n' "$TEST_REPO"
 		if [ "${TMUX_MOCK_TWO_CODEX_PANES:-0}" = "1" ]; then
 			printf '@2\t%%2\tcodex\t%s\t1002\n' "$TEST_WORKTREE"
-			printf '@2\t%%3\tcodex\t%s\t1003\n' "$TEST_REPO"
+			if [ "${TMUX_MOCK_TWO_CODEX_SAME_PATH:-0}" = "1" ]; then
+				printf '@2\t%%3\tcodex\t%s\t1003\n' "$TEST_WORKTREE"
+			else
+				printf '@2\t%%3\tcodex\t%s\t1003\n' "$TEST_REPO"
+			fi
 		else
 			printf '@2\t%%2\t%s\t%s\t1002\n' "${TMUX_MOCK_WORKTREE_COMMAND:-codex}" "$TEST_WORKTREE"
 		fi
@@ -152,7 +156,11 @@ case "$cmd" in
 				printf '@1\t%%1\tzsh\t%s\t1001\n' "$TEST_REPO"
 				if [ "${TMUX_MOCK_TWO_CODEX_PANES:-0}" = "1" ]; then
 					printf '@2\t%%2\tcodex\t%s\t1002\n' "$TEST_WORKTREE"
-					printf '@2\t%%3\tcodex\t%s\t1003\n' "$TEST_REPO"
+					if [ "${TMUX_MOCK_TWO_CODEX_SAME_PATH:-0}" = "1" ]; then
+						printf '@2\t%%3\tcodex\t%s\t1003\n' "$TEST_WORKTREE"
+					else
+						printf '@2\t%%3\tcodex\t%s\t1003\n' "$TEST_REPO"
+					fi
 				else
 					printf '@2\t%%2\t%s\t%s\t1002\n' "${TMUX_MOCK_WORKTREE_COMMAND:-codex}" "$TEST_WORKTREE"
 				fi
@@ -431,6 +439,33 @@ if printf '%s\n' "$plain_mixed_pane_status_rows" | awk -F '\t' '$1 == "OPEN" && 
 else
 	fail "pane-specific hook does not mark sibling pane as running"
 fi
+same_path_mixed_pane_status_rows="$(TMUX_MOCK_TWO_CODEX_PANES=1 TMUX_MOCK_TWO_CODEX_SAME_PATH=1 run_script --rows)"
+plain_same_path_mixed_pane_status_rows="$(printf '%s' "$same_path_mixed_pane_status_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+if printf '%s\n' "$plain_same_path_mixed_pane_status_rows" | awk -F '\t' '$1 == "OPEN" && $3 == "test:2,%2" && $2 ~ /run/ { found = 1 } END { exit(found ? 0 : 1) }'; then
+	pass "same-path pane hook marks matching pane as running"
+else
+	fail "same-path pane hook marks matching pane as running"
+fi
+if printf '%s\n' "$plain_same_path_mixed_pane_status_rows" | awk -F '\t' '$1 == "OPEN" && $3 == "test:2,%3" && $2 ~ /codex/ && $2 !~ /run/ { found = 1 } END { exit(found ? 0 : 1) }'; then
+	pass "same-path pane hook does not mark sibling pane as running"
+else
+	fail "same-path pane hook does not mark sibling pane as running"
+fi
+printf '%s\n' "$two_pane_rows" >"$XDG_STATE_HOME/tmux-thread-picker/display-rows.tsv"
+: >"$FZF_MOCK_INPUT"
+TMUX_THREAD_USE_DISPLAY_CACHE=1 TMUX_MOCK_TWO_CODEX_PANES=1 FZF_MOCK_MODE=none run_script >/dev/null
+cached_mixed_pane_status_rows="$(cat "$FZF_MOCK_INPUT")"
+plain_cached_mixed_pane_status_rows="$(printf '%s' "$cached_mixed_pane_status_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+if printf '%s\n' "$plain_cached_mixed_pane_status_rows" | awk -F '\t' '$1 == "OPEN" && $3 == "test:2,%2" && $2 ~ /run/ { found = 1 } END { exit(found ? 0 : 1) }'; then
+	pass "cached overlay marks matching pane as running"
+else
+	fail "cached overlay marks matching pane as running"
+fi
+if printf '%s\n' "$plain_cached_mixed_pane_status_rows" | awk -F '\t' '$1 == "OPEN" && $3 == "test:2,%3" && $2 ~ /codex/ && $2 !~ /run/ { found = 1 } END { exit(found ? 0 : 1) }'; then
+	pass "cached overlay does not mark sibling pane as running"
+else
+	fail "cached overlay does not mark sibling pane as running"
+fi
 : >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
 old=$((now - 90000))
 printf '%s\tdone\tStop\t%s\t%s\tstale-pane-session\t%%3\n' "$TEST_REPO" "$old" "$old" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
@@ -460,14 +495,14 @@ EOF
 	else
 		fail "pane explicit title key remains on matching pane"
 	fi
-	if printf '%s\n' "$plain_fallback_title_rows" | awk -F '\t' '$1 == "OPEN" && $3 == "test:2,%3" && $5 == "codex:fallback-pane-session" && $2 ~ /Fallback Pane Title/ { found = 1 } END { exit(found ? 0 : 1) }'; then
-		pass "fallback title key skips explicit sibling key"
+	if printf '%s\n' "$plain_fallback_title_rows" | awk -F '\t' '$1 == "OPEN" && $3 == "test:2,%3" && $5 != "codex:fallback-pane-session" && $2 !~ /Fallback Pane Title/ { found = 1 } END { exit(found ? 0 : 1) }'; then
+		pass "ambiguous sibling pane does not claim fallback title key"
 	else
-		fail "fallback title key skips explicit sibling key"
+		fail "ambiguous sibling pane does not claim fallback title key"
 	fi
 	rm -f "$HOME/.codex/state_5.sqlite"
 else
-	pass "fallback title key skips explicit sibling key (sqlite3 unavailable)"
+	pass "ambiguous sibling pane does not claim fallback title key (sqlite3 unavailable)"
 fi
 rm -f "$XDG_STATE_HOME/tmux-thread-picker/auto-titles"
 printf '%s\trunning\tUserPromptSubmit\t%s\t%s\tsession-pane-2\t%%2\n' "$TEST_WORKTREE" "$(date +%s)" "$(date +%s)" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
@@ -511,6 +546,32 @@ plain_done_rows="$(printf '%s' "$done_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
 assert_contains "$plain_done_rows" "●     wait    demo-feature" "done codex hook shows wait status"
 assert_contains "$plain_done_rows" "2m05s" "done codex hook shows final work duration"
 assert_not_contains "$plain_done_rows" "▶     wait    demo-feature" "done codex hook does not show active arrow"
+: >"$TMUX_MOCK_LOG"
+FZF_MOCK_MODE=target FZF_MOCK_TARGET='^test:2$' run_script >/dev/null
+if awk -F '\t' -v key="$TEST_WORKTREE" '$1 == key && $2 ~ /^[0-9]+$/ { found = 1 } END { exit(found ? 0 : 1) }' "$XDG_STATE_HOME/tmux-thread-picker/seen-finished"; then
+	pass "seen finished marker stores timestamp"
+else
+	fail "seen finished marker stores timestamp"
+fi
+seen_done_rows="$(run_script --rows)"
+plain_seen_done_rows="$(printf '%s' "$seen_done_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+assert_not_contains "$plain_seen_done_rows" "●     wait    demo-feature" "seen finished thread hides wait status"
+new_done=$((now + 10))
+printf '%s\tdone\tStop\t%s\t%s\n' "$TEST_WORKTREE" "$new_done" "$started" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+new_done_rows="$(run_script --rows)"
+plain_new_done_rows="$(printf '%s' "$new_done_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+assert_contains "$plain_new_done_rows" "●     wait    demo-feature" "newer finish ignores stale seen marker"
+printf '%s\n' "$TEST_WORKTREE" >"$XDG_STATE_HOME/tmux-thread-picker/seen-finished"
+legacy_old_done=$((now - 1))
+printf '%s\tdone\tStop\t%s\t%s\n' "$TEST_WORKTREE" "$legacy_old_done" "$started" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+legacy_old_done_rows="$(run_script --rows)"
+plain_legacy_old_done_rows="$(printf '%s' "$legacy_old_done_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+assert_not_contains "$plain_legacy_old_done_rows" "●     wait    demo-feature" "legacy seen marker hides older timestamped finish"
+printf '%s\tdone\tStop\t%s\t%s\n' "$TEST_WORKTREE" "$new_done" "$started" >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
+legacy_seen_done_rows="$(run_script --rows)"
+plain_legacy_seen_done_rows="$(printf '%s' "$legacy_seen_done_rows" | perl -pe 's/\e\[[0-9;]*m//g')"
+assert_contains "$plain_legacy_seen_done_rows" "●     wait    demo-feature" "legacy seen marker does not hide newer timestamped finish"
+rm -f "$XDG_STATE_HOME/tmux-thread-picker/seen-finished"
 : >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
 if printf '%s\n' "$plain_rows" | awk -F '\t' 'NF != 7 { exit 1 }'; then
 	pass "hidden search text is tab-safe single field"

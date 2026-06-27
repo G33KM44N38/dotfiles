@@ -119,6 +119,31 @@ printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$cwd" "$state" "$event" "$now" "$started"
 mv "$tmp_file" "$state_file"
 printf '%s\n' "$payload" >"$raw_file" 2>/dev/null || true
 
+index_lock="$index_file.lock"
+locked=0
+lock_stale_after="${TMUX_THREAD_HOOK_LOCK_STALE_AFTER:-5}"
+for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50; do
+	if mkdir "$index_lock" 2>/dev/null; then
+		locked=1
+		break
+	fi
+	lock_mtime="$(stat -f %m "$index_lock" 2>/dev/null || stat -c %Y "$index_lock" 2>/dev/null || printf '0')"
+	case "$lock_mtime" in
+		''|*[!0-9]*)
+			lock_mtime=0
+			;;
+	esac
+	if [ "$lock_mtime" -gt 0 ] && [ "$((now - lock_mtime))" -gt "$lock_stale_after" ]; then
+		rmdir "$index_lock" 2>/dev/null || true
+	fi
+	sleep 0.02
+done
+[ "$locked" -eq 1 ] || exit 0
+cleanup_index_lock() {
+	rmdir "$index_lock" 2>/dev/null || true
+}
+trap cleanup_index_lock EXIT
+
 index_tmp="$index_file.$$"
 if [ -n "$pane_id" ]; then
 	awk -F '\t' -v pane="$pane_id" -v cwd="$cwd" '($7 != pane) && !($7 == "" && $1 == cwd)' "$index_file" 2>/dev/null >"$index_tmp" || true
@@ -127,6 +152,8 @@ else
 fi
 printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$cwd" "$state" "$event" "$now" "$started" "$session_id" "$pane_id" >>"$index_tmp"
 mv "$index_tmp" "$index_file"
+cleanup_index_lock
+trap - EXIT
 
 picker="$HOME/.dotfiles/bin/tmux-thread-picker.sh"
 if [ -x "$picker" ]; then

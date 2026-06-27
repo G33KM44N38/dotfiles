@@ -76,6 +76,8 @@ type app struct {
 	codexStateRowsFile    string
 	processWindowRowsFile string
 	scanRoots             []string
+	seenFinished          map[string]int64
+	seenFinishedLoaded    bool
 }
 
 type row struct {
@@ -104,11 +106,18 @@ type worktreeRow struct {
 }
 
 type hookInfo struct {
+	path      string
 	state     string
 	updated   int64
 	started   int64
 	sessionID string
 	paneID    string
+}
+
+type hookIndex struct {
+	byPath        map[string]hookInfo
+	liveByPane    map[string]hookInfo
+	sessionByPane map[string]hookInfo
 }
 
 type paneInfo struct {
@@ -712,7 +721,8 @@ func (a *app) buildRows() error {
 	_ = os.WriteFile(a.rowsFile, nil, 0o644)
 	panes := a.output(a.tmuxBin, "list-panes", "-a", "-F", "#{window_id}\t#{pane_id}\t#{pane_current_command}\t#{pane_current_path}\t#{pane_pid}")
 	_ = os.WriteFile(a.paneRowsFile, []byte(panes), 0o644)
-	_ = a.buildCodexStateCache()
+	hooks := a.readHookIndex()
+	_ = a.buildCodexStateCache(hooks)
 	_ = a.ensureProcessWindowIndex()
 
 	a.scanRoots = nil
@@ -728,7 +738,7 @@ func (a *app) buildRows() error {
 		_ = a.collectCachedRepoCandidates()
 		_ = a.ensureWorktreeCache()
 	}
-	rows = append(rows, a.emitOpenRows()...)
+	rows = append(rows, a.emitOpenRows(hooks)...)
 	if !a.attentionModeEnabled() {
 		rows = append(rows, a.emitWorktreeRows()...)
 	}
@@ -738,7 +748,7 @@ func (a *app) buildRows() error {
 	return writeRows(a.displayRowsFile, display, false)
 }
 
-func (a *app) emitOpenRows() []row {
+func (a *app) emitOpenRows(hooks hookIndex) []row {
 	sourceWindowIndex := strings.TrimSpace(a.output(a.tmuxBin, "display-message", "-p", "-t", a.sourcePane, "#{window_index}"))
 	lines := strings.Split(strings.TrimRight(a.output(a.tmuxBin, "list-windows", "-a", "-F", "#{session_name}\t#{window_index}\t#{window_id}\t#{window_name}\t#{window_activity_flag}\t#{window_bell_flag}\t#{pane_current_path}\t#{@secondary-worktree-path}"), "\n"), "\n")
 	var out []row
@@ -789,7 +799,7 @@ func (a *app) emitOpenRows() []row {
 		switch info := a.windowCodexInfo(windowID); info.state {
 		case "done":
 			workDuration = workDurationBetween(info.started, info.updated)
-			if a.hasSeenFinished(path) {
+			if a.hasSeenFinished(path, info.updated) {
 				rowSignal = "open"
 				if currentMarker == "*" {
 					rowSignal = "current"
@@ -813,8 +823,6 @@ func (a *app) emitOpenRows() []row {
 		}
 		codexPanes := a.windowCodexPanes(windowID)
 		if len(codexPanes) > 1 {
-			titleKeys := a.codexTitleKeysForPath(path, len(codexPanes))
-			hookStatesByPane := a.readHookStatesByPane()
 			for _, pane := range codexPanes {
 				panePath := firstNonEmpty(pane.path, path)
 				if panePath == "" || !isDir(panePath) {
@@ -830,19 +838,15 @@ func (a *app) emitOpenRows() []row {
 					paneRelative = a.projectRelativePath(panePath)
 				}
 				pinKey := panePath
-				if paneKey := a.codexTitleKeyForPane(pane.paneID); paneKey != "" {
+				if paneKey := titleKeyForPane(hooks, pane.paneID, panePath); paneKey != "" {
 					pinKey = paneKey
-					titleKeys = removeTitleKey(titleKeys, paneKey)
-				} else if len(titleKeys) > 0 {
-					pinKey = titleKeys[0]
-					titleKeys = titleKeys[1:]
 				}
 				a.ensureGeneratedTitle(pinKey, pane.paneID, panePath, filepath.Base(panePath))
 				paneFallbackSignal := "codex_open"
 				if currentMarker == "*" {
 					paneFallbackSignal = "current"
 				}
-				paneRowSignal, paneWorkDuration := a.codexRowSignal(currentMarker, paneFallbackSignal, pinKey, hookStatesByPane[pane.paneID])
+				paneRowSignal, paneWorkDuration := a.codexRowSignal(currentMarker, paneFallbackSignal, pinKey, hooks.liveByPane[pane.paneID])
 				if r, ok := a.emitRow("OPEN", state, paneBranch, target, windowName, panePath, targetWithPane(target, pane.paneID), paneProject, pinKey, paneRowSignal, processSignal, paneRelative, paneWorkDuration); ok {
 					out = append(out, r)
 				}
@@ -892,24 +896,11 @@ func (a *app) emitWorktreeRows() []row {
 	return out
 }
 
-func removeTitleKey(keys []string, key string) []string {
-	if key == "" {
-		return keys
-	}
-	out := keys[:0]
-	for _, candidate := range keys {
-		if candidate != key {
-			out = append(out, candidate)
-		}
-	}
-	return out
-}
-
 func (a *app) codexRowSignal(currentMarker, fallbackSignal, seenKey string, info hookInfo) (string, string) {
 	switch info.state {
 	case "done":
 		workDuration := workDurationBetween(info.started, info.updated)
-		if a.hasSeenFinished(seenKey) {
+		if a.hasSeenFinished(seenKey, info.updated) {
 			if currentMarker == "*" {
 				return "current", workDuration
 			}
@@ -925,6 +916,24 @@ func (a *app) codexRowSignal(currentMarker, fallbackSignal, seenKey string, info
 		}
 		return fallbackSignal, ""
 	}
+}
+
+func (a *app) rowSignalDisplay(rowSignal, workDuration string) (string, string, string) {
+	dot := " "
+	stateLabel := "open"
+	switch rowSignal {
+	case "current":
+		stateLabel = "open*"
+	case "codex_open":
+		stateLabel = "codex"
+	case "codex_done":
+		dot = a.colorText(a.c.dotCurrent, "●")
+		stateLabel = "wait"
+	case "codex_running":
+		dot = a.colorText(a.c.proc, "▶")
+		stateLabel = "run"
+	}
+	return dot, stateLabel, workDuration
 }
 
 func (a *app) emitRow(kind, state, branch, target, window, path, selectionTarget, project, pinKey, rowSignal, processSignal, detailOverride, workDuration string) (row, bool) {
@@ -1136,7 +1145,10 @@ func (a *app) ensureGeneratedTitle(key, paneID, path, fallback string) {
 	if key == "" || paneID == "" || a.hasManualTitle(key) {
 		return
 	}
-	titleKey := firstNonEmpty(a.codexTitleKeyForPath(path), key)
+	titleKey := key
+	if !strings.HasPrefix(titleKey, "codex:") {
+		titleKey = firstNonEmpty(a.codexTitleKeyForPath(path), key)
+	}
 	if containsTitle(a.autoTitleFile, titleKey) {
 		return
 	}
@@ -1153,7 +1165,14 @@ func (a *app) ensureGeneratedTitleBackground(titleKey, paneID, path, fallback st
 		return
 	}
 	if err := os.Mkdir(lock, 0o755); err != nil {
-		return
+		staleAfter := getenvInt("TMUX_THREAD_TITLE_TIMEOUT", 8) + 5
+		if age, ok := fileAgeSeconds(lock); !ok || age < staleAfter {
+			return
+		}
+		_ = os.RemoveAll(lock)
+		if err := os.Mkdir(lock, 0o755); err != nil {
+			return
+		}
 	}
 	cmd := exec.Command(a.self, "--ensure-title", titleKey, paneID, path, fallback)
 	cmd.Env = append(os.Environ(), "TMUX_THREAD_PICKER_ENTRYPOINT="+a.self)
@@ -1214,37 +1233,11 @@ func (a *app) codexTitleKeyForPath(path string) string {
 	if path == "" {
 		return ""
 	}
-	info := a.hookStateForPath(a.readHookStates(), path)
+	info := a.hookStateForPath(a.readHookIndex().byPath, path)
 	if info.sessionID == "" {
 		return ""
 	}
 	return "codex:" + info.sessionID
-}
-
-func (a *app) codexTitleKeysForPath(path string, limit int) []string {
-	if path == "" || limit <= 0 || lookPath("sqlite3") == "" {
-		return nil
-	}
-	db := filepath.Join(a.home, ".codex", "state_5.sqlite")
-	if !pathExists(db) {
-		return nil
-	}
-	query := fmt.Sprintf("select id from threads where cwd = %s order by updated_at_ms desc limit %d;", sqliteQuote(path), limit)
-	cmd := exec.Command("sqlite3", "-noheader", db, query)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = io.Discard
-	if cmd.Run() != nil {
-		return nil
-	}
-	var keys []string
-	for _, line := range strings.Split(strings.TrimSpace(out.String()), "\n") {
-		id := strings.TrimSpace(line)
-		if id != "" {
-			keys = append(keys, "codex:"+id)
-		}
-	}
-	return keys
 }
 
 func (a *app) codexLocalThreadTitle(sessionID string) string {
@@ -1404,19 +1397,21 @@ func (a *app) attentionModeEnabled() bool {
 	return os.Getenv("TMUX_THREAD_ATTENTION_ONLY") == "1" && os.Getenv("TMUX_THREAD_SHOW_ARCHIVED") != "1"
 }
 
-func (a *app) buildCodexStateCache() error {
+func (a *app) buildCodexStateCache(hooks hookIndex) error {
 	_ = os.MkdirAll(a.stateDir, 0o755)
 	if age, ok := cacheAgeSeconds(a.codexStateCacheFile); ok && age < a.codexStateCacheTTL {
 		return copyFile(a.codexStateCacheFile, a.codexStateRowsFile)
 	}
-	hook := a.readHookStates()
 	stateByWindow := map[string]hookInfo{}
 	for _, line := range readLines(a.paneRowsFile) {
 		parts := strings.Split(line, "\t")
 		if len(parts) < 4 || !strings.Contains(parts[2], "codex") {
 			continue
 		}
-		info := a.hookStateForPath(hook, parts[3])
+		info := hooks.liveByPane[field(parts, 1)]
+		if info.state == "" {
+			info = a.hookStateForPath(hooks.byPath, parts[3])
+		}
 		if info.state == "" {
 			info.state = "unknown"
 		}
@@ -1442,8 +1437,12 @@ func (a *app) buildCodexStateCache() error {
 	return copyFile(a.codexStateCacheFile, a.codexStateRowsFile)
 }
 
-func (a *app) readHookStates() map[string]hookInfo {
-	result := map[string]hookInfo{}
+func (a *app) readHookIndex() hookIndex {
+	index := hookIndex{
+		byPath:        map[string]hookInfo{},
+		liveByPane:    map[string]hookInfo{},
+		sessionByPane: map[string]hookInfo{},
+	}
 	now := time.Now().Unix()
 	staleAfter := int64(getenvInt("TMUX_THREAD_CODEX_HOOK_STALE_AFTER", 86400))
 	for _, line := range readLines(a.codexHookStateIndex) {
@@ -1452,86 +1451,53 @@ func (a *app) readHookStates() map[string]hookInfo {
 			continue
 		}
 		updated, _ := strconv.ParseInt(parts[3], 10, 64)
+		started, _ := strconv.ParseInt(field(parts, 4), 10, 64)
+		if started == 0 {
+			started = updated
+		}
+		state := "unknown"
+		if parts[1] == "running" {
+			state = "running"
+		} else if parts[1] == "attention" || parts[1] == "done" {
+			state = "done"
+		}
+		info := hookInfo{path: parts[0], state: state, updated: updated, started: started, sessionID: field(parts, 5), paneID: field(parts, 6)}
+		paneID := field(parts, 6)
+		if paneID != "" {
+			currentSession := index.sessionByPane[paneID]
+			if updated >= currentSession.updated {
+				index.sessionByPane[paneID] = hookInfo{path: info.path, updated: updated, sessionID: info.sessionID, paneID: paneID}
+			}
+		}
 		if parts[0] == "" || updated == 0 || now-updated > staleAfter {
 			continue
 		}
-		started, _ := strconv.ParseInt(field(parts, 4), 10, 64)
-		if started == 0 {
-			started = updated
-		}
-		state := "unknown"
-		if parts[1] == "running" {
-			state = "running"
-		} else if parts[1] == "attention" || parts[1] == "done" {
-			state = "done"
-		}
-		info := hookInfo{state: state, updated: updated, started: started, sessionID: field(parts, 5), paneID: field(parts, 6)}
-		current := result[parts[0]]
+		current := index.byPath[parts[0]]
 		if state == "running" || (state == "done" && current.state != "running") || current.state == "" {
-			result[parts[0]] = info
+			index.byPath[parts[0]] = info
+		}
+		if paneID != "" {
+			currentPane := index.liveByPane[paneID]
+			if updated >= currentPane.updated {
+				index.liveByPane[paneID] = info
+			}
 		}
 	}
-	return result
+	return index
 }
 
-func (a *app) readHookStatesByPane() map[string]hookInfo {
-	result := map[string]hookInfo{}
-	now := time.Now().Unix()
-	staleAfter := int64(getenvInt("TMUX_THREAD_CODEX_HOOK_STALE_AFTER", 86400))
-	for _, line := range readLines(a.codexHookStateIndex) {
-		parts := strings.Split(line, "\t")
-		paneID := field(parts, 6)
-		if len(parts) < 7 || paneID == "" {
-			continue
-		}
-		updated, _ := strconv.ParseInt(parts[3], 10, 64)
-		if updated == 0 || now-updated > staleAfter {
-			continue
-		}
-		started, _ := strconv.ParseInt(field(parts, 4), 10, 64)
-		if started == 0 {
-			started = updated
-		}
-		state := "unknown"
-		if parts[1] == "running" {
-			state = "running"
-		} else if parts[1] == "attention" || parts[1] == "done" {
-			state = "done"
-		}
-		current := result[paneID]
-		if updated >= current.updated {
-			result[paneID] = hookInfo{state: state, updated: updated, started: started, sessionID: field(parts, 5), paneID: paneID}
-		}
-	}
-	return result
-}
-
-func (a *app) codexTitleKeyForPane(paneID string) string {
+func titleKeyForPane(hooks hookIndex, paneID, path string) string {
 	if paneID == "" {
 		return ""
 	}
-	info := a.readHookSessionsByPane()[paneID]
+	info := hooks.sessionByPane[paneID]
 	if info.sessionID == "" {
 		return ""
 	}
-	return "codex:" + info.sessionID
-}
-
-func (a *app) readHookSessionsByPane() map[string]hookInfo {
-	result := map[string]hookInfo{}
-	for _, line := range readLines(a.codexHookStateIndex) {
-		parts := strings.Split(line, "\t")
-		paneID := field(parts, 6)
-		if len(parts) < 7 || paneID == "" {
-			continue
-		}
-		updated, _ := strconv.ParseInt(parts[3], 10, 64)
-		current := result[paneID]
-		if updated >= current.updated {
-			result[paneID] = hookInfo{updated: updated, sessionID: field(parts, 5), paneID: paneID}
-		}
+	if info.path != "" && path != "" && cleanAbs(info.path) != cleanAbs(path) {
+		return ""
 	}
-	return result
+	return "codex:" + info.sessionID
 }
 
 func (a *app) hookStateForPath(hook map[string]hookInfo, path string) hookInfo {
@@ -1710,27 +1676,77 @@ func (a *app) markSeenFinished(key string) error {
 		return nil
 	}
 	_ = os.MkdirAll(a.stateDir, 0o755)
-	if !containsLine(a.seenFile, key) {
-		return appendLine(a.seenFile, key)
+	seenAt := time.Now().Unix()
+	seen := a.loadSeenFinished()
+	seen[key] = seenAt
+	var out []string
+	for existingKey, existingSeenAt := range seen {
+		if existingKey == "" {
+			continue
+		}
+		out = append(out, existingKey+"\t"+strconv.FormatInt(existingSeenAt, 10))
 	}
-	return nil
+	sort.Strings(out)
+	return writeLines(a.seenFile, out)
 }
 
 func (a *app) clearSeenFinished(key string) error {
 	if key == "" || fileEmpty(a.seenFile) {
 		return nil
 	}
-	var out []string
-	for _, line := range readLines(a.seenFile) {
-		if line != key && line != "" {
-			out = append(out, line)
-		}
+	seen := a.loadSeenFinished()
+	if _, ok := seen[key]; !ok {
+		return nil
 	}
+	delete(seen, key)
+	var out []string
+	for existingKey, existingSeenAt := range seen {
+		if existingKey == "" {
+			continue
+		}
+		out = append(out, existingKey+"\t"+strconv.FormatInt(existingSeenAt, 10))
+	}
+	sort.Strings(out)
 	return writeLines(a.seenFile, out)
 }
 
-func (a *app) hasSeenFinished(key string) bool {
-	return key != "" && containsLine(a.seenFile, key)
+func (a *app) hasSeenFinished(key string, finishedAt int64) bool {
+	if key == "" {
+		return false
+	}
+	seenAt, ok := a.loadSeenFinished()[key]
+	if !ok {
+		return false
+	}
+	if finishedAt <= 0 {
+		return true
+	}
+	return seenAt >= finishedAt
+}
+
+func (a *app) loadSeenFinished() map[string]int64 {
+	if a.seenFinishedLoaded {
+		return a.seenFinished
+	}
+	a.seenFinishedLoaded = true
+	a.seenFinished = map[string]int64{}
+	legacySeenAt := int64(0)
+	if stat, err := os.Stat(a.seenFile); err == nil {
+		legacySeenAt = stat.ModTime().Unix()
+	}
+	for _, line := range readLines(a.seenFile) {
+		parts := strings.SplitN(line, "\t", 2)
+		key := strings.TrimSpace(field(parts, 0))
+		if key == "" {
+			continue
+		}
+		seenAt, _ := strconv.ParseInt(strings.TrimSpace(field(parts, 1)), 10, 64)
+		if seenAt == 0 {
+			seenAt = legacySeenAt
+		}
+		a.seenFinished[key] = seenAt
+	}
+	return a.seenFinished
 }
 
 func (a *app) addScanRoot(path string) {
@@ -2158,7 +2174,8 @@ func (a *app) refreshLiveStateOverlay() error {
 	}
 	panes := a.output(a.tmuxBin, "list-panes", "-a", "-F", "#{window_id}\t#{pane_id}\t#{pane_current_command}\t#{pane_current_path}\t#{pane_pid}")
 	_ = os.WriteFile(a.paneRowsFile, []byte(panes), 0o644)
-	_ = a.buildCodexStateCache()
+	hooks := a.readHookIndex()
+	_ = a.buildCodexStateCache(hooks)
 	_ = a.ensureProcessWindowIndex()
 
 	sourceWindowIndex := strings.TrimSpace(a.output(a.tmuxBin, "display-message", "-p", "-t", a.sourcePane, "#{window_index}"))
@@ -2174,8 +2191,11 @@ func (a *app) refreshLiveStateOverlay() error {
 	var out []row
 	for _, r := range readRows(a.displayRowsFile) {
 		liveTarget := windowTarget(r.target)
-		if r.kind != "OPEN" || liveTarget == "" || live[liveTarget] == "" {
+		if r.kind != "OPEN" {
 			out = append(out, r)
+			continue
+		}
+		if liveTarget == "" || live[liveTarget] == "" {
 			continue
 		}
 		plain := stripANSI(r.display)
@@ -2190,16 +2210,25 @@ func (a *app) refreshLiveStateOverlay() error {
 		dot := " "
 		workDuration := ""
 		windowID := windowIDByTarget[liveTarget]
-		switch info := a.windowCodexInfo(windowID); info.state {
-		case "running":
-			dot = a.colorText(a.c.proc, "▶")
-			stateLabel = "run"
-			workDuration = workDurationSince(info.started)
-		case "done":
-			workDuration = workDurationBetween(info.started, info.updated)
-			if !a.hasSeenFinished(r.pinKey) {
-				dot = a.colorText(a.c.dotCurrent, "●")
-				stateLabel = "wait"
+		if pane := paneTarget(r.target); pane != "" {
+			fallbackSignal := "codex_open"
+			if currentMarker == "*" {
+				fallbackSignal = "current"
+			}
+			rowSignal, duration := a.codexRowSignal(currentMarker, fallbackSignal, r.pinKey, hooks.liveByPane[pane])
+			dot, stateLabel, workDuration = a.rowSignalDisplay(rowSignal, duration)
+		} else {
+			switch info := a.windowCodexInfo(windowID); info.state {
+			case "running":
+				dot = a.colorText(a.c.proc, "▶")
+				stateLabel = "run"
+				workDuration = workDurationSince(info.started)
+			case "done":
+				workDuration = workDurationBetween(info.started, info.updated)
+				if !a.hasSeenFinished(r.pinKey, info.updated) {
+					dot = a.colorText(a.c.dotCurrent, "●")
+					stateLabel = "wait"
+				}
 			}
 		}
 		proc := " "
