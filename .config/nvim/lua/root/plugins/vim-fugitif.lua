@@ -199,45 +199,6 @@ local function GenerateCommitMessageWithAI(provider)
 				process_ai_response(commit_message)
 			end),
 		})
-	elseif provider == "ollama" then
-		-- Ollama local API endpoint
-		curl.post({
-			url = "http://localhost:11434/api/chat",
-			headers = {
-				["Content-Type"] = "application/json",
-			},
-			body = vim.fn.json_encode({
-				model = "deepseek-r1:1.5b", -- You can change this to your preferred model
-				messages = {
-					{
-						role = "system",
-						content = PREPROMPT,
-					},
-					{
-						role = "user",
-						content = prompt,
-					},
-				},
-				stream = false,
-			}),
-			callback = vim.schedule_wrap(function(response)
-				if response.status ~= 200 then
-					vim.notify(
-						"Error generating commit message from Ollama: " .. vim.inspect(response),
-						vim.log.levels.ERROR
-					)
-					return
-				end
-
-				local result = vim.fn.json_decode(response.body)
-				-- split the message in to parts before THINKING_END_BALISE and after
-				local parts = vim.split(result.message.content, THINKING_END_BALISE)
-				local commit_message = parts[2]:gsub("^%s+", ""):gsub("%s+$", ""):gsub("%s+", " ")
-				process_ai_response(commit_message)
-				-- local commit_message = result.message.content:gsub("^%s+", ""):gsub("%s+$", ""):gsub("%s+", " ")
-				-- process_ai_response(commit_message)
-			end),
-		})
 	else
 		vim.notify("Unsupported AI provider: " .. provider, vim.log.levels.ERROR)
 	end
@@ -324,19 +285,6 @@ return {
 			GenerateCommitMessageWithAI("openai")
 		end, {})
 
-		vim.api.nvim_create_user_command("OllamaCommitMessage", function()
-			GenerateCommitMessageWithAI("ollama")
-		end, {})
-
-		-- vim.api.nvim_create_autocmd('BufReadPost', {
-		-- 	pattern = 'COMMIT_EDITMSG',
-		-- 	callback = function()
-		-- 		-- Automatically generate commit message using Ollama
-		-- 		vim.defer_fn(function()
-		-- 			GenerateCommitMessageWithAI('ollama')
-		-- 		end, 100) -- Small delay to ensure buffer is fully loaded
-		-- 	end
-		-- })
 
 		vim.api.nvim_create_autocmd("FileType", {
 			pattern = "gitcommit",
