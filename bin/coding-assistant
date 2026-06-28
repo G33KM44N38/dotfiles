@@ -1,10 +1,10 @@
 #!/bin/bash
-# coding-assistant - Sets up tmux assistant window with opencode and codex in split panes
+# coding-assistant - Sets up tmux assistant window with codex
 
 set -euo pipefail
 
 # Ensure commands exist
-for cmd in opencode codex; do
+for cmd in codex; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
     echo "Error: $cmd not found in PATH" >&2
     exit 1
@@ -50,22 +50,6 @@ fi
 
 # Kill existing panes in the assistant window (keep only one)
 tmux kill-pane -a -t "$assistant_target" 2>/dev/null || true
-
-#####################
-###    OPENCODE   ###
-#####################
-
-# Run opencode in the first pane of window 4
-# tmux send-keys -t "$assistant_target" "$tmux_supervise opencode" C-m
-
-
-#####################
-###  SECOND PANE  ###
-#####################
-
-# # # Split horizontally and run second assistant in the new pane
-# tmux split-window -h -t 4 -c "$PWD"
-# tmux send-keys -t 4 "claude" C-m
 
 #####################
 ###    OPENAI     ###

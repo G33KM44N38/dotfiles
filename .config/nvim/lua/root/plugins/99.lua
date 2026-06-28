@@ -10,7 +10,6 @@ return {
 		local cwd = vim.uv.cwd()
 		local basename = (cwd and vim.fs.basename(cwd)) or "nvim"
 		_99.setup({
-			-- Use a model that exists in your opencode installation
 			model = "anthropic/claude-haiku-4-5",
 			logger = {
 				level = _99.DEBUG,

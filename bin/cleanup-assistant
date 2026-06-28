@@ -1,5 +1,5 @@
 #!/bin/bash
-# cleanup-assistant - Cleanup assistant processes (opencode, claude) using PGID-based termination
+# cleanup-assistant - Cleanup assistant processes using PGID-based termination
 #
 # Usage:
 #   cleanup-assistant pane <pane_pid>

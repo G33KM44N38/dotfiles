@@ -18,7 +18,7 @@ fi
 
 is_ignored_command() {
 	case "${1:-}" in
-		""|zsh|bash|sh|dash|fish|ksh|nu|pwsh|tmux|nvim|vim|vi|codex|opencode|lazygit|fzf|less|man)
+		""|zsh|bash|sh|dash|fish|ksh|nu|pwsh|tmux|nvim|vim|vi|codex|lazygit|fzf|less|man)
 			return 0
 			;;
 		*)
