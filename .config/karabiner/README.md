@@ -45,7 +45,6 @@ A central feature is the "Hyper Key" (configured to be the `spacebar` or `f24` k
     *   `Hyper + O + P`: Obsidian
     *   `Hyper + O + R`: Reader
     *   `Hyper + O + S`: The Sims 4
-    *   `Hyper + O + Semicolon`: Cursor
     *   `Hyper + O + T`: Ghostty
     *   `Hyper + O + V`: Visual Studio Code
     *   `Hyper + O + X`: Discord

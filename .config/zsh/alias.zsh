@@ -2,7 +2,6 @@
 alias vi="nvim"
 alias ld="lazydocker"
 alias lg="lazygit"
-alias c="cursor ."
 alias ocr="open_current_repo"
 alias odn="daily_open.sh"
 alias me="manage_env.sh"
