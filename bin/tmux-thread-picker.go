@@ -213,9 +213,9 @@ func (a *app) run() error {
 
 	switch a.mode {
 	case "--toggle-pin":
-		return a.toggleMetadataLine(a.pinFile, arg(a.args, 1))
+		return a.toggleMetadataLineAndNotify(a.pinFile, arg(a.args, 1))
 	case "--toggle-archive":
-		return a.toggleMetadataLine(a.archiveFile, arg(a.args, 1))
+		return a.toggleMetadataLineAndNotify(a.archiveFile, arg(a.args, 1))
 	case "--set-title":
 		return a.setTitle(arg(a.args, 1), arg(a.args, 2))
 	case "--prompt-title":
@@ -435,9 +435,7 @@ func filterRows(in io.Reader, out io.Writer, query string) error {
 		if len(fields) > 0 && fields[0] == "GROUP" {
 			flush()
 			group = line
-			label := field(fields, 1)
-			search := rowSearchField(fields)
-			groupLabelSearch = label + " " + search
+			groupLabelSearch = field(fields, 1)
 			continue
 		}
 		if group == "" {
@@ -557,6 +555,16 @@ func (a *app) toggleMetadataLine(path, key string) error {
 	}
 	sort.Strings(next)
 	return writeLines(path, unique(next))
+}
+
+func (a *app) toggleMetadataLineAndNotify(path, key string) error {
+	if err := a.toggleMetadataLine(path, key); err != nil {
+		return err
+	}
+	if os.Getenv("TMUX_THREAD_NOTIFY_FZF") != "0" {
+		_ = a.notifyFZFRows()
+	}
+	return nil
 }
 
 func (a *app) canonicalMetadataKey(key string) string {
@@ -894,6 +902,24 @@ func (a *app) notifyFZF() error {
 	return exec.Command("curl", "--silent", "--show-error", "--max-time", "1", "--unix-socket", socket, "http", "--data-binary", command).Run()
 }
 
+func (a *app) notifyFZFRows() error {
+	line := firstLine(a.activeFZFFile)
+	parts := strings.Split(line, "\t")
+	if len(parts) < 3 {
+		return nil
+	}
+	socket, _, fzfRowsFile := parts[0], parts[1], parts[2]
+	if socket == "" || fzfRowsFile == "" || !isSocket(socket) {
+		return nil
+	}
+	reloadRowsCommand := a.self + " --rows"
+	if os.Getenv("TMUX_THREAD_SHOW_ARCHIVED") == "1" {
+		reloadRowsCommand = "TMUX_THREAD_SHOW_ARCHIVED=1 " + reloadRowsCommand
+	}
+	command := "reload(" + reloadRowsCommand + " | tee " + shellQuote(fzfRowsFile) + " | " + a.self + " --filter-rows {q})"
+	return exec.Command("curl", "--silent", "--show-error", "--max-time", "1", "--unix-socket", socket, "http", "--data-binary", command).Run()
+}
+
 func (a *app) buildRows() error {
 	_ = os.WriteFile(a.repoCandidatesFile, nil, 0o644)
 	_ = os.WriteFile(a.openPathsFile, nil, 0o644)
@@ -1065,20 +1091,17 @@ func (a *app) emitOpenRows(hooks hookIndex) []row {
 			if currentMarker == "*" {
 				paneFallbackSignal = "current"
 			}
-			rowSignal = paneFallbackSignal
 			if paneKey := a.canonicalTitleKeyForLivePane(hooks, paneID, path, nil, nil); paneKey != "" {
 				pinKey = paneKey
 			}
 			if paneInfo := hooks.liveByPane[paneID]; paneInfo.state != "" {
 				rowSignal, workDuration = a.codexRowSignal(currentMarker, paneFallbackSignal, pinKey, paneInfo)
+			} else if rowSignal != "codex_running" && rowSignal != "codex_done" {
+				rowSignal = paneFallbackSignal
 			}
 		}
 		a.ensureGeneratedTitle(pinKey, paneID, path, filepath.Base(path))
 		if r, ok := a.emitRow("OPEN", state, branch, target, windowName, path, target, project, pinKey, rowSignal, processSignal, relative, workDuration); ok {
-			if paneID != "" {
-				r.windowGroupKey = target
-				r.windowGroupLabel = a.windowSubgroupLabel(windowName, target)
-			}
 			out = append(out, r)
 		}
 		appendLine(a.openPathsFile, path)
@@ -1397,9 +1420,6 @@ func (a *app) emitRow(kind, state, branch, target, window, path, selectionTarget
 			rowSignal == "current" ||
 			rowSignal == "look" ||
 			processSignal == "process"
-		if kind == "OPEN" && !hasAttentionSignal {
-			return row{}, false
-		}
 		if pinned != "P" && kind != "OPEN" && !hasAttentionSignal {
 			return row{}, false
 		}
@@ -3296,10 +3316,8 @@ func (a *app) pick() error {
 	_ = out.Close()
 
 	archiveAction := "archive"
-	archiveReload := a.self + " --rows"
 	if os.Getenv("TMUX_THREAD_SHOW_ARCHIVED") == "1" {
 		archiveAction = "unarchive"
-		archiveReload = "TMUX_THREAD_SHOW_ARCHIVED=1 " + a.self + " --rows"
 	}
 	sourceWindowIndex := strings.TrimSpace(a.output(a.tmuxBin, "display-message", "-p", "-t", a.sourcePane, "#{window_index}"))
 	sourceTarget := a.sourceSess + ":" + sourceWindowIndex
@@ -3308,6 +3326,8 @@ func (a *app) pick() error {
 	filterCurrentQuery := a.self + " --filter-rows {q}"
 	filteredRowsCommand := filterCurrentQuery + " < " + fzfRowsFileQ
 	reloadRowsCommand := a.self + " --rows | tee " + fzfRowsFileQ + " | " + filterCurrentQuery
+	togglePinReloadCommand := "TMUX_THREAD_NOTIFY_FZF=0 " + a.self + " --toggle-pin {5}; " + reloadRowsCommand
+	toggleArchiveReloadRowsCommand := "TMUX_THREAD_NOTIFY_FZF=0 " + a.self + " --toggle-archive {5}; " + reloadRowsCommand
 	header := fmt.Sprintf("      %s  %s  %s  %s  %s", padText("state", 6), padText("title", threadTitleWidth), padText("path", threadPathWidth), padText("branch", threadBranchWidth), padText("work", threadWorkWidth))
 
 	args := []string{
@@ -3322,16 +3342,18 @@ func (a *app) pick() error {
 		"--border",
 		"--ansi",
 		"--disabled",
+		"--track",
+		"--id-nth=5",
 		"--listen=" + fzfSocket,
 		"--bind", "start:execute-silent(" + a.self + " --watch-fzf " + fzfSocket + ")",
 		"--bind", "load:transform:[[ {1} = GROUP ]] && echo down",
 		"--bind", "result:transform:[[ {1} = GROUP ]] && echo down",
 		"--bind", "change:reload(" + filteredRowsCommand + ")+first",
 		"--bind", "enter:transform:[[ {1} = GROUP ]] && echo down || echo accept",
-		"--bind", "ctrl-p:execute-silent(" + a.self + " --toggle-pin {5})+reload(" + reloadRowsCommand + ")",
+		"--bind", "ctrl-p:reload-sync(" + togglePinReloadCommand + ")",
 		"--bind", "ctrl-q:execute-silent(" + a.self + " --kill-window {1} {3} " + shellQuote(sourceTarget) + ")+reload(" + reloadRowsCommand + ")",
-		"--bind", "alt-a:execute-silent(" + a.self + " --toggle-archive {5})+reload(" + archiveReload + " | tee " + fzfRowsFileQ + " | " + filterCurrentQuery + ")",
-		"--bind", "ctrl-x:execute-silent(" + a.self + " --toggle-archive {5})+reload(" + archiveReload + " | tee " + fzfRowsFileQ + " | " + filterCurrentQuery + ")",
+		"--bind", "alt-a:reload-sync(" + toggleArchiveReloadRowsCommand + ")",
+		"--bind", "ctrl-x:reload-sync(" + toggleArchiveReloadRowsCommand + ")",
 		"--bind", "alt-f:reload(TMUX_THREAD_ATTENTION_ONLY=0 " + a.self + " --rows | tee " + fzfRowsFileQ + " | " + filterCurrentQuery + ")",
 		"--bind", "alt-v:reload(TMUX_THREAD_SHOW_ARCHIVED=1 " + a.self + " --rows | tee " + fzfRowsFileQ + " | " + filterCurrentQuery + ")",
 		"--bind", "ctrl-t:execute(" + a.self + " --edit-title {5})+reload(" + reloadRowsCommand + ")",
@@ -3447,7 +3469,10 @@ func runInput(name string, lines []string, args ...string) (string, error) {
 func writeRows(path string, rows []row, includeSort bool) error {
 	var lines []string
 	for _, r := range rows {
-		fields := []string{r.kind, r.display, r.target, r.branch, r.pinKey, r.project, r.windowGroupKey, r.windowGroupLabel}
+		fields := []string{r.kind, r.display, r.target, r.branch, r.pinKey, r.project}
+		if r.windowGroupKey != "" || r.windowGroupLabel != "" {
+			fields = append(fields, r.windowGroupKey, r.windowGroupLabel)
+		}
 		if includeSort {
 			fields = append([]string{r.sortKey}, fields...)
 		}
