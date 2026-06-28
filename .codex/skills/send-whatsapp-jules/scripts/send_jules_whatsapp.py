@@ -100,7 +100,7 @@ def main() -> int:
 
     if args.send:
         send_return(args.send_delay)
-        print("sent")
+        print("send-triggered")
     else:
         print("draft-opened")
 

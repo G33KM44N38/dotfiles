@@ -30,7 +30,9 @@ Il y avait un problème avec le compte BeautyHairMaidi: même avec l’applicati
 2. Present it clearly under `Message à envoyer à Jules :`.
 3. Wait for user confirmation or edits.
 4. After confirmation, run `scripts/send_jules_whatsapp.py --send --message "<message>"`.
-5. Report whether the script opened WhatsApp and triggered send.
+5. Verify WhatsApp actually sent the message before reporting success.
+
+Important: `--send` can open WhatsApp and fill the input without actually sending the message. Do not treat the script output as proof of delivery. After running it, visually verify that the message left the input and appears as an outgoing bubble in Jules's chat. If it is still sitting in the input field, tell the user it was drafted but not sent, then ask for confirmation before trying another send action.
 
 ## Sending Script
 
