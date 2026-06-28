@@ -88,14 +88,16 @@ type app struct {
 }
 
 type row struct {
-	sortKey string
-	kind    string
-	display string
-	target  string
-	branch  string
-	pinKey  string
-	project string
-	search  string
+	sortKey          string
+	kind             string
+	display          string
+	target           string
+	branch           string
+	pinKey           string
+	project          string
+	windowGroupKey   string
+	windowGroupLabel string
+	search           string
 }
 
 const (
@@ -434,7 +436,7 @@ func filterRows(in io.Reader, out io.Writer, query string) error {
 			flush()
 			group = line
 			label := field(fields, 1)
-			search := field(fields, 5)
+			search := rowSearchField(fields)
 			groupLabelSearch = label + " " + search
 			continue
 		}
@@ -445,11 +447,18 @@ func filterRows(in io.Reader, out io.Writer, query string) error {
 			continue
 		}
 		rows = append(rows, line)
-		rowsSearchText := line + " " + field(fields, 6)
+		rowsSearchText := line + " " + rowSearchField(fields)
 		rowSearch = append(rowSearch, rowsSearchText)
 	}
 	flush()
 	return scanner.Err()
+}
+
+func rowSearchField(fields []string) string {
+	if len(fields) == 0 {
+		return ""
+	}
+	return fields[len(fields)-1]
 }
 
 func queryMatch(value, needle string) bool {
@@ -1038,6 +1047,8 @@ func (a *app) emitOpenRows(hooks hookIndex) []row {
 				}
 				paneRowSignal, paneWorkDuration := a.codexRowSignal(currentMarker, paneFallbackSignal, pinKey, hooks.liveByPane[pane.paneID])
 				if r, ok := a.emitRow("OPEN", state, paneBranch, target, windowName, panePath, targetWithPane(target, pane.paneID), paneProject, pinKey, paneRowSignal, processSignal, paneRelative, paneWorkDuration); ok {
+					r.windowGroupKey = target
+					r.windowGroupLabel = a.windowSubgroupLabel(windowName, target)
 					out = append(out, r)
 				}
 				appendLine(a.openPathsFile, panePath)
@@ -1064,6 +1075,10 @@ func (a *app) emitOpenRows(hooks hookIndex) []row {
 		}
 		a.ensureGeneratedTitle(pinKey, paneID, path, filepath.Base(path))
 		if r, ok := a.emitRow("OPEN", state, branch, target, windowName, path, target, project, pinKey, rowSignal, processSignal, relative, workDuration); ok {
+			if paneID != "" {
+				r.windowGroupKey = target
+				r.windowGroupLabel = a.windowSubgroupLabel(windowName, target)
+			}
 			out = append(out, r)
 		}
 		appendLine(a.openPathsFile, path)
@@ -1473,13 +1488,15 @@ func (a *app) renderGroupedRows(rows []row) []row {
 	var out []row
 	if hasPinned {
 		out = append(out, a.groupHeader("Pinned"))
-		for _, r := range rows {
+		out = a.appendRowsWithWindowGroups(out, rows, "Pinned", func(r row) bool {
 			if strings.HasPrefix(r.sortKey, "0|") {
-				out = append(out, r)
+				return true
 			}
-		}
+			return false
+		})
 	}
 	printed := map[string]bool{}
+	printedWindow := map[string]bool{}
 	for _, r := range rows {
 		if strings.HasPrefix(r.sortKey, "0|") || strings.HasPrefix(r.sortKey, "9|") {
 			continue
@@ -1488,21 +1505,55 @@ func (a *app) renderGroupedRows(rows []row) []row {
 			printed[r.project] = true
 			out = append(out, a.groupHeader(r.project))
 		}
+		windowPrintKey := r.project + "\t" + r.windowGroupKey
+		if r.windowGroupKey != "" && !printedWindow[windowPrintKey] {
+			printedWindow[windowPrintKey] = true
+			out = append(out, a.windowGroupHeader(r.windowGroupLabel, r.project, r.windowGroupKey))
+		}
 		out = append(out, r)
 	}
 	if hasArchived {
 		out = append(out, a.groupHeader("Archived"))
-		for _, r := range rows {
+		out = a.appendRowsWithWindowGroups(out, rows, "Archived", func(r row) bool {
 			if strings.HasPrefix(r.sortKey, "9|") {
-				out = append(out, r)
+				return true
 			}
+			return false
+		})
+	}
+	return out
+}
+
+func (a *app) appendRowsWithWindowGroups(out []row, rows []row, project string, include func(row) bool) []row {
+	printedWindow := map[string]bool{}
+	for _, r := range rows {
+		if !include(r) {
+			continue
 		}
+		if r.windowGroupKey != "" && !printedWindow[r.windowGroupKey] {
+			printedWindow[r.windowGroupKey] = true
+			out = append(out, a.windowGroupHeader(r.windowGroupLabel, project, r.windowGroupKey))
+		}
+		out = append(out, r)
 	}
 	return out
 }
 
 func (a *app) groupHeader(label string) row {
 	return row{kind: "GROUP", display: a.c.bold + a.c.cyan + ":: " + label + a.c.reset, project: label}
+}
+
+func (a *app) windowGroupHeader(label, project, key string) row {
+	display := a.c.dim + "  :: window " + a.c.reset + a.c.yellow + strings.TrimPrefix(label, "window ") + a.c.reset
+	return row{kind: "GROUP", display: display, target: key, project: project, windowGroupKey: key, windowGroupLabel: label}
+}
+
+func (a *app) windowSubgroupLabel(windowName, target string) string {
+	label := strings.TrimSpace(windowName)
+	if label == "" {
+		label = target
+	}
+	return "window " + label
 }
 
 func (a *app) addGroupSearchColumn(rows []row) []row {
@@ -3396,7 +3447,7 @@ func runInput(name string, lines []string, args ...string) (string, error) {
 func writeRows(path string, rows []row, includeSort bool) error {
 	var lines []string
 	for _, r := range rows {
-		fields := []string{r.kind, r.display, r.target, r.branch, r.pinKey, r.project}
+		fields := []string{r.kind, r.display, r.target, r.branch, r.pinKey, r.project, r.windowGroupKey, r.windowGroupLabel}
 		if includeSort {
 			fields = append([]string{r.sortKey}, fields...)
 		}
@@ -3411,7 +3462,15 @@ func readRows(path string) []row {
 	for _, line := range readLines(path) {
 		parts := strings.Split(line, "\t")
 		if len(parts) >= 6 {
-			out = append(out, row{kind: parts[0], display: field(parts, 1), target: field(parts, 2), branch: field(parts, 3), pinKey: field(parts, 4), project: field(parts, 5), search: field(parts, 6)})
+			searchIndex := 6
+			windowGroupKey := ""
+			windowGroupLabel := ""
+			if len(parts) >= 9 {
+				windowGroupKey = field(parts, 6)
+				windowGroupLabel = field(parts, 7)
+				searchIndex = 8
+			}
+			out = append(out, row{kind: parts[0], display: field(parts, 1), target: field(parts, 2), branch: field(parts, 3), pinKey: field(parts, 4), project: field(parts, 5), windowGroupKey: windowGroupKey, windowGroupLabel: windowGroupLabel, search: field(parts, searchIndex)})
 		}
 	}
 	return out
