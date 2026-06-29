@@ -259,7 +259,7 @@ case "${FZF_MOCK_MODE:-first-data}" in
 		printf '%s\n' "$input" | awk -F '\t' -v target="${FZF_MOCK_TARGET:-}" '$3 ~ target { print; exit }'
 		;;
 	first-data|*)
-		printf '%s\n' "$input" | awk -F '\t' '$1 != "GROUP" && NF { print; exit }'
+		printf '%s\n' "$input" | awk -F '\t' '$1 != "GROUP" && $1 != "WIN" && NF { print; exit }'
 		;;
 esac
 EOF
@@ -934,7 +934,7 @@ plain_legacy_seen_done_rows="$(printf '%s' "$legacy_seen_done_rows" | perl -pe '
 assert_contains "$plain_legacy_seen_done_rows" "●     wait    demo-feature" "legacy seen marker does not hide newer timestamped finish"
 rm -f "$XDG_STATE_HOME/tmux-thread-picker/seen-finished"
 : >"$XDG_STATE_HOME/tmux-thread-picker/codex-hook-states.tsv"
-if printf '%s\n' "$plain_rows" | awk -F '\t' 'NF != 7 { exit 1 }'; then
+if printf '%s\n' "$plain_rows" | awk -F '\t' 'NF != 7 && NF != 9 { exit 1 }'; then
 	pass "hidden search text is tab-safe single field"
 else
 	fail "hidden search text is tab-safe single field"
@@ -1065,7 +1065,7 @@ assert_contains "$plain_cached_picker_input" $'OPEN\t●     wait' "cached picke
 assert_contains "$plain_cached_picker_input" "demo-feature" "cached picker overlay keeps thread title"
 assert_not_contains "$plain_cached_picker_input" "run     demo-feature" "cached picker overlay removes stale visible run status"
 assert_not_contains "$plain_cached_picker_input" "OPEN ▶ run demo-feature" "cached picker overlay rebuilds stale hidden run search text"
-if printf '%s\n' "$plain_cached_picker_input" | awk -F '\t' 'NF != 7 { exit 1 }'; then
+if printf '%s\n' "$plain_cached_picker_input" | awk -F '\t' 'NF != 7 && NF != 9 { exit 1 }'; then
 	pass "cached picker overlay keeps hidden search text tab-safe"
 else
 	fail "cached picker overlay keeps hidden search text tab-safe"
@@ -1109,9 +1109,9 @@ assert_contains "$fzf_args" "--id-nth=5" "fzf tracks rows by stable thread key"
 assert_contains "$fzf_args" "change:reload($SCRIPT --filter-rows {q}" "fzf reloads filtered grouped rows on query change"
 assert_not_contains "$fzf_args" "--nth=2,7" "fzf does not hide normal search fields behind nth"
 assert_not_contains "$fzf_input" $'\033[8m' "fzf input does not rely on concealed search text"
-assert_contains "$fzf_args" "load:transform:[[ {1} = GROUP ]] && echo down" "fzf skips group on initial load"
-assert_contains "$fzf_args" "result:transform:[[ {1} = GROUP ]] && echo down" "fzf skips group after filtering"
-assert_contains "$fzf_args" "enter:transform:[[ {1} = GROUP ]] && echo down || echo accept" "enter does not accept group rows"
+assert_contains "$fzf_args" "load:transform:[[ {1} = GROUP || {1} = WIN ]] && echo down" "fzf skips group on initial load"
+assert_contains "$fzf_args" "result:transform:[[ {1} = GROUP || {1} = WIN ]] && echo down" "fzf skips group after filtering"
+assert_contains "$fzf_args" "enter:transform:[[ {1} = GROUP || {1} = WIN ]] && echo down || echo accept" "enter does not accept group rows"
 assert_contains "$fzf_args" "ctrl-p:reload-sync(TMUX_THREAD_NOTIFY_FZF=0 $SCRIPT --toggle-pin {5}; $SCRIPT --rows" "fzf pins before synchronously reloading visible rows"
 assert_contains "$fzf_args" "ctrl-x:reload-sync(TMUX_THREAD_NOTIFY_FZF=0 $SCRIPT --toggle-archive {5}; $SCRIPT --rows" "fzf archives before synchronously reloading visible rows"
 assert_contains "$fzf_args" "alt-a:reload-sync(TMUX_THREAD_NOTIFY_FZF=0 $SCRIPT --toggle-archive {5}; $SCRIPT --rows" "fzf alternate archive binding synchronously reloads visible rows"

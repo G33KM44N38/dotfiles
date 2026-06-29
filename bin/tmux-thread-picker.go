@@ -1120,6 +1120,8 @@ func (a *app) emitOpenRows(hooks hookIndex) []row {
 		a.ensureGeneratedTitle(pinKey, paneID, path, filepath.Base(path))
 		if r, ok := a.emitRow("OPEN", state, branch, target, windowName, path, target, project, pinKey, rowSignal, processSignal, relative, workDuration); ok {
 			r.search = a.codexSearchForKey(pinKey)
+			r.windowGroupKey = target
+			r.windowGroupLabel = a.windowSubgroupLabel(windowName, target)
 			out = append(out, r)
 		}
 		appendLine(a.openPathsFile, path)
@@ -1585,7 +1587,7 @@ func (a *app) groupHeader(label string) row {
 
 func (a *app) windowGroupHeader(label, project, key string) row {
 	display := a.c.dim + "  :: window " + a.c.reset + a.c.yellow + strings.TrimPrefix(label, "window ") + a.c.reset
-	return row{kind: "GROUP", display: display, target: key, project: project, windowGroupKey: key, windowGroupLabel: label}
+	return row{kind: "WIN", display: display, project: project, windowGroupKey: key, windowGroupLabel: label}
 }
 
 func (a *app) windowSubgroupLabel(windowName, target string) string {
@@ -3539,10 +3541,10 @@ func (a *app) pick() error {
 		"--id-nth=5",
 		"--listen=" + fzfSocket,
 		"--bind", "start:execute-silent(" + a.self + " --watch-fzf " + fzfSocket + ")",
-		"--bind", "load:transform:[[ {1} = GROUP ]] && echo down",
-		"--bind", "result:transform:[[ {1} = GROUP ]] && echo down",
+		"--bind", "load:transform:[[ {1} = GROUP || {1} = WIN ]] && echo down",
+		"--bind", "result:transform:[[ {1} = GROUP || {1} = WIN ]] && echo down",
 		"--bind", "change:reload(" + filteredRowsCommand + ")+first",
-		"--bind", "enter:transform:[[ {1} = GROUP ]] && echo down || echo accept",
+		"--bind", "enter:transform:[[ {1} = GROUP || {1} = WIN ]] && echo down || echo accept",
 		"--bind", "ctrl-p:reload-sync(" + togglePinReloadCommand + ")",
 		"--bind", "ctrl-q:execute-silent(" + a.self + " --kill-window {1} {3} " + shellQuote(sourceTarget) + ")+reload(" + reloadRowsCommand + ")",
 		"--bind", "alt-a:reload-sync(" + toggleArchiveReloadRowsCommand + ")",
@@ -3566,7 +3568,7 @@ func (a *app) pick() error {
 	}
 	parts := strings.Split(selected, "\t")
 	switch field(parts, 0) {
-	case "GROUP":
+	case "GROUP", "WIN":
 		return nil
 	case "PICK":
 		script := filepath.Join(a.home, ".dotfiles", "bin", "tmux-select-worktree.sh")
