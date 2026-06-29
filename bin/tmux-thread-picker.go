@@ -3682,7 +3682,7 @@ func (m pickerModel) View() string {
 		padText("branch", threadBranchWidth),
 		padText("work", threadWorkWidth),
 	)
-	footer := "Ctrl-n new | Ctrl-r refresh | Ctrl-o worktrees | Ctrl-p pin | Ctrl-t rename | Ctrl-y auto-title | Ctrl-x " + m.archiveAction + " | Alt-f all | Alt-v archived | Enter open"
+	footer := "Ctrl-n new | Ctrl-r refresh | Ctrl-o worktrees | Ctrl-p pin | Ctrl-t rename | Ctrl-y auto-title | Ctrl-x " + m.archiveAction + " | Ctrl-q/Alt-q close | Alt-f all | Alt-v archived | Enter open"
 	available := height - 7
 	if available < 1 {
 		available = 1
@@ -3803,12 +3803,14 @@ func (m pickerModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.action = pickerActionOpenWorktreeMenu
 		m.quitting = true
 		return m, tea.Quit
-	case "ctrl+q":
+	case "ctrl+q", "alt+q":
 		if !m.currentSelectable() {
 			return m, nil
 		}
 		r := m.rows[m.cursor]
-		return m, tea.Sequence(m.execSilent(func() { _ = m.app.killThreadWindow(r.kind, r.target, m.sourceTarget) }), m.fullRowsCmd())
+		cmd := exec.Command(m.app.self, "--kill-window", r.kind, r.target, m.sourceTarget)
+		cmd.Env = append(os.Environ(), "TMUX_THREAD_PICKER_ENTRYPOINT="+m.app.self)
+		return m, tea.Sequence(tea.ExecProcess(cmd, func(error) tea.Msg { return pickerExecDoneMsg{} }), m.fullRowsCmd())
 	default:
 		if len(msg.Runes) > 0 {
 			m.query += string(msg.Runes)
