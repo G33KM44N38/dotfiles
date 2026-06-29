@@ -203,6 +203,12 @@ case "$cmd" in
 		;;
 	new-window)
 		printf 'new-window %s\n' "$*" >>"$TMUX_MOCK_LOG"
+		for arg in "$@"; do
+			if [ "$arg" = "-P" ]; then
+				printf 'test:3\n'
+				break
+			fi
+		done
 		;;
 	capture-pane)
 		target=""
@@ -800,9 +806,10 @@ EOF
 	: >"$TMUX_MOCK_LOG"
 	: >"$FZF_MOCK_INPUT"
 	TMUX_THREAD_USE_DISPLAY_CACHE=0 FZF_MOCK_MODE=kind FZF_MOCK_KIND=HIST run_script >/dev/null
-	assert_contains "$(cat "$TMUX_MOCK_LOG")" "new-window -t test: -c $TEST_WORKTREE" "codex history selection opens a tmux window in the chat cwd"
+	assert_contains "$(cat "$TMUX_MOCK_LOG")" "new-window -P -F #{session_name}:#{window_index} -t test: -c $TEST_WORKTREE" "codex history selection opens a tmux window in the chat cwd"
 	assert_contains "$(cat "$TMUX_MOCK_LOG")" "-n History-Two" "codex history selection reuses displayed history title for tmux window"
 	assert_contains "$(cat "$TMUX_MOCK_LOG")" "resume 'history-" "codex history selection resumes selected session"
+	assert_contains "$(cat "$TMUX_MOCK_LOG")" "switch-client -t" "codex history selection navigates to the new window"
 	rm -f "$HOME/.codex/state_5.sqlite"
 	sqlite3 "$HOME/.codex/state_5.sqlite" <<EOF
 create table threads(id text, cwd text, updated_at_ms integer, title text, first_user_message text);

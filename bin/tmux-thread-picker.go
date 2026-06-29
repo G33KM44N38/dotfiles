@@ -22,6 +22,8 @@ import (
 )
 
 const defaultCodexHistoryLimit = 250
+const defaultCodexTranscriptSearchLimit = 24000
+const defaultCodexTranscriptReadLimit = 262144
 
 type colors struct {
 	reset      string
@@ -83,6 +85,7 @@ type app struct {
 	seenFinishedLoaded    bool
 	codexHistoryItems     []codexHistoryItem
 	codexHistoryLoaded    bool
+	codexTranscriptSearch map[string]string
 	manualTitles          map[string]string
 	autoTitles            map[string]string
 }
@@ -133,9 +136,11 @@ type hookIndex struct {
 type codexHistoryItem struct {
 	ID               string `json:"id"`
 	Cwd              string `json:"cwd"`
+	RolloutPath      string `json:"rollout_path"`
 	UpdatedAtMS      int64  `json:"updated_at_ms"`
 	Title            string `json:"title"`
 	FirstUserMessage string `json:"first_user_message"`
+	Preview          string `json:"preview"`
 }
 
 type paneInfo struct {
@@ -336,6 +341,9 @@ func (a *app) resolveSource() error {
 	if a.sourceSess == "" {
 		a.sourceSess = strings.TrimSpace(a.output(a.tmuxBin, "display-message", "-p", "#S"))
 	}
+	if a.sourceSess != "" && !a.tmuxSessionExists(a.sourceSess) {
+		a.sourceSess = strings.TrimSpace(a.output(a.tmuxBin, "display-message", "-p", "#S"))
+	}
 	if a.sourceSess == "" {
 		lines := strings.Split(strings.TrimSpace(a.output(a.tmuxBin, "list-sessions", "-F", "#{session_name}")), "\n")
 		if len(lines) > 0 {
@@ -353,6 +361,14 @@ func (a *app) resolveSource() error {
 		a.sourcePath = wd
 	}
 	return nil
+}
+
+func (a *app) tmuxSessionExists(name string) bool {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return false
+	}
+	return exec.Command(a.tmuxBin, "has-session", "-t", name+":").Run() == nil
 }
 
 func (a *app) initColors() {
@@ -1073,6 +1089,7 @@ func (a *app) emitOpenRows(hooks hookIndex) []row {
 				}
 				paneRowSignal, paneWorkDuration := a.codexRowSignal(currentMarker, paneFallbackSignal, pinKey, hooks.liveByPane[pane.paneID])
 				if r, ok := a.emitRow("OPEN", state, paneBranch, target, windowName, panePath, targetWithPane(target, pane.paneID), paneProject, pinKey, paneRowSignal, processSignal, paneRelative, paneWorkDuration); ok {
+					r.search = a.codexSearchForKey(pinKey)
 					r.windowGroupKey = target
 					r.windowGroupLabel = a.windowSubgroupLabel(windowName, target)
 					out = append(out, r)
@@ -1102,6 +1119,7 @@ func (a *app) emitOpenRows(hooks hookIndex) []row {
 		}
 		a.ensureGeneratedTitle(pinKey, paneID, path, filepath.Base(path))
 		if r, ok := a.emitRow("OPEN", state, branch, target, windowName, path, target, project, pinKey, rowSignal, processSignal, relative, workDuration); ok {
+			r.search = a.codexSearchForKey(pinKey)
 			out = append(out, r)
 		}
 		appendLine(a.openPathsFile, path)
@@ -1168,6 +1186,7 @@ func (a *app) emitCodexHistoryRows(openRows []row) []row {
 			title = item.ID
 		}
 		if r, ok := a.emitRow("HIST", "chat", branch, path, title, path, path, project, pinKey, "history", "", historyDetail, historyDate(item.UpdatedAtMS)); ok {
+			r.search = a.codexSearchForItem(item)
 			r.sortKey = historySortKey(r.sortKey, item.UpdatedAtMS, pinKey)
 			out = append(out, r)
 		}
@@ -1346,6 +1365,7 @@ func (a *app) emitPinnedCodexHistoryRow(pinKey string) (row, bool) {
 		}
 		r, ok := a.emitRow("HIST", "chat", branch, path, title, path, path, project, pinKey, "history", "", detail, historyDate(item.UpdatedAtMS))
 		if ok {
+			r.search = a.codexSearchForItem(item)
 			r.sortKey = historySortKey(r.sortKey, item.UpdatedAtMS, pinKey)
 		}
 		return r, ok
@@ -1580,14 +1600,15 @@ func (a *app) addGroupSearchColumn(rows []row) []row {
 	currentGroup := -1
 	groupSearchLimit := getenvInt("TMUX_THREAD_GROUP_SEARCH_LIMIT", 12000)
 	for i := range rows {
+		extraSearch := rows[i].search
 		base := strings.Join([]string{rows[i].kind, rows[i].display, rows[i].target, rows[i].branch, rows[i].pinKey, rows[i].project}, "\t")
 		if rows[i].kind == "GROUP" {
 			currentGroup = i
 			rows[i].search = " " + searchText(rows[i].display)
 		} else {
-			rows[i].search = " " + searchText(base)
+			rows[i].search = " " + searchText(base+" "+extraSearch)
 			if currentGroup >= 0 {
-				childSearch := " " + searchText(base)
+				childSearch := " " + searchText(base+" "+extraSearch)
 				if groupSearchLimit <= 0 || len(rows[currentGroup].search)+len(childSearch) <= groupSearchLimit {
 					rows[currentGroup].search += childSearch
 				}
@@ -1882,13 +1903,22 @@ func (a *app) readCodexHistoryItems() []codexHistoryItem {
 	if !pathExists(db) {
 		return nil
 	}
-	query := `select json_object(
+	columns := sqliteTableColumns(db, "threads")
+	columnExpr := func(name string) string {
+		if columns[name] {
+			return name
+		}
+		return "''"
+	}
+	query := fmt.Sprintf(`select json_object(
 		'id', id,
 		'cwd', cwd,
+		'rollout_path', %s,
 		'updated_at_ms', updated_at_ms,
 		'title', title,
-		'first_user_message', substr(first_user_message, 1, 1200)
-	) from threads where id is not null and id != '' and cwd is not null and cwd != '' order by updated_at_ms desc;`
+		'first_user_message', substr(first_user_message, 1, 1200),
+		'preview', substr(%s, 1, 4000)
+	) from threads where id is not null and id != '' and cwd is not null and cwd != '' order by updated_at_ms desc;`, columnExpr("rollout_path"), columnExpr("preview"))
 	if limit := getenvInt("TMUX_THREAD_CODEX_HISTORY_LIMIT", defaultCodexHistoryLimit); limit > 0 {
 		query = strings.TrimSuffix(query, ";") + " limit " + strconv.Itoa(limit) + ";"
 	}
@@ -1909,12 +1939,39 @@ func (a *app) readCodexHistoryItems() []codexHistoryItem {
 		}
 		item.ID = strings.TrimSpace(item.ID)
 		item.Cwd = strings.TrimSpace(item.Cwd)
+		item.RolloutPath = strings.TrimSpace(item.RolloutPath)
 		if item.ID != "" && item.Cwd != "" {
 			items = append(items, item)
 		}
 	}
 	a.codexHistoryItems = items
 	return a.codexHistoryItems
+}
+
+func sqliteTableColumns(db, table string) map[string]bool {
+	out := map[string]bool{}
+	if db == "" || table == "" {
+		return out
+	}
+	cmd := exec.Command("sqlite3", "-readonly", db, "pragma table_info("+sqliteIdentifier(table)+");")
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
+	cmd.Stderr = io.Discard
+	if cmd.Run() != nil {
+		return out
+	}
+	scanner := bufio.NewScanner(&buf)
+	for scanner.Scan() {
+		parts := strings.Split(scanner.Text(), "|")
+		if len(parts) > 1 && parts[1] != "" {
+			out[parts[1]] = true
+		}
+	}
+	return out
+}
+
+func sqliteIdentifier(value string) string {
+	return `"` + strings.ReplaceAll(value, `"`, `""`) + `"`
 }
 
 func (a *app) codexHistoryTitle(sessionID string) string {
@@ -1927,6 +1984,141 @@ func (a *app) codexHistoryTitle(sessionID string) string {
 		}
 	}
 	return ""
+}
+
+func (a *app) codexSearchForKey(key string) string {
+	if !isCodexTitleKey(key) {
+		return ""
+	}
+	sessionID := strings.TrimPrefix(key, "codex:")
+	for _, item := range a.readCodexHistoryItems() {
+		if item.ID == sessionID {
+			return a.codexSearchForItem(item)
+		}
+	}
+	return ""
+}
+
+func (a *app) codexSearchForItem(item codexHistoryItem) string {
+	if a.codexTranscriptSearch == nil {
+		a.codexTranscriptSearch = map[string]string{}
+	}
+	if cached, ok := a.codexTranscriptSearch[item.ID]; ok {
+		return cached
+	}
+	limit := getenvInt("TMUX_THREAD_CODEX_TRANSCRIPT_SEARCH_LIMIT", defaultCodexTranscriptSearchLimit)
+	parts := []string{item.FirstUserMessage, item.Preview}
+	if limit != 0 {
+		parts = append(parts, codexTranscriptSearchText(item.RolloutPath, limit))
+	}
+	search := searchText(strings.Join(parts, " "))
+	if limit > 0 && len(search) > limit {
+		search = search[:limit]
+	}
+	a.codexTranscriptSearch[item.ID] = search
+	return search
+}
+
+func codexTranscriptSearchText(path string, limit int) string {
+	path = strings.TrimSpace(path)
+	if path == "" || limit == 0 {
+		return ""
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer file.Close()
+	readLimit := int64(getenvInt("TMUX_THREAD_CODEX_TRANSCRIPT_READ_LIMIT", defaultCodexTranscriptReadLimit))
+	if readLimit <= 0 {
+		readLimit = defaultCodexTranscriptReadLimit
+	}
+	scanner := bufio.NewScanner(io.LimitReader(file, readLimit))
+	scanner.Buffer(make([]byte, 1024), 1024*1024)
+	var b strings.Builder
+	for scanner.Scan() {
+		if b.Len() >= limit && limit > 0 {
+			break
+		}
+		text := codexTranscriptLineText(scanner.Bytes())
+		if text == "" {
+			continue
+		}
+		if b.Len() > 0 {
+			b.WriteByte(' ')
+		}
+		b.WriteString(text)
+	}
+	out := b.String()
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+	return out
+}
+
+func codexTranscriptLineText(line []byte) string {
+	var entry struct {
+		Type    string          `json:"type"`
+		Payload json.RawMessage `json:"payload"`
+	}
+	if json.Unmarshal(line, &entry) != nil {
+		return ""
+	}
+	switch entry.Type {
+	case "response_item":
+		var payload struct {
+			Type    string          `json:"type"`
+			Role    string          `json:"role"`
+			Content json.RawMessage `json:"content"`
+		}
+		if json.Unmarshal(entry.Payload, &payload) != nil || payload.Type != "message" {
+			return ""
+		}
+		if payload.Role != "user" && payload.Role != "assistant" {
+			return ""
+		}
+		return jsonVisibleText(payload.Content)
+	case "event_msg":
+		var payload struct {
+			Type    string `json:"type"`
+			Message string `json:"message"`
+		}
+		if json.Unmarshal(entry.Payload, &payload) != nil || payload.Type != "agent_message" {
+			return ""
+		}
+		return payload.Message
+	default:
+		return ""
+	}
+}
+
+func jsonVisibleText(raw json.RawMessage) string {
+	var v any
+	if json.Unmarshal(raw, &v) != nil {
+		return ""
+	}
+	var parts []string
+	collectVisibleJSONText(v, &parts)
+	return strings.Join(parts, " ")
+}
+
+func collectVisibleJSONText(v any, parts *[]string) {
+	switch x := v.(type) {
+	case string:
+		if strings.TrimSpace(x) != "" {
+			*parts = append(*parts, x)
+		}
+	case []any:
+		for _, item := range x {
+			collectVisibleJSONText(item, parts)
+		}
+	case map[string]any:
+		for _, key := range []string{"text", "message", "output_text", "input_text"} {
+			if value, ok := x[key]; ok {
+				collectVisibleJSONText(value, parts)
+			}
+		}
+	}
 }
 
 func (a *app) setGeneratedTitle(key, title string) error {
@@ -3274,6 +3466,7 @@ func (a *app) refreshLiveStateOverlay() error {
 		if a.windowHasRunningProcess(windowID) {
 			proc = a.colorText(a.c.proc, "!")
 		}
+		r.search = a.codexSearchForKey(r.pinKey)
 		r.display = fmt.Sprintf("%s%s %s %s  %s  %s  %s  %s",
 			dot,
 			proc,
@@ -3434,12 +3627,76 @@ func (a *app) openCodexHistoryThread(sessionID, cwd string) error {
 	if title == "" {
 		title = filepath.Base(cwd)
 	}
-	args := []string{"new-window"}
-	if a.sourceSess != "" {
-		args = append(args, "-t", a.sourceSess+":")
+	args := []string{"new-window", "-P", "-F", "#{session_name}:#{window_index}"}
+	if targetSess := a.sessionForPath(cwd); targetSess != "" {
+		args = append(args, "-t", targetSess+":")
 	}
 	args = append(args, "-c", cwd, "-n", sanitizeWindowName(title), shellQuote(codexBin)+" resume "+shellQuote(sessionID))
-	return exec.Command(a.tmuxBin, args...).Run()
+	cmd := exec.Command(a.tmuxBin, args...)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		msg := strings.TrimSpace(stderr.String())
+		if msg != "" {
+			return fmt.Errorf("thread picker: tmux new-window failed: %s", msg)
+		}
+		return err
+	}
+	if target := strings.TrimSpace(stdout.String()); target != "" {
+		if err := exec.Command(a.tmuxBin, "switch-client", "-t", target).Run(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (a *app) sessionForPath(path string) string {
+	if sess := a.projectSessionForPath(path); sess != "" {
+		return sess
+	}
+	if a.sourceSess != "" && a.tmuxSessionExists(a.sourceSess) {
+		return a.sourceSess
+	}
+	return ""
+}
+
+func (a *app) projectSessionForPath(path string) string {
+	path = cleanAbs(path)
+	if path == "" {
+		return ""
+	}
+	targetCommon := a.gitCommonDir(path)
+	targetRoot := a.repoRoot(path)
+	lines := strings.Split(strings.TrimRight(a.output(a.tmuxBin, "list-panes", "-a", "-F", "#{session_name}\t#{pane_current_path}"), "\n"), "\n")
+	type candidate struct {
+		session string
+		score   int
+	}
+	best := candidate{}
+	for _, line := range lines {
+		parts := strings.Split(line, "\t")
+		session, panePath := field(parts, 0), field(parts, 1)
+		if session == "" || panePath == "" || !isDir(panePath) {
+			continue
+		}
+		score := 0
+		if targetCommon != "" && a.gitCommonDir(panePath) == targetCommon {
+			score = 4
+		} else if targetRoot != "" && a.repoRoot(panePath) == targetRoot {
+			score = 3
+		} else if samePathOrChild(path, panePath) || samePathOrChild(panePath, path) {
+			score = 2
+		}
+		if session == a.sourceSess && score > 0 {
+			score++
+		}
+		if score > best.score {
+			best = candidate{session: session, score: score}
+		}
+	}
+	return best.session
 }
 
 func (a *app) output(name string, args ...string) string {
