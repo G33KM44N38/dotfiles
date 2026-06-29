@@ -19,6 +19,8 @@ import (
 	"syscall"
 	"time"
 	"unicode"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 const defaultCodexHistoryLimit = 250
@@ -102,6 +104,39 @@ type row struct {
 	windowGroupLabel string
 	search           string
 }
+
+type pickerAction string
+
+const (
+	pickerActionNone             pickerAction = ""
+	pickerActionOpenWorktreeMenu pickerAction = "open-worktree-menu"
+)
+
+type pickerModel struct {
+	app           *app
+	allRows       []row
+	rows          []row
+	cursor        int
+	query         string
+	width         int
+	height        int
+	archiveAction string
+	sourceTarget  string
+	selected      row
+	action        pickerAction
+	quitting      bool
+	showArchived  bool
+	showAll       bool
+}
+
+type pickerRowsMsg struct {
+	rows []row
+	full bool
+}
+
+type pickerErrMsg struct{ err error }
+
+type pickerExecDoneMsg struct{}
 
 const (
 	threadTitleWidth  = 24
@@ -327,9 +362,6 @@ func (a *app) run() error {
 		return err
 	}
 
-	if a.fzfBin == "" {
-		return errors.New("thread picker: fzf not found in PATH")
-	}
 	return a.pick()
 }
 
@@ -2714,6 +2746,41 @@ func (a *app) windowCodexInfo(windowID string) hookInfo {
 	return hookInfo{}
 }
 
+func (a *app) windowCodexInfoIndex() map[string]hookInfo {
+	matches := map[string][]hookInfo{}
+	for _, line := range readLines(a.codexStateRowsFile) {
+		parts := strings.Split(line, "\t")
+		if len(parts) < 2 || parts[0] == "" {
+			continue
+		}
+		updated, _ := strconv.ParseInt(field(parts, 2), 10, 64)
+		started, _ := strconv.ParseInt(field(parts, 3), 10, 64)
+		if started == 0 {
+			started = updated
+		}
+		info := hookInfo{
+			state:     parts[1],
+			updated:   updated,
+			started:   started,
+			paneID:    field(parts, 4),
+			sessionID: field(parts, 5),
+			path:      field(parts, 6),
+		}
+		if info.paneID == "" && len(parts) < 5 {
+			matches[parts[0]] = []hookInfo{info}
+			continue
+		}
+		matches[parts[0]] = append(matches[parts[0]], info)
+	}
+	out := map[string]hookInfo{}
+	for windowID, infos := range matches {
+		if len(infos) == 1 {
+			out[windowID] = infos[0]
+		}
+	}
+	return out
+}
+
 func (a *app) windowHasCodexCLI(windowID string) bool {
 	return len(a.windowCodexPanes(windowID)) > 0
 }
@@ -3421,6 +3488,8 @@ func (a *app) refreshLiveStateOverlay() error {
 			live[parts[0]] = line
 		}
 	}
+	codexInfoByWindow := a.windowCodexInfoIndex()
+	runningProcessByWindow := lineSet(a.processWindowRowsFile)
 	var out []row
 	for _, r := range readRows(a.displayRowsFile) {
 		liveTarget := windowTarget(r.target)
@@ -3451,7 +3520,7 @@ func (a *app) refreshLiveStateOverlay() error {
 			rowSignal, duration := a.codexRowSignal(currentMarker, fallbackSignal, r.pinKey, hooks.liveByPane[pane])
 			dot, stateLabel, workDuration = a.rowSignalDisplay(rowSignal, duration)
 		} else {
-			switch info := a.windowCodexInfo(windowID); info.state {
+			switch info := codexInfoByWindow[windowID]; info.state {
 			case "running":
 				dot = a.colorText(a.c.proc, "▶")
 				stateLabel = "run"
@@ -3465,10 +3534,9 @@ func (a *app) refreshLiveStateOverlay() error {
 			}
 		}
 		proc := " "
-		if a.windowHasRunningProcess(windowID) {
+		if runningProcessByWindow[windowID] {
 			proc = a.colorText(a.c.proc, "!")
 		}
-		r.search = a.codexSearchForKey(r.pinKey)
 		r.display = fmt.Sprintf("%s%s %s %s  %s  %s  %s  %s",
 			dot,
 			proc,
@@ -3504,86 +3572,470 @@ func (a *app) printList() error {
 }
 
 func (a *app) pick() error {
-	in, _ := os.Open(a.displayRowsFile)
-	out, _ := os.Create(a.fzfRowsFile)
-	_ = filterRows(in, out, "")
-	_ = in.Close()
-	_ = out.Close()
-
 	archiveAction := "archive"
 	if os.Getenv("TMUX_THREAD_SHOW_ARCHIVED") == "1" {
 		archiveAction = "unarchive"
 	}
 	sourceWindowIndex := strings.TrimSpace(a.output(a.tmuxBin, "display-message", "-p", "-t", a.sourcePane, "#{window_index}"))
 	sourceTarget := a.sourceSess + ":" + sourceWindowIndex
-	fzfRowsFileQ := shellQuote(a.fzfRowsFile)
-	fzfSocket := filepath.Join(a.tmpDir, "fzf.sock")
-	filterCurrentQuery := a.self + " --filter-rows {q}"
-	filteredRowsCommand := filterCurrentQuery + " < " + fzfRowsFileQ
-	reloadRowsCommand := a.self + " --rows | tee " + fzfRowsFileQ + " | " + filterCurrentQuery
-	togglePinReloadCommand := "TMUX_THREAD_NOTIFY_FZF=0 " + a.self + " --toggle-pin {5}; " + reloadRowsCommand
-	toggleArchiveReloadRowsCommand := "TMUX_THREAD_NOTIFY_FZF=0 " + a.self + " --toggle-archive {5}; " + reloadRowsCommand
-	header := fmt.Sprintf("      %s  %s  %s  %s  %s", padText("state", 6), padText("title", threadTitleWidth), padText("path", threadPathWidth), padText("branch", threadBranchWidth), padText("work", threadWorkWidth))
-
-	args := []string{
-		"--prompt=thread > ",
-		"--delimiter=\t",
-		"--with-nth=2",
-		"--header=" + header,
-		"--header-border=line",
-		"--footer=Ctrl-n new | Ctrl-r refresh | Ctrl-o worktrees | Ctrl-p pin | Ctrl-t rename | Ctrl-y auto-title | Ctrl-x " + archiveAction + " | Alt-f all | Alt-v archived | Enter open",
-		"--footer-border=line",
-		"--layout=reverse",
-		"--border",
-		"--ansi",
-		"--disabled",
-		"--track",
-		"--id-nth=5",
-		"--listen=" + fzfSocket,
-		"--bind", "start:execute-silent(" + a.self + " --watch-fzf " + fzfSocket + ")",
-		"--bind", "load:transform:[[ {1} = GROUP || {1} = WIN ]] && echo down",
-		"--bind", "result:transform:[[ {1} = GROUP || {1} = WIN ]] && echo down",
-		"--bind", "change:reload(" + filteredRowsCommand + ")+first",
-		"--bind", "enter:transform:[[ {1} = GROUP || {1} = WIN ]] && echo down || echo accept",
-		"--bind", "ctrl-p:reload-sync(" + togglePinReloadCommand + ")",
-		"--bind", "ctrl-q:execute-silent(" + a.self + " --kill-window {1} {3} " + shellQuote(sourceTarget) + ")+reload(" + reloadRowsCommand + ")",
-		"--bind", "alt-a:reload-sync(" + toggleArchiveReloadRowsCommand + ")",
-		"--bind", "ctrl-x:reload-sync(" + toggleArchiveReloadRowsCommand + ")",
-		"--bind", "alt-f:reload(TMUX_THREAD_ATTENTION_ONLY=0 " + a.self + " --rows | tee " + fzfRowsFileQ + " | " + filterCurrentQuery + ")",
-		"--bind", "alt-v:reload(TMUX_THREAD_SHOW_ARCHIVED=1 " + a.self + " --rows | tee " + fzfRowsFileQ + " | " + filterCurrentQuery + ")",
-		"--bind", "ctrl-t:execute(" + a.self + " --edit-title {5})+reload(" + reloadRowsCommand + ")",
-		"--bind", "ctrl-y:execute-silent(" + a.self + " --regen-title {5} {3})+reload(" + reloadRowsCommand + ")",
-		"--bind", "ctrl-n:execute(" + a.self + " --new-thread {5})+abort",
-		"--bind", "ctrl-r:reload(" + reloadRowsCommand + ")",
-		"--bind", "ctrl-o:execute(" + filepath.Join(a.home, ".dotfiles", "bin", "tmux-select-worktree.sh") + ")",
-		"--bind", "):clear-query+search(::)",
-		"--bind", "(:clear-query+search(::)",
-		"--height=100%",
+	model := newPickerModel(a, readRows(a.displayRowsFile), archiveAction, sourceTarget)
+	finalModel, err := tea.NewProgram(model, tea.WithAltScreen(), tea.WithFPS(15), tea.WithANSICompressor()).Run()
+	if err != nil {
+		return err
 	}
-	_ = a.registerActiveFZF(fzfSocket, a.displayRowsFile, a.fzfRowsFile)
-	defer a.clearActiveFZF(fzfSocket)
-	selected, _ := runInput(a.fzfBin, readLines(a.fzfRowsFile), args...)
-	if selected == "" {
+	model, ok := finalModel.(pickerModel)
+	if !ok || model.selected.kind == "" {
+		if ok && model.action == pickerActionOpenWorktreeMenu {
+			script := filepath.Join(a.home, ".dotfiles", "bin", "tmux-select-worktree.sh")
+			return syscall.Exec(script, []string{script}, os.Environ())
+		}
 		return nil
 	}
-	parts := strings.Split(selected, "\t")
-	switch field(parts, 0) {
+	switch model.selected.kind {
 	case "GROUP", "WIN":
 		return nil
+	case "NEW":
+		return a.createNewThread(model.selected.pinKey)
 	case "PICK":
 		script := filepath.Join(a.home, ".dotfiles", "bin", "tmux-select-worktree.sh")
-		return syscall.Exec(script, []string{script, a.sourceSess, field(parts, 2)}, os.Environ())
+		return syscall.Exec(script, []string{script, a.sourceSess, model.selected.target}, os.Environ())
 	case "OPEN":
-		_ = a.markSeenFinishedForSelection(field(parts, 2), field(parts, 4))
-		return a.openExistingThread(field(parts, 2))
+		_ = a.markSeenFinishedForSelection(model.selected.target, model.selected.pinKey)
+		return a.openExistingThread(model.selected.target)
 	case "HIST":
-		_ = a.markSeenFinishedForSelection(field(parts, 2), field(parts, 4))
-		return a.openCodexHistoryThread(strings.TrimPrefix(field(parts, 4), "codex:"), field(parts, 2))
+		_ = a.markSeenFinishedForSelection(model.selected.target, model.selected.pinKey)
+		return a.openCodexHistoryThread(strings.TrimPrefix(model.selected.pinKey, "codex:"), model.selected.target)
 	case "WT":
-		return a.openThreadWindow(field(parts, 2), field(parts, 3))
+		return a.openThreadWindow(model.selected.target, model.selected.branch)
 	default:
 		return errors.New("thread picker: invalid selection")
 	}
+}
+
+func newPickerModel(a *app, rows []row, archiveAction, sourceTarget string) pickerModel {
+	m := pickerModel{
+		app:           a,
+		allRows:       rows,
+		archiveAction: archiveAction,
+		sourceTarget:  sourceTarget,
+		height:        24,
+	}
+	m.applyFilter(true)
+	return m
+}
+
+func (m pickerModel) Init() tea.Cmd {
+	return m.liveWatchCmd()
+}
+
+func (m pickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		return m, nil
+	case pickerRowsMsg:
+		if msg.full {
+			m.replaceRows(msg.rows)
+			return m, m.liveWatchCmd()
+		}
+		if rowsEqualForLive(m.allRows, msg.rows) {
+			return m, m.liveWatchCmd()
+		}
+		m.replaceRows(msg.rows)
+		return m, m.liveWatchCmd()
+	case pickerErrMsg:
+		return m, m.liveWatchCmd()
+	case pickerExecDoneMsg:
+		return m, m.fullRowsCmd()
+	case tea.KeyMsg:
+		return m.handleKey(msg)
+	default:
+		return m, nil
+	}
+}
+
+func (m pickerModel) View() string {
+	if m.quitting {
+		return ""
+	}
+	width := m.width
+	if width < 80 {
+		width = 80
+	}
+	height := m.height
+	if height < 10 {
+		height = 10
+	}
+	innerWidth := width - 4
+	if innerWidth < 20 {
+		innerWidth = 20
+	}
+	top := "╭" + strings.Repeat("─", innerWidth+2) + "╮"
+	sep := "├" + strings.Repeat("─", innerWidth+2) + "┤"
+	bottom := "╰" + strings.Repeat("─", innerWidth+2) + "╯"
+	prompt := "thread > " + m.query
+	header := fmt.Sprintf("      %s  %s  %s  %s  %s",
+		padText("state", 6),
+		padText("title", threadTitleWidth),
+		padText("path", threadPathWidth),
+		padText("branch", threadBranchWidth),
+		padText("work", threadWorkWidth),
+	)
+	footer := "Ctrl-n new | Ctrl-r refresh | Ctrl-o worktrees | Ctrl-p pin | Ctrl-t rename | Ctrl-y auto-title | Ctrl-x " + m.archiveAction + " | Alt-f all | Alt-v archived | Enter open"
+	available := height - 7
+	if available < 1 {
+		available = 1
+	}
+	start := 0
+	if m.cursor >= available {
+		start = m.cursor - available + 1
+	}
+	end := start + available
+	if end > len(m.rows) {
+		end = len(m.rows)
+	}
+	var b strings.Builder
+	b.WriteString(top)
+	b.WriteByte('\n')
+	b.WriteString(boxLine(prompt, innerWidth))
+	b.WriteByte('\n')
+	b.WriteString(boxLine(header, innerWidth))
+	b.WriteByte('\n')
+	b.WriteString(sep)
+	b.WriteByte('\n')
+	for i := start; i < end; i++ {
+		prefix := "  "
+		if i == m.cursor {
+			prefix = "> "
+		}
+		b.WriteString(boxLine(prefix+m.rows[i].display, innerWidth))
+		b.WriteByte('\n')
+	}
+	for i := end - start; i < available; i++ {
+		b.WriteString(boxLine("", innerWidth))
+		b.WriteByte('\n')
+	}
+	b.WriteString(sep)
+	b.WriteByte('\n')
+	b.WriteString(boxLine(footer, innerWidth))
+	b.WriteByte('\n')
+	b.WriteString(bottom)
+	return b.String()
+}
+
+func (m pickerModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c", "esc":
+		m.quitting = true
+		return m, tea.Quit
+	case "up", "ctrl+k":
+		m.move(-1)
+		return m, nil
+	case "down", "ctrl+j":
+		m.move(1)
+		return m, nil
+	case "enter":
+		if !m.currentSelectable() {
+			m.move(1)
+			return m, nil
+		}
+		m.selected = m.rows[m.cursor]
+		m.quitting = true
+		return m, tea.Quit
+	case "backspace", "ctrl+h":
+		if m.query != "" {
+			runes := []rune(m.query)
+			m.query = string(runes[:len(runes)-1])
+			m.applyFilter(true)
+		}
+		return m, nil
+	case "ctrl+u":
+		m.query = ""
+		m.applyFilter(true)
+		return m, nil
+	case ")", "(":
+		m.query = ""
+		m.applyFilter(true)
+		return m, nil
+	case "ctrl+p":
+		if !m.currentSelectable() {
+			return m, nil
+		}
+		key := m.rows[m.cursor].pinKey
+		return m, tea.Sequence(m.execSilent(func() { _ = m.app.toggleMetadataLine(m.app.pinFile, key) }), m.fullRowsCmd())
+	case "ctrl+x", "alt+a":
+		if !m.currentSelectable() {
+			return m, nil
+		}
+		key := m.rows[m.cursor].pinKey
+		return m, tea.Sequence(m.execSilent(func() { _ = m.app.toggleMetadataLine(m.app.archiveFile, key) }), m.fullRowsCmd())
+	case "alt+f":
+		m.showAll = true
+		return m, m.fullRowsWithEnvCmd([]string{"TMUX_THREAD_ATTENTION_ONLY=0"})
+	case "alt+v":
+		m.showArchived = true
+		m.archiveAction = "unarchive"
+		return m, m.fullRowsWithEnvCmd([]string{"TMUX_THREAD_SHOW_ARCHIVED=1"})
+	case "ctrl+r":
+		return m, m.fullRowsCmd()
+	case "ctrl+t":
+		if !m.currentSelectable() {
+			return m, nil
+		}
+		key := m.rows[m.cursor].pinKey
+		cmd := exec.Command(m.app.self, "--edit-title", key)
+		return m, tea.ExecProcess(cmd, func(error) tea.Msg { return pickerExecDoneMsg{} })
+	case "ctrl+y":
+		if !m.currentSelectable() {
+			return m, nil
+		}
+		r := m.rows[m.cursor]
+		return m, tea.Sequence(m.execSilent(func() { _ = m.app.regenerateTitle(r.pinKey, r.target) }), m.fullRowsCmd())
+	case "ctrl+n":
+		if !m.currentSelectable() {
+			return m, nil
+		}
+		m.selected = row{kind: "NEW", pinKey: m.rows[m.cursor].pinKey}
+		m.quitting = true
+		return m, tea.Quit
+	case "ctrl+o":
+		m.action = pickerActionOpenWorktreeMenu
+		m.quitting = true
+		return m, tea.Quit
+	case "ctrl+q":
+		if !m.currentSelectable() {
+			return m, nil
+		}
+		r := m.rows[m.cursor]
+		return m, tea.Sequence(m.execSilent(func() { _ = m.app.killThreadWindow(r.kind, r.target, m.sourceTarget) }), m.fullRowsCmd())
+	default:
+		if len(msg.Runes) > 0 {
+			m.query += string(msg.Runes)
+			m.applyFilter(true)
+		}
+		return m, nil
+	}
+}
+
+func (m pickerModel) liveWatchCmd() tea.Cmd {
+	snapshot := append([]row(nil), m.allRows...)
+	interval := time.Duration(getenvInt("TMUX_THREAD_WORK_TIMER_INTERVAL", 1)) * time.Second
+	if interval <= 0 {
+		interval = time.Second
+	}
+	return func() tea.Msg {
+		for {
+			time.Sleep(interval)
+			if !rowsHaveRunningState(m.app.displayRowsFile) {
+				continue
+			}
+			if err := m.app.refreshLiveStateOverlay(); err != nil {
+				continue
+			}
+			rows := readRows(m.app.displayRowsFile)
+			if !rowsEqualForLive(snapshot, rows) {
+				return pickerRowsMsg{rows: rows}
+			}
+		}
+	}
+}
+
+func (m pickerModel) fullRowsCmd() tea.Cmd {
+	return m.fullRowsWithEnvCmd(nil)
+}
+
+func (m pickerModel) fullRowsWithEnvCmd(env []string) tea.Cmd {
+	return func() tea.Msg {
+		cmd := exec.Command(m.app.self, "--rows")
+		if len(env) > 0 {
+			cmd.Env = append(os.Environ(), env...)
+		}
+		out, err := cmd.Output()
+		if err != nil {
+			return pickerErrMsg{err: err}
+		}
+		rows := parseRowsBytes(out)
+		_ = writeRows(m.app.displayRowsFile, rows, false)
+		return pickerRowsMsg{rows: rows, full: true}
+	}
+}
+
+func (m pickerModel) execSilent(fn func()) tea.Cmd {
+	return func() tea.Msg {
+		fn()
+		return nil
+	}
+}
+
+func (m *pickerModel) replaceRows(rows []row) {
+	currentKey := ""
+	if m.cursor >= 0 && m.cursor < len(m.rows) {
+		currentKey = m.rows[m.cursor].pinKey
+	}
+	m.allRows = rows
+	m.applyFilter(false)
+	if currentKey != "" {
+		for i, r := range m.rows {
+			if r.pinKey == currentKey {
+				m.cursor = i
+				return
+			}
+		}
+	}
+	m.ensureSelectable(1)
+}
+
+func (m *pickerModel) applyFilter(reset bool) {
+	var out []row
+	group := row{}
+	groupRows := []row{}
+	groupMatches := false
+	flush := func() {
+		if group.kind == "" {
+			return
+		}
+		if strings.TrimSpace(m.query) == "" {
+			out = append(out, group)
+			out = append(out, groupRows...)
+		} else {
+			var matches []row
+			for _, r := range groupRows {
+				if groupMatches || queryMatch(r.display+" "+r.search, m.query) {
+					matches = append(matches, r)
+				}
+			}
+			if groupMatches || len(matches) > 0 {
+				out = append(out, group)
+				out = append(out, matches...)
+			}
+		}
+		group = row{}
+		groupRows = nil
+		groupMatches = false
+	}
+	for _, r := range m.allRows {
+		if r.kind == "GROUP" {
+			flush()
+			group = r
+			groupMatches = queryMatch(r.display+" "+r.search, m.query)
+			continue
+		}
+		if group.kind == "" {
+			if strings.TrimSpace(m.query) == "" || queryMatch(r.display+" "+r.search, m.query) {
+				out = append(out, r)
+			}
+			continue
+		}
+		groupRows = append(groupRows, r)
+	}
+	flush()
+	m.rows = out
+	if reset || m.cursor >= len(m.rows) {
+		m.cursor = 0
+	}
+	m.ensureSelectable(1)
+}
+
+func (m *pickerModel) move(delta int) {
+	if len(m.rows) == 0 {
+		m.cursor = 0
+		return
+	}
+	start := m.cursor
+	for {
+		m.cursor += delta
+		if m.cursor < 0 {
+			m.cursor = 0
+			return
+		}
+		if m.cursor >= len(m.rows) {
+			m.cursor = len(m.rows) - 1
+			return
+		}
+		if m.currentSelectable() || m.cursor == start {
+			return
+		}
+	}
+}
+
+func (m *pickerModel) ensureSelectable(direction int) {
+	if len(m.rows) == 0 {
+		m.cursor = 0
+		return
+	}
+	if m.cursor < 0 {
+		m.cursor = 0
+	}
+	if m.cursor >= len(m.rows) {
+		m.cursor = len(m.rows) - 1
+	}
+	if m.currentSelectable() {
+		return
+	}
+	m.move(direction)
+	if !m.currentSelectable() {
+		m.move(-direction)
+	}
+}
+
+func (m pickerModel) currentSelectable() bool {
+	if m.cursor < 0 || m.cursor >= len(m.rows) {
+		return false
+	}
+	return m.rows[m.cursor].kind != "GROUP" && m.rows[m.cursor].kind != "WIN"
+}
+
+func rowsEqual(aRows, bRows []row) bool {
+	if len(aRows) != len(bRows) {
+		return false
+	}
+	for i := range aRows {
+		a, b := aRows[i], bRows[i]
+		if a.kind != b.kind ||
+			a.display != b.display ||
+			a.target != b.target ||
+			a.branch != b.branch ||
+			a.pinKey != b.pinKey ||
+			a.project != b.project ||
+			a.windowGroupKey != b.windowGroupKey ||
+			a.windowGroupLabel != b.windowGroupLabel ||
+			a.search != b.search {
+			return false
+		}
+	}
+	return true
+}
+
+func rowsEqualForLive(aRows, bRows []row) bool {
+	if len(aRows) != len(bRows) {
+		return false
+	}
+	for i := range aRows {
+		a, b := aRows[i], bRows[i]
+		if a.kind != b.kind ||
+			liveDisplayKey(a.display) != liveDisplayKey(b.display) ||
+			a.target != b.target ||
+			a.branch != b.branch ||
+			a.pinKey != b.pinKey ||
+			a.project != b.project ||
+			a.windowGroupKey != b.windowGroupKey ||
+			a.windowGroupLabel != b.windowGroupLabel ||
+			a.search != b.search {
+			return false
+		}
+	}
+	return true
+}
+
+func liveDisplayKey(display string) string {
+	plain := stripANSI(display)
+	columns := splitDisplayColumns(plain)
+	work := field(columns, 3)
+	if work == "" {
+		return display
+	}
+	return strings.TrimSuffix(plain, work)
 }
 
 func (a *app) openExistingThread(target string) error {
@@ -3742,8 +4194,20 @@ func writeRows(path string, rows []row, includeSort bool) error {
 }
 
 func readRows(path string) []row {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	return parseRowsBytes(data)
+}
+
+func parseRowsBytes(data []byte) []row {
 	var out []row
-	for _, line := range readLines(path) {
+	text := strings.TrimRight(string(data), "\n")
+	if text == "" {
+		return nil
+	}
+	for _, line := range strings.Split(text, "\n") {
 		parts := strings.Split(line, "\t")
 		if len(parts) >= 6 {
 			searchIndex := 6
@@ -3807,6 +4271,54 @@ func padText(value string, width int) string {
 		}
 	}
 	return fmt.Sprintf("%-*s", width, value)
+}
+
+func boxLine(value string, width int) string {
+	value = ansiTruncate(value, width)
+	padding := width - ansiVisibleLen(value)
+	if padding < 0 {
+		padding = 0
+	}
+	return "│ " + value + strings.Repeat(" ", padding) + " │"
+}
+
+func ansiTruncate(value string, width int) string {
+	if width <= 0 || ansiVisibleLen(value) <= width {
+		return value
+	}
+	var b strings.Builder
+	visible := 0
+	for i := 0; i < len(value); {
+		if value[i] == 0x1b && i+1 < len(value) && value[i+1] == '[' {
+			start := i
+			i += 2
+			for i < len(value) && value[i] != 'm' {
+				i++
+			}
+			if i < len(value) {
+				i++
+			}
+			b.WriteString(value[start:i])
+			continue
+		}
+		r, size := rune(value[i]), 1
+		if r >= 0x80 {
+			runes := []rune(value[i:])
+			r = runes[0]
+			size = len(string(r))
+		}
+		if visible >= width-1 {
+			break
+		}
+		b.WriteRune(r)
+		visible++
+		i += size
+	}
+	return b.String()
+}
+
+func ansiVisibleLen(value string) int {
+	return len([]rune(stripANSI(value)))
 }
 
 func splitDisplayColumns(plain string) []string {
@@ -3988,6 +4500,16 @@ func containsLine(path, needle string) bool {
 		}
 	}
 	return false
+}
+
+func lineSet(path string) map[string]bool {
+	out := map[string]bool{}
+	for _, line := range readLines(path) {
+		if line != "" {
+			out[line] = true
+		}
+	}
+	return out
 }
 
 func containsTitle(path, key string) bool {

@@ -9,7 +9,7 @@ source_file="$script_dir/tmux-thread-picker.go"
 mkdir -p "$cache_dir"
 if [ ! -x "$binary" ] || [ "$source_file" -nt "$binary" ]; then
 	tmp_binary="$binary.$$"
-	go build -o "$tmp_binary" "$source_file"
+	(cd "$script_dir/.." && go build -o "$tmp_binary" "$source_file")
 	mv "$tmp_binary" "$binary"
 fi
 
