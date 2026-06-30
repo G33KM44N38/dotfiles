@@ -77,3 +77,10 @@ goinfre/
 # Codex runtime/state: keep only instructions file
 .codex/**
 !.codex/AGENTS.md
+
+# Hermes runtime/state: keep portable config and encrypted secrets only
+.hermes/**
+!.hermes/
+!.hermes/config.yaml
+!.hermes/.env
+!.hermes/auth.json

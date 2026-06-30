@@ -5,6 +5,8 @@ FILES_TO_CHECK=(
   ".ssh"
   ".zshrc"
   ".group_env"
+  ".hermes/.env"
+  ".hermes/auth.json"
   "settings.json"
   "raycast")
 
