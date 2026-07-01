@@ -3936,7 +3936,34 @@ func (m *pickerModel) applyFilter(reset bool) {
 	if reset || m.cursor >= len(m.rows) {
 		m.cursor = 0
 	}
+	if reset && strings.TrimSpace(m.query) == "" {
+		m.selectCurrentThread()
+	}
 	m.ensureSelectable(1)
+}
+
+func (m *pickerModel) selectCurrentThread() {
+	if len(m.rows) == 0 {
+		return
+	}
+	for i, r := range m.rows {
+		if !selectableRow(r) {
+			continue
+		}
+		if m.sourceTarget != "" && windowTarget(r.target) == m.sourceTarget {
+			m.cursor = i
+			return
+		}
+	}
+	for i, r := range m.rows {
+		if !selectableRow(r) {
+			continue
+		}
+		if rowStateLabel(r.display) == "open*" {
+			m.cursor = i
+			return
+		}
+	}
 }
 
 func (m *pickerModel) move(delta int) {
@@ -3985,7 +4012,19 @@ func (m pickerModel) currentSelectable() bool {
 	if m.cursor < 0 || m.cursor >= len(m.rows) {
 		return false
 	}
-	return m.rows[m.cursor].kind != "GROUP" && m.rows[m.cursor].kind != "WIN"
+	return selectableRow(m.rows[m.cursor])
+}
+
+func selectableRow(r row) bool {
+	return r.kind != "GROUP" && r.kind != "WIN"
+}
+
+func rowStateLabel(display string) string {
+	plain := stripANSI(display)
+	if len(plain) < 13 {
+		return ""
+	}
+	return strings.TrimSpace(substr(plain, 6, 12))
 }
 
 func rowsEqual(aRows, bRows []row) bool {
