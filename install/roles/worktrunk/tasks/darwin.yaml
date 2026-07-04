@@ -1,6 +1,0 @@
----
-- name: Install worktrunk
-  homebrew:
-    name: worktrunk
-    state: present
-    update_homebrew: yes
