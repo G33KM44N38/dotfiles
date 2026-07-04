@@ -1,0 +1,65 @@
+# herdr configuration
+# Mirrors the tmux muscle memory from ~/.config/tmux/tmux.conf plus Herdr defaults.
+
+[terminal]
+new_cwd = "follow"
+
+[keys]
+prefix = "ctrl+a"
+
+# tmux-style tab/window controls
+new_tab = "prefix+c"
+rename_tab = "prefix+comma"
+previous_tab = "prefix+p"
+next_tab = "prefix+n"
+switch_tab = "prefix+1..9"
+close_tab = "prefix+ampersand"
+last_pane = "prefix+semicolon"
+
+# tmux/vi pane controls
+split_vertical = "prefix+|"
+split_horizontal = "prefix+minus"
+close_pane = "prefix+x"
+zoom = "prefix+z"
+focus_pane_left = "prefix+h"
+focus_pane_down = "prefix+j"
+focus_pane_up = "prefix+k"
+focus_pane_right = "prefix+l"
+swap_pane_left = "prefix+shift+h"
+swap_pane_down = "prefix+shift+j"
+swap_pane_up = "prefix+shift+k"
+swap_pane_right = "prefix+shift+l"
+
+# Keep Herdr's useful defaults reachable.
+help = "prefix+?"
+settings = "prefix+s"
+detach = "prefix+q"
+reload_config = "prefix+shift+r"
+workspace_picker = "prefix+w"
+goto = "prefix+g"
+new_workspace = "prefix+shift+n"
+new_worktree = "prefix+shift+g"
+rename_workspace = "prefix+shift+w"
+close_workspace = "prefix+shift+d"
+rename_pane = "prefix+shift+p"
+edit_scrollback = "prefix+e"
+resize_mode = "prefix+r"
+toggle_sidebar = "prefix+b"
+
+# Custom tmux-style equalize. Uses public `herdr pane resize`, not layout.apply.
+# after_split_pane = "equalize_panes"
+
+[[keys.command]]
+key = "prefix+="
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-equalize-panes"
+
+[[keys.command]]
+key = "ctrl+shift+n"
+type = "shell"
+command = "herdr agent start codex --focus -- codex"
+
+[[keys.command]]
+key = "alt+g"
+type = "pane"
+command = "$HOME/.local/bin/tmux-gh-popup"

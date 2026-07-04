@@ -1,0 +1,127 @@
+#!/usr/bin/env python3
+import json
+import subprocess
+import sys
+
+
+def herdr(*args):
+    result = subprocess.run(
+        ["herdr", *args],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode != 0:
+        raise SystemExit(result.stderr.strip() or result.stdout.strip())
+    return json.loads(result.stdout)
+
+
+def inside(rect, outer):
+    return (
+        rect["x"] >= outer["x"]
+        and rect["y"] >= outer["y"]
+        and rect["x"] + rect["width"] <= outer["x"] + outer["width"]
+        and rect["y"] + rect["height"] <= outer["y"] + outer["height"]
+    )
+
+
+def center(rect):
+    return (rect["x"] + rect["width"] / 2, rect["y"] + rect["height"] / 2)
+
+
+def panes_for_split(panes, split):
+    rect = split["rect"]
+    return [pane for pane in panes if inside(pane["rect"], rect)]
+
+
+def pick_boundary_pane(candidates, direction, rect):
+    if not candidates:
+        return None
+    if direction == "left":
+        return min(candidates, key=lambda pane: pane["rect"]["x"])
+    if direction == "right":
+        return max(candidates, key=lambda pane: pane["rect"]["x"] + pane["rect"]["width"])
+    if direction == "up":
+        return min(candidates, key=lambda pane: pane["rect"]["y"])
+    if direction == "down":
+        return max(candidates, key=lambda pane: pane["rect"]["y"] + pane["rect"]["height"])
+    return None
+
+
+def resize_once(layout):
+    panes = layout["panes"]
+    splits = sorted(
+        layout["splits"],
+        key=lambda split: split["rect"]["width"] * split["rect"]["height"],
+        reverse=True,
+    )
+
+    for split in splits:
+        rect = split["rect"]
+        split_panes = panes_for_split(panes, split)
+        if len(split_panes) < 2:
+            continue
+
+        if split["direction"] == "right":
+            boundary = rect["x"] + rect["width"] * split["ratio"]
+            first = [pane for pane in split_panes if center(pane["rect"])[0] < boundary]
+            second = [pane for pane in split_panes if center(pane["rect"])[0] >= boundary]
+            resize_grow_second = "left"
+            resize_grow_first = "right"
+            amount = len(first) / len(split_panes) - split["ratio"]
+        elif split["direction"] == "down":
+            boundary = rect["y"] + rect["height"] * split["ratio"]
+            first = [pane for pane in split_panes if center(pane["rect"])[1] < boundary]
+            second = [pane for pane in split_panes if center(pane["rect"])[1] >= boundary]
+            resize_grow_second = "up"
+            resize_grow_first = "down"
+            amount = len(first) / len(split_panes) - split["ratio"]
+        else:
+            continue
+
+        if not first or not second or abs(amount) < 0.015:
+            continue
+
+        if amount > 0:
+            pane = pick_boundary_pane(first, resize_grow_first, rect)
+            direction = resize_grow_first
+        else:
+            pane = pick_boundary_pane(second, resize_grow_second, rect)
+            direction = resize_grow_second
+
+        if not pane:
+            continue
+
+        step = min(abs(amount), 0.25)
+        herdr(
+            "pane",
+            "resize",
+            "--direction",
+            direction,
+            "--amount",
+            f"{step:.4f}",
+            "--pane",
+            pane["pane_id"],
+        )
+        return True
+
+    return False
+
+
+def main():
+    for _ in range(10):
+        response = herdr("pane", "layout", "--current")
+        layout = response["result"]["layout"]
+        if layout.get("zoomed"):
+            return 0
+        if not resize_once(layout):
+            return 0
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except Exception as exc:
+        print(f"herdr-equalize-panes: {exc}", file=sys.stderr)
+        raise SystemExit(1)
