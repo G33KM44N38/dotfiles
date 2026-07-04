@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Glow Border Effect</title>
+  <style>
+    :root {
+      --bg: #595d68;
+      --card: #05060a;
+      --r: 42px;
+      --b: 3px;
+      --glow-a: #ff9edc;
+      --glow-b: #b77bff;
+      --glow-c: #7aa6ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100svh;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(1200px 700px at 50% 20%, #6a6f7d 0%, var(--bg) 45%, #4e5260 100%);
+      font-family: "Space Grotesk", "Satoshi", "Manrope", sans-serif;
+    }
+
+    .watch {
+      width: min(42vw, 170px);
+      aspect-ratio: 0.82;
+      border-radius: var(--r);
+      position: relative;
+      background:
+        radial-gradient(120% 110% at 30% 20%, #111 0%, #080a10 45%, #020307 100%);
+      box-shadow: inset 0 1px 10px #ffffff0f;
+      isolation: isolate;
+    }
+
+    .watch::before {
+      content: "";
+      position: absolute;
+      inset: calc(var(--b) * -1);
+      border-radius: inherit;
+      padding: var(--b);
+      background: conic-gradient(from var(--ang),
+        var(--glow-a),
+        var(--glow-b),
+        var(--glow-c),
+        var(--glow-a));
+      -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      animation: spin 5s linear infinite;
+      z-index: 2;
+    }
+
+    .watch::after {
+      content: "";
+      position: absolute;
+      inset: -16px;
+      border-radius: calc(var(--r) + 12px);
+      background: radial-gradient(circle at var(--mx,50%) var(--my,50%),
+        #ffb0f0 0%,
+        #bc8cff 28%,
+        #7ea0ff 55%,
+        transparent 72%);
+      filter: blur(18px) saturate(1.15);
+      opacity: .95;
+      animation: breathe 2.4s ease-in-out infinite;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    @keyframes spin { to { --ang: 1turn; } }
+    @keyframes breathe {
+      0%,100% { transform: scale(1); opacity: .9; }
+      50% { transform: scale(1.03); opacity: 1; }
+    }
+
+    @property --ang {
+      syntax: "<angle>";
+      inherits: false;
+      initial-value: 0turn;
+    }
+  </style>
+</head>
+<body>
+  <div class="watch" id="watch"></div>
+
+  <script>
+    const watch = document.getElementById("watch");
+    watch.addEventListener("mousemove", (e) => {
+      const r = watch.getBoundingClientRect();
+      const x = ((e.clientX - r.left) / r.width) * 100;
+      const y = ((e.clientY - r.top) / r.height) * 100;
+      watch.style.setProperty("--mx", `${x}%`);
+      watch.style.setProperty("--my", `${y}%`);
+    });
+    watch.addEventListener("mouseleave", () => {
+      watch.style.setProperty("--mx", "50%");
+      watch.style.setProperty("--my", "50%");
+    });
+  </script>
+</body>
+</html>
