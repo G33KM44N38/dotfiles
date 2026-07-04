@@ -17,7 +17,8 @@ else
         "~/coding/perso/"
         "~/goinfre/"
         "~/.dotfiles/"
-        "~/.dotfiles/.config/"
+        "~/learning/"
+        # "~/.dotfiles/.config/"
     )
 
     for dir in "${raw_paths[@]}"; do
