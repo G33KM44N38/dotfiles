@@ -7,6 +7,8 @@ return {
 			return
 		end
 
+		vim.api.nvim_set_keymap("n", "<leader>ct", "<cmd>CloakToggle<CR>", { noremap = true, silent = true })
+
 		cloak.setup({
 			enabled = true,
 			cloak_character = "*",

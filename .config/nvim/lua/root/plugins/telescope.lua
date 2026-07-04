@@ -10,7 +10,6 @@ return {
 		if not ok then
 			return
 		end
-		local actions = require("telescope.actions")
 		telescope.setup({
 			picker = {},
 			defaults = {

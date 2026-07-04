@@ -2149,6 +2149,10 @@ local obsidian_config = {
 				date_format = date_format,
 				template = "Daily Template.md",
 			},
+			picker = {
+				name = "fzf-lua",
+			},
+			search_max_lines = 1000,
 			use_advanced_uri = true,
 			mappings = {},
 			attachments = {

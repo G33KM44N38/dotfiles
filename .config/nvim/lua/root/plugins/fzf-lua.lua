@@ -76,8 +76,9 @@ return {
 		end
 
 		local function smart_files()
-			local search_cwd = in_obsidian_workspace() and workspace_path or vim.fn.getcwd()
-			local fd_cmd = in_obsidian_workspace() and "fd --type f --extension md"
+			local is_obsidian = in_obsidian_workspace()
+			local search_cwd = is_obsidian and workspace_path or vim.fn.getcwd()
+			local fd_cmd = is_obsidian and "fd --type f --extension md --exclude Attachments --exclude .obsidian --exclude .smart-env --exclude .opencode"
 				or "fd --type f --hidden --exclude node_modules --exclude dist"
 			local tracked_ignored_cmd = "git ls-files -ci --exclude-standard"
 			local picker_opts = {
@@ -89,14 +90,14 @@ return {
 				},
 			}
 
-			if in_obsidian_workspace() then
+			if is_obsidian then
 				tracked_ignored_cmd = tracked_ignored_cmd .. " -- " .. vim.fn.shellescape("*.md")
 			end
 
 			local tracked_ignored = run_command_lines(tracked_ignored_cmd, search_cwd)
 
 			if #tracked_ignored == 0 then
-				if in_obsidian_workspace() then
+				if is_obsidian then
 					fzf.files(vim.tbl_deep_extend("force", picker_opts, {
 						cmd = fd_cmd,
 						cwd = workspace_path,
@@ -118,6 +119,35 @@ return {
 					actions = fzf.defaults.actions.files,
 				})
 			)
+		end
+
+		local function smart_grep(live)
+			if not in_obsidian_workspace() then
+				if live then
+					fzf.live_grep()
+				else
+					fzf.grep()
+				end
+				return
+			end
+
+			local picker = live and fzf.live_grep or fzf.grep
+			picker({
+				cwd = workspace_path,
+				rg_opts = table.concat({
+					"--column",
+					"--line-number",
+					"--no-heading",
+					"--color=always",
+					"--smart-case",
+					"--glob '*.md'",
+					"--glob '!Attachments/**'",
+					"--glob '!.obsidian/**'",
+					"--glob '!.smart-env/**'",
+					"--glob '!.opencode/**'",
+				}, " "),
+				previewer = "builtin",
+			})
 		end
 
 		fzf.staged_files_live_grep = function()
@@ -212,8 +242,12 @@ return {
 		vim.api.nvim_set_keymap("n", "gd", "<cmd>FzfLua lsp_definitions<CR>", opts)
 		vim.api.nvim_set_keymap("n", "gr", "<cmd>FzfLua lsp_references<CR>", opts)
 		vim.keymap.set("n", "<C-p>", smart_files, opts)
-		vim.api.nvim_set_keymap("n", "<C-s>", "<cmd>FzfLua grep<CR>", opts)
-		vim.api.nvim_set_keymap("n", "<C-q>", "<cmd>FzfLua live_grep<CR>", opts)
+		vim.keymap.set("n", "<C-s>", function()
+			smart_grep(false)
+		end, opts)
+		vim.keymap.set("n", "<C-q>", function()
+			smart_grep(true)
+		end, opts)
 		vim.api.nvim_set_keymap("n", "<leader>fb", "<cmd>FzfLua buffers<CR>", opts)
 		vim.api.nvim_set_keymap("n", "<leader>ke", "<cmd>FzfLua keymaps<CR>", opts)
 		vim.api.nvim_set_keymap("n", "<leader>ds", "<cmd>FzfLua lsp_document_symbols<CR>", opts)

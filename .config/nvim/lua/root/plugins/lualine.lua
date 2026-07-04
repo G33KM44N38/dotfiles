@@ -1,6 +1,6 @@
 return {
 	"nvim-lualine/lualine.nvim",
-	dependencies = { "nvim-tree/nvim-web-devicons", "topaxi/pipeline.nvim" },
+	dependencies = { "nvim-tree/nvim-web-devicons" },
 	config = function()
 		local lualine = require("lualine")
 
@@ -59,9 +59,7 @@ return {
 				lualine_a = { "mode" },
 				lualine_b = { "filename" },
 				lualine_c = { "diagnostics" },
-				lualine_x = {
-					"pipeline",
-				},
+				lualine_x = {},
 				lualine_y = { "filetype" },
 				lualine_z = { "branch" },
 			},

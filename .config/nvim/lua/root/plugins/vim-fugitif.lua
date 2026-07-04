@@ -93,6 +93,20 @@ Do not summarize the entire document. Focus ONLY on the changes made in the diff
 
 ]] .. EXAMPLE_OF_COMMIT
 
+local function dismiss_notification(notification)
+	if not notification then
+		return
+	end
+
+	if type(notification) == "table" then
+		if type(notification.close) == "function" then
+			pcall(notification.close, notification)
+		elseif type(notification.dismiss) == "function" then
+			pcall(notification.dismiss, notification)
+		end
+	end
+end
+
 local function GenerateCommitMessageWithAI(provider)
 	-- Default to OpenAI if no provider specified
 	provider = provider or "openai"
@@ -129,12 +143,6 @@ local function GenerateCommitMessageWithAI(provider)
 	loading_notification = vim.notify("Generating commit message...", vim.log.levels.INFO, {
 		title = "AI Commit Message",
 		timeout = false,
-		on_close = function()
-			-- Ensure notification is cleared
-			if loading_notification then
-				loading_notification.close()
-			end
-		end,
 	})
 
 	-- Curl library
@@ -143,9 +151,7 @@ local function GenerateCommitMessageWithAI(provider)
 	-- Function to generate commit message
 	local function process_ai_response(commit_message)
 		-- Close loading notification
-		if loading_notification then
-			loading_notification.close()
-		end
+		dismiss_notification(loading_notification)
 
 		-- Clear existing content and set new commit message
 		-- vim.api.nvim_buf_set_lines(0, 0, -1, false, vim.split(commit_message, "\n"))
@@ -188,17 +194,28 @@ local function GenerateCommitMessageWithAI(provider)
 				max_tokens = 300,
 				temperature = 0.7,
 			}),
-			callback = vim.schedule_wrap(function(response)
-				if response.status ~= 200 then
-					vim.notify("Error generating commit message: " .. vim.inspect(response), vim.log.levels.ERROR)
-					return
-				end
+				callback = vim.schedule_wrap(function(response)
+					if response.status ~= 200 then
+						dismiss_notification(loading_notification)
+						vim.notify("Error generating commit message: " .. vim.inspect(response), vim.log.levels.ERROR)
+						return
+					end
 
-				local result = vim.fn.json_decode(response.body)
-				local commit_message = result.choices[1].message.content:gsub("^%s+", ""):gsub("%s+$", "")
-				process_ai_response(commit_message)
-			end),
-		})
+					local result = vim.fn.json_decode(response.body)
+					local message_content = result.choices
+						and result.choices[1]
+						and result.choices[1].message
+						and result.choices[1].message.content
+					if not message_content or message_content == "" then
+						dismiss_notification(loading_notification)
+						vim.notify("OpenAI returned an empty commit message.", vim.log.levels.ERROR)
+						return
+					end
+
+					local commit_message = message_content:gsub("^%s+", ""):gsub("%s+$", "")
+					process_ai_response(commit_message)
+				end),
+			})
 	else
 		vim.notify("Unsupported AI provider: " .. provider, vim.log.levels.ERROR)
 	end
@@ -228,27 +245,29 @@ function InputArgs()
 	local selected_option = ShowMenu()
 	if selected_option then
 		vim.cmd("redraw")
-		vim.cmd('echo "You selected: ' .. selected_option.emoji .. " - " .. selected_option.key .. '"')
+		vim.notify(
+			"You selected: " .. selected_option.emoji .. " - " .. selected_option.key,
+			vim.log.levels.INFO
+		)
 		local message = vim.fn.input("Message: ")
 		if message ~= "" then
-			vim.cmd("redraw") -- Optionally redraw again if needed
-			vim.cmd('echo "Message entered: "')
-			vim.cmd('echo "' .. message .. '"')
+			vim.cmd("redraw")
+			vim.notify("Message entered:\n" .. message, vim.log.levels.INFO)
 			local commitMessage = selected_option.key .. ": " .. message .. " " .. selected_option.emoji
-			vim.cmd('G commit -v -m "' .. commitMessage .. '"')
+			vim.cmd("G commit -v -m " .. vim.fn.shellescape(commitMessage))
 		else
-			vim.cmd("redraw") -- Clear the screen before showing the message
-			vim.cmd('echo "No message entered. Action canceled"')
+			vim.cmd("redraw")
+			vim.notify("No message entered. Action canceled", vim.log.levels.INFO)
 		end
 	else
-		vim.cmd("redraw") -- Clear the screen before showing the message
-		vim.cmd('echo "No commit type selected. Action canceled"')
+		vim.cmd("redraw")
+		vim.notify("No commit type selected. Action canceled", vim.log.levels.INFO)
 	end
 end
 
 function QuitMenu()
 	vim.cmd("redraw")
-	vim.cmd('echo "Menu closed. Action canceled"')
+	vim.notify("Menu closed. Action canceled", vim.log.levels.INFO)
 end
 
 return {
@@ -284,7 +303,6 @@ return {
 		vim.api.nvim_create_user_command("AICommitMessage", function()
 			GenerateCommitMessageWithAI("openai")
 		end, {})
-
 
 		vim.api.nvim_create_autocmd("FileType", {
 			pattern = "gitcommit",

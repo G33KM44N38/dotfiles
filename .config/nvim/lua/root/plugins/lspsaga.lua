@@ -10,7 +10,8 @@ return {
 
 		local opts = { noremap = true, silent = true }
 
-		vim.keymap.set("n", "K", "<cmd>Lspsaga hover_doc<CR>", opts)
+		-- vim.keymap.set("n", "K", "<cmd>Lspsaga hover_doc<CR>", opts)
+		-- vim.keymap.set("n", "K", vim.lsp.buf.hover, { desc = "LSP Hover" })
 
 		vim.keymap.set("n", "]d", "<cmd>Lspsaga diagnostic_jump_next<CR>", { desc = "Go to next diagnostic" })
 

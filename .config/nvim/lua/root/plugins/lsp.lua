@@ -50,19 +50,28 @@ return {
 		config = function()
 			require("typescript-tools").setup({
 				settings = {
-					-- Memory optimization for 8GB RAM + Docker
-					tsserver_max_memory = 1536,  -- 1.5GB per instance
-					disable_solution_searching = false,  -- Keep cross-package navigation
-					
-					-- Performance optimizations
+					tsserver_max_memory = 1536,
+					disable_solution_searching = false,
+					publish_diagnostic_on = "insert_leave",
+					separate_diagnostic_server = false,
+
 					max_completion_entries = 25,
 					include_automatic_completions = false,
-					
-					-- File exclusions to reduce overhead
+
 					exclude_files = {
 						"**/*.min.js",
 						"**/*.generated.*",
 						"**/node_modules/**",
+						"**/dist/**",
+						"**/build/**",
+						"**/.next/**",
+						"**/.turbo/**",
+						"**/.expo/**",
+						"**/test-results/**",
+					},
+
+					diagnostics = {
+						enable = true,
 					},
 				},
 				on_attach = function(client, bufnr)
@@ -71,7 +80,7 @@ return {
 					local ok, stats = pcall(vim.loop.fs_stat, filepath)
 					local file_size = ok and stats and stats.size or 0
 					local is_large_file = file_size > 100000 -- 100KB threshold
-					
+
 					if is_large_file then
 						-- Disable expensive features for large files
 						client.server_capabilities.semanticTokensProvider = nil
@@ -105,13 +114,16 @@ return {
 			local blink_cmp = require("blink.cmp")
 			local capabilities = blink_cmp.get_lsp_capabilities()
 
-			vim.diagnostic.config({
-				virtual_text = false,
-				signs = true,
-				underline = true,
-				update_in_insert = false,
-				severity_sort = true,
-			})
+			-- vim.diagnostic.config({
+			-- 	virtual_text = {
+			-- 		prefix = "● ", -- Prefix for inline errors
+			-- 		spacing = 1,
+			-- 	},
+			-- 	signs = true,
+			-- 	underline = true,
+			-- 	update_in_insert = false, -- Let tsserver complete full analysis before showing
+			-- 	severity_sort = true,
+			-- })
 
 			----------------------------------------------------
 			-- LUA LS
@@ -155,31 +167,58 @@ return {
 			----------------------------------------------------
 			-- TAILWIND
 			----------------------------------------------------
+			local tailwind_excluded_patterns = {
+				"%.test%.",
+				"%.spec%.",
+				"/e2e/",
+			}
+
+			local function should_disable_tailwind(bufnr)
+				local filepath = vim.api.nvim_buf_get_name(bufnr)
+				for _, pattern in ipairs(tailwind_excluded_patterns) do
+					if filepath:match(pattern) then
+						return true
+					end
+				end
+				return false
+			end
+
 			vim.lsp.config("tailwindcss", {
 				capabilities = capabilities,
-				root_dir = vim.fs.root(0, {
-					"tailwind.config.js",
-					"tailwind.config.ts",
-					"tailwind.config.cjs",
-					"tailwind.config.mjs",
-				}),
 				single_file_support = false,
-				on_attach = function(client, bufnr)
-					local filepath = vim.api.nvim_buf_get_name(bufnr)
-
-					if filepath:match("%.test%.") or filepath:match("%.spec%.") or filepath:match("/e2e/") then
-						-- Safe detachment with proper validation
-						if vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_buf_is_loaded(bufnr) then
-							pcall(function()
-								vim.lsp.buf_detach_client(bufnr, client.id)
-							end)
-						end
+				-- Avoid attaching on test/e2e files entirely; detaching after attach
+				-- can leave Neovim's LSP change tracking out of sync on 0.11.6.
+				root_dir = function(bufnr, on_dir)
+					if should_disable_tailwind(bufnr) then
 						return
 					end
 
-					client.server_capabilities.completionProvider = false
+					local root = vim.fs.root(bufnr, {
+						"tailwind.config.js",
+						"tailwind.config.cjs",
+						"tailwind.config.mjs",
+						"tailwind.config.ts",
+						"postcss.config.js",
+						"package.json",
+						".git",
+					})
+					if root then
+						on_dir(root)
+					end
 				end,
+				settings = {
+					tailwindCSS = {
+						classFunctions = { "tw" },
+						experimental = {
+							classRegex = {
+								{ "tw%s*`([^`]*)`", 1 },
+							},
+						},
+					},
+				},
 			})
+
+			vim.lsp.enable("tailwindcss")
 
 			----------------------------------------------------
 			-- SERVEURS SIMPLES
@@ -214,15 +253,17 @@ return {
 						local bufnr = args.buf
 						local clients = vim.lsp.get_clients({ bufnr = bufnr })
 
-						-- Grouper par nom
-						local by_name = {}
+						-- Group clients by name AND root directory to avoid detaching legitimate separate instances
+						local by_name_and_root = {}
 						for _, client in ipairs(clients) do
-							by_name[client.name] = by_name[client.name] or {}
-							table.insert(by_name[client.name], client)
+							local root_dir = client.config.root_dir or "no_root"
+							local key = client.name .. "|" .. root_dir
+							by_name_and_root[key] = by_name_and_root[key] or {}
+							table.insert(by_name_and_root[key], client)
 						end
 
-						-- Détacher les doublons
-						for name, client_list in pairs(by_name) do
+						-- Detach true duplicates (same name AND same root directory)
+						for key, client_list in pairs(by_name_and_root) do
 							if #client_list > 1 then
 								table.sort(client_list, function(a, b)
 									return a.id < b.id
@@ -236,11 +277,13 @@ return {
 										end)
 									end
 									vim.schedule(function()
+										local name, root = key:match("^(.-)|(.*)$")
 										print(
 											string.format(
-												"🧹 Detached duplicate %s (id: %d)",
+												"🧹 Detached duplicate %s (id: %d) for root: %s",
 												name,
-												client_list[i].id
+												client_list[i].id,
+												root
 											)
 										)
 									end)
@@ -297,61 +340,68 @@ return {
 					vim.notify("No file open!", vim.log.levels.ERROR)
 					return
 				end
-				
+
 				vim.notify("Running ESLint...", vim.log.levels.INFO)
 				vim.fn.jobstart({
 					"./node_modules/.bin/eslint",
 					"--fix",
-					vim.fn.expand("%:p")
+					vim.fn.expand("%:p"),
 				}, {
 					on_exit = function(job, exit_code)
 						if exit_code == 0 then
 							vim.notify("ESLint: No errors found ✓", vim.log.levels.INFO)
-							vim.cmd("edit!")  -- Reload fixed file
+							vim.cmd("edit!") -- Reload fixed file
 						elseif exit_code == 1 then
 							vim.notify("ESLint: Errors found - check quickfix", vim.log.levels.WARNING)
-							vim.cmd("copen")  -- Show errors in quickfix
+							vim.cmd("copen") -- Show errors in quickfix
 						else
 							vim.notify("ESLint: Command failed (exit code " .. exit_code .. ")", vim.log.levels.ERROR)
 						end
-					end
+					end,
 				})
 			end, {})
 		end,
 	},
 
 	----------------------------------------------------
-	-- MEMORY MANAGEMENT PLUGINS
+	-- MEMORY MANAGEMENT PLUGINS (DISABLED for stability)
+	-- These were causing LSP to stop after edits and hover commands
 	----------------------------------------------------
-	{
-		"hinell/lsp-timeout.nvim",
-		event = "VeryLazy",
-		config = function()
-			-- lsp-timeout uses global config (no setup function)
-			vim.g.lspTimeoutConfig = {
-				stopTimeout = 180000,              -- 3 minutes idle timeout (conservative for testing)
-				startTimeout = 60000,               -- Start after 1 minute of focus
-				silent = true,                     -- Don't notify on stop/start
-				filetypes = {
-					ignore = {                     -- Don't manage LSP for these filetypes
-						"markdown", "text", "dockerfile",
-						"yml", "yaml", "json", "html", "css"
-					}
-				}
-			}
-		end,
-	},
+	-- {
+	-- 	"hinell/lsp-timeout.nvim",
+	-- 	event = "VeryLazy",
+	-- 	config = function()
+	-- 		-- lsp-timeout uses global config (no setup function)
+	-- 		vim.g.lspTimeoutConfig = {
+	-- 			stopTimeout = 180000, -- 3 minutes idle timeout (conservative for testing)
+	-- 			startTimeout = 60000, -- Start after 1 minute of focus
+	-- 			silent = true, -- Don't notify on stop/start
+	-- 			filetypes = {
+	-- 				ignore = { -- Don't manage LSP for these filetypes
+	-- 					"markdown",
+	-- 					"text",
+	-- 					"dockerfile",
+	-- 					"yml",
+	-- 					"yaml",
+	-- 					"json",
+	-- 					"html",
+	-- 					"css",
+	-- 				},
+	-- 			},
+	-- 		}
+	-- 	end,
+	-- },
 
-	{
-		"Zeioth/garbage-day.nvim",
-		event = "VeryLazy",
-		config = function()
-			require('garbage-day').setup({
-				aggressive_mode = false,        -- Conservative mode for testing
-				cleanup_interval = 180000,      -- Check every 3 minutes
-				excluded_servers = { "lua_ls" }, -- Keep Lua LSP running
-				notify_on_cleanup = false,
-			})
-		end,
-	},
+	-- {
+	-- 	"Zeioth/garbage-day.nvim",
+	-- 	event = "VeryLazy",
+	-- 	config = function()
+	-- 		require("garbage-day").setup({
+	-- 			aggressive_mode = false, -- Conservative mode for testing
+	-- 			cleanup_interval = 180000, -- Check every 3 minutes
+	-- 			excluded_servers = { "lua_ls" }, -- Keep Lua LSP running
+	-- 			notify_on_cleanup = false,
+	-- 		})
+	-- 	end,
+	-- },
 }

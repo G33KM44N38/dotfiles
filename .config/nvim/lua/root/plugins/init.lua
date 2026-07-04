@@ -27,6 +27,11 @@ return {
 		"windwp/nvim-ts-autotag",
 		opts = {},
 	},
+	{
+		-- Satisfy Neovim's built-in editorconfig runtime plugin.
+		-- Without this module, opening a file can error during BufFilePost.
+		"gpanders/editorconfig.nvim",
+	},
 	"nvim-lua/plenary.nvim",
 	"tpope/vim-unimpaired",
 	"cdelledonne/vim-cmake",
