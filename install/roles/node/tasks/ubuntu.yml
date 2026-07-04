@@ -2,3 +2,9 @@
   ansible.builtin.apt:
     name: nodejs
     allow_change_held_packages: true
+
+- name: NODE | Install pi-coding-agent globally
+  community.general.npm:
+    name: "@mariozechner/pi-coding-agent"
+    global: true
+    state: present

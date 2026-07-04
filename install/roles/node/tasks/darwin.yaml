@@ -10,3 +10,9 @@
     name: nodemon
     global: yes
     state: present
+
+- name: Install pi-coding-agent globally
+  npm:
+    name: "@mariozechner/pi-coding-agent"
+    global: yes
+    state: present
