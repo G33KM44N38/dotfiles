@@ -109,8 +109,9 @@ type row struct {
 type pickerAction string
 
 const (
-	pickerActionNone             pickerAction = ""
-	pickerActionOpenWorktreeMenu pickerAction = "open-worktree-menu"
+	pickerActionNone                pickerAction = ""
+	pickerActionOpenWorktreeMenu    pickerAction = "open-worktree-menu"
+	pickerActionOpenHerdrWorkspaces pickerAction = "open-herdr-workspaces"
 )
 
 type pickerModel struct {
@@ -377,6 +378,23 @@ func (a *app) isHerdrMode() bool {
 func (a *app) runHerdr() error {
 	a.initColors()
 
+	switch a.mode {
+	case "--toggle-pin":
+		return a.toggleMetadataLineAndNotify(a.pinFile, arg(a.args, 1))
+	case "--toggle-archive":
+		return a.toggleMetadataLineAndNotify(a.archiveFile, arg(a.args, 1))
+	case "--set-title":
+		return a.setTitle(arg(a.args, 1), arg(a.args, 2))
+	case "--edit-title":
+		return a.editTitle(arg(a.args, 1))
+	case "--regen-title":
+		return a.regenerateHerdrTitle(arg(a.args, 1), arg(a.args, 2))
+	case "--ensure-title":
+		return a.ensureGeneratedHerdrTitleNow(arg(a.args, 1), arg(a.args, 2), arg(a.args, 3), arg(a.args, 4))
+	case "--herdr-close":
+		return a.closeHerdrTarget(arg(a.args, 1), arg(a.args, 2))
+	}
+
 	tmp, err := os.MkdirTemp(os.Getenv("TMPDIR"), "herdr-thread-picker.*")
 	if err != nil {
 		return err
@@ -451,6 +469,8 @@ func (a *app) herdrWorkspaceRows() ([]row, error) {
 
 	groups := map[string]*workspaceGroup{}
 	groupOrder := []string{}
+	openWorktreePaths := map[string]bool{}
+	worktreeListWorkspaceIDs := []string{}
 	addGroupRow := func(key, label string, index int, r row) {
 		group, ok := groups[key]
 		if !ok {
@@ -482,7 +502,12 @@ func (a *app) herdrWorkspaceRows() ([]row, error) {
 			repoName := firstNonEmpty(jsonString(wt, "repo_name"), filepath.Base(repoRoot), "Repo")
 			groupKey = "repo:" + firstNonEmpty(repoRoot, repoName)
 			groupLabel = repoName
-			branch = filepath.Base(jsonString(wt, "checkout_path"))
+			worktreeListWorkspaceIDs = append(worktreeListWorkspaceIDs, id)
+			checkoutPath := jsonString(wt, "checkout_path")
+			if checkoutPath != "" {
+				openWorktreePaths[cleanAbs(checkoutPath)] = true
+			}
+			branch = filepath.Base(checkoutPath)
 			detail = kind
 		}
 		rowSignal := "codex_open"
@@ -500,6 +525,50 @@ func (a *app) herdrWorkspaceRows() ([]row, error) {
 		}
 		r.search = strings.Join([]string{label, id, status, kind, branch, detail, groupLabel}, " ")
 		addGroupRow(groupKey, groupLabel, index, r)
+	}
+
+	seenWorktreePaths := map[string]bool{}
+	addWorktreeListRows := func(data map[string]any, offset int) int {
+		source := jsonMap(jsonMap(data, "result"), "source")
+		fallbackRepoRoot := jsonString(source, "repo_root")
+		fallbackRepoName := firstNonEmpty(jsonString(source, "repo_name"), filepath.Base(fallbackRepoRoot), "Repo")
+		for index, item := range jsonArray(jsonMap(data, "result"), "worktrees") {
+			wt := item.(map[string]any)
+			path := jsonString(wt, "path")
+			cleanPath := cleanAbs(path)
+			if path == "" || seenWorktreePaths[cleanPath] || openWorktreePaths[cleanPath] || jsonString(wt, "open_workspace_id") != "" {
+				continue
+			}
+			seenWorktreePaths[cleanPath] = true
+			repoLabel := firstNonEmpty(jsonString(wt, "label"), fallbackRepoName)
+			repoLabel = strings.TrimSuffix(repoLabel, ".git")
+			branch := firstNonEmpty(jsonString(wt, "branch"), filepath.Base(path))
+			detail := a.projectRelativePath(path)
+			if detail == "" {
+				detail = path
+			}
+			r, ok := a.emitRow("WT", "work", branch, path, filepath.Base(path), path, path, repoLabel, path, "work", "", detail, "")
+			if !ok {
+				continue
+			}
+			r.search = strings.Join([]string{"herdr worktree closed", repoLabel, branch, path, detail}, " ")
+			groupKey := "repo:" + firstNonEmpty(fallbackRepoRoot, repoLabel)
+			addGroupRow(groupKey, repoLabel, len(workspaces)+offset+index, r)
+		}
+		return len(jsonArray(jsonMap(data, "result"), "worktrees"))
+	}
+	offset := 0
+	for _, workspaceID := range unique(worktreeListWorkspaceIDs) {
+		data, err := a.herdrJSON("worktree", "list", "--workspace", workspaceID, "--json")
+		if err != nil {
+			continue
+		}
+		offset += addWorktreeListRows(data, offset)
+	}
+	if len(worktreeListWorkspaceIDs) == 0 {
+		if data, err := a.herdrJSON("worktree", "list", "--json"); err == nil {
+			addWorktreeListRows(data, offset)
+		}
 	}
 
 	sort.Slice(groupOrder, func(i, j int) bool {
@@ -580,8 +649,9 @@ func (a *app) herdrAgentRows() ([]row, error) {
 			})
 		}
 		paneID := jsonString(agent, "pane_id")
+		sessionID := herdrAgentSessionID(agent)
 		status := firstNonEmpty(jsonString(agent, "agent_status"), "unknown")
-		name := firstNonEmpty(jsonString(agent, "name"), jsonString(agent, "agent"), "agent")
+		name := firstNonEmpty(jsonString(agent, "name"), a.codexHistoryTitle(sessionID), jsonString(agent, "agent"), "agent")
 		cwd := firstNonEmpty(jsonString(agent, "foreground_cwd"), jsonString(agent, "cwd"))
 		branch := ""
 		if a.gitBin != "" && cwd != "" {
@@ -600,14 +670,43 @@ func (a *app) herdrAgentRows() ([]row, error) {
 		} else if status == "blocked" {
 			rowSignal = "codex_done"
 		}
-		r, ok := a.emitRow("HERDR_AGENT", status, branch, paneID, name, cwd, paneID, workspace, "herdr-agent:"+paneID, rowSignal, "", detail, "")
+		pinKey := "herdr-agent:" + paneID
+		if sessionID != "" {
+			pinKey = "codex:" + sessionID
+		}
+		a.ensureGeneratedHerdrTitle(pinKey, paneID, cwd, name)
+		r, ok := a.emitRow("HERDR_AGENT", status, branch, paneID, name, cwd, paneID, workspace, pinKey, rowSignal, "", detail, "")
 		if !ok {
 			continue
 		}
-		r.search = strings.Join([]string{workspace, name, status, cwd, branch, paneID}, " ")
+		if strings.HasPrefix(pinKey, "codex:") {
+			r.search = a.codexSearchForKey(pinKey)
+		}
+		r.search = strings.Join([]string{r.search, workspace, name, status, cwd, branch, paneID, sessionID}, " ")
 		rows = append(rows, r)
 	}
+	if historyRows := a.emitCodexHistoryRows(rows); len(historyRows) > 0 {
+		sort.Slice(historyRows, func(i, j int) bool { return historyRows[i].sortKey < historyRows[j].sortKey })
+		rows = append(rows, row{
+			kind:    "GROUP",
+			display: a.colorText(a.c.bold, "Codex History"),
+			project: "Codex History",
+			search:  "codex history closed archived",
+		})
+		rows = append(rows, historyRows...)
+	}
 	return a.addGroupSearchColumn(rows), nil
+}
+
+func herdrAgentSessionID(agent map[string]any) string {
+	session := jsonMap(agent, "agent_session")
+	if jsonString(session, "kind") != "" && jsonString(session, "kind") != "id" {
+		return ""
+	}
+	if source := jsonString(session, "source"); source != "" && !strings.Contains(strings.ToLower(source), "codex") {
+		return ""
+	}
+	return jsonString(session, "value")
 }
 
 func herdrStatusRank(status string) int {
@@ -986,6 +1085,11 @@ func (a *app) setTitle(key, title string) error {
 		_ = a.notifyFZF()
 		return nil
 	}
+	if a.isHerdrMode() {
+		if err := a.setHerdrTitle(key, title); err != nil {
+			return err
+		}
+	}
 	if err := os.MkdirAll(a.stateDir, 0o755); err != nil {
 		return err
 	}
@@ -1036,6 +1140,31 @@ func (a *app) setCodexInternalTitle(key, title string) (bool, error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+func (a *app) setHerdrTitle(key, title string) error {
+	if a.herdrBin == "" {
+		return nil
+	}
+	switch {
+	case strings.HasPrefix(key, "herdr-workspace:"):
+		id := strings.TrimPrefix(key, "herdr-workspace:")
+		if id == "" || title == "" {
+			return nil
+		}
+		return exec.Command(a.herdrBin, "workspace", "rename", id, title).Run()
+	case strings.HasPrefix(key, "herdr-agent:"):
+		target := strings.TrimPrefix(key, "herdr-agent:")
+		if target == "" {
+			return nil
+		}
+		if title == "" {
+			return exec.Command(a.herdrBin, "agent", "rename", target, "--clear").Run()
+		}
+		return exec.Command(a.herdrBin, "agent", "rename", target, title).Run()
+	default:
+		return nil
+	}
 }
 
 func (a *app) clearTitleInFile(path, key string) error {
@@ -1478,7 +1607,7 @@ func (a *app) secondaryPathMatchesPane(panePath, taggedPath string) bool {
 func (a *app) emitCodexHistoryRows(openRows []row) []row {
 	open := map[string]bool{}
 	for _, r := range openRows {
-		if r.kind == "OPEN" && strings.HasPrefix(r.pinKey, "codex:") {
+		if r.kind != "HIST" && strings.HasPrefix(r.pinKey, "codex:") {
 			open[r.pinKey] = true
 		}
 	}
@@ -2139,6 +2268,73 @@ func (a *app) ensureGeneratedTitleNow(key, paneID, path, fallback string) error 
 	}
 	_ = a.notifyFZF()
 	return nil
+}
+
+func (a *app) ensureGeneratedHerdrTitle(key, paneID, path, fallback string) {
+	if key == "" || paneID == "" || a.hasManualTitle(key) {
+		return
+	}
+	if existing := a.autoTitle(key); existing != "" && !looksLikeWeakCodexTitle(existing) {
+		return
+	}
+	if a.mode == "pick" || a.mode == "--workspaces" {
+		a.ensureGeneratedTitleBackground(key, paneID, path, fallback)
+		return
+	}
+	_ = a.ensureGeneratedHerdrTitleNow(key, paneID, path, fallback)
+}
+
+func (a *app) ensureGeneratedHerdrTitleNow(key, paneID, path, fallback string) error {
+	if key == "" || paneID == "" || a.hasManualTitle(key) {
+		return nil
+	}
+	if lock := a.titleLockPath(key); lock != "" {
+		defer os.Remove(lock)
+	}
+	if existing := a.autoTitle(key); existing != "" && !looksLikeWeakCodexTitle(existing) {
+		return nil
+	}
+	title := ""
+	if strings.HasPrefix(key, "codex:") {
+		title = a.codexLocalThreadTitle(strings.TrimPrefix(key, "codex:"))
+	}
+	captured := ""
+	if title == "" {
+		captured = a.herdrAgentText(paneID)
+		title = codexTitleFromText(captured)
+	}
+	if title == "" && os.Getenv("TMUX_THREAD_AI_TITLE") != "0" {
+		title = a.summarizePaneSubject(captured, fallback)
+	}
+	title = cleanGeneratedTitle(firstNonEmpty(title, fallback))
+	if title == "" || title == fallback {
+		return nil
+	}
+	return a.setGeneratedTitle(key, title)
+}
+
+func (a *app) regenerateHerdrTitle(key, target string) error {
+	if key == "" {
+		return nil
+	}
+	_ = a.clearTitleInFile(a.titleFile, key)
+	_ = a.clearTitleInFile(a.autoTitleFile, key)
+	return a.ensureGeneratedHerdrTitleNow(key, target, "", "")
+}
+
+func (a *app) herdrAgentText(target string) string {
+	if a.herdrBin == "" || target == "" {
+		return ""
+	}
+	lines := strconv.Itoa(getenvInt("TMUX_THREAD_TITLE_CAPTURE_LINES", 220))
+	cmd := exec.Command(a.herdrBin, "agent", "read", target, "--source", "recent", "--lines", lines, "--format", "text")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = io.Discard
+	if cmd.Run() != nil {
+		return ""
+	}
+	return out.String()
 }
 
 func (a *app) titleLockPath(key string) string {
@@ -3890,12 +4086,18 @@ func (a *app) pick() error {
 			script := filepath.Join(a.home, ".dotfiles", "bin", "tmux-select-worktree.sh")
 			return syscall.Exec(script, []string{script}, os.Environ())
 		}
+		if ok && model.action == pickerActionOpenHerdrWorkspaces {
+			return syscall.Exec(a.self, []string{a.self, "--workspaces"}, os.Environ())
+		}
 		return nil
 	}
 	switch model.selected.kind {
 	case "GROUP", "WIN":
 		return nil
 	case "NEW":
+		if a.isHerdrMode() {
+			return a.createNewHerdrWorktree(model.selected)
+		}
 		return a.createNewThread(model.selected.pinKey)
 	case "PICK":
 		script := filepath.Join(a.home, ".dotfiles", "bin", "tmux-select-worktree.sh")
@@ -3909,8 +4111,14 @@ func (a *app) pick() error {
 		return a.openHerdrWorkspace(model.selected.target)
 	case "HIST":
 		_ = a.markSeenFinishedForSelection(model.selected.target, model.selected.pinKey)
+		if a.isHerdrMode() {
+			return a.openHerdrCodexHistoryThread(strings.TrimPrefix(model.selected.pinKey, "codex:"), model.selected.target)
+		}
 		return a.openCodexHistoryThread(strings.TrimPrefix(model.selected.pinKey, "codex:"), model.selected.target)
 	case "WT":
+		if a.isHerdrMode() {
+			return a.openHerdrWorktree(model.selected.target)
+		}
 		return a.openThreadWindow(model.selected.target, model.selected.branch)
 	default:
 		return errors.New("thread picker: invalid selection")
@@ -3929,6 +4137,91 @@ func (a *app) openHerdrWorkspace(target string) error {
 		return nil
 	}
 	return exec.Command(a.herdrBin, "workspace", "focus", target).Run()
+}
+
+func (a *app) openHerdrWorktree(path string) error {
+	if path == "" {
+		return nil
+	}
+	if workspaceID := a.herdrWorktreeSourceWorkspace(path); workspaceID != "" {
+		return exec.Command(a.herdrBin, "worktree", "open", "--workspace", workspaceID, "--path", path, "--focus").Run()
+	}
+	return exec.Command(a.herdrBin, "worktree", "open", "--cwd", path, "--path", path, "--focus").Run()
+}
+
+func (a *app) herdrWorktreeSourceWorkspace(path string) string {
+	data, err := a.herdrJSON("worktree", "list", "--cwd", path, "--json")
+	if err != nil {
+		return ""
+	}
+	source := jsonMap(jsonMap(data, "result"), "source")
+	return jsonString(source, "source_workspace_id")
+}
+
+func (a *app) openHerdrCodexHistoryThread(sessionID, cwd string) error {
+	sessionID = strings.TrimSpace(sessionID)
+	if sessionID == "" {
+		return nil
+	}
+	codexBin := lookPath("codex")
+	if codexBin == "" {
+		return errors.New("thread picker: codex not found in PATH")
+	}
+	if cwd == "" || !isDir(cwd) {
+		cwd = a.home
+	}
+	historyTitle := firstNonEmpty(a.codexHistoryTitle(sessionID), filepath.Base(cwd))
+	title := cleanGeneratedTitle(a.threadTitle("codex:"+sessionID, historyTitle))
+	if title == "" {
+		title = "codex"
+	}
+	return exec.Command(a.herdrBin, "agent", "start", title, "--cwd", cwd, "--focus", "--", codexBin, "resume", sessionID).Run()
+}
+
+func (a *app) createNewHerdrWorktree(source row) error {
+	if a.fzfBin == "" {
+		return errors.New("thread picker: fzf not found in PATH")
+	}
+	title, _ := runInput(a.fzfBin, nil, "--prompt=herdr worktree title > ", "--print-query", "--height=100%", "--border", "--no-info", "--phony", "--bind", "enter:accept-or-print-query")
+	title = strings.Split(title, "\n")[0]
+	if title == "" {
+		return nil
+	}
+	branch := sanitizeBranchPath(title)
+	args := []string{"worktree", "create", "--branch", branch, "--label", title, "--focus"}
+	switch {
+	case isDir(source.pinKey):
+		args = append(args, "--cwd", source.pinKey)
+	case isDir(source.target):
+		args = append(args, "--cwd", source.target)
+	case strings.HasPrefix(source.pinKey, "herdr-workspace:"):
+		args = append(args, "--workspace", strings.TrimPrefix(source.pinKey, "herdr-workspace:"))
+	case strings.Contains(source.target, ":"):
+		args = append(args, "--workspace", strings.SplitN(source.target, ":", 2)[0])
+	case strings.HasPrefix(source.target, "w"):
+		args = append(args, "--workspace", source.target)
+	}
+	return exec.Command(a.herdrBin, args...).Run()
+}
+
+func (a *app) closeHerdrTarget(kind, target string) error {
+	if a.herdrBin == "" || target == "" {
+		return nil
+	}
+	switch kind {
+	case "HERDR_WORKSPACE":
+		if !confirmTTY("Close Herdr workspace " + target + "? type close: ") {
+			return nil
+		}
+		return exec.Command(a.herdrBin, "workspace", "close", target).Run()
+	case "HERDR_AGENT":
+		if !confirmTTY("Close Herdr agent pane " + target + "? type close: ") {
+			return nil
+		}
+		return exec.Command(a.herdrBin, "pane", "close", target).Run()
+	default:
+		return nil
+	}
 }
 
 func newPickerModel(a *app, rows []row, archiveAction, sourceTarget string) pickerModel {
@@ -4010,7 +4303,7 @@ func (m pickerModel) View() string {
 	)
 	footer := "Ctrl-n new | Ctrl-r refresh | Ctrl-o worktrees | Ctrl-p pin | Ctrl-t rename | Ctrl-y auto-title | Ctrl-x " + m.archiveAction + " | Ctrl-q/Alt-q close | Alt-f all | Alt-v archived | Enter open"
 	if m.app.isHerdrMode() {
-		footer = "Ctrl-r refresh | Ctrl-p pin | Ctrl-x " + m.archiveAction + " | Alt-f all | Alt-v archived | Enter focus"
+		footer = "Ctrl-n new | Ctrl-r refresh | Ctrl-o worktrees | Ctrl-p pin | Ctrl-t rename | Ctrl-y auto-title | Ctrl-x " + m.archiveAction + " | Ctrl-q close | Alt-f all | Alt-v archived | Enter focus"
 	}
 	available := height - 7
 	if available < 1 {
@@ -4116,39 +4409,41 @@ func (m pickerModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		cmd := exec.Command(m.app.self, "--edit-title", key)
 		return m, tea.ExecProcess(cmd, func(error) tea.Msg { return pickerExecDoneMsg{} })
 	case "ctrl+y":
-		if m.app.isHerdrMode() {
-			return m, nil
-		}
 		if !m.currentSelectable() {
 			return m, nil
 		}
 		r := m.rows[m.cursor]
+		if m.app.isHerdrMode() {
+			return m, tea.Sequence(m.execSilent(func() { _ = m.app.regenerateHerdrTitle(r.pinKey, r.target) }), m.fullRowsCmd())
+		}
 		return m, tea.Sequence(m.execSilent(func() { _ = m.app.regenerateTitle(r.pinKey, r.target) }), m.fullRowsCmd())
 	case "ctrl+n":
-		if m.app.isHerdrMode() {
-			return m, nil
-		}
 		if !m.currentSelectable() {
 			return m, nil
 		}
-		m.selected = row{kind: "NEW", pinKey: m.rows[m.cursor].pinKey}
+		m.selected = m.rows[m.cursor]
+		m.selected.kind = "NEW"
 		m.quitting = true
 		return m, tea.Quit
 	case "ctrl+o":
 		if m.app.isHerdrMode() {
-			return m, nil
+			m.action = pickerActionOpenHerdrWorkspaces
+			m.quitting = true
+			return m, tea.Quit
 		}
 		m.action = pickerActionOpenWorktreeMenu
 		m.quitting = true
 		return m, tea.Quit
 	case "ctrl+q", "alt+q":
-		if m.app.isHerdrMode() {
-			return m, nil
-		}
 		if !m.currentSelectable() {
 			return m, nil
 		}
 		r := m.rows[m.cursor]
+		if m.app.isHerdrMode() {
+			cmd := exec.Command(m.app.self, "--herdr-close", r.kind, r.target)
+			cmd.Env = append(os.Environ(), "TMUX_THREAD_PICKER_ENTRYPOINT="+m.app.self)
+			return m, tea.Sequence(tea.ExecProcess(cmd, func(error) tea.Msg { return pickerExecDoneMsg{} }), m.fullRowsCmd())
+		}
 		cmd := exec.Command(m.app.self, "--kill-window", r.kind, r.target, m.sourceTarget)
 		cmd.Env = append(os.Environ(), "TMUX_THREAD_PICKER_ENTRYPOINT="+m.app.self)
 		return m, tea.Sequence(tea.ExecProcess(cmd, func(error) tea.Msg { return pickerExecDoneMsg{} }), m.fullRowsCmd())
@@ -5000,6 +5295,17 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func confirmTTY(prompt string) bool {
+	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	if err != nil {
+		return false
+	}
+	defer tty.Close()
+	fmt.Fprint(tty, prompt)
+	answer, _ := bufio.NewReader(tty).ReadString('\n')
+	return strings.TrimSpace(strings.ToLower(answer)) == "close"
 }
 
 func isCodexTitleKey(key string) bool {

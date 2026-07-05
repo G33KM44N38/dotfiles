@@ -1,11 +1,30 @@
 #!/usr/bin/env python3
 import json
+import fcntl
 import os
 import subprocess
 import sys
 
 
 ROLES = ["editor", "agent", "process", "terminal"]
+LOCK_DIR = "/tmp/herdr-workflow-tabs"
+DEFAULT_COMMANDS = {
+    "editor": "nvim .",
+    "agent": "codex",
+    "process": "",
+    "terminal": "",
+}
+SHELL_NAMES = {"bash", "fish", "sh", "zsh"}
+AGENT_PROCESS_NAMES = {
+    "claude",
+    "codex",
+    "devin",
+    "hermes",
+    "kimi",
+    "kilo",
+    "opencode",
+    "qodercli",
+}
 
 
 def herdr(*args):
@@ -18,7 +37,14 @@ def herdr(*args):
     )
     if result.returncode != 0:
         raise SystemExit(result.stderr.strip() or result.stdout.strip())
+    if not result.stdout.strip():
+        return {}
     return json.loads(result.stdout)
+
+
+def command_for(role):
+    key = f"HERDR_WORKFLOW_{role.upper()}_CMD"
+    return os.environ.get(key, DEFAULT_COMMANDS[role]).strip()
 
 
 def find_workspace_id(value):
@@ -49,10 +75,31 @@ def context_workspace_id():
     return herdr("pane", "current")["result"]["pane"]["workspace_id"]
 
 
-def main():
-    workspace_id = context_workspace_id()
+def workspace_cwd(workspace_id, panes):
+    workspace = herdr("workspace", "get", workspace_id)["result"]["workspace"]
+    worktree = workspace.get("worktree")
+    if isinstance(worktree, dict) and worktree.get("checkout_path"):
+        return worktree["checkout_path"]
+
+    for pane in panes:
+        if pane.get("workspace_id") == workspace_id and pane.get("cwd"):
+            return pane["cwd"]
+
+    return os.getcwd()
+
+
+def labels_by_role(tabs):
+    labels = {}
+    for tab in sorted(tabs, key=lambda item: item.get("number", 0)):
+        label = (tab.get("label") or "").lower()
+        if label in ROLES and label not in labels:
+            labels[label] = tab
+    return labels
+
+
+def ensure_tabs(workspace_id, cwd):
     tabs = herdr("tab", "list", "--workspace", workspace_id)["result"]["tabs"]
-    labels = {(tab.get("label") or "").lower(): tab for tab in tabs}
+    labels = labels_by_role(tabs)
 
     if "editor" not in labels:
         reusable = None
@@ -60,14 +107,117 @@ def main():
             reusable = tabs[0]
         if reusable:
             herdr("tab", "rename", reusable["tab_id"], "editor")
-            labels["editor"] = reusable
+            labels["editor"] = {**reusable, "label": "editor"}
         else:
-            created = herdr("tab", "create", "--workspace", workspace_id, "--label", "editor", "--no-focus")
+            created = herdr(
+                "tab",
+                "create",
+                "--workspace",
+                workspace_id,
+                "--cwd",
+                cwd,
+                "--label",
+                "editor",
+                "--no-focus",
+            )
             labels["editor"] = created["result"]["tab"]
 
     for role in ROLES[1:]:
         if role not in labels:
-            herdr("tab", "create", "--workspace", workspace_id, "--label", role, "--no-focus")
+            created = herdr(
+                "tab",
+                "create",
+                "--workspace",
+                workspace_id,
+                "--cwd",
+                cwd,
+                "--label",
+                role,
+                "--no-focus",
+            )
+            labels[role] = created["result"]["tab"]
+
+    return labels
+
+
+def lock_workspace(workspace_id):
+    os.makedirs(LOCK_DIR, exist_ok=True)
+    lock_file = open(os.path.join(LOCK_DIR, f"{workspace_id}.lock"), "w")
+    fcntl.flock(lock_file, fcntl.LOCK_EX)
+    return lock_file
+
+
+def panes_by_tab(workspace_id):
+    panes = herdr("pane", "list", "--workspace", workspace_id)["result"]["panes"]
+    by_tab = {}
+    for pane in panes:
+        by_tab.setdefault(pane.get("tab_id"), []).append(pane)
+    return by_tab
+
+
+def foreground_processes(pane_id):
+    info = herdr("pane", "process-info", "--pane", pane_id)["result"]["process_info"]
+    return info.get("foreground_processes") or []
+
+
+def process_name(process):
+    name = process.get("name") or process.get("argv0") or ""
+    return os.path.basename(name).lstrip("-").lower()
+
+
+def is_shell_ready(pane, processes):
+    if pane.get("agent"):
+        return False
+    if len(processes) != 1:
+        return False
+    return process_name(processes[0]) in SHELL_NAMES
+
+
+def has_agent_process(panes):
+    for pane in panes:
+        if pane.get("agent"):
+            return True
+        for process in foreground_processes(pane["pane_id"]):
+            if process_name(process) in AGENT_PROCESS_NAMES:
+                return True
+    return False
+
+
+def maybe_run_default(role, panes):
+    command = command_for(role)
+    if not command:
+        return
+    if not panes:
+        return
+    if role == "agent" and has_agent_process(panes):
+        return
+    if len(panes) != 1:
+        return
+
+    pane = panes[0]
+    processes = foreground_processes(pane["pane_id"])
+    if is_shell_ready(pane, processes):
+        herdr("pane", "run", pane["pane_id"], command)
+
+
+def main():
+    workspace_id = context_workspace_id()
+    lock_file = lock_workspace(workspace_id)
+    try:
+        return bootstrap_workspace(workspace_id)
+    finally:
+        fcntl.flock(lock_file, fcntl.LOCK_UN)
+        lock_file.close()
+
+
+def bootstrap_workspace(workspace_id):
+    initial_panes = herdr("pane", "list", "--workspace", workspace_id)["result"]["panes"]
+    cwd = workspace_cwd(workspace_id, initial_panes)
+    labels = ensure_tabs(workspace_id, cwd)
+    panes = panes_by_tab(workspace_id)
+
+    for role in ROLES:
+        maybe_run_default(role, panes.get(labels[role]["tab_id"], []))
 
     return 0
 

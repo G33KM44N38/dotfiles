@@ -1,0 +1,249 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+
+def fail(message: str, code: int = 1) -> None:
+    print(f"herdr-worktree: {message}", file=sys.stderr)
+    raise SystemExit(code)
+
+
+def run(args, *, check=True, text=True):
+    result = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=text)
+    if check and result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip()
+        fail(f"{' '.join(args)} failed: {detail}")
+    return result
+
+
+def git(path: str, *args: str, check=False) -> str:
+    result = run(["git", "-C", path, *args], check=check)
+    if result.returncode != 0:
+        return ""
+    return result.stdout.strip()
+
+
+def herdr_json(*args: str):
+    result = run(["herdr", *args], check=True)
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        fail(f"invalid herdr JSON from {' '.join(args)}: {exc}")
+
+
+def normalize_existing_path(path: str) -> str:
+    current = Path(path).expanduser()
+    if not current.is_absolute():
+        current = Path.cwd() / current
+    while not current.exists() and current != current.parent:
+        current = current.parent
+    if not current.exists():
+        return ""
+    return str(current.resolve())
+
+
+def herdr_current_context() -> tuple[str, str]:
+    try:
+        data = herdr_json("pane", "current")
+        pane = data.get("result", {}).get("pane", {})
+        cwd = pane.get("foreground_cwd") or pane.get("cwd") or ""
+        workspace_id = pane.get("workspace_id") or ""
+        return cwd, workspace_id
+    except SystemExit:
+        return "", ""
+
+
+def workspace_worktree_path(workspace_id: str) -> str:
+    if not workspace_id:
+        return ""
+    try:
+        data = herdr_json("workspace", "get", workspace_id)
+    except SystemExit:
+        return ""
+    worktree = data.get("result", {}).get("workspace", {}).get("worktree", {})
+    return worktree.get("checkout_path") or worktree.get("repo_root") or ""
+
+
+def source_path(explicit: str | None) -> str:
+    candidates = []
+    if explicit:
+        path = normalize_existing_path(explicit)
+        if path:
+            return path
+        fail(f"invalid source path: {explicit}")
+    current_cwd, current_workspace = herdr_current_context()
+    if current_cwd:
+        candidates.append(current_cwd)
+    workspace_path = workspace_worktree_path(current_workspace)
+    if workspace_path:
+        candidates.append(workspace_path)
+    candidates.append(os.environ.get("PWD", ""))
+    candidates.append(os.getcwd())
+
+    normalized_candidates = []
+    for candidate in candidates:
+        if not candidate:
+            continue
+        path = normalize_existing_path(candidate)
+        if path:
+            normalized_candidates.append(path)
+            if git(path, "rev-parse", "--git-common-dir"):
+                return path
+    if normalized_candidates:
+        return normalized_candidates[0]
+    fail("unable to resolve source path")
+
+
+def resolve_repo_root(path: str) -> str:
+    common_dir = git(path, "rev-parse", "--git-common-dir")
+    if common_dir:
+        if not os.path.isabs(common_dir):
+            common_dir = str((Path(path) / common_dir).resolve())
+        if Path(common_dir).is_dir():
+            if git(common_dir, "rev-parse", "--is-bare-repository") == "true":
+                return common_dir
+            top = git(path, "rev-parse", "--show-toplevel")
+            if top:
+                return str(Path(top).resolve())
+
+    top = git(path, "rev-parse", "--show-toplevel")
+    if top:
+        return str(Path(top).resolve())
+    fail(f"not in a git repository: {path}")
+
+
+def worktree_rows(repo_root: str) -> list[dict]:
+    data = herdr_json("worktree", "list", "--cwd", repo_root, "--json")
+    return data.get("result", {}).get("worktrees", [])
+
+
+def workspace_rows() -> list[dict]:
+    data = herdr_json("workspace", "list")
+    return data.get("result", {}).get("workspaces", [])
+
+
+def find_workspace_by_path(target_path: str) -> dict | None:
+    target = str(Path(target_path).resolve())
+    for workspace in workspace_rows():
+        worktree = workspace.get("worktree") or {}
+        checkout_path = worktree.get("checkout_path")
+        if checkout_path and str(Path(checkout_path).resolve()) == target:
+            return workspace
+    return None
+
+
+def find_worktree_by_branch(repo_root: str, branch: str) -> dict | None:
+    for item in worktree_rows(repo_root):
+        if item.get("branch") == branch and item.get("path"):
+            return item
+    return None
+
+
+def label_for(repo_root: str, target_path: str, branch: str | None) -> str:
+    if branch:
+        return branch.split("/")[-1] or branch
+    if Path(target_path).resolve() == Path(repo_root).resolve():
+        name = Path(repo_root).name
+        return name[:-4] if name.endswith(".git") else name
+    return Path(target_path).name
+
+
+def focus_or_open(repo_root: str, target_path: str, branch: str | None, *, dry_run=False) -> None:
+    workspace = find_workspace_by_path(target_path)
+    if workspace:
+        workspace_id = workspace.get("workspace_id", "")
+        if dry_run:
+            print(f"focus\t{workspace_id}\t{target_path}\t{workspace.get('label', '')}")
+            return
+        run(["herdr", "workspace", "focus", workspace_id], check=True)
+        return
+
+    if dry_run:
+        print(f"open\t\t{target_path}\t{label_for(repo_root, target_path, branch)}")
+        return
+
+    label = label_for(repo_root, target_path, branch)
+    result = run(
+        [
+            "herdr",
+            "worktree",
+            "open",
+            "--cwd",
+            repo_root,
+            "--path",
+            target_path,
+            "--label",
+            label,
+            "--focus",
+            "--json",
+        ],
+        check=False,
+    )
+    if result.returncode == 0:
+        return
+
+    fallback = run(
+        ["herdr", "workspace", "create", "--cwd", target_path, "--label", label, "--focus"],
+        check=False,
+    )
+    if fallback.returncode != 0:
+        detail = result.stderr.strip() or fallback.stderr.strip()
+        fail(f"failed to open workspace for {target_path}: {detail}")
+
+
+def resolve_root(repo_root: str) -> tuple[str, str | None]:
+    return repo_root, None
+
+
+def resolve_slot(repo_root: str, slot: str) -> tuple[str, str | None]:
+    selector = git(repo_root, "config", "--get", f"tmux.worktree.{slot}") or slot
+
+    candidates = []
+    if os.path.isabs(selector):
+        candidates.append(selector)
+    candidates.append(str(Path(repo_root) / selector))
+    candidates.append(str(Path(repo_root).parent / selector))
+    for candidate in candidates:
+        if Path(candidate).is_dir():
+            branch = git(candidate, "branch", "--show-current") or selector
+            return str(Path(candidate).resolve()), branch
+
+    item = find_worktree_by_branch(repo_root, selector)
+    if item and item.get("path"):
+        return str(Path(item["path"]).resolve()), selector
+
+    fail(f"no worktree or local branch found for {slot} selector '{selector}'")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Focus/open Herdr workspaces for git worktrees.")
+    parser.add_argument("target", choices=["root", "main", "release"])
+    parser.add_argument("path", nargs="?", help="source repo/worktree path")
+    parser.add_argument("--dry-run", action="store_true", help="print the planned Herdr action without focusing or creating")
+    args = parser.parse_args()
+
+    if not shutil.which("herdr"):
+        fail("herdr not found in PATH")
+    if not shutil.which("git"):
+        fail("git not found in PATH")
+
+    source = source_path(args.path)
+    repo_root = resolve_repo_root(source)
+    if args.target == "root":
+        target_path, branch = resolve_root(repo_root)
+    else:
+        target_path, branch = resolve_slot(repo_root, args.target)
+
+    if not Path(target_path).is_dir():
+        fail(f"target worktree path does not exist: {target_path}")
+
+    focus_or_open(repo_root, target_path, branch, dry_run=args.dry_run)
+
+
+if __name__ == "__main__":
+    main()

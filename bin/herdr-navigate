@@ -1,0 +1,125 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+
+def fail(message: str, code: int = 1) -> None:
+    print(f"herdr-navigate: {message}", file=sys.stderr)
+    raise SystemExit(code)
+
+
+def run(args, *, check=True):
+    result = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if check and result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip()
+        fail(f"{' '.join(args)} failed: {detail}")
+    return result
+
+
+def herdr_json(*args: str):
+    result = run(["herdr", *args])
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        fail(f"invalid herdr JSON from {' '.join(args)}: {exc}")
+
+
+def normalize(path: str) -> Path:
+    resolved = Path(path).expanduser()
+    if not resolved.is_absolute():
+        resolved = Path.cwd() / resolved
+    return resolved.resolve()
+
+
+def workspace_git_paths(workspace: dict) -> tuple[set[str], set[str], bool]:
+    checkout_paths = set()
+    repo_paths = set()
+    worktree = workspace.get("worktree") or {}
+    if worktree.get("checkout_path"):
+        checkout_paths.add(str(normalize(worktree["checkout_path"])))
+    for key in ("repo_root", "repo_key"):
+        if worktree.get(key):
+            repo_paths.add(str(normalize(worktree[key])))
+    return checkout_paths, repo_paths, bool(worktree.get("is_linked_worktree"))
+
+
+def pane_workspace_paths() -> dict[str, set[str]]:
+    paths: dict[str, set[str]] = {}
+    try:
+        data = herdr_json("pane", "list")
+    except SystemExit:
+        return paths
+    for pane in data.get("result", {}).get("panes", []):
+        workspace_id = pane.get("workspace_id") or ""
+        if not workspace_id:
+            continue
+        for key in ("foreground_cwd", "cwd"):
+            value = pane.get(key)
+            if value:
+                paths.setdefault(workspace_id, set()).add(str(normalize(value)))
+    return paths
+
+
+def label_for(path: Path) -> str:
+    name = path.name
+    return name[:-4] if name.endswith(".git") else name
+
+
+def focus_or_create(path: Path, *, dry_run: bool) -> None:
+    target = str(path)
+    data = herdr_json("workspace", "list")
+    workspaces = data.get("result", {}).get("workspaces", [])
+    pane_paths = pane_workspace_paths()
+
+    matches: list[tuple[int, dict]] = []
+    for workspace in workspaces:
+        workspace_id = workspace.get("workspace_id", "")
+        checkout_paths, repo_paths, linked_worktree = workspace_git_paths(workspace)
+        if target in checkout_paths and not linked_worktree:
+            matches.append((0, workspace))
+        elif target in checkout_paths:
+            matches.append((1, workspace))
+        elif target in pane_paths.get(workspace_id, set()):
+            matches.append((2, workspace))
+        elif target in repo_paths and not linked_worktree:
+            matches.append((3, workspace))
+
+    if matches:
+        _, workspace = sorted(matches, key=lambda item: item[0])[0]
+        workspace_id = workspace.get("workspace_id", "")
+        if dry_run:
+            print(f"focus\t{workspace_id}\t{target}\t{workspace.get('label', '')}")
+            return
+        run(["herdr", "workspace", "focus", workspace_id])
+        return
+
+    if dry_run:
+        print(f"create\t\t{target}\t{label_for(path)}")
+        return
+    run(["herdr", "workspace", "create", "--cwd", target, "--label", label_for(path), "--focus"])
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Focus or create a Herdr workspace for a favorite path.")
+    parser.add_argument("path")
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args()
+
+    if not shutil.which("herdr"):
+        fail("herdr not found in PATH")
+
+    path = normalize(args.path)
+    if not path.exists():
+        fail(f"path does not exist: {path}")
+    if not path.is_dir():
+        fail(f"path is not a directory: {path}")
+    focus_or_create(path, dry_run=args.dry_run)
+
+
+if __name__ == "__main__":
+    main()

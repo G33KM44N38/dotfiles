@@ -1,0 +1,207 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+
+HELPER = Path.home() / ".dotfiles" / "bin" / "herdr-worktree"
+
+
+def fail(message: str, code: int = 1) -> None:
+    print(f"herdr-select-worktree: {message}", file=sys.stderr)
+    raise SystemExit(code)
+
+
+def run(args, *, check=True, input_text=None):
+    result = subprocess.run(args, input=input_text, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if check and result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip()
+        fail(f"{' '.join(args)} failed: {detail}")
+    return result
+
+
+def git(path: str, *args: str) -> str:
+    result = run(["git", "-C", path, *args], check=False)
+    if result.returncode != 0:
+        return ""
+    return result.stdout.strip()
+
+
+def herdr_json(*args: str):
+    result = run(["herdr", *args])
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        fail(f"invalid herdr JSON from {' '.join(args)}: {exc}")
+
+
+def normalize_existing_path(path: str) -> str:
+    current = Path(path).expanduser()
+    if not current.is_absolute():
+        current = Path.cwd() / current
+    while not current.exists() and current != current.parent:
+        current = current.parent
+    return str(current.resolve()) if current.exists() else ""
+
+
+def current_source_path(explicit: str | None) -> str:
+    candidates = []
+    if explicit:
+        normalized = normalize_existing_path(explicit)
+        if normalized:
+            return normalized
+        fail(f"invalid source path: {explicit}")
+    try:
+        pane = herdr_json("pane", "current").get("result", {}).get("pane", {})
+        if pane.get("foreground_cwd"):
+            candidates.append(pane["foreground_cwd"])
+        if pane.get("cwd"):
+            candidates.append(pane["cwd"])
+        workspace_id = pane.get("workspace_id")
+        if workspace_id:
+            workspace = herdr_json("workspace", "get", workspace_id).get("result", {}).get("workspace", {})
+            worktree = workspace.get("worktree") or {}
+            if worktree.get("checkout_path"):
+                candidates.append(worktree["checkout_path"])
+    except SystemExit:
+        pass
+    candidates.extend([os.environ.get("PWD", ""), os.getcwd()])
+    normalized_candidates = []
+    for candidate in candidates:
+        if not candidate:
+            continue
+        normalized = normalize_existing_path(candidate)
+        if normalized:
+            normalized_candidates.append(normalized)
+            if git(normalized, "rev-parse", "--git-common-dir"):
+                return normalized
+    if normalized_candidates:
+        return normalized_candidates[0]
+    fail("unable to resolve source path")
+
+
+def repo_root(path: str) -> str:
+    common_dir = git(path, "rev-parse", "--git-common-dir")
+    if common_dir:
+        if not os.path.isabs(common_dir):
+            common_dir = str((Path(path) / common_dir).resolve())
+        if Path(common_dir).is_dir() and git(common_dir, "rev-parse", "--is-bare-repository") == "true":
+            return common_dir
+    top = git(path, "rev-parse", "--show-toplevel")
+    if top:
+        return str(Path(top).resolve())
+    fail(f"not in a git repository: {path}")
+
+
+def list_rows(root: str) -> list[dict]:
+    data = herdr_json("worktree", "list", "--cwd", root, "--json")
+    rows = []
+    for item in data.get("result", {}).get("worktrees", []):
+        path = item.get("path")
+        if not path:
+            continue
+        rows.append(
+            {
+                "branch": item.get("branch") or ("(bare)" if item.get("is_bare") else "(detached)"),
+                "path": path,
+                "workspace": item.get("open_workspace_id") or "",
+                "label": item.get("label") or "",
+                "bare": bool(item.get("is_bare")),
+            }
+        )
+    return rows
+
+
+def print_rows(rows: list[dict]) -> None:
+    for row in rows:
+        print(f"{row['branch']}\t{row['path']}\t{row['workspace']}\t{row['label']}")
+
+
+def choose_with_fzf(rows: list[dict]) -> dict | None:
+    if not shutil.which("fzf"):
+        fail("fzf not found in PATH")
+    lines = [f"{row['branch']}\t{row['path']}\t{row['workspace']}\t{row['label']}" for row in rows]
+    selected = run(
+        [
+            "fzf",
+            "--prompt=herdr worktree > ",
+            "--delimiter=\t",
+            "--with-nth=1,2,3",
+            "--header=branch/path\tworkspace\tlabel",
+            "--layout=reverse",
+            "--border",
+        ],
+        check=False,
+        input_text="\n".join(lines) + "\n",
+    )
+    if selected.returncode != 0 or not selected.stdout.strip():
+        return None
+    selected_path = selected.stdout.rstrip("\n").split("\t")[1]
+    for row in rows:
+        if row["path"] == selected_path:
+            return row
+    return None
+
+
+def choose_non_interactive(rows: list[dict], selector: str) -> dict:
+    for row in rows:
+        if selector in {row["branch"], row["path"], row["workspace"], row["label"]}:
+            return row
+    for row in rows:
+        if selector and (selector in row["branch"] or selector in row["path"]):
+            return row
+    fail(f"no worktree matches selector: {selector}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Pick and focus/open a Herdr git worktree workspace.")
+    parser.add_argument("path", nargs="?", help="source repo/worktree path")
+    parser.add_argument("--list", action="store_true", help="print selectable rows and exit")
+    parser.add_argument("--select", help="select a branch, path, workspace id, or label without opening fzf")
+    parser.add_argument("--dry-run", action="store_true", help="print the selected action without focusing")
+    args = parser.parse_args()
+
+    if not shutil.which("herdr"):
+        fail("herdr not found in PATH")
+    if not shutil.which("git"):
+        fail("git not found in PATH")
+
+    root = repo_root(current_source_path(args.path))
+    rows = list_rows(root)
+    if args.list:
+        print_rows(rows)
+        return
+    if not rows:
+        fail(f"no worktrees found for {root}")
+    selected = choose_non_interactive(rows, args.select) if args.select else choose_with_fzf(rows)
+    if not selected:
+        return
+    target = "root" if selected["bare"] else selected["branch"]
+    if target in {"main", "release"}:
+        cmd = [str(HELPER), target]
+    else:
+        if selected["workspace"]:
+            cmd = ["herdr", "workspace", "focus", selected["workspace"]]
+            action = "focus"
+        else:
+            cmd = ["herdr", "worktree", "open", "--cwd", root, "--path", selected["path"], "--label", selected["branch"], "--focus", "--json"]
+            action = "open"
+        if args.dry_run:
+            print(f"{action}\t{selected['workspace']}\t{selected['path']}\t{selected['branch']}")
+            return
+        run(cmd)
+        return
+    if args.dry_run:
+        cmd.append("--dry-run")
+    cmd.append(root)
+    result = run(cmd)
+    if result.stdout:
+        print(result.stdout, end="")
+
+
+if __name__ == "__main__":
+    main()

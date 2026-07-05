@@ -25,7 +25,7 @@ focus_pane_left = "prefix+h"
 focus_pane_down = "prefix+j"
 focus_pane_up = "prefix+k"
 focus_pane_right = "prefix+l"
-swap_pane_left = "prefix+shift+h"
+swap_pane_left = "prefix+ctrl+h"
 swap_pane_down = "prefix+shift+j"
 swap_pane_up = "prefix+shift+k"
 swap_pane_right = "prefix+shift+l"
@@ -40,7 +40,7 @@ goto = "prefix+g"
 new_workspace = "prefix+shift+n"
 new_worktree = "prefix+shift+g"
 rename_workspace = "prefix+shift+w"
-close_workspace = "prefix+shift+d"
+close_workspace = "prefix+ctrl+d"
 rename_pane = "prefix+shift+p"
 edit_scrollback = "prefix+e"
 resize_mode = "prefix+r"
@@ -62,7 +62,52 @@ command = "$HOME/.dotfiles/bin/herdr-thread-picker.sh --workspaces"
 [[keys.command]]
 key = "alt+t"
 type = "pane"
-command = "$HOME/.dotfiles/bin/herdr-thread-picker.sh"
+command = "env TMUX_THREAD_ATTENTION_ONLY=1 $HOME/.dotfiles/bin/herdr-thread-picker.sh"
+
+[[keys.command]]
+key = "alt+shift+t"
+type = "pane"
+command = "env TMUX_THREAD_ATTENTION_ONLY=0 $HOME/.dotfiles/bin/herdr-thread-picker.sh"
+
+[[keys.command]]
+key = "prefix+shift+s"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-navigate \"$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/\""
+
+[[keys.command]]
+key = "prefix+shift+b"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-navigate \"$HOME/coding/work/babacoiffure_monorepo.git/\""
+
+[[keys.command]]
+key = "prefix+shift+h"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-navigate \"$HOME/coding/work/database/\""
+
+[[keys.command]]
+key = "prefix+shift+d"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-navigate \"$HOME/.dotfiles/\""
+
+[[keys.command]]
+key = "alt+q"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-worktree-root"
+
+[[keys.command]]
+key = "alt+e"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-worktree-main"
+
+[[keys.command]]
+key = "alt+r"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-worktree-release"
+
+[[keys.command]]
+key = "alt+o"
+type = "pane"
+command = "$HOME/.dotfiles/bin/herdr-select-worktree"
 
 [[keys.command]]
 key = "alt+h"
@@ -92,4 +137,4 @@ command = "herdr agent start codex --focus -- codex"
 [[keys.command]]
 key = "alt+g"
 type = "pane"
-command = "$HOME/.local/bin/tmux-gh-popup"
+command = "$HOME/.dotfiles/bin/herdr-git.sh menu"
