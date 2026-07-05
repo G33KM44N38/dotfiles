@@ -421,7 +421,7 @@ func (a *app) runHerdr() error {
 	switch a.mode {
 	case "--list":
 		return a.printList()
-	case "--rows", "--workspace-rows":
+	case "--rows", "--workspace-rows", "--worktree-rows":
 		data, _ := os.ReadFile(a.displayRowsFile)
 		_, err := os.Stdout.Write(data)
 		return err
@@ -438,6 +438,9 @@ func (a *app) herdrRows() ([]row, error) {
 	if a.mode == "--workspaces" || a.mode == "--workspace-rows" {
 		return a.herdrWorkspaceRows()
 	}
+	if a.mode == "--worktrees" || a.mode == "--worktree-rows" {
+		return a.herdrWorktreeRows()
+	}
 	return a.herdrAgentRows()
 }
 
@@ -451,6 +454,89 @@ func (a *app) herdrJSON(args ...string) (map[string]any, error) {
 		return nil, err
 	}
 	return data, nil
+}
+
+func (a *app) focusedHerdrWorkspace() map[string]any {
+	data, err := a.herdrJSON("workspace", "list")
+	if err != nil {
+		return nil
+	}
+	for _, item := range jsonArray(jsonMap(data, "result"), "workspaces") {
+		workspace := item.(map[string]any)
+		if jsonBool(workspace, "focused") {
+			return workspace
+		}
+	}
+	return nil
+}
+
+func (a *app) herdrWorktreeRows() ([]row, error) {
+	workspace := a.focusedHerdrWorkspace()
+	if workspace == nil {
+		return nil, errors.New("thread picker: no focused Herdr workspace")
+	}
+	worktree := jsonMap(workspace, "worktree")
+	repoRoot := jsonString(worktree, "repo_root")
+	if repoRoot == "" {
+		repoRoot = jsonString(worktree, "checkout_path")
+	}
+	if repoRoot == "" {
+		return nil, errors.New("thread picker: focused Herdr workspace is not attached to a git worktree")
+	}
+
+	data, err := a.herdrJSON("worktree", "list", "--cwd", repoRoot, "--json")
+	if err != nil {
+		return nil, err
+	}
+	source := jsonMap(jsonMap(data, "result"), "source")
+	repoName := firstNonEmpty(jsonString(source, "repo_name"), jsonString(worktree, "repo_name"), filepath.Base(repoRoot), "Repo")
+	repoName = strings.TrimSuffix(repoName, ".git")
+	focusedID := jsonString(workspace, "workspace_id")
+
+	rows := []row{{
+		kind:    "GROUP",
+		display: a.colorText(a.c.bold, repoName),
+		project: repoName,
+		search:  strings.Join([]string{"herdr worktree", repoName, repoRoot}, " "),
+	}}
+	for _, item := range jsonArray(jsonMap(data, "result"), "worktrees") {
+		wt := item.(map[string]any)
+		path := jsonString(wt, "path")
+		if path == "" {
+			continue
+		}
+		branch := firstNonEmpty(jsonString(wt, "branch"), filepath.Base(path))
+		if jsonBool(wt, "is_bare") && branch == "" {
+			branch = "(bare)"
+		}
+		openWorkspaceID := jsonString(wt, "open_workspace_id")
+		rowSignal := "work"
+		state := "work"
+		if openWorkspaceID != "" {
+			rowSignal = "codex_open"
+			state = "open"
+		}
+		if openWorkspaceID != "" && openWorkspaceID == focusedID {
+			rowSignal = "current"
+			state = "open*"
+		}
+		detail := a.projectRelativePath(path)
+		if detail == "" {
+			detail = path
+		}
+		title := branch
+		if title == "" || title == "(bare)" {
+			title = firstNonEmpty(strings.TrimSuffix(filepath.Base(path), ".git"), repoName)
+		}
+		pinKey := firstNonEmpty(openWorkspaceID, path)
+		r, ok := a.emitRow("WT", state, branch, path, title, path, path, repoName, pinKey, rowSignal, "", detail, "")
+		if !ok {
+			continue
+		}
+		r.search = strings.Join([]string{"herdr worktree", repoName, branch, path, detail, openWorkspaceID}, " ")
+		rows = append(rows, r)
+	}
+	return a.addGroupSearchColumn(rows), nil
 }
 
 func (a *app) herdrWorkspaceRows() ([]row, error) {
@@ -4290,6 +4376,8 @@ func (m pickerModel) View() string {
 	if m.app.isHerdrMode() {
 		if m.app.mode == "--workspaces" {
 			prompt = "herdr workspace > " + m.query
+		} else if m.app.mode == "--worktrees" {
+			prompt = "herdr worktree > " + m.query
 		} else {
 			prompt = "herdr agent > " + m.query
 		}
@@ -4499,6 +4587,8 @@ func (m pickerModel) fullRowsWithEnvCmd(env []string) tea.Cmd {
 		mode := "--rows"
 		if m.app.isHerdrMode() && m.app.mode == "--workspaces" {
 			mode = "--workspace-rows"
+		} else if m.app.isHerdrMode() && m.app.mode == "--worktrees" {
+			mode = "--worktree-rows"
 		}
 		cmd := exec.Command(m.app.self, mode)
 		if len(env) > 0 {

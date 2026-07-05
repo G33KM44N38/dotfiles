@@ -56,6 +56,19 @@ def current_source_path(explicit: str | None) -> str:
             return normalized
         fail(f"invalid source path: {explicit}")
     try:
+        data = herdr_json("workspace", "list")
+        for workspace in data.get("result", {}).get("workspaces", []):
+            if not workspace.get("focused"):
+                continue
+            worktree = workspace.get("worktree") or {}
+            for key in ("repo_root", "checkout_path"):
+                value = worktree.get(key)
+                if value:
+                    candidates.append(value)
+            break
+    except SystemExit:
+        pass
+    try:
         pane = herdr_json("pane", "current").get("result", {}).get("pane", {})
         if pane.get("foreground_cwd"):
             candidates.append(pane["foreground_cwd"])

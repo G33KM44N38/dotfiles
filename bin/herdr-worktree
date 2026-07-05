@@ -49,6 +49,17 @@ def normalize_existing_path(path: str) -> str:
 
 def herdr_current_context() -> tuple[str, str]:
     try:
+        data = herdr_json("workspace", "list")
+        for workspace in data.get("result", {}).get("workspaces", []):
+            if workspace.get("focused"):
+                workspace_id = workspace.get("workspace_id") or ""
+                worktree = workspace.get("worktree") or {}
+                cwd = worktree.get("checkout_path") or worktree.get("repo_root") or ""
+                if cwd or workspace_id:
+                    return cwd, workspace_id
+    except SystemExit:
+        pass
+    try:
         data = herdr_json("pane", "current")
         pane = data.get("result", {}).get("pane", {})
         cwd = pane.get("foreground_cwd") or pane.get("cwd") or ""
