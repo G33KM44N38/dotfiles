@@ -2,6 +2,7 @@
 alias vi="nvim"
 alias ld="lazydocker"
 alias lg="lazygit"
+alias gd="gh dash"
 alias ocr="open_current_repo"
 alias odn="daily_open.sh"
 alias me="manage_env.sh"
@@ -13,6 +14,8 @@ alias bsetup="ie && pnpm i"
 
 # Git command
 alias wtc="worktree-chore"
+alias prc="pr-checking"
+alias wts="worktree-chore && pr-checking"
 alias gc="git commit"
 alias gcn="git commit --no-verify"
 alias gfa="git fetch --all --prune"
@@ -30,12 +33,17 @@ alias gcl="git config --edit --local"
 # git log oneline with the timestamp
 alias glog="git log --decorate --date=iso --pretty=format:'%C(auto)%h%d %C(cyan)%ad%C(reset) %s' --color=always"
 alias glcb='git log --oneline --graph --decorate $(git merge-base HEAD main)..HEAD'
+alias gbdsafe="git_safe_delete_candidates"
+alias co="codex --dangerously-bypass-approvals-and-sandbox"
 #
 
 # Tmux
 alias tma="tmux a"
 alias t="tmux a"
 alias ts="tmux list-sessions"
+
+# herdr
+alias h='herdr'
 
 # Ensure kill-server runs cleanup first
 tmux() {
