@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root="$HOME/.dotfiles"
+source_dir="$root/dev/herdr_worktree_picker_go"
+source_file="$source_dir/main.go"
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/herdr-worktree-picker"
+binary="$cache_dir/herdr-worktree-picker"
+
+mkdir -p "$cache_dir"
+if [ ! -x "$binary" ] || [ "$source_file" -nt "$binary" ]; then
+	tmp_binary="$binary.$$"
+	(cd "$root" && go build -o "$tmp_binary" ./dev/herdr_worktree_picker_go)
+	mv "$tmp_binary" "$binary"
+fi
+
+exec "$binary" "$@"
