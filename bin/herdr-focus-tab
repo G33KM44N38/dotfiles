@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+import json
+import subprocess
+import sys
+
+
+ALIASES = {
+    "run": "terminal",
+    "terminal-run": "terminal",
+    "long": "process",
+    "long-process": "process",
+}
+
+
+def herdr(*args):
+    result = subprocess.run(
+        ["herdr", *args],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode != 0:
+        raise SystemExit(result.stderr.strip() or result.stdout.strip())
+    return json.loads(result.stdout)
+
+
+def current_workspace_id():
+    return herdr("pane", "current")["result"]["pane"]["workspace_id"]
+
+
+def tab_for_label(workspace_id, label):
+    tabs = herdr("tab", "list", "--workspace", workspace_id)["result"]["tabs"]
+    for tab in tabs:
+        if (tab.get("label") or "").lower() == label:
+            return tab
+    return None
+
+
+def main():
+    if len(sys.argv) != 2:
+        print("usage: herdr-focus-tab editor|agent|terminal|process", file=sys.stderr)
+        return 2
+
+    label = ALIASES.get(sys.argv[1].lower(), sys.argv[1].lower())
+    workspace_id = current_workspace_id()
+    tab = tab_for_label(workspace_id, label)
+    if tab is None:
+        tab = herdr("tab", "create", "--workspace", workspace_id, "--label", label, "--no-focus")["result"]["tab"]
+    herdr("tab", "focus", tab["tab_id"])
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except Exception as exc:
+        print(f"herdr-focus-tab: {exc}", file=sys.stderr)
+        raise SystemExit(1)

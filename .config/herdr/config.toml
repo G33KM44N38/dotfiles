@@ -55,6 +55,36 @@ type = "shell"
 command = "$HOME/.dotfiles/bin/herdr-equalize-panes"
 
 [[keys.command]]
+key = "ctrl+f"
+type = "pane"
+command = "$HOME/.dotfiles/bin/herdr-thread-picker.sh --workspaces"
+
+[[keys.command]]
+key = "alt+t"
+type = "pane"
+command = "$HOME/.dotfiles/bin/herdr-thread-picker.sh"
+
+[[keys.command]]
+key = "alt+h"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-focus-tab editor"
+
+[[keys.command]]
+key = "alt+j"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-focus-tab agent"
+
+[[keys.command]]
+key = "alt+k"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-focus-tab process"
+
+[[keys.command]]
+key = "alt+l"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-focus-tab terminal"
+
+[[keys.command]]
 key = "ctrl+shift+n"
 type = "shell"
 command = "herdr agent start codex --focus -- codex"

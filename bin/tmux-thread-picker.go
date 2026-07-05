@@ -45,6 +45,7 @@ type app struct {
 	args       []string
 	self       string
 	tmuxBin    string
+	herdrBin   string
 	fzfBin     string
 	gitBin     string
 	home       string
@@ -210,6 +211,7 @@ func newApp(args []string) *app {
 		args:                   args,
 		self:                   self,
 		tmuxBin:                lookPath("tmux", "/opt/homebrew/bin/tmux", "/usr/local/bin/tmux", "/usr/bin/tmux"),
+		herdrBin:               lookPath("herdr", "/opt/homebrew/bin/herdr", "/usr/local/bin/herdr"),
 		fzfBin:                 lookPath("fzf", "/opt/homebrew/bin/fzf", "/usr/local/bin/fzf"),
 		gitBin:                 lookPath("git"),
 		home:                   home,
@@ -237,6 +239,9 @@ func newApp(args []string) *app {
 }
 
 func (a *app) run() error {
+	if a.isHerdrMode() {
+		return a.runHerdr()
+	}
 	if a.mode == "--filter-rows" {
 		query := ""
 		if len(a.args) > 1 {
@@ -365,8 +370,282 @@ func (a *app) run() error {
 	return a.pick()
 }
 
+func (a *app) isHerdrMode() bool {
+	return os.Getenv("HERDR_THREAD_PICKER") == "1"
+}
+
+func (a *app) runHerdr() error {
+	a.initColors()
+
+	tmp, err := os.MkdirTemp(os.Getenv("TMPDIR"), "herdr-thread-picker.*")
+	if err != nil {
+		return err
+	}
+	a.tmpDir = tmp
+	defer os.RemoveAll(tmp)
+	a.displayRowsFile = filepath.Join(tmp, "display-rows.tsv")
+
+	if a.herdrBin == "" {
+		return errors.New("thread picker: herdr not found in PATH")
+	}
+
+	rows, err := a.herdrRows()
+	if err != nil {
+		return err
+	}
+	if err := writeRows(a.displayRowsFile, rows, false); err != nil {
+		return err
+	}
+	if len(rows) == 0 {
+		return errors.New("thread picker: no Herdr rows found")
+	}
+
+	switch a.mode {
+	case "--list":
+		return a.printList()
+	case "--rows", "--workspace-rows":
+		data, _ := os.ReadFile(a.displayRowsFile)
+		_, err := os.Stdout.Write(data)
+		return err
+	}
+
+	return a.pick()
+}
+
 func (a *app) tmuxAvailable() bool {
 	return exec.Command(a.tmuxBin, "list-sessions").Run() == nil
+}
+
+func (a *app) herdrRows() ([]row, error) {
+	if a.mode == "--workspaces" || a.mode == "--workspace-rows" {
+		return a.herdrWorkspaceRows()
+	}
+	return a.herdrAgentRows()
+}
+
+func (a *app) herdrJSON(args ...string) (map[string]any, error) {
+	out, err := exec.Command(a.herdrBin, args...).Output()
+	if err != nil {
+		return nil, err
+	}
+	var data map[string]any
+	if err := json.Unmarshal(out, &data); err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func (a *app) herdrWorkspaceRows() ([]row, error) {
+	data, err := a.herdrJSON("workspace", "list")
+	if err != nil {
+		return nil, err
+	}
+	workspaces := jsonArray(jsonMap(data, "result"), "workspaces")
+
+	type workspaceGroup struct {
+		key       string
+		label     string
+		firstSeen int
+		rows      []row
+	}
+
+	groups := map[string]*workspaceGroup{}
+	groupOrder := []string{}
+	addGroupRow := func(key, label string, index int, r row) {
+		group, ok := groups[key]
+		if !ok {
+			group = &workspaceGroup{key: key, label: label, firstSeen: index}
+			groups[key] = group
+			groupOrder = append(groupOrder, key)
+		}
+		group.rows = append(group.rows, r)
+	}
+
+	for index, item := range workspaces {
+		workspace := item.(map[string]any)
+		id := jsonString(workspace, "workspace_id")
+		label := firstNonEmpty(jsonString(workspace, "label"), id)
+		status := firstNonEmpty(jsonString(workspace, "agent_status"), "unknown")
+		target := id
+		kind := "workspace"
+		branch := ""
+		detail := "workspace"
+		groupKey := "workspaces"
+		groupLabel := "Workspaces"
+		if wt := jsonMap(workspace, "worktree"); len(wt) > 0 {
+			if jsonBool(wt, "is_linked_worktree") {
+				kind = "worktree"
+			} else {
+				kind = "repo"
+			}
+			repoRoot := jsonString(wt, "repo_root")
+			repoName := firstNonEmpty(jsonString(wt, "repo_name"), filepath.Base(repoRoot), "Repo")
+			groupKey = "repo:" + firstNonEmpty(repoRoot, repoName)
+			groupLabel = repoName
+			branch = filepath.Base(jsonString(wt, "checkout_path"))
+			detail = kind
+		}
+		rowSignal := "codex_open"
+		if jsonBool(workspace, "focused") {
+			rowSignal = "current"
+		}
+		if status == "working" {
+			rowSignal = "codex_running"
+		} else if status == "blocked" {
+			rowSignal = "codex_done"
+		}
+		r, ok := a.emitRow("HERDR_WORKSPACE", status, branch, target, label, detail, target, groupLabel, "herdr-workspace:"+id, rowSignal, "", kind, "")
+		if !ok {
+			continue
+		}
+		r.search = strings.Join([]string{label, id, status, kind, branch, detail, groupLabel}, " ")
+		addGroupRow(groupKey, groupLabel, index, r)
+	}
+
+	sort.Slice(groupOrder, func(i, j int) bool {
+		left := groups[groupOrder[i]]
+		right := groups[groupOrder[j]]
+		if left.key == "workspaces" {
+			return true
+		}
+		if right.key == "workspaces" {
+			return false
+		}
+		return left.firstSeen < right.firstSeen
+	})
+
+	var rows []row
+	for _, key := range groupOrder {
+		group := groups[key]
+		sort.SliceStable(group.rows, func(i, j int) bool {
+			leftKind := group.rows[i].search
+			rightKind := group.rows[j].search
+			leftRepo := strings.Contains(leftKind, " repo ")
+			rightRepo := strings.Contains(rightKind, " repo ")
+			if leftRepo != rightRepo {
+				return leftRepo
+			}
+			return false
+		})
+		rows = append(rows, row{
+			kind:    "GROUP",
+			display: a.colorText(a.c.bold, group.label),
+			project: group.label,
+			search:  strings.Join([]string{"herdr workspace worktree", group.label}, " "),
+		})
+		rows = append(rows, group.rows...)
+	}
+	return a.addGroupSearchColumn(rows), nil
+}
+
+func (a *app) herdrAgentRows() ([]row, error) {
+	workspaceLabels := map[string]string{}
+	if data, err := a.herdrJSON("workspace", "list"); err == nil {
+		for _, item := range jsonArray(jsonMap(data, "result"), "workspaces") {
+			workspace := item.(map[string]any)
+			id := jsonString(workspace, "workspace_id")
+			workspaceLabels[id] = firstNonEmpty(jsonString(workspace, "label"), id)
+		}
+	}
+	data, err := a.herdrJSON("agent", "list")
+	if err != nil {
+		return nil, err
+	}
+	agents := jsonArray(jsonMap(data, "result"), "agents")
+	sort.Slice(agents, func(i, j int) bool {
+		left := agents[i].(map[string]any)
+		right := agents[j].(map[string]any)
+		if rank := herdrStatusRank(jsonString(left, "agent_status")) - herdrStatusRank(jsonString(right, "agent_status")); rank != 0 {
+			return rank < 0
+		}
+		if jsonString(left, "workspace_id") != jsonString(right, "workspace_id") {
+			return jsonString(left, "workspace_id") < jsonString(right, "workspace_id")
+		}
+		return jsonString(left, "pane_id") < jsonString(right, "pane_id")
+	})
+
+	var rows []row
+	currentGroup := ""
+	for _, item := range agents {
+		agent := item.(map[string]any)
+		workspaceID := jsonString(agent, "workspace_id")
+		workspace := firstNonEmpty(workspaceLabels[workspaceID], workspaceID)
+		if workspace != currentGroup {
+			currentGroup = workspace
+			rows = append(rows, row{
+				kind:    "GROUP",
+				display: a.colorText(a.c.bold, workspace),
+				project: workspace,
+				search:  workspace,
+			})
+		}
+		paneID := jsonString(agent, "pane_id")
+		status := firstNonEmpty(jsonString(agent, "agent_status"), "unknown")
+		name := firstNonEmpty(jsonString(agent, "name"), jsonString(agent, "agent"), "agent")
+		cwd := firstNonEmpty(jsonString(agent, "foreground_cwd"), jsonString(agent, "cwd"))
+		branch := ""
+		if a.gitBin != "" && cwd != "" {
+			branch = a.branchName(cwd)
+		}
+		detail := a.projectRelativePath(cwd)
+		if detail == "" {
+			detail = cwd
+		}
+		rowSignal := "codex_open"
+		if jsonBool(agent, "focused") {
+			rowSignal = "current"
+		}
+		if status == "working" {
+			rowSignal = "codex_running"
+		} else if status == "blocked" {
+			rowSignal = "codex_done"
+		}
+		r, ok := a.emitRow("HERDR_AGENT", status, branch, paneID, name, cwd, paneID, workspace, "herdr-agent:"+paneID, rowSignal, "", detail, "")
+		if !ok {
+			continue
+		}
+		r.search = strings.Join([]string{workspace, name, status, cwd, branch, paneID}, " ")
+		rows = append(rows, r)
+	}
+	return a.addGroupSearchColumn(rows), nil
+}
+
+func herdrStatusRank(status string) int {
+	switch status {
+	case "blocked":
+		return 0
+	case "working":
+		return 1
+	case "unknown":
+		return 2
+	case "idle":
+		return 3
+	default:
+		return 9
+	}
+}
+
+func jsonMap(data map[string]any, key string) map[string]any {
+	value, _ := data[key].(map[string]any)
+	if value == nil {
+		return map[string]any{}
+	}
+	return value
+}
+
+func jsonArray(data map[string]any, key string) []any {
+	value, _ := data[key].([]any)
+	return value
+}
+
+func jsonString(data map[string]any, key string) string {
+	value, _ := data[key].(string)
+	return value
+}
+
+func jsonBool(data map[string]any, key string) bool {
+	value, _ := data[key].(bool)
+	return value
 }
 
 func (a *app) resolveSource() error {
@@ -1484,6 +1763,9 @@ func (a *app) emitRow(kind, state, branch, target, window, path, selectionTarget
 	}
 	dot := " "
 	switch rowSignal {
+	case "current":
+		dot = a.colorText(a.c.dotCurrent, "●")
+		stateLabel = "open*"
 	case "codex_open":
 		stateLabel = "codex"
 	case "codex_done":
@@ -1509,6 +1791,18 @@ func (a *app) emitRow(kind, state, branch, target, window, path, selectionTarget
 	}
 	title := padText(a.threadTitle(pinKey, fallbackTitle, target, selectionTarget), threadTitleWidth)
 	detail := padText(relative, threadPathWidth)
+	if kind == "HERDR_AGENT" {
+		title = a.colorText(a.c.cyan, title)
+	} else if kind == "HERDR_WORKSPACE" {
+		switch detailOverride {
+		case "worktree":
+			title = a.colorText(a.c.magenta, title)
+		case "repo":
+			title = a.colorText(a.c.yellow, title)
+		default:
+			title = a.colorText(a.c.cyan, title)
+		}
+	}
 	branchCol := padText(branch, threadBranchWidth)
 	workCol := padText(workDuration, threadWorkWidth)
 	display := fmt.Sprintf("%s%s %s %s  %s  %s  %s  %s",
@@ -1658,6 +1952,10 @@ func (a *app) colorState(kind, state string) string {
 		return a.c.bold + a.c.cyan + state + a.c.reset
 	case "OPEN":
 		return a.c.green + state + a.c.reset
+	case "HERDR_AGENT":
+		return a.c.green + state + a.c.reset
+	case "HERDR_WORKSPACE":
+		return a.c.cyan + state + a.c.reset
 	case "HIST":
 		return a.c.cyan + state + a.c.reset
 	case "WT":
@@ -3576,8 +3874,11 @@ func (a *app) pick() error {
 	if os.Getenv("TMUX_THREAD_SHOW_ARCHIVED") == "1" {
 		archiveAction = "unarchive"
 	}
-	sourceWindowIndex := strings.TrimSpace(a.output(a.tmuxBin, "display-message", "-p", "-t", a.sourcePane, "#{window_index}"))
-	sourceTarget := a.sourceSess + ":" + sourceWindowIndex
+	sourceTarget := ""
+	if !a.isHerdrMode() {
+		sourceWindowIndex := strings.TrimSpace(a.output(a.tmuxBin, "display-message", "-p", "-t", a.sourcePane, "#{window_index}"))
+		sourceTarget = a.sourceSess + ":" + sourceWindowIndex
+	}
 	model := newPickerModel(a, readRows(a.displayRowsFile), archiveAction, sourceTarget)
 	finalModel, err := tea.NewProgram(model, tea.WithAltScreen(), tea.WithFPS(15), tea.WithANSICompressor()).Run()
 	if err != nil {
@@ -3602,6 +3903,10 @@ func (a *app) pick() error {
 	case "OPEN":
 		_ = a.markSeenFinishedForSelection(model.selected.target, model.selected.pinKey)
 		return a.openExistingThread(model.selected.target)
+	case "HERDR_AGENT":
+		return a.openHerdrAgent(model.selected.target)
+	case "HERDR_WORKSPACE":
+		return a.openHerdrWorkspace(model.selected.target)
 	case "HIST":
 		_ = a.markSeenFinishedForSelection(model.selected.target, model.selected.pinKey)
 		return a.openCodexHistoryThread(strings.TrimPrefix(model.selected.pinKey, "codex:"), model.selected.target)
@@ -3610,6 +3915,20 @@ func (a *app) pick() error {
 	default:
 		return errors.New("thread picker: invalid selection")
 	}
+}
+
+func (a *app) openHerdrAgent(target string) error {
+	if target == "" {
+		return nil
+	}
+	return exec.Command(a.herdrBin, "agent", "focus", target).Run()
+}
+
+func (a *app) openHerdrWorkspace(target string) error {
+	if target == "" {
+		return nil
+	}
+	return exec.Command(a.herdrBin, "workspace", "focus", target).Run()
 }
 
 func newPickerModel(a *app, rows []row, archiveAction, sourceTarget string) pickerModel {
@@ -3675,6 +3994,13 @@ func (m pickerModel) View() string {
 	sep := "├" + strings.Repeat("─", innerWidth+2) + "┤"
 	bottom := "╰" + strings.Repeat("─", innerWidth+2) + "╯"
 	prompt := "thread > " + m.query
+	if m.app.isHerdrMode() {
+		if m.app.mode == "--workspaces" {
+			prompt = "herdr workspace > " + m.query
+		} else {
+			prompt = "herdr agent > " + m.query
+		}
+	}
 	header := fmt.Sprintf("      %s  %s  %s  %s  %s",
 		padText("state", 6),
 		padText("title", threadTitleWidth),
@@ -3683,6 +4009,9 @@ func (m pickerModel) View() string {
 		padText("work", threadWorkWidth),
 	)
 	footer := "Ctrl-n new | Ctrl-r refresh | Ctrl-o worktrees | Ctrl-p pin | Ctrl-t rename | Ctrl-y auto-title | Ctrl-x " + m.archiveAction + " | Ctrl-q/Alt-q close | Alt-f all | Alt-v archived | Enter open"
+	if m.app.isHerdrMode() {
+		footer = "Ctrl-r refresh | Ctrl-p pin | Ctrl-x " + m.archiveAction + " | Alt-f all | Alt-v archived | Enter focus"
+	}
 	available := height - 7
 	if available < 1 {
 		available = 1
@@ -3787,12 +4116,18 @@ func (m pickerModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		cmd := exec.Command(m.app.self, "--edit-title", key)
 		return m, tea.ExecProcess(cmd, func(error) tea.Msg { return pickerExecDoneMsg{} })
 	case "ctrl+y":
+		if m.app.isHerdrMode() {
+			return m, nil
+		}
 		if !m.currentSelectable() {
 			return m, nil
 		}
 		r := m.rows[m.cursor]
 		return m, tea.Sequence(m.execSilent(func() { _ = m.app.regenerateTitle(r.pinKey, r.target) }), m.fullRowsCmd())
 	case "ctrl+n":
+		if m.app.isHerdrMode() {
+			return m, nil
+		}
 		if !m.currentSelectable() {
 			return m, nil
 		}
@@ -3800,10 +4135,16 @@ func (m pickerModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.quitting = true
 		return m, tea.Quit
 	case "ctrl+o":
+		if m.app.isHerdrMode() {
+			return m, nil
+		}
 		m.action = pickerActionOpenWorktreeMenu
 		m.quitting = true
 		return m, tea.Quit
 	case "ctrl+q", "alt+q":
+		if m.app.isHerdrMode() {
+			return m, nil
+		}
 		if !m.currentSelectable() {
 			return m, nil
 		}
@@ -3829,6 +4170,17 @@ func (m pickerModel) liveWatchCmd() tea.Cmd {
 	return func() tea.Msg {
 		for {
 			time.Sleep(interval)
+			if m.app.isHerdrMode() {
+				rows, err := m.app.herdrRows()
+				if err != nil {
+					continue
+				}
+				if !rowsEqualForLive(snapshot, rows) {
+					_ = writeRows(m.app.displayRowsFile, rows, false)
+					return pickerRowsMsg{rows: rows}
+				}
+				continue
+			}
 			if !rowsHaveRunningState(m.app.displayRowsFile) {
 				continue
 			}
@@ -3849,7 +4201,11 @@ func (m pickerModel) fullRowsCmd() tea.Cmd {
 
 func (m pickerModel) fullRowsWithEnvCmd(env []string) tea.Cmd {
 	return func() tea.Msg {
-		cmd := exec.Command(m.app.self, "--rows")
+		mode := "--rows"
+		if m.app.isHerdrMode() && m.app.mode == "--workspaces" {
+			mode = "--workspace-rows"
+		}
+		cmd := exec.Command(m.app.self, mode)
 		if len(env) > 0 {
 			cmd.Env = append(os.Environ(), env...)
 		}

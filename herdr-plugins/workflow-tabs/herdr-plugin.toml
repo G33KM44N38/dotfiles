@@ -1,0 +1,24 @@
+id = "boss.workflow-tabs"
+name = "Workflow Tabs"
+version = "0.1.0"
+min_herdr_version = "0.7.0"
+description = "Create the editor/agent/terminal/process tab workflow."
+platforms = ["macos"]
+
+[[actions]]
+id = "bootstrap"
+title = "Bootstrap workflow tabs"
+contexts = ["workspace"]
+command = ["./bin/bootstrap-tabs"]
+
+[[events]]
+on = "workspace.created"
+command = ["./bin/bootstrap-tabs"]
+
+[[events]]
+on = "worktree.opened"
+command = ["./bin/bootstrap-tabs"]
+
+[[events]]
+on = "workspace.focused"
+command = ["./bin/bootstrap-tabs"]
