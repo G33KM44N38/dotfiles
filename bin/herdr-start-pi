@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+current_json="$(herdr pane current)"
+workspace_id="$(printf '%s\n' "$current_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["pane"]["workspace_id"])')"
+
+start_json="$(herdr agent start pi --workspace "$workspace_id" --focus -- pi)"
+
+pane_id="$(printf '%s\n' "$start_json" | python3 -c '
+import json, sys
+data = json.load(sys.stdin).get("result", {})
+for key in ("agent", "pane"):
+    value = data.get(key)
+    if isinstance(value, dict) and value.get("pane_id"):
+        print(value["pane_id"])
+        raise SystemExit(0)
+if data.get("pane_id"):
+    print(data["pane_id"])
+')"
+
+if [[ -n "${pane_id:-}" ]]; then
+  herdr agent focus "$pane_id" >/dev/null
+fi
