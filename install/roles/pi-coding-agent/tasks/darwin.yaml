@@ -21,3 +21,9 @@
     src: codex-compatible-hooks.ts
     dest: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/extensions/codex-compatible-hooks.ts"
     mode: "0644"
+
+- name: Install Pi thinking arrow shortcuts
+  ansible.builtin.copy:
+    src: thinking-arrow-shortcuts.ts
+    dest: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/extensions/thinking-arrow-shortcuts.ts"
+    mode: "0644"
