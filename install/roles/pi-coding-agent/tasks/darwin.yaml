@@ -27,3 +27,14 @@
     src: fast-mode-shortcut.ts
     dest: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/extensions/fast-mode-shortcut.ts"
     mode: "0644"
+
+- name: Install Pi markdown code block UI patcher
+  ansible.builtin.copy:
+    src: patch-markdown-code-blocks.js
+    dest: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/patch-markdown-code-blocks.js"
+    mode: "0755"
+
+- name: Patch Pi markdown code block UI
+  ansible.builtin.command: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/patch-markdown-code-blocks.js"
+  changed_when: "'patched ' in pi_markdown_patch.stdout"
+  register: pi_markdown_patch
