@@ -110,6 +110,11 @@ local function with_worktree_ready(path, cb)
 end
 
 local function drain_tmux_refresh_queue()
+	if vim.fn.executable("tmux") ~= 1 then
+		pending_tmux_refresh_path = nil
+		return
+	end
+
 	if tmux_refresh_running then
 		return
 	end

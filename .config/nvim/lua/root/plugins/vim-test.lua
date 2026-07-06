@@ -1,9 +1,8 @@
 return {
 	"vim-test/vim-test",
-	dependencies = { "preservim/vimux" },
 	config = function()
-		-- Set vim-test strategy
-		vim.g["test#strategy"] = "vimux"
+		-- Run tests in a Neovim terminal (tmux/vimux has been removed)
+		vim.g["test#strategy"] = "neovim"
 
 		-- Set runners for TypeScript and JavaScript
 		vim.g["test#typescript#runner"] = "pnpm jest"
