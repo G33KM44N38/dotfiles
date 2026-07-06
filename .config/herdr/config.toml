@@ -49,6 +49,10 @@ edit_scrollback = "prefix+e"
 resize_mode = "prefix+r"
 toggle_sidebar = "prefix+b"
 
+# Workspace picker navigation (after prefix+w). Keep arrows and add vi keys.
+navigate_workspace_up = ["up", "k"]
+navigate_workspace_down = ["down", "j"]
+
 # Custom tmux-style equalize. Uses public `herdr pane resize`, not layout.apply.
 # after_split_pane = "equalize_panes"
 
