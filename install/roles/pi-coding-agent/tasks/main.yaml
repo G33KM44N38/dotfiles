@@ -1,0 +1,4 @@
+---
+- name: Run PI CODING AGENT task
+  ansible.builtin.import_tasks: darwin.yaml
+  when: ansible_facts["system"] == 'Darwin'

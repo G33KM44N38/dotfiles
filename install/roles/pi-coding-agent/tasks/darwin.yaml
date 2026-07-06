@@ -1,0 +1,23 @@
+---
+- name: Install pi-coding-agent
+  homebrew:
+    name: pi-coding-agent
+    state: present
+    update_homebrew: yes
+
+- name: Create Pi extensions directory
+  ansible.builtin.file:
+    path: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/extensions"
+    state: directory
+    mode: "0755"
+
+- name: Install Herdr Pi integration
+  ansible.builtin.command: herdr integration install pi
+  args:
+    creates: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/extensions/herdr-agent-state.ts"
+
+- name: Install Codex-compatible Pi hooks
+  ansible.builtin.copy:
+    src: codex-compatible-hooks.ts
+    dest: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/extensions/codex-compatible-hooks.ts"
+    mode: "0644"
