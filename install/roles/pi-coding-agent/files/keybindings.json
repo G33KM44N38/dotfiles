@@ -1,0 +1,5 @@
+{
+  "app.message.followUp": ["alt+enter"],
+  "tui.input.tab": ["tab"],
+  "tui.select.confirm": ["enter"]
+}

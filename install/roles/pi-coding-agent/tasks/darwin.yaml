@@ -28,6 +28,44 @@
     dest: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/extensions/fast-mode-shortcut.ts"
     mode: "0644"
 
+- name: Install Pi Linear branch status extension
+  ansible.builtin.copy:
+    src: linear-branch-status.ts
+    dest: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/extensions/linear-branch-status.ts"
+    mode: "0644"
+
+- name: Install Pi custom status footer extension
+  ansible.builtin.copy:
+    src: pi-status-footer.ts
+    dest: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/extensions/pi-status-footer.ts"
+    mode: "0644"
+
+- name: Install Pi dollar skill shortcut extension
+  ansible.builtin.copy:
+    src: skill-dollar-shortcut.ts
+    dest: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/extensions/skill-dollar-shortcut.ts"
+    mode: "0644"
+
+- name: Install Pi steer-on-escape extension
+  ansible.builtin.copy:
+    src: steer-on-escape.ts
+    dest: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/extensions/steer-on-escape.ts"
+    mode: "0644"
+
+- name: Install Pi keybindings
+  ansible.builtin.copy:
+    src: keybindings.json
+    dest: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/keybindings.json"
+    mode: "0644"
+
+- name: Install Tintinweb Pi subagents package
+  ansible.builtin.shell: |
+    set -o pipefail
+    pi list | grep -q 'npm:@tintinweb/pi-subagents' || pi install npm:@tintinweb/pi-subagents
+  args:
+    executable: /bin/bash
+  changed_when: false
+
 - name: Install Pi markdown code block UI patcher
   ansible.builtin.copy:
     src: patch-markdown-code-blocks.js
