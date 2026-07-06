@@ -52,16 +52,24 @@
     dest: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/extensions/steer-on-escape.ts"
     mode: "0644"
 
+- name: Install Pi Codex-style subagents extension
+  ansible.builtin.copy:
+    src: pi-codex-subagents.ts
+    dest: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/extensions/pi-codex-subagents.ts"
+    mode: "0644"
+
 - name: Install Pi keybindings
   ansible.builtin.copy:
     src: keybindings.json
     dest: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/keybindings.json"
     mode: "0644"
 
-- name: Install Tintinweb Pi subagents package
+- name: Remove legacy Tintinweb Pi subagents package
   ansible.builtin.shell: |
     set -o pipefail
-    pi list | grep -q 'npm:@tintinweb/pi-subagents' || pi install npm:@tintinweb/pi-subagents
+    if pi list | grep -q 'npm:@tintinweb/pi-subagents'; then
+      pi remove npm:@tintinweb/pi-subagents
+    fi
   args:
     executable: /bin/bash
   changed_when: false
