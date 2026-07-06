@@ -93,6 +93,9 @@
          name: pc-clean
      - name: Run roles
        ansible.builtin.include_role:
+         name: worktree-chore
+     - name: Run roles
+       ansible.builtin.include_role:
          name: lazydocker
      - name: Run roles
        ansible.builtin.include_role:
@@ -120,6 +123,9 @@
          name: pnpm
      - name: Run roles
        ansible.builtin.include_role:
+         name: pi-coding-agent
+     - name: Run roles
+       ansible.builtin.include_role:
          name: python
      - name: Run roles
        ansible.builtin.include_role:
@@ -129,13 +135,19 @@
          name: rust
      - name: Run roles
        ansible.builtin.include_role:
+         name: sentry-cli
+         apply:
+           tags:
+             - sentry-cli
+       tags:
+         - role
+         - sentry-cli
+     - name: Run roles
+       ansible.builtin.include_role:
          name: stow
      - name: Run roles
        ansible.builtin.include_role:
          name: stripe
-     - name: Run roles
-       ansible.builtin.include_role:
-         name: tmux
      - name: Run roles
        ansible.builtin.include_role:
          name: work

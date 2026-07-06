@@ -1,2 +1,0 @@
-- name: TMUX | installation
-  command: sudo apt install tmux -y

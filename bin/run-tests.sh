@@ -35,8 +35,6 @@ run_test() {
     fi
 }
 
-run_test "tmux-thread-picker" "$SCRIPT_DIR/test-tmux-thread-picker.sh"
-run_test "tmux-navigate" "$SCRIPT_DIR/test-tmux-navigate.sh"
 
 # Summary
 echo -e "\n${BLUE}Test summary${NC}"

@@ -16,12 +16,6 @@
   args:
     creates: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/extensions/herdr-agent-state.ts"
 
-- name: Install Codex-compatible Pi hooks
-  ansible.builtin.copy:
-    src: codex-compatible-hooks.ts
-    dest: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/extensions/codex-compatible-hooks.ts"
-    mode: "0644"
-
 - name: Install Pi thinking arrow shortcuts
   ansible.builtin.copy:
     src: thinking-arrow-shortcuts.ts

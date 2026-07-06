@@ -9,9 +9,8 @@
 # @raycast.icon 💼 ‍♀️
 
 # Documentation:
-# @raycast.description Opens Babacoiffure development environment in Arc and tmux
+# @raycast.description Opens Babacoiffure development environment in Arc
 # @raycast.author Guillaume Hammadi
 
 
 arc-cli select-space-name babacoiffure
-tmux switch -t baba_coiffure

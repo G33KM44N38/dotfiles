@@ -2,9 +2,9 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux-thread-picker"
-binary="$cache_dir/tmux-thread-picker"
-source_file="$script_dir/tmux-thread-picker.go"
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/herdr-thread-picker"
+binary="$cache_dir/herdr-thread-picker"
+source_file="$script_dir/herdr-thread-picker.go"
 
 mkdir -p "$cache_dir"
 if [ ! -x "$binary" ] || [ "$source_file" -nt "$binary" ]; then

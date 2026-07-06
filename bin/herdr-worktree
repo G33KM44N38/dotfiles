@@ -212,7 +212,7 @@ def resolve_root(repo_root: str) -> tuple[str, str | None]:
 
 
 def resolve_slot(repo_root: str, slot: str) -> tuple[str, str | None]:
-    selector = git(repo_root, "config", "--get", f"tmux.worktree.{slot}") or slot
+    selector = git(repo_root, "config", "--get", f"herdr.worktree.{slot}") or git(repo_root, "config", "--get", f"tmux.worktree.{slot}") or slot
 
     candidates = []
     if os.path.isabs(selector):

@@ -78,7 +78,7 @@ for role in "${linux_roles[@]}"; do
 done
 
 # Check roles that already have Ubuntu support
-ubuntu_roles=("fzf" "lazygit" "node" "nvim" "ripgrep" "stow" "tmux" "yarn" "zsh")
+ubuntu_roles=("fzf" "lazygit" "node" "nvim" "ripgrep" "stow" "yarn" "zsh")
 echo -e "\n${BLUE}Checking roles with existing Ubuntu support...${NC}"
 
 for role in "${ubuntu_roles[@]}"; do

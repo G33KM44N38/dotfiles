@@ -5,7 +5,6 @@ default_roles:
      - lazygit
      - lazydocker
      - ripgrep
-     - tmux
      - node
      - fzf
      # - cmake

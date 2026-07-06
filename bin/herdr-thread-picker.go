@@ -36,6 +36,10 @@ type colors struct {
 	cyan       string
 	magenta    string
 	red        string
+	blink      string
+	runBadge   string
+	waitBadge  string
+	idleBadge  string
 	dotCurrent string
 	proc       string
 }
@@ -493,12 +497,7 @@ func (a *app) herdrWorktreeRows() ([]row, error) {
 	repoName = strings.TrimSuffix(repoName, ".git")
 	focusedID := jsonString(workspace, "workspace_id")
 
-	rows := []row{{
-		kind:    "GROUP",
-		display: a.colorText(a.c.bold, repoName),
-		project: repoName,
-		search:  strings.Join([]string{"herdr worktree", repoName, repoRoot}, " "),
-	}}
+	var rows []row
 	for _, item := range jsonArray(jsonMap(data, "result"), "worktrees") {
 		wt := item.(map[string]any)
 		path := jsonString(wt, "path")
@@ -536,7 +535,7 @@ func (a *app) herdrWorktreeRows() ([]row, error) {
 		r.search = strings.Join([]string{"herdr worktree", repoName, branch, path, detail, openWorkspaceID}, " ")
 		rows = append(rows, r)
 	}
-	return a.addGroupSearchColumn(rows), nil
+	return a.renderHerdrGroupedRows(rows), nil
 }
 
 func (a *app) herdrWorkspaceRows() ([]row, error) {
@@ -682,24 +681,30 @@ func (a *app) herdrWorkspaceRows() ([]row, error) {
 			}
 			return false
 		})
-		rows = append(rows, row{
-			kind:    "GROUP",
-			display: a.colorText(a.c.bold, group.label),
-			project: group.label,
-			search:  strings.Join([]string{"herdr workspace worktree", group.label}, " "),
-		})
 		rows = append(rows, group.rows...)
 	}
-	return a.addGroupSearchColumn(rows), nil
+	return a.renderHerdrGroupedRows(rows), nil
 }
 
 func (a *app) herdrAgentRows() ([]row, error) {
-	workspaceLabels := map[string]string{}
+	type herdrWorkspaceMeta struct {
+		label   string
+		project string
+	}
+
+	workspaces := map[string]herdrWorkspaceMeta{}
 	if data, err := a.herdrJSON("workspace", "list"); err == nil {
 		for _, item := range jsonArray(jsonMap(data, "result"), "workspaces") {
 			workspace := item.(map[string]any)
 			id := jsonString(workspace, "workspace_id")
-			workspaceLabels[id] = firstNonEmpty(jsonString(workspace, "label"), id)
+			label := firstNonEmpty(jsonString(workspace, "label"), id)
+			project := label
+			if wt := jsonMap(workspace, "worktree"); len(wt) > 0 {
+				repoRoot := firstNonEmpty(jsonString(wt, "repo_root"), jsonString(wt, "checkout_path"))
+				project = firstNonEmpty(jsonString(wt, "repo_name"), filepath.Base(repoRoot), label)
+				project = strings.TrimSuffix(project, ".git")
+			}
+			workspaces[id] = herdrWorkspaceMeta{label: label, project: project}
 		}
 	}
 	data, err := a.herdrJSON("agent", "list")
@@ -720,19 +725,15 @@ func (a *app) herdrAgentRows() ([]row, error) {
 	})
 
 	var rows []row
-	currentGroup := ""
 	for _, item := range agents {
 		agent := item.(map[string]any)
 		workspaceID := jsonString(agent, "workspace_id")
-		workspace := firstNonEmpty(workspaceLabels[workspaceID], workspaceID)
-		if workspace != currentGroup {
-			currentGroup = workspace
-			rows = append(rows, row{
-				kind:    "GROUP",
-				display: a.colorText(a.c.bold, workspace),
-				project: workspace,
-				search:  workspace,
-			})
+		workspace := workspaces[workspaceID]
+		if workspace.label == "" {
+			workspace.label = workspaceID
+		}
+		if workspace.project == "" {
+			workspace.project = firstNonEmpty(a.projectName(firstNonEmpty(jsonString(agent, "foreground_cwd"), jsonString(agent, "cwd"))), workspace.label)
 		}
 		paneID := jsonString(agent, "pane_id")
 		sessionID := herdrAgentSessionID(agent)
@@ -761,27 +762,28 @@ func (a *app) herdrAgentRows() ([]row, error) {
 			pinKey = "codex:" + sessionID
 		}
 		a.ensureGeneratedHerdrTitle(pinKey, paneID, cwd, name)
-		r, ok := a.emitRow("HERDR_AGENT", status, branch, paneID, name, cwd, paneID, workspace, pinKey, rowSignal, "", detail, "")
+		r, ok := a.emitRow("HERDR_AGENT", status, branch, paneID, name, cwd, paneID, workspace.project, pinKey, rowSignal, "", detail, "")
 		if !ok {
 			continue
 		}
+		r.windowGroupKey = "herdr-workspace:" + workspaceID
+		r.windowGroupLabel = a.windowSubgroupLabel(workspace.label, workspaceID)
 		if strings.HasPrefix(pinKey, "codex:") {
 			r.search = a.codexSearchForKey(pinKey)
 		}
-		r.search = strings.Join([]string{r.search, workspace, name, status, cwd, branch, paneID, sessionID}, " ")
+		r.search = strings.Join([]string{r.search, workspace.project, workspace.label, name, status, cwd, branch, paneID, sessionID}, " ")
 		rows = append(rows, r)
 	}
 	if historyRows := a.emitCodexHistoryRows(rows); len(historyRows) > 0 {
 		sort.Slice(historyRows, func(i, j int) bool { return historyRows[i].sortKey < historyRows[j].sortKey })
-		rows = append(rows, row{
-			kind:    "GROUP",
-			display: a.colorText(a.c.bold, "Codex History"),
-			project: "Codex History",
-			search:  "codex history closed archived",
-		})
 		rows = append(rows, historyRows...)
 	}
-	return a.addGroupSearchColumn(rows), nil
+	return a.renderHerdrGroupedRows(rows), nil
+}
+
+func (a *app) renderHerdrGroupedRows(rows []row) []row {
+	sort.Slice(rows, func(i, j int) bool { return rows[i].sortKey < rows[j].sortKey })
+	return a.addGroupSearchColumn(a.renderGroupedRows(rows))
 }
 
 func herdrAgentSessionID(agent map[string]any) string {
@@ -881,6 +883,10 @@ func (a *app) initColors() {
 		cyan:       "\033[36m",
 		magenta:    "\033[35m",
 		red:        "\033[31m",
+		blink:      "\033[5m",
+		runBadge:   "\033[1;30;48;5;46m",
+		waitBadge:  "\033[1;30;48;5;220m",
+		idleBadge:  "\033[2m",
 		dotCurrent: "\033[1;38;5;46m",
 		proc:       "\033[1;38;5;220m",
 	}
@@ -1987,8 +1993,18 @@ func (a *app) emitRow(kind, state, branch, target, window, path, selectionTarget
 		dot = a.colorText(a.c.dotCurrent, "●")
 		stateLabel = "wait"
 	case "codex_running":
-		dot = a.colorText(a.c.proc, "▶")
+		dot = a.colorText(a.c.blink+a.c.proc, "▶")
 		stateLabel = "run"
+	}
+	if kind == "HERDR_AGENT" || kind == "HERDR_WORKSPACE" {
+		switch rowSignal {
+		case "codex_running":
+			stateLabel = "RUN"
+		case "codex_open":
+			stateLabel = "idle"
+		case "current":
+			stateLabel = "idle*"
+		}
 	}
 	procMarker := " "
 	if processSignal == "process" {
@@ -2168,8 +2184,26 @@ func (a *app) colorState(kind, state string) string {
 	case "OPEN":
 		return a.c.green + state + a.c.reset
 	case "HERDR_AGENT":
+		if strings.HasPrefix(strings.TrimSpace(state), "RUN") {
+			return a.c.runBadge + state + a.c.reset
+		}
+		if strings.HasPrefix(strings.TrimSpace(state), "wait") {
+			return a.c.waitBadge + state + a.c.reset
+		}
+		if strings.HasPrefix(strings.TrimSpace(state), "idle") {
+			return a.c.idleBadge + state + a.c.reset
+		}
 		return a.c.green + state + a.c.reset
 	case "HERDR_WORKSPACE":
+		if strings.HasPrefix(strings.TrimSpace(state), "RUN") {
+			return a.c.runBadge + state + a.c.reset
+		}
+		if strings.HasPrefix(strings.TrimSpace(state), "wait") {
+			return a.c.waitBadge + state + a.c.reset
+		}
+		if strings.HasPrefix(strings.TrimSpace(state), "idle") {
+			return a.c.idleBadge + state + a.c.reset
+		}
 		return a.c.cyan + state + a.c.reset
 	case "HIST":
 		return a.c.cyan + state + a.c.reset
