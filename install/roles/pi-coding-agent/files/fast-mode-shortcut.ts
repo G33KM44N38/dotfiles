@@ -1,4 +1,4 @@
-// Ctrl+F toggles a lightweight "fast mode" by switching thinking off/on.
+// Ctrl+Shift+F toggles a lightweight "fast mode" by switching thinking off/on.
 // @ts-nocheck
 
 const FAST_LEVEL = "off";
@@ -7,7 +7,7 @@ const NORMAL_LEVEL = "low";
 let previousNonFastLevel = NORMAL_LEVEL;
 
 export default function (pi) {
-  pi.registerShortcut("ctrl+f", {
+  pi.registerShortcut("ctrl+shift+f", {
     description: "Toggle fast mode",
     handler: async (ctx) => {
       const current = pi.getThinkingLevel?.() ?? NORMAL_LEVEL;
