@@ -1,9 +1,11 @@
 ---
 name: tmux-thread-picker
-description: Inspect, create, duplicate, kill, and navigate the user's tmux work threads through the tmux-thread-picker CLI. Use whenever the user says "thread" or "threads" in a Codex/tmux/work-session context, including active tmux sessions, LLM/Codex threads, running or waiting agent work, switching to a thread, creating another thread for the current path, killing a thread, sending input to a tmux pane, creating/opening git worktree threads, or understanding what work is happening across tmux.
+description: Legacy tmux-only thread picker. Use only when the user explicitly asks for tmux or the old tmux-thread-picker CLI. For normal thread, workspace, worktree, pane, or agent management, prefer the Herdr workspace manager skill.
 ---
 
 # Tmux Thread Picker
+
+Legacy tmux-only workflow. The user now prefers Herdr for normal thread/workspace/worktree/agent management. Use this skill only when the user explicitly asks for tmux or the old tmux-thread-picker CLI.
 
 Use the user's thread picker as the source of truth for tmux work threads and LLM/Codex activity.
 
