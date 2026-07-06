@@ -10,7 +10,7 @@ ROLES = ["editor", "agent", "process", "terminal"]
 LOCK_DIR = "/tmp/herdr-workflow-tabs"
 DEFAULT_COMMANDS = {
     "editor": "nvim .",
-    "agent": "codex",
+    "agent": "pi",
     "process": "",
     "terminal": "",
 }
@@ -23,6 +23,7 @@ AGENT_PROCESS_NAMES = {
     "kimi",
     "kilo",
     "opencode",
+    "pi",
     "qodercli",
 }
 

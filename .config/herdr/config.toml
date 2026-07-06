@@ -134,7 +134,7 @@ command = "$HOME/.dotfiles/bin/herdr-focus-tab terminal"
 [[keys.command]]
 key = "ctrl+shift+n"
 type = "shell"
-command = "herdr agent start codex --focus -- codex"
+command = "herdr agent start pi --focus -- pi"
 
 [[keys.command]]
 key = "alt+g"
