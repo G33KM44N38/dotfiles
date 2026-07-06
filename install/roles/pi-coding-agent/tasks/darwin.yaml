@@ -27,3 +27,9 @@
     src: thinking-arrow-shortcuts.ts
     dest: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/extensions/thinking-arrow-shortcuts.ts"
     mode: "0644"
+
+- name: Install Pi fast mode shortcut
+  ansible.builtin.copy:
+    src: fast-mode-shortcut.ts
+    dest: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/extensions/fast-mode-shortcut.ts"
+    mode: "0644"
