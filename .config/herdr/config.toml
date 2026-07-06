@@ -1,3 +1,4 @@
+onboarding = false
 # herdr configuration
 # Mirrors the tmux muscle memory from ~/.config/tmux/tmux.conf plus Herdr defaults.
 
@@ -140,3 +141,13 @@ command = "herdr agent start pi --focus -- pi"
 key = "alt+g"
 type = "pane"
 command = "$HOME/.dotfiles/bin/herdr-git.sh menu"
+
+[experimental]
+pane_history = true
+
+[ui.toast]
+delivery = "off"
+
+[theme]
+name = "catppuccin"
+auto_switch = false
