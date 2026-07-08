@@ -2,7 +2,7 @@ id = "boss.workflow-tabs"
 name = "Workflow Tabs"
 version = "0.1.0"
 min_herdr_version = "0.7.0"
-description = "Create the editor/agent/process/terminal tab workflow."
+description = "Create the editor/agent/process/terminal/diff tab workflow."
 platforms = ["macos"]
 
 [[actions]]

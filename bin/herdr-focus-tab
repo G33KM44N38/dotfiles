@@ -9,6 +9,9 @@ ALIASES = {
     "terminal-run": "terminal",
     "long": "process",
     "long-process": "process",
+    "misc": "diff",
+    "notes": "diff",
+    "scratch": "diff",
 }
 
 
@@ -38,7 +41,7 @@ def tab_for_label(workspace_id, label):
 
 def main():
     if len(sys.argv) != 2:
-        print("usage: herdr-focus-tab editor|agent|terminal|process", file=sys.stderr)
+        print("usage: herdr-focus-tab editor|agent|process|terminal|diff", file=sys.stderr)
         return 2
 
     label = ALIASES.get(sys.argv[1].lower(), sys.argv[1].lower())

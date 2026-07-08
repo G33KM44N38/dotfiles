@@ -1,0 +1,6 @@
+---
+- name: Install Hunk diff viewer
+  homebrew:
+    name: hunk
+    state: present
+    update_homebrew: yes

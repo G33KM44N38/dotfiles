@@ -137,6 +137,11 @@ type = "shell"
 command = "$HOME/.dotfiles/bin/herdr-focus-tab terminal"
 
 [[keys.command]]
+key = "alt+semicolon"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-focus-tab diff"
+
+[[keys.command]]
 key = "ctrl+shift+n"
 type = "shell"
 command = "$HOME/.dotfiles/bin/herdr-start-pi"

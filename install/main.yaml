@@ -123,6 +123,12 @@
          name: pnpm
      - name: Run roles
        ansible.builtin.include_role:
+         name: herdr
+     - name: Run roles
+       ansible.builtin.include_role:
+         name: hunk
+     - name: Run roles
+       ansible.builtin.include_role:
          name: pi-coding-agent
      - name: Run roles
        ansible.builtin.include_role:

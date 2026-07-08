@@ -7,7 +7,7 @@ import sys
 import time
 
 
-ROLES = ["editor", "agent", "process", "terminal"]
+ROLES = ["editor", "agent", "process", "terminal", "diff"]
 LOCK_DIR = "/tmp/herdr-workflow-tabs"
 RECENT_RUN_TTL_SECONDS = 10
 DEFAULT_COMMANDS = {
@@ -15,6 +15,7 @@ DEFAULT_COMMANDS = {
     "agent": "pi",
     "process": "",
     "terminal": "",
+    "diff": "hunk diff --watch",
 }
 SHELL_NAMES = {"bash", "fish", "sh", "zsh"}
 AGENT_PROCESS_NAMES = {
@@ -95,6 +96,8 @@ def labels_by_role(tabs):
     labels = {}
     for tab in sorted(tabs, key=lambda item: item.get("number", 0)):
         label = (tab.get("label") or "").lower()
+        if label == "scratch":
+            label = "diff"
         if label in ROLES and label not in labels:
             labels[label] = tab
     return labels
@@ -103,6 +106,11 @@ def labels_by_role(tabs):
 def ensure_tabs(workspace_id, cwd):
     tabs = herdr("tab", "list", "--workspace", workspace_id)["result"]["tabs"]
     labels = labels_by_role(tabs)
+
+    for tab in tabs:
+        if (tab.get("label") or "").lower() == "scratch" and "diff" not in labels:
+            herdr("tab", "rename", tab["tab_id"], "diff")
+            labels["diff"] = {**tab, "label": "diff"}
 
     if "editor" not in labels:
         reusable = None

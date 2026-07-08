@@ -1,0 +1,28 @@
+theme = "custom"
+mode = "split"
+watch = true
+exclude_untracked = false
+line_numbers = true
+wrap_lines = false
+menu_bar = true
+agent_notes = true
+transparent_background = true
+
+[custom_theme]
+base = "github-dark-default"
+label = "Nightfly"
+accent = "#82aaff"
+panel = "#011627"
+noteBorder = "#c792ea"
+
+[custom_theme.syntax]
+keyword = "#c792ea"
+string = "#ecc48d"
+comment = "#7c8f8f"
+operator = "#7fdbca"
+variable = "#acb4c2"
+function = "#82aaff"
+number = "#f78c6c"
+type = "#21c7a8"
+property = "#addb67"
+constant = "#f78c6c"

@@ -11,6 +11,12 @@
     state: directory
     mode: "0755"
 
+- name: Create Pi skills directory
+  ansible.builtin.file:
+    path: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/skills"
+    state: directory
+    mode: "0755"
+
 - name: Install Herdr Pi integration
   ansible.builtin.command: herdr integration install pi
   args:
@@ -62,6 +68,12 @@
   ansible.builtin.copy:
     src: keybindings.json
     dest: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/keybindings.json"
+    mode: "0644"
+
+- name: Install Pi Hunk review skill
+  ansible.builtin.copy:
+    src: skills/hunk-review/
+    dest: "{{ ansible_facts['env']['HOME'] }}/.pi/agent/skills/hunk-review/"
     mode: "0644"
 
 - name: Remove legacy Tintinweb Pi subagents package

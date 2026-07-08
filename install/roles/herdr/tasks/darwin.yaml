@@ -1,0 +1,68 @@
+---
+- name: Install Herdr
+  homebrew:
+    name: herdr
+    state: present
+    update_homebrew: yes
+
+- name: Create Herdr config directory
+  ansible.builtin.file:
+    path: "{{ ansible_facts['env']['HOME'] }}/.config/herdr"
+    state: directory
+    mode: "0755"
+
+- name: Register Herdr workflow tabs plugin
+  ansible.builtin.copy:
+    dest: "{{ ansible_facts['env']['HOME'] }}/.config/herdr/plugins.json"
+    mode: "0644"
+    content: |
+      [
+        {
+          "plugin_id": "boss.workflow-tabs",
+          "name": "Workflow Tabs",
+          "version": "0.1.0",
+          "min_herdr_version": "0.7.0",
+          "description": "Create the editor/agent/process/terminal/diff tab workflow.",
+          "manifest_path": "{{ ansible_facts['env']['HOME'] }}/.dotfiles/herdr-plugins/workflow-tabs/herdr-plugin.toml",
+          "plugin_root": "{{ ansible_facts['env']['HOME'] }}/.dotfiles/herdr-plugins/workflow-tabs",
+          "enabled": true,
+          "platforms": [
+            "macos"
+          ],
+          "actions": [
+            {
+              "id": "bootstrap",
+              "title": "Bootstrap workflow tabs",
+              "contexts": [
+                "workspace"
+              ],
+              "command": [
+                "./bin/bootstrap-tabs"
+              ]
+            }
+          ],
+          "events": [
+            {
+              "on": "workspace.created",
+              "command": [
+                "./bin/bootstrap-tabs"
+              ]
+            },
+            {
+              "on": "worktree.opened",
+              "command": [
+                "./bin/bootstrap-tabs"
+              ]
+            },
+            {
+              "on": "workspace.focused",
+              "command": [
+                "./bin/bootstrap-tabs"
+              ]
+            }
+          ],
+          "source": {
+            "kind": "local"
+          }
+        }
+      ]
