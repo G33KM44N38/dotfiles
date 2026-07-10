@@ -8,16 +8,17 @@ import sys
 from pathlib import Path
 
 
-SEARCH_ROOTS = (
+CHILD_SEARCH_ROOTS = (
     "Library/Mobile Documents/iCloud~md~obsidian/Documents",
     "backup",
     "coding",
     "coding/work",
     "coding/perso",
     "goinfre",
-    ".dotfiles",
     "learning",
 )
+
+EXACT_PATHS = (".dotfiles", "backup", "coding")
 
 
 def fail(message: str, code: int = 1) -> None:
@@ -78,8 +79,7 @@ def pane_workspace_paths() -> dict[str, set[str]]:
 
 
 def label_for(path: Path) -> str:
-    name = path.name
-    return name[:-4] if name.endswith(".git") else name
+    return path.name.replace(".", "_")
 
 
 def matching_workspace(path: Path, workspaces: list[dict], pane_paths: dict[str, set[str]]) -> dict | None:
@@ -102,12 +102,15 @@ def matching_workspace(path: Path, workspaces: list[dict], pane_paths: dict[str,
 
 def selectable_directories() -> list[Path]:
     directories: set[Path] = set()
-    for relative_root in SEARCH_ROOTS:
+    for relative_root in CHILD_SEARCH_ROOTS:
         root = normalize(str(Path.home() / relative_root))
         if not root.is_dir():
             continue
-        directories.add(root)
         directories.update(path.resolve() for path in root.iterdir() if path.is_dir())
+    for relative_path in EXACT_PATHS:
+        path = normalize(str(Path.home() / relative_path))
+        if path.is_dir():
+            directories.add(path)
     return sorted(directories, key=lambda path: str(path).casefold())
 
 
