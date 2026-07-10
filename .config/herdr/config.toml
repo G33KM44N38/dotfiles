@@ -36,9 +36,10 @@ help = "prefix+?"
 settings = "prefix+s"
 detach = "prefix+q"
 reload_config = "prefix+shift+r"
-open_notification_target = ""
+open_notification_target = "prefix+o"
+focus_agent = "prefix+alt+1..9"
 workspace_picker = "prefix+w"
-goto = "prefix+g"
+goto = ["prefix+g", "prefix+alt+j", "prefix+alt+k"]
 new_workspace = "prefix+shift+n"
 new_worktree = "ctrl+shift+w"
 open_worktree = ""
@@ -141,11 +142,21 @@ key = "alt+g"
 type = "pane"
 command = "$HOME/.dotfiles/bin/herdr-git.sh menu"
 
+[[keys.command]]
+key = "prefix+shift+a"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-focus-agent-status blocked"
+
+[[keys.command]]
+key = "prefix+shift+i"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-focus-agent-status idle"
+
 [experimental]
 pane_history = true
 
 [ui.toast]
-delivery = "off"
+delivery = "herdr"
 
 [theme]
 name = "catppuccin"

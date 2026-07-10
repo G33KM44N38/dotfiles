@@ -1,0 +1,80 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import subprocess
+import sys
+
+
+STATUS_GROUPS = {
+    "blocked": {"blocked"},
+    "idle": {"idle", "done"},
+}
+
+
+def herdr(*args: str) -> dict:
+    result = subprocess.run(
+        ["herdr", *args],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or result.stdout.strip())
+    return json.loads(result.stdout)
+
+
+def next_matching_agent(agents: list[dict], statuses: set[str]) -> dict | None:
+    if not agents:
+        return None
+
+    focused_index = next(
+        (index for index, agent in enumerate(agents) if agent.get("focused")),
+        -1,
+    )
+    for offset in range(1, len(agents) + 1):
+        agent = agents[(focused_index + offset) % len(agents)]
+        if agent.get("agent_status") in statuses:
+            return agent
+    return None
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Focus the next Herdr agent matching a status group."
+    )
+    parser.add_argument("status", choices=STATUS_GROUPS)
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args()
+
+    data = herdr("agent", "list")
+    agents = data.get("result", {}).get("agents", [])
+    target = next_matching_agent(agents, STATUS_GROUPS[args.status])
+    if target is None:
+        return 0
+
+    pane_id = target.get("pane_id")
+    if not pane_id:
+        raise RuntimeError("matching agent has no pane_id")
+
+    if args.dry_run:
+        print(
+            json.dumps(
+                {
+                    "pane_id": pane_id,
+                    "status": target.get("agent_status"),
+                    "workspace_id": target.get("workspace_id"),
+                }
+            )
+        )
+        return 0
+
+    herdr("agent", "focus", pane_id)
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except (RuntimeError, json.JSONDecodeError) as exc:
+        print(f"herdr-focus-agent-status: {exc}", file=sys.stderr)
+        raise SystemExit(1)
