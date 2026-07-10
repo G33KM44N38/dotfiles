@@ -179,7 +179,6 @@ enabled = true
 
 [tui]
 theme = "ansi"
-terminal_title = []
 
 status_line = [
 	"five-hour-limit",
