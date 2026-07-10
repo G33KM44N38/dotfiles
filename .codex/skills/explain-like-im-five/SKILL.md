@@ -31,4 +31,6 @@ Keep the explanation simple without making it false. Prefer short sentences, con
 
 Open the page in an available browser, exercise every interaction, and check both a desktop and narrow viewport. Fix overflow, illegible text, broken controls, console errors, and misleading behavior before delivery.
 
+Always open the finished page visibly for the user after verification. Prefer the in-app browser and make it visible; if that browser is unavailable, open the HTML file in the system's default browser. Do not wait for the user to ask.
+
 Return a clickable link to the HTML file and one sentence describing what the learner can do on the page. Do not repeat the full lesson in chat; the webpage is the explanation.
