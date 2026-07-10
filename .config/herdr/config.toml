@@ -67,16 +67,6 @@ type = "pane"
 command = "$HOME/.dotfiles/bin/herdr-navigate"
 
 [[keys.command]]
-key = "alt+t"
-type = "pane"
-command = "env TMUX_THREAD_ATTENTION_ONLY=1 $HOME/.dotfiles/bin/herdr-thread-picker.sh"
-
-[[keys.command]]
-key = "alt+shift+t"
-type = "pane"
-command = "env TMUX_THREAD_ATTENTION_ONLY=0 $HOME/.dotfiles/bin/herdr-thread-picker.sh"
-
-[[keys.command]]
 key = "prefix+shift+s"
 type = "shell"
 command = "$HOME/.dotfiles/bin/herdr-navigate \"$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/\""
