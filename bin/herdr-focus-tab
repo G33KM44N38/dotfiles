@@ -2,6 +2,7 @@
 import json
 import subprocess
 import sys
+import time
 
 
 ALIASES = {
@@ -13,6 +14,14 @@ ALIASES = {
     "notes": "diff",
     "scratch": "diff",
 }
+
+DEFAULT_COMMANDS = {
+    "editor": "nvim .",
+    "agent": "codex",
+    "diff": "hunk diff --watch",
+}
+
+SHELL_NAMES = {"bash", "fish", "nu", "pwsh", "sh", "zsh"}
 
 
 def herdr(*args):
@@ -39,6 +48,39 @@ def tab_for_label(workspace_id, label):
     return None
 
 
+def pane_for_tab(tab_id):
+    panes = herdr("pane", "list")["result"]["panes"]
+    return next((pane for pane in panes if pane.get("tab_id") == tab_id), None)
+
+
+def pane_is_idle(pane_id):
+    processes = herdr("pane", "process-info", "--pane", pane_id)["result"][
+        "process_info"
+    ].get("foreground_processes", [])
+    return not any(
+        (process.get("name") or "").lower() not in SHELL_NAMES
+        for process in processes
+    )
+
+
+def ensure_default_command(tab, label):
+    command = DEFAULT_COMMANDS.get(label)
+    if command is None:
+        return
+
+    pane = pane_for_tab(tab["tab_id"])
+    if pane is None or not pane_is_idle(pane["pane_id"]):
+        return
+
+    herdr("pane", "run", pane["pane_id"], command)
+
+    if label == "diff":
+        # Hunk hides its file explorer below its full-width breakpoint. The
+        # shortcut forces it open once the TUI has mounted.
+        time.sleep(0.5)
+        herdr("pane", "send-keys", pane["pane_id"], "s")
+
+
 def main():
     if len(sys.argv) != 2:
         print("usage: herdr-focus-tab editor|agent|process|terminal|diff", file=sys.stderr)
@@ -50,6 +92,7 @@ def main():
     if tab is None:
         tab = herdr("tab", "create", "--workspace", workspace_id, "--label", label, "--no-focus")["result"]["tab"]
     herdr("tab", "focus", tab["tab_id"])
+    ensure_default_command(tab, label)
     return 0
 
 

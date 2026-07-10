@@ -20,9 +20,9 @@
         {
           "plugin_id": "boss.workflow-tabs",
           "name": "Workflow Tabs",
-          "version": "0.1.0",
+          "version": "0.2.0",
           "min_herdr_version": "0.7.0",
-          "description": "Create the editor/agent/process/terminal/diff tab workflow.",
+          "description": "Start with a terminal tab, create workflow tabs on demand, and bootstrap project worktrees.",
           "manifest_path": "{{ ansible_facts['env']['HOME'] }}/.dotfiles/herdr-plugins/workflow-tabs/herdr-plugin.toml",
           "plugin_root": "{{ ansible_facts['env']['HOME'] }}/.dotfiles/herdr-plugins/workflow-tabs",
           "enabled": true,
