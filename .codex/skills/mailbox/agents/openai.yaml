@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mailbox"
+  short_description: "Keyboard-first concurrent Apple Mail triage"
+  default_prompt: "Use $mailbox to open my inbox triage desk and process my email decisions concurrently."
