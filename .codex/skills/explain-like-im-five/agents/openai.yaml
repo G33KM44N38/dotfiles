@@ -1,0 +1,4 @@
+interface:
+  display_name: "Explain Like I’m Five"
+  short_description: "Turn hard ideas into playful simple webpages"
+  default_prompt: "Use $explain-like-im-five to teach me this topic with a simple interactive webpage."
