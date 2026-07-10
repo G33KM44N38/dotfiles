@@ -177,6 +177,21 @@ def unlock_workspace(lock_path):
     shutil.rmtree(lock_path, ignore_errors=True)
 
 
+def ensure_activity_monitor():
+    monitor = os.path.join(os.path.dirname(__file__), "activity-monitor")
+    if not os.path.isfile(monitor):
+        return
+    subprocess.Popen(
+        [monitor],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+        close_fds=True,
+        env=os.environ.copy(),
+    )
+
+
 def panes_by_tab(workspace_id):
     panes = herdr("pane", "list", "--workspace", workspace_id)["result"]["panes"]
     by_tab = {}
@@ -261,6 +276,7 @@ def maybe_run_default(role, panes):
 
 
 def main():
+    ensure_activity_monitor()
     workspace_id = context_workspace_id()
     lock_path = lock_workspace(workspace_id)
     try:

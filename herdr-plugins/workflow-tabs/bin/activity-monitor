@@ -1,0 +1,141 @@
+#!/usr/bin/env python3
+import argparse
+import fcntl
+import json
+import os
+import subprocess
+import sys
+import time
+
+
+LOCK_PATH = "/tmp/herdr-workflow-tabs/activity-monitor.lock"
+TARGET_TABS = {"process", "terminal"}
+SHELL_NAMES = {"bash", "fish", "nu", "pwsh", "sh", "zsh"}
+WORKSPACE_MARKER = "🚧 "
+LEGACY_WORKSPACE_MARKER = " !"
+
+
+def herdr(*args):
+    binary = os.environ.get("HERDR_BIN_PATH", "herdr")
+    result = subprocess.run(
+        [binary, *args],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or result.stdout.strip())
+    return json.loads(result.stdout)
+
+
+def base_label(label):
+    normalized = (label or "").strip().lower()
+    for candidate in TARGET_TABS:
+        if normalized in {candidate, f"{candidate} !"}:
+            return candidate
+    return None
+
+
+def pane_is_busy(pane_id):
+    data = herdr("pane", "process-info", "--pane", pane_id)
+    processes = data.get("result", {}).get("process_info", {}).get(
+        "foreground_processes", []
+    )
+    return any(
+        (process.get("name") or "").lower() not in SHELL_NAMES
+        for process in processes
+    )
+
+
+def refresh():
+    workspaces = herdr("workspace", "list").get("result", {}).get("workspaces", [])
+    panes = herdr("pane", "list").get("result", {}).get("panes", [])
+    panes_by_tab = {}
+    for pane in panes:
+        panes_by_tab.setdefault(pane.get("tab_id"), []).append(pane)
+
+    for workspace in workspaces:
+        workspace_id = workspace.get("workspace_id")
+        if not workspace_id:
+            continue
+        workspace_busy = False
+        tabs = herdr("tab", "list", "--workspace", workspace_id).get(
+            "result", {}
+        ).get("tabs", [])
+        for tab in tabs:
+            base = base_label(tab.get("label"))
+            if base is None:
+                continue
+            if tab.get("label") != base:
+                herdr("tab", "rename", tab["tab_id"], base)
+            workspace_busy = workspace_busy or any(
+                pane_is_busy(pane["pane_id"])
+                for pane in panes_by_tab.get(tab.get("tab_id"), [])
+                if pane.get("pane_id")
+            )
+
+        label = workspace.get("label") or ""
+        if label.startswith(WORKSPACE_MARKER):
+            base_workspace_label = label[len(WORKSPACE_MARKER) :]
+        elif label.endswith(LEGACY_WORKSPACE_MARKER):
+            base_workspace_label = label[: -len(LEGACY_WORKSPACE_MARKER)]
+        else:
+            base_workspace_label = label
+        expected = (
+            f"{WORKSPACE_MARKER}{base_workspace_label}"
+            if workspace_busy
+            else base_workspace_label
+        )
+        if label != expected:
+            herdr("workspace", "rename", workspace_id, expected)
+
+
+def acquire_lock():
+    os.makedirs(os.path.dirname(LOCK_PATH), exist_ok=True)
+    lock = open(LOCK_PATH, "w", encoding="utf-8")
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        lock.close()
+        return None
+    lock.write(str(os.getpid()))
+    lock.flush()
+    return lock
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Mark Herdr process and terminal tabs with active foreground jobs."
+    )
+    parser.add_argument("--interval", type=float, default=2.0)
+    parser.add_argument("--once", action="store_true")
+    args = parser.parse_args()
+
+    if args.once:
+        refresh()
+        return 0
+
+    lock = acquire_lock()
+    if lock is None:
+        return 0
+
+    failures = 0
+    while True:
+        try:
+            refresh()
+            failures = 0
+        except (RuntimeError, json.JSONDecodeError):
+            failures += 1
+            if failures >= 30:
+                return 1
+        time.sleep(max(args.interval, 0.5))
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except KeyboardInterrupt:
+        raise SystemExit(0)
+    except Exception as exc:
+        print(f"workflow-tabs activity monitor: {exc}", file=sys.stderr)
+        raise SystemExit(1)
