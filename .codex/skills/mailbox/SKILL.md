@@ -17,15 +17,15 @@ Do not delete, empty Trash, unsubscribe, reply, forward, send, download attachme
 
 ## Launch the triage desk
 
-Use `/Users/boss/coding/perso/mail-triage` as the canonical runtime.
+Use the bundled runtime at `scripts/mailbox_server.py`. Serve the interface directly from `assets/mailroom/`; do not copy or rebuild it in the current workspace.
 
 1. Check `http://127.0.0.1:8765/api/emails`.
-2. If unavailable, run `python3 server.py` from the runtime directory in a persistent terminal session.
+2. If unavailable, run `python3 scripts/mailbox_server.py` from this skill directory in a persistent terminal session.
 3. Wait until the server prints its local URL.
 4. Open `http://127.0.0.1:8765` for the user.
 5. Verify that `/api/emails` and `/api/tasks` respond. Do not submit a fake task during verification.
 
-The server snapshots unread inbox metadata from Apple Mail at startup. It stores task history locally in `data/tasks.json`. The webpage excludes messages that already have a task, so reloads resume from untreated mail.
+The server snapshots unread inbox metadata from Apple Mail at startup. It stores private runtime state outside the repository at `/tmp/codex-mailbox-<uid>/` with owner-only permissions. The webpage excludes messages that already have a task, so reloads resume from untreated mail while that temporary directory exists. Never place inbox snapshots or task history inside the skill directory. Warn that macOS may clear progress in `/tmp` after a reboot or system cleanup.
 
 ## Attach workers
 
@@ -68,4 +68,4 @@ Keep completed and pending results visible in the worker rail. Do not re-present
 
 Report only what matters: the local URL, unread/remaining count, worker status, completed mutations, and actions waiting for confirmation. Never claim an email action succeeded based only on queue submission.
 
-If the runtime is missing or broken, repair it in place while preserving `data/tasks.json`. Do not clear task history unless the user explicitly asks to restart triage from zero.
+If the runtime is broken, repair the bundled script or assets without writing private state into the repository. Do not clear active `/tmp` task history unless the user explicitly asks to restart triage from zero.

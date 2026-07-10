@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#efe9dc" />
+    <title>Mailroom — guided inbox triage</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="grain" aria-hidden="true"></div>
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Mailroom home"><span class="brand-mark">M</span><span>Mailroom</span></a>
+      <div class="session"><span class="pulse"></span> Local session <span id="clock"></span></div>
+    </header>
+
+    <main class="shell">
+      <section class="triage" aria-labelledby="page-title">
+        <div class="eyebrow"><span id="account">Loading inbox…</span><span id="position">— / —</span></div>
+        <div class="progress" aria-label="Triage progress"><span id="progress-fill"></span></div>
+
+        <article class="letter" id="letter" aria-live="polite">
+          <div class="letter-meta">
+            <div class="avatar" id="avatar">…</div>
+            <div><p class="sender" id="sender">Opening your mail</p><p class="address" id="date">Please wait</p></div>
+            <span class="priority" id="priority">UNREAD</span>
+          </div>
+          <h1 id="page-title">Preparing the triage desk…</h1>
+          <p class="preview" id="preview">Message metadata stays on your Mac. Nothing is sent, moved, or deleted until a worker receives a clear instruction from you.</p>
+        </article>
+
+        <section class="composer" aria-labelledby="composer-title">
+          <div class="composer-heading"><h2 id="composer-title">What should I do?</h2><span><kbd>⌘</kbd><kbd>↵</kbd> send</span></div>
+          <div class="suggestions" aria-label="Suggested instructions">
+            <button data-hotkey="s" data-prompt="Summarize this email and tell me if I need to act."><kbd>S</kbd> Summarize</button>
+            <button data-hotkey="a" data-prompt="Archive this email and create a rule for similar messages."><kbd>A</kbd> Archive + rule</button>
+            <button data-hotkey="c" data-prompt="Investigate whether this is legitimate and explain the risk. Do not click links."><kbd>C</kbd> Check safety</button>
+            <button data-hotkey="h" data-prompt="Mark this as handled; no other action."><kbd>H</kbd> Handled</button>
+            <button class="unsubscribe-preset" data-hotkey="u" data-prompt="Unsubscribe me from this newsletter. Verify the sender and unsubscribe destination first, then ask for my confirmation immediately before submitting the unsubscribe request."><kbd>U</kbd> Unsubscribe</button>
+            <button class="delete-preset" data-hotkey="d" data-prompt="Move this email to Trash. Ask for my explicit confirmation immediately before deleting it."><kbd>D</kbd> Delete</button>
+          </div>
+          <label class="sr-only" for="instruction">Instruction for this email</label>
+          <textarea id="instruction" rows="4" placeholder="Tell me naturally — e.g. “check whether this Stripe sign-in was me, then archive it if safe”…"></textarea>
+          <div class="composer-footer">
+            <p>Submitting queues a worker. Destructive or external actions still require your confirmation.</p>
+            <button class="dispatch" id="dispatch"><span>Dispatch worker</span><span aria-hidden="true">↗</span></button>
+          </div>
+        </section>
+
+        <div class="nav-row">
+          <button class="nav" id="previous">← Previous</button>
+          <p class="hotkey-hint"><kbd>J</kbd>/<kbd>K</kbd> navigate · <kbd>S A C H U D</kbd> actions · <kbd>I</kbd> write · <kbd>?</kbd> shortcuts</p>
+          <button class="nav" id="skip">Skip for now →</button>
+        </div>
+      </section>
+
+      <aside class="workers" aria-labelledby="workers-title">
+        <div class="aside-head"><div><p class="kicker">CONCURRENT DESK</p><h2 id="workers-title">Worker queue</h2></div><span class="count" id="task-count">0</span></div>
+        <div class="summary-grid">
+          <div><strong id="done-count">0</strong><span>done</span></div>
+          <div><strong id="active-count">0</strong><span>active</span></div>
+          <div><strong id="remaining-count">—</strong><span>left</span></div>
+        </div>
+        <div class="task-list" id="task-list"><p class="empty">No workers yet. Give the first email an instruction to begin.</p></div>
+        <div class="privacy"><span>⌂</span><p><strong>Private by default</strong><br />Queue and decisions remain in this local folder.</p></div>
+      </aside>
+    </main>
+
+    <div class="toast" id="toast" role="status"></div>
+    <script src="/app.js" defer></script>
+  </body>
+</html>
