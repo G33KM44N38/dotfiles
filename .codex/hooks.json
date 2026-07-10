@@ -1,0 +1,69 @@
+{
+    "hooks": {
+        "PermissionRequest": [
+            {
+                "hooks": [
+                    {
+                        "command": "'/Users/boss/.vibe-island/bin/vibe-island-bridge' --source codex",
+                        "timeout": 7200,
+                        "type": "command"
+                    }
+                ]
+            }
+        ],
+        "PostToolUse": [
+            {
+                "hooks": [
+                    {
+                        "command": "'/Users/boss/.vibe-island/bin/vibe-island-bridge' --source codex",
+                        "timeout": 5,
+                        "type": "command"
+                    }
+                ],
+                "matcher": ""
+            }
+        ],
+        "SessionStart": [
+            {
+                "hooks": [
+                    {
+                        "command": "bash '/Users/boss/.codex/herdr-agent-state.sh' session",
+                        "timeout": 10,
+                        "type": "command"
+                    }
+                ]
+            },
+            {
+                "hooks": [
+                    {
+                        "command": "'/Users/boss/.vibe-island/bin/vibe-island-bridge' --source codex",
+                        "timeout": 5,
+                        "type": "command"
+                    }
+                ]
+            }
+        ],
+        "Stop": [
+            {
+                "hooks": [
+                    {
+                        "command": "'/Users/boss/.vibe-island/bin/vibe-island-bridge' --source codex",
+                        "timeout": 5,
+                        "type": "command"
+                    }
+                ]
+            }
+        ],
+        "UserPromptSubmit": [
+            {
+                "hooks": [
+                    {
+                        "command": "'/Users/boss/.vibe-island/bin/vibe-island-bridge' --source codex",
+                        "timeout": 5,
+                        "type": "command"
+                    }
+                ]
+            }
+        ]
+    }
+}
