@@ -5,6 +5,11 @@ onboarding = false
 [terminal]
 new_cwd = "follow"
 
+# Keep every Herdr-created checkout inside its bare repository directory:
+# <directory>/<bare-repo-name>/<branch-slug>.
+[worktrees]
+directory = "/Users/boss/coding/work"
+
 [keys]
 prefix = "ctrl+a"
 
@@ -39,7 +44,7 @@ reload_config = "prefix+shift+r"
 open_notification_target = ""
 focus_agent = "prefix+alt+1..9"
 workspace_picker = "prefix+w"
-goto = ["prefix+g", "prefix+alt+j", "prefix+alt+k"]
+goto = ["prefix+g", "shift+alt+g"]
 new_workspace = "prefix+shift+n"
 new_worktree = "ctrl+shift+w"
 open_worktree = ""
