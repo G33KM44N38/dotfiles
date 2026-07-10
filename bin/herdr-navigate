@@ -8,6 +8,18 @@ import sys
 from pathlib import Path
 
 
+SEARCH_ROOTS = (
+    "Library/Mobile Documents/iCloud~md~obsidian/Documents",
+    "backup",
+    "coding",
+    "coding/work",
+    "coding/perso",
+    "goinfre",
+    ".dotfiles",
+    "learning",
+)
+
+
 def fail(message: str, code: int = 1) -> None:
     print(f"herdr-navigate: {message}", file=sys.stderr)
     raise SystemExit(code)
@@ -70,12 +82,8 @@ def label_for(path: Path) -> str:
     return name[:-4] if name.endswith(".git") else name
 
 
-def focus_or_create(path: Path, *, dry_run: bool) -> None:
+def matching_workspace(path: Path, workspaces: list[dict], pane_paths: dict[str, set[str]]) -> dict | None:
     target = str(path)
-    data = herdr_json("workspace", "list")
-    workspaces = data.get("result", {}).get("workspaces", [])
-    pane_paths = pane_workspace_paths()
-
     matches: list[tuple[int, dict]] = []
     for workspace in workspaces:
         workspace_id = workspace.get("workspace_id", "")
@@ -89,8 +97,62 @@ def focus_or_create(path: Path, *, dry_run: bool) -> None:
         elif target in repo_paths and not linked_worktree:
             matches.append((3, workspace))
 
-    if matches:
-        _, workspace = sorted(matches, key=lambda item: item[0])[0]
+    return sorted(matches, key=lambda item: item[0])[0][1] if matches else None
+
+
+def selectable_directories() -> list[Path]:
+    directories: set[Path] = set()
+    for relative_root in SEARCH_ROOTS:
+        root = normalize(str(Path.home() / relative_root))
+        if not root.is_dir():
+            continue
+        directories.add(root)
+        directories.update(path.resolve() for path in root.iterdir() if path.is_dir())
+    return sorted(directories, key=lambda path: str(path).casefold())
+
+
+def select_path() -> Path | None:
+    if not shutil.which("fzf"):
+        fail("fzf not found in PATH")
+
+    directories = selectable_directories()
+    if not directories:
+        fail("no valid search directories found")
+
+    workspaces = herdr_json("workspace", "list").get("result", {}).get("workspaces", [])
+    pane_paths = pane_workspace_paths()
+    name_counts: dict[str, int] = {}
+    for path in directories:
+        name_counts[label_for(path)] = name_counts.get(label_for(path), 0) + 1
+
+    rows = []
+    for path in directories:
+        label = label_for(path) if name_counts[label_for(path)] == 1 else str(path)
+        if matching_workspace(path, workspaces, pane_paths):
+            label = f"[HERDR] {label}"
+        rows.append(f"{label}\t{path}")
+
+    result = subprocess.run(
+        ["fzf", "--ansi", "--delimiter=\\t", "--with-nth=1", "--prompt=workspace > "],
+        input="\n".join(rows) + "\n",
+        stdout=subprocess.PIPE,
+        text=True,
+    )
+    if result.returncode == 130 or not result.stdout.strip():
+        return None
+    if result.returncode != 0:
+        fail(f"fzf failed with exit code {result.returncode}")
+    return normalize(result.stdout.rstrip("\n").split("\t", 1)[1])
+
+
+def focus_or_create(path: Path, *, dry_run: bool) -> None:
+    target = str(path)
+    data = herdr_json("workspace", "list")
+    workspaces = data.get("result", {}).get("workspaces", [])
+    pane_paths = pane_workspace_paths()
+    workspace = matching_workspace(path, workspaces, pane_paths)
+
+    if workspace:
         workspace_id = workspace.get("workspace_id", "")
         if dry_run:
             print(f"focus\t{workspace_id}\t{target}\t{workspace.get('label', '')}")
@@ -105,15 +167,17 @@ def focus_or_create(path: Path, *, dry_run: bool) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Focus or create a Herdr workspace for a favorite path.")
-    parser.add_argument("path")
+    parser = argparse.ArgumentParser(description="Select a directory, then focus or create its Herdr workspace.")
+    parser.add_argument("path", nargs="?")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
     if not shutil.which("herdr"):
         fail("herdr not found in PATH")
 
-    path = normalize(args.path)
+    path = normalize(args.path) if args.path else select_path()
+    if path is None:
+        return
     if not path.exists():
         fail(f"path does not exist: {path}")
     if not path.is_dir():

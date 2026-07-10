@@ -1,7 +1,7 @@
 ---
 - name: Creates goinfre directory
   ansible.builtin.file:
-    path: ~/.dotfiles/goinfre/
+    path: ~/coding/goinfre/
     state: directory
 
 - name: Creates work directory

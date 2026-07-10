@@ -64,7 +64,7 @@ command = "$HOME/.dotfiles/bin/herdr-equalize-panes"
 [[keys.command]]
 key = "ctrl+f"
 type = "pane"
-command = "$HOME/.dotfiles/bin/herdr-thread-picker.sh --workspaces"
+command = "$HOME/.dotfiles/bin/herdr-navigate"
 
 [[keys.command]]
 key = "alt+t"
