@@ -36,7 +36,7 @@ help = "prefix+?"
 settings = "prefix+s"
 detach = "prefix+q"
 reload_config = "prefix+shift+r"
-open_notification_target = "prefix+o"
+open_notification_target = ""
 focus_agent = "prefix+alt+1..9"
 workspace_picker = "prefix+w"
 goto = ["prefix+g", "prefix+alt+j", "prefix+alt+k"]
@@ -156,7 +156,7 @@ command = "$HOME/.dotfiles/bin/herdr-focus-agent-status idle"
 pane_history = true
 
 [ui.toast]
-delivery = "herdr"
+delivery = "off"
 
 [theme]
 name = "catppuccin"
