@@ -76,7 +76,8 @@ const hyperSubLayers = createHyperSubLayers({
     },
     h: app("Home"),
     t: open(`raycast://extensions/raycast/system/toggle-system-appearance`),
-    c: open("raycast://extensions/raycast/system/open-camera"),
+    c: { to: [{ key_code: "c", modifiers: ["fn"] }] },
+    n: { to: [{ key_code: "n", modifiers: ["fn"] }] },
     m: open("raycast://extensions/raycast/system/toggle-mute"),
   },
   c: {
