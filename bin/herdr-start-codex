@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+lock_dir="/tmp/herdr-start-codex"
+mkdir -p "$lock_dir"
+
+current_json="$(herdr pane current)"
+workspace_id="$(printf '%s\n' "$current_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["pane"]["workspace_id"])')"
+
+lock_path="$lock_dir/$workspace_id.lockdir"
+if ! mkdir "$lock_path" 2>/dev/null; then
+  lock_age="$(( $(date +%s) - $(stat -f %m "$lock_path" 2>/dev/null || printf '0') ))"
+  if (( lock_age > 60 )); then
+    rm -rf "$lock_path"
+    mkdir "$lock_path" 2>/dev/null || exit 0
+  else
+    exit 0
+  fi
+fi
+trap 'rm -rf "$lock_path"' EXIT
+
+recent_file="$lock_dir/$workspace_id.recent"
+now="$(date +%s)"
+if [[ -f "$recent_file" ]]; then
+  last="$(cat "$recent_file" 2>/dev/null || printf '0')"
+  if [[ "$last" =~ ^[0-9]+$ ]] && (( now - last < 10 )); then
+    exit 0
+  fi
+fi
+printf '%s\n' "$now" >"$recent_file"
+
+agent_name="$(herdr agent list | python3 -c '
+import json, sys
+
+workspace_id = sys.argv[1]
+agents = json.load(sys.stdin).get("result", {}).get("agents", [])
+names = {
+    agent.get("name") or agent.get("agent")
+    for agent in agents
+    if agent.get("workspace_id") == workspace_id
+}
+
+name = "codex"
+suffix = 2
+while name in names:
+    name = f"codex-{suffix}"
+    suffix += 1
+print(name)
+' "$workspace_id")"
+
+start_json="$(herdr agent start "$agent_name" --workspace "$workspace_id" --focus -- codex)"
+
+pane_id="$(printf '%s\n' "$start_json" | python3 -c '
+import json, sys
+data = json.load(sys.stdin).get("result", {})
+for key in ("agent", "pane"):
+    value = data.get(key)
+    if isinstance(value, dict) and value.get("pane_id"):
+        print(value["pane_id"])
+        raise SystemExit(0)
+if data.get("pane_id"):
+    print(data["pane_id"])
+')"
+
+if [[ -n "${pane_id:-}" ]]; then
+  herdr agent focus "$pane_id" >/dev/null
+fi
