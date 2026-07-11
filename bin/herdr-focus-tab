@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+from pathlib import Path
 import subprocess
 import sys
 import time
@@ -17,7 +18,6 @@ ALIASES = {
 
 DEFAULT_COMMANDS = {
     "editor": "nvim .",
-    "agent": "codex",
     "diff": "hunk diff --watch",
 }
 
@@ -48,9 +48,14 @@ def tab_for_label(workspace_id, label):
     return None
 
 
-def pane_for_tab(tab_id):
-    panes = herdr("pane", "list")["result"]["panes"]
-    return next((pane for pane in panes if pane.get("tab_id") == tab_id), None)
+def pane_for_tab(tab_id, timeout=0):
+    deadline = time.monotonic() + timeout
+    while True:
+        panes = herdr("pane", "list")["result"]["panes"]
+        pane = next((pane for pane in panes if pane.get("tab_id") == tab_id), None)
+        if pane is not None or time.monotonic() >= deadline:
+            return pane
+        time.sleep(0.05)
 
 
 def pane_is_idle(pane_id):
@@ -63,25 +68,121 @@ def pane_is_idle(pane_id):
     )
 
 
-def ensure_default_command(tab, label):
+def launch_default_command(pane_id, label):
     command = DEFAULT_COMMANDS.get(label)
-    if command is None:
+    if command is None or not pane_is_idle(pane_id):
         return
 
-    pane = pane_for_tab(tab["tab_id"])
-    if pane is None or not pane_is_idle(pane["pane_id"]):
-        return
-
-    herdr("pane", "run", pane["pane_id"], command)
+    herdr("pane", "run", pane_id, command)
 
     if label == "diff":
         # Hunk hides its file explorer below its full-width breakpoint. The
         # shortcut forces it open once the TUI has mounted.
         time.sleep(0.5)
-        herdr("pane", "send-keys", pane["pane_id"], "s")
+        herdr("pane", "send-keys", pane_id, "s")
+
+
+def close_idle_sibling_panes(tab_id, agent_pane_id):
+    panes = herdr("pane", "list")["result"]["panes"]
+    for pane in panes:
+        pane_id = pane.get("pane_id")
+        if (
+            pane.get("tab_id") == tab_id
+            and pane_id != agent_pane_id
+            and pane_is_idle(pane_id)
+        ):
+            herdr("pane", "close", pane_id)
+
+
+def launch_managed_agent(tab_id, cwd):
+    agents = herdr("agent", "list")["result"]["agents"]
+    agent = next(
+        (
+            agent
+            for agent in agents
+            if agent.get("tab_id") == tab_id and agent.get("agent") == "codex"
+        ),
+        None,
+    )
+    if agent is not None:
+        close_idle_sibling_panes(tab_id, agent["pane_id"])
+        herdr("agent", "focus", agent["pane_id"])
+        return
+
+    herdr(
+        "agent",
+        "start",
+        "codex",
+        "--cwd",
+        cwd,
+        "--tab",
+        tab_id,
+        "--no-focus",
+        "--",
+        "codex",
+    )
+    deadline = time.monotonic() + 2
+    while time.monotonic() < deadline:
+        agents = herdr("agent", "list")["result"]["agents"]
+        agent = next((agent for agent in agents if agent.get("tab_id") == tab_id), None)
+        if agent is not None:
+            close_idle_sibling_panes(tab_id, agent["pane_id"])
+            herdr("agent", "focus", agent["pane_id"])
+            return
+        time.sleep(0.05)
+
+
+def schedule_default_command(tab, label):
+    if label == "agent":
+        pane = pane_for_tab(tab["tab_id"], timeout=1)
+        if pane is None:
+            return
+        subprocess.Popen(
+            [
+                sys.executable,
+                __file__,
+                "--managed-agent",
+                tab["tab_id"],
+                pane.get("foreground_cwd") or pane.get("cwd") or str(Path.home()),
+            ],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        return
+
+    if label not in DEFAULT_COMMANDS:
+        return
+
+    # A newly created tab gets its first pane asynchronously.
+    pane = pane_for_tab(tab["tab_id"], timeout=1)
+    if pane is None or not pane_is_idle(pane["pane_id"]):
+        return
+
+    # Both tab.focus and pane.run can terminate the keybinding's source
+    # process. Launch in a detached worker so focusing and starting happen
+    # independently during the same keypress.
+    subprocess.Popen(
+        [sys.executable, __file__, "--launch", pane["pane_id"], label],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
 
 
 def main():
+    if len(sys.argv) == 4 and sys.argv[1] == "--managed-agent":
+        time.sleep(0.1)
+        launch_managed_agent(sys.argv[2], sys.argv[3])
+        return 0
+
+    if len(sys.argv) == 4 and sys.argv[1] == "--launch":
+        time.sleep(0.1)
+        launch_default_command(sys.argv[2], sys.argv[3])
+        return 0
+
     if len(sys.argv) != 2:
         print("usage: herdr-focus-tab editor|agent|process|terminal|diff", file=sys.stderr)
         return 2
@@ -91,8 +192,8 @@ def main():
     tab = tab_for_label(workspace_id, label)
     if tab is None:
         tab = herdr("tab", "create", "--workspace", workspace_id, "--label", label, "--no-focus")["result"]["tab"]
+    schedule_default_command(tab, label)
     herdr("tab", "focus", tab["tab_id"])
-    ensure_default_command(tab, label)
     return 0
 
 
