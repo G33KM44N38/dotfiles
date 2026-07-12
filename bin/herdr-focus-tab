@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import fcntl
 import json
 from pathlib import Path
 import subprocess
@@ -94,7 +95,15 @@ def close_idle_sibling_panes(tab_id, agent_pane_id):
             herdr("pane", "close", pane_id)
 
 
-def launch_managed_agent(tab_id, cwd):
+def launch_managed_agent(tab_id):
+    # Multiple quick keypresses can start multiple detached workers. Serialize
+    # provisioning globally because Herdr agent names are globally unique.
+    with open("/tmp/herdr-focus-tab-agent.lock", "a+") as lock_file:
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+        ensure_managed_agent(tab_id)
+
+
+def ensure_managed_agent(tab_id):
     agents = herdr("agent", "list")["result"]["agents"]
     agent = next(
         (
@@ -109,10 +118,26 @@ def launch_managed_agent(tab_id, cwd):
         herdr("agent", "focus", agent["pane_id"])
         return
 
+    # Herdr materializes a newly-created tab's first pane asynchronously, and
+    # sometimes only after the tab has been focused. The parent process focuses
+    # the tab immediately after starting this worker, so wait for readiness
+    # instead of treating a missing pane as a no-op.
+    pane = pane_for_tab(tab_id, timeout=5)
+    if pane is None:
+        raise RuntimeError(f"agent tab {tab_id} did not create a pane")
+
+    cwd = pane.get("foreground_cwd") or pane.get("cwd") or str(Path.home())
+    used_names = {agent.get("name") or agent.get("agent") for agent in agents}
+    agent_name = "codex"
+    suffix = 2
+    while agent_name in used_names:
+        agent_name = f"codex-{suffix}"
+        suffix += 1
+
     herdr(
         "agent",
         "start",
-        "codex",
+        agent_name,
         "--cwd",
         cwd,
         "--tab",
@@ -121,7 +146,7 @@ def launch_managed_agent(tab_id, cwd):
         "--",
         "codex",
     )
-    deadline = time.monotonic() + 2
+    deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
         agents = herdr("agent", "list")["result"]["agents"]
         agent = next((agent for agent in agents if agent.get("tab_id") == tab_id), None)
@@ -130,20 +155,17 @@ def launch_managed_agent(tab_id, cwd):
             herdr("agent", "focus", agent["pane_id"])
             return
         time.sleep(0.05)
+    raise RuntimeError(f"Codex did not start in agent tab {tab_id}")
 
 
 def schedule_default_command(tab, label):
     if label == "agent":
-        pane = pane_for_tab(tab["tab_id"], timeout=1)
-        if pane is None:
-            return
         subprocess.Popen(
             [
                 sys.executable,
                 __file__,
                 "--managed-agent",
                 tab["tab_id"],
-                pane.get("foreground_cwd") or pane.get("cwd") or str(Path.home()),
             ],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
@@ -173,9 +195,8 @@ def schedule_default_command(tab, label):
 
 
 def main():
-    if len(sys.argv) == 4 and sys.argv[1] == "--managed-agent":
-        time.sleep(0.1)
-        launch_managed_agent(sys.argv[2], sys.argv[3])
+    if len(sys.argv) == 3 and sys.argv[1] == "--managed-agent":
+        launch_managed_agent(sys.argv[2])
         return 0
 
     if len(sys.argv) == 4 and sys.argv[1] == "--launch":
