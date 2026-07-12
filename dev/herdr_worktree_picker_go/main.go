@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -24,6 +25,7 @@ type row struct {
 	Workspace string
 	Detail    string
 	Repo      string
+	Updated   int64
 }
 
 type app struct {
@@ -278,7 +280,7 @@ func (a *app) buildRows() ([]row, error) {
 		if jsonString(wt, "open_workspace_id") != "" {
 			state = "open"
 		}
-		out = append(out, row{Kind: "WT", State: state, Branch: branch, Target: path, Workspace: jsonString(wt, "open_workspace_id"), Detail: path, Repo: repoName})
+		out = append(out, row{Kind: "WT", State: state, Branch: branch, Target: path, Workspace: jsonString(wt, "open_workspace_id"), Detail: path, Repo: repoName, Updated: a.commitTime(path, "HEAD")})
 	}
 	localBranches := a.branchRefs("refs/heads")
 	localSet := map[string]bool{}
@@ -287,16 +289,28 @@ func (a *app) buildRows() ([]row, error) {
 		if existingBranches[branch] {
 			continue
 		}
-		out = append(out, row{Kind: "BR", State: "branch", Branch: branch, Target: branch, Detail: "local branch", Repo: repoName})
+		out = append(out, row{Kind: "BR", State: "branch", Branch: branch, Target: branch, Detail: "local branch", Repo: repoName, Updated: a.commitTime(a.root, branch)})
 	}
 	for _, remote := range a.branchRefs("refs/remotes") {
 		branch := remoteLocalName(remote)
 		if branch == "" || existingBranches[branch] || localSet[branch] {
 			continue
 		}
-		out = append(out, row{Kind: "RB", State: "remote", Branch: branch, Target: remote, Detail: remote, Repo: repoName})
+		out = append(out, row{Kind: "RB", State: "remote", Branch: branch, Target: remote, Detail: remote, Repo: repoName, Updated: a.commitTime(a.root, remote)})
 	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].Updated == out[j].Updated {
+			return out[i].Branch < out[j].Branch
+		}
+		return out[i].Updated > out[j].Updated
+	})
 	return out, nil
+}
+
+func (a *app) commitTime(path, ref string) int64 {
+	raw := a.output(a.gitBin, "-C", path, "show", "-s", "--format=%ct", ref)
+	updated, _ := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
+	return updated
 }
 
 func (a *app) branchRefs(namespace string) []string {
