@@ -261,6 +261,7 @@ func (a *app) buildRows() ([]row, error) {
 	result := jsonMap(data, "result")
 	source := jsonMap(result, "source")
 	repoName := strings.TrimSuffix(firstNonEmpty(jsonString(source, "repo_name"), filepath.Base(a.root)), ".git")
+	refTimes := a.refTimes()
 	existingBranches := map[string]bool{}
 	var out []row
 	for _, item := range jsonArray(result, "worktrees") {
@@ -280,7 +281,11 @@ func (a *app) buildRows() ([]row, error) {
 		if jsonString(wt, "open_workspace_id") != "" {
 			state = "open"
 		}
-		out = append(out, row{Kind: "WT", State: state, Branch: branch, Target: path, Workspace: jsonString(wt, "open_workspace_id"), Detail: path, Repo: repoName, Updated: a.commitTime(path, "HEAD")})
+		updated := refTimes[jsonString(wt, "branch")]
+		if updated == 0 && !jsonBool(wt, "is_bare") {
+			updated = a.commitTime(path, "HEAD")
+		}
+		out = append(out, row{Kind: "WT", State: state, Branch: branch, Target: path, Workspace: jsonString(wt, "open_workspace_id"), Detail: path, Repo: repoName, Updated: updated})
 	}
 	localBranches := a.branchRefs("refs/heads")
 	localSet := map[string]bool{}
@@ -289,14 +294,14 @@ func (a *app) buildRows() ([]row, error) {
 		if existingBranches[branch] {
 			continue
 		}
-		out = append(out, row{Kind: "BR", State: "branch", Branch: branch, Target: branch, Detail: "local branch", Repo: repoName, Updated: a.commitTime(a.root, branch)})
+		out = append(out, row{Kind: "BR", State: "branch", Branch: branch, Target: branch, Detail: "local branch", Repo: repoName, Updated: refTimes[branch]})
 	}
 	for _, remote := range a.branchRefs("refs/remotes") {
 		branch := remoteLocalName(remote)
 		if branch == "" || existingBranches[branch] || localSet[branch] {
 			continue
 		}
-		out = append(out, row{Kind: "RB", State: "remote", Branch: branch, Target: remote, Detail: remote, Repo: repoName, Updated: a.commitTime(a.root, remote)})
+		out = append(out, row{Kind: "RB", State: "remote", Branch: branch, Target: remote, Detail: remote, Repo: repoName, Updated: refTimes[remote]})
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].Updated == out[j].Updated {
@@ -305,6 +310,22 @@ func (a *app) buildRows() ([]row, error) {
 		return out[i].Updated > out[j].Updated
 	})
 	return out, nil
+}
+
+// refTimes batches timestamp lookup for every local and remote branch into one
+// Git process. The old per-row `git show` made picker latency grow with the
+// number of branches.
+func (a *app) refTimes() map[string]int64 {
+	out := a.output(a.gitBin, "-C", a.root, "for-each-ref", "--format=%(refname:short)%09%(committerdate:unix)", "refs/heads", "refs/remotes")
+	times := make(map[string]int64)
+	for _, line := range strings.Split(out, "\n") {
+		parts := strings.SplitN(line, "\t", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		times[parts[0]], _ = strconv.ParseInt(parts[1], 10, 64)
+	}
+	return times
 }
 
 func (a *app) commitTime(path, ref string) int64 {
