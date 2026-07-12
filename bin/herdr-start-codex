@@ -5,7 +5,12 @@ lock_dir="/tmp/herdr-start-codex"
 mkdir -p "$lock_dir"
 
 current_json="$(herdr pane current)"
-workspace_id="$(printf '%s\n' "$current_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["pane"]["workspace_id"])')"
+IFS=$'\t' read -r workspace_id project_path < <(printf '%s\n' "$current_json" | python3 -c '
+import json, sys
+
+pane = json.load(sys.stdin)["result"]["pane"]
+print(pane["workspace_id"], pane.get("foreground_cwd") or pane["cwd"], sep="\t")
+')
 
 lock_path="$lock_dir/$workspace_id.lockdir"
 if ! mkdir "$lock_path" 2>/dev/null; then
@@ -48,7 +53,7 @@ while name in names:
 print(name)
 ' "$workspace_id")"
 
-start_json="$(herdr agent start "$agent_name" --workspace "$workspace_id" --focus -- codex)"
+start_json="$(herdr agent start "$agent_name" --workspace "$workspace_id" --cwd "$project_path" --focus -- codex)"
 
 pane_id="$(printf '%s\n' "$start_json" | python3 -c '
 import json, sys
