@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -51,6 +52,27 @@ func TestParseArgsRejectsBadJobs(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "positive integer") {
 		t.Fatalf("expected positive integer error, got %v", err)
+	}
+}
+
+func TestParseArgsRejectsConflictingFetchFlags(t *testing.T) {
+	_, err := parseArgs([]string{"--fetch", "--no-fetch"}, func(string) string { return "" })
+	if err == nil || !strings.Contains(err.Error(), "cannot be used together") {
+		t.Fatalf("expected conflicting fetch flags error, got %v", err)
+	}
+}
+
+func TestConfiguredJobsDefaultsToFour(t *testing.T) {
+	got, err := configuredJobs(func(string) string { return "" })
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := runtime.NumCPU()
+	if want > 4 {
+		want = 4
+	}
+	if got != want {
+		t.Fatalf("default jobs = %d, want %d", got, want)
 	}
 }
 
@@ -148,7 +170,7 @@ func TestRenderPlanMatchesShellSections(t *testing.T) {
 	pl.add(row{category: catKeep, path: "/tmp/main", branch: "main", reason: "protected"})
 
 	var out bytes.Buffer
-	renderPlan(&out, pl)
+	renderPlan(&out, pl, palette{})
 	text := out.String()
 	for _, part := range []string{
 		"✅ SAFE TO REMOVE",

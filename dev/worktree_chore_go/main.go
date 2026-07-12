@@ -16,12 +16,17 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
+
+const fetchTTL = 5 * time.Minute
 
 type config struct {
 	dryRun       bool
 	yes          bool
 	autoPull     bool
+	forceFetch   bool
+	noFetch      bool
 	parallelJobs int
 }
 
@@ -47,6 +52,41 @@ type app struct {
 	in     io.Reader
 	out    io.Writer
 	errOut io.Writer
+}
+
+type palette struct {
+	enabled bool
+}
+
+const (
+	ansiReset   = "\x1b[0m"
+	ansiBold    = "\x1b[1m"
+	ansiDim     = "\x1b[2m"
+	ansiRed     = "\x1b[31m"
+	ansiGreen   = "\x1b[32m"
+	ansiYellow  = "\x1b[33m"
+	ansiBlue    = "\x1b[34m"
+	ansiMagenta = "\x1b[35m"
+	ansiCyan    = "\x1b[36m"
+)
+
+func (p palette) paint(code, value string) string {
+	if !p.enabled {
+		return value
+	}
+	return code + value + ansiReset
+}
+
+func colorsEnabled(w io.Writer) bool {
+	if os.Getenv("NO_COLOR") != "" || os.Getenv("TERM") == "dumb" {
+		return false
+	}
+	f, ok := w.(*os.File)
+	if !ok {
+		return false
+	}
+	info, err := f.Stat()
+	return err == nil && info.Mode()&os.ModeCharDevice != 0
 }
 
 type worktree struct {
@@ -114,6 +154,8 @@ func parseArgs(args []string, getenv func(string) string) (config, error) {
 	fs.BoolVar(&cfg.yes, "yes", false, "")
 	fs.BoolVar(&cfg.yes, "y", false, "")
 	noPull := fs.Bool("no-pull", false, "")
+	fs.BoolVar(&cfg.forceFetch, "fetch", false, "")
+	fs.BoolVar(&cfg.noFetch, "no-fetch", false, "")
 	help := fs.Bool("help", false, "")
 	shortHelp := fs.Bool("h", false, "")
 	if err := fs.Parse(args); err != nil {
@@ -122,6 +164,9 @@ func parseArgs(args []string, getenv func(string) string) (config, error) {
 	if *help || *shortHelp {
 		printUsage(os.Stdout)
 		return config{parallelJobs: 0}, nil
+	}
+	if cfg.forceFetch && cfg.noFetch {
+		return config{}, errors.New("Error: --fetch and --no-fetch cannot be used together")
 	}
 	cfg.autoPull = !*noPull
 	jobs, err := configuredJobs(getenv)
@@ -139,8 +184,8 @@ func configuredJobs(getenv func(string) string) (int, error) {
 	}
 	if raw == "" {
 		n := runtime.NumCPU()
-		if n > 8 {
-			n = 8
+		if n > 4 {
+			n = 4
 		}
 		if n < 1 {
 			n = 1
@@ -155,7 +200,7 @@ func configuredJobs(getenv func(string) string) (int, error) {
 }
 
 func printUsage(w io.Writer) {
-	fmt.Fprint(w, `Usage: worktree-cleanup.sh [--dry-run|-n] [--yes|-y] [--no-pull] [--help|-h]
+	fmt.Fprint(w, `Usage: worktree-chore [--dry-run|-n] [--yes|-y] [--fetch|--no-fetch] [--no-pull] [--help|-h]
 
 Cleans up git worktrees:
 - SAFE REMOVE: HEAD already merged into origin/main|origin/release
@@ -168,6 +213,8 @@ Options:
   -n, --dry-run   Show actions without changing anything
   -y, --yes       Do not ask for confirmation
   --no-pull       Do not auto pull behind branches
+  --fetch         Force refreshing remote refs
+  --no-fetch      Never refresh remote refs
   -h, --help      Show help
 
 Environment:
@@ -177,6 +224,7 @@ Environment:
 }
 
 func (a app) run(ctx context.Context) error {
+	p := palette{enabled: colorsEnabled(a.out)}
 	repoRoot, err := a.repoRoot(ctx)
 	if err != nil {
 		return err
@@ -185,21 +233,17 @@ func (a app) run(ctx context.Context) error {
 	if a.cfg.dryRun {
 		mode = "DRY-RUN"
 	}
-	fmt.Fprintf(a.out, "🧹 worktree cleanup  (mode: %s)\n", mode)
-	if a.cfg.dryRun {
-		_, _ = a.git(ctx, repoRoot, "fetch", "--all", "--prune", "--dry-run")
-	} else {
-		_, _ = a.git(ctx, repoRoot, "fetch", "--all", "--prune")
-	}
+	fmt.Fprintf(a.out, "%s  (mode: %s)\n", p.paint(ansiBold+ansiCyan, "🧹 worktree cleanup"), p.paint(ansiBold, mode))
+	a.refreshRemotes(ctx, repoRoot)
 	trees, err := a.listWorktrees(ctx, repoRoot)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(a.out, "🔎 Scanning worktrees (parallel jobs: %d)...\n", a.cfg.parallelJobs)
+	fmt.Fprintf(a.out, "%s (parallel jobs: %d)...\n", p.paint(ansiCyan, "🔎 Scanning worktrees"), a.cfg.parallelJobs)
 	pl := a.classifyAll(ctx, repoRoot, trees)
 	pl.staleDirs = findStaleDirs(trees)
 	fmt.Fprintln(a.out)
-	renderPlan(a.out, pl)
+	renderPlan(a.out, pl, p)
 	if len(pl.safe) == 0 && len(pl.staleDirs) == 0 && len(pl.behind) == 0 {
 		fmt.Fprintln(a.out, "✓ Nothing to do automatically.")
 		return nil
@@ -218,6 +262,42 @@ func (a app) run(ctx context.Context) error {
 	}
 	fmt.Fprintln(a.out, "✓ Done.")
 	return nil
+}
+
+func (a app) refreshRemotes(ctx context.Context, repoRoot string) {
+	if a.cfg.noFetch {
+		fmt.Fprintln(a.out, "🌐 Using cached remote refs (--no-fetch)")
+		return
+	}
+	age, fresh := a.fetchAge(ctx, repoRoot)
+	if !a.cfg.forceFetch && fresh && age < fetchTTL {
+		fmt.Fprintf(a.out, "🌐 Using remote refs updated %s ago\n", age.Round(time.Second))
+		return
+	}
+	fmt.Fprintln(a.out, "🌐 Refreshing remote refs...")
+	args := []string{"fetch", "--all", "--prune"}
+	if a.cfg.dryRun {
+		args = append(args, "--dry-run")
+	}
+	if _, err := a.git(ctx, repoRoot, args...); err != nil {
+		fmt.Fprintln(a.errOut, "Warning: remote refresh failed; using cached refs")
+	}
+}
+
+func (a app) fetchAge(ctx context.Context, repoRoot string) (time.Duration, bool) {
+	commonDir, err := a.git(ctx, repoRoot, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	if err != nil {
+		return 0, false
+	}
+	info, err := os.Stat(filepath.Join(strings.TrimSpace(commonDir), "FETCH_HEAD"))
+	if err != nil {
+		return 0, false
+	}
+	age := time.Since(info.ModTime())
+	if age < 0 {
+		age = 0
+	}
+	return age, true
 }
 
 func (a app) repoRoot(ctx context.Context) (string, error) {
@@ -486,9 +566,9 @@ func isDir(path string) bool {
 	return err == nil && info.IsDir()
 }
 
-func renderPlan(w io.Writer, pl plan) {
+func renderPlan(w io.Writer, pl plan, p palette) {
 	if len(pl.safe) > 0 {
-		fmt.Fprintln(w, "✅ SAFE TO REMOVE")
+		fmt.Fprintln(w, p.paint(ansiBold+ansiGreen, "✅ SAFE TO REMOVE"))
 		for _, r := range pl.safe {
 			switch r.reason {
 			case "merged":
@@ -500,36 +580,36 @@ func renderPlan(w io.Writer, pl plan) {
 			default:
 				fmt.Fprintf(w, "  • %s\n", r.branch)
 			}
-			fmt.Fprintf(w, "    %s\n", r.path)
+			fmt.Fprintf(w, "    %s\n", p.paint(ansiDim, r.path))
 		}
 		fmt.Fprintln(w)
 	}
 	if len(pl.staleDirs) > 0 {
-		fmt.Fprintln(w, "🧽 STALE DIRECTORIES")
+		fmt.Fprintln(w, p.paint(ansiBold+ansiMagenta, "🧽 STALE DIRECTORIES"))
 		for _, r := range pl.staleDirs {
 			fmt.Fprintf(w, "  • %s  (not registered as a git worktree)\n", r.branch)
-			fmt.Fprintf(w, "    %s\n", r.path)
+			fmt.Fprintf(w, "    %s\n", p.paint(ansiDim, r.path))
 		}
 		fmt.Fprintln(w)
 	}
 	if len(pl.behind) > 0 {
-		fmt.Fprintln(w, "🔄 BEHIND (can pull --rebase)")
+		fmt.Fprintln(w, p.paint(ansiBold+ansiBlue, "🔄 BEHIND (can pull --rebase)"))
 		for _, r := range pl.behind {
 			fmt.Fprintf(w, "  • %s  (%s behind %s)\n", r.branch, r.a, valueOr(r.compareRef, "upstream"))
-			fmt.Fprintf(w, "    %s\n", r.path)
+			fmt.Fprintf(w, "    %s\n", p.paint(ansiDim, r.path))
 		}
 		fmt.Fprintln(w)
 	}
 	if len(pl.unpushed) > 0 {
-		fmt.Fprintln(w, "📤 UNPUSHED COMMITS")
+		fmt.Fprintln(w, p.paint(ansiBold+ansiYellow, "📤 UNPUSHED COMMITS"))
 		for _, r := range pl.unpushed {
 			fmt.Fprintf(w, "  • %s  (%s commit(s) not pushed to %s)\n", r.branch, r.a, valueOr(r.compareRef, "upstream"))
-			fmt.Fprintf(w, "    %s\n", r.path)
+			fmt.Fprintf(w, "    %s\n", p.paint(ansiDim, r.path))
 		}
 		fmt.Fprintln(w)
 	}
 	if len(pl.attention) > 0 {
-		fmt.Fprintln(w, "⚠️  ATTENTION (manual review)")
+		fmt.Fprintln(w, p.paint(ansiBold+ansiRed, "⚠️  ATTENTION (manual review)"))
 		for _, r := range pl.attention {
 			switch r.reason {
 			case "local_changes":
@@ -545,19 +625,19 @@ func renderPlan(w io.Writer, pl plan) {
 			default:
 				fmt.Fprintf(w, "  • %s  (%s)\n", r.branch, r.reason)
 			}
-			fmt.Fprintf(w, "    %s\n", r.path)
+			fmt.Fprintf(w, "    %s\n", p.paint(ansiDim, r.path))
 		}
 		fmt.Fprintln(w)
 	}
 	if len(pl.keep) > 0 {
-		fmt.Fprintln(w, "ℹ️  KEEP")
+		fmt.Fprintln(w, p.paint(ansiBold+ansiCyan, "ℹ️  KEEP"))
 		for _, r := range pl.keep {
 			if r.reason == "protected" {
 				fmt.Fprintf(w, "  • %s  (protected)\n", r.branch)
 			} else {
 				fmt.Fprintf(w, "  • %s  (%s)\n", r.branch, r.reason)
 			}
-			fmt.Fprintf(w, "    %s\n", r.path)
+			fmt.Fprintf(w, "    %s\n", p.paint(ansiDim, r.path))
 		}
 		fmt.Fprintln(w)
 	}
