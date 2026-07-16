@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly wrapper=/Users/boss/.dotfiles/bin/herdr-run-codex-agent
+test_root="$(mktemp -d /tmp/herdr-wrapper-status.XXXXXX)"
+trap 'rm -rf "$test_root"' EXIT
+mkdir -p "$test_root/bin" "$test_root/ops"
+
+cat >"$test_root/bin/codex" <<'SH'
+#!/bin/sh
+shift
+output_file=
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -o|--output-last-message) output_file=$2; shift 2 ;;
+        *) shift ;;
+    esac
+done
+[ -z "$output_file" ] || printf 'terminal-visible success\n' >"$output_file"
+printf 'terminal-visible child exit %s\n' "${FAKE_CODEX_EXIT:-0}"
+if [ -n "${SELF_REWRITE_TARGET:-}" ]; then
+    printf '#!/bin/sh\nexit 99\n' >"$SELF_REWRITE_TARGET"
+fi
+exit "${FAKE_CODEX_EXIT:-0}"
+SH
+
+cat >"$test_root/bin/herdr" <<'SH'
+#!/bin/sh
+printf '%s\n' "$*" >>"$HERDR_TEST_LOG"
+case "$*" in
+    *'--state idle'*|*'release-agent'*) [ "${FAIL_CLEANUP:-0}" -eq 0 ] || exit 71 ;;
+esac
+exit 0
+SH
+
+cat >"$test_root/bin/ops-watch" <<'SH'
+#!/bin/sh
+printf '%s\n' "$*" >>"$OPSWATCH_TEST_LOG"
+exit 0
+SH
+chmod +x "$test_root/bin/"*
+
+run_case() {
+    local name=$1 child_exit=$2 cleanup_fails=$3 rewrite=$4
+    local case_wrapper="$test_root/wrapper-$name"
+    local herdr_log="$test_root/herdr-$name.log"
+    local ops_log="$test_root/ops-$name.log"
+    cp -p "$wrapper" "$case_wrapper"
+    : >"$herdr_log"
+    rm -f "$ops_log"
+
+    local rewrite_target=
+    [[ "$rewrite" == false ]] || rewrite_target=$case_wrapper
+    set +e
+    PATH="$test_root/bin:/usr/bin:/bin" \
+        ORCH_RUN_ID="run_$name" \
+        OPSWATCH_BIN="$test_root/bin/ops-watch" \
+        OPSWATCH_HOME="$test_root/ops" \
+        HERDR_ENV=1 \
+        HERDR_PANE_ID="proof:$name" \
+        HERDR_WORKSPACE_ID=proof \
+        HERDR_TAB_ID=proof \
+        HERDR_TEST_LOG="$herdr_log" \
+        OPSWATCH_TEST_LOG="$ops_log" \
+        FAKE_CODEX_EXIT="$child_exit" \
+        FAIL_CLEANUP="$cleanup_fails" \
+        SELF_REWRITE_TARGET="$rewrite_target" \
+        "$case_wrapper" "proof-$name" >"$test_root/stdout-$name.log" 2>"$test_root/stderr-$name.log"
+    local actual_exit=$?
+    set -e
+
+    [[ "$actual_exit" -eq "$child_exit" ]]
+    grep -q -- '--state working' "$herdr_log"
+    grep -q -- '--state idle' "$herdr_log"
+    grep -q -- 'release-agent' "$herdr_log"
+    [[ ! -e "$ops_log" ]]
+}
+
+run_case success 0 0 false
+run_case success_cleanup_failure 0 1 false
+run_case failure_cleanup_failure 7 1 false
+run_case success_self_rewrite 0 1 true
+
+printf 'herdr-wrapper-status-regression-ok\n'

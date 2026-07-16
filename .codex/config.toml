@@ -178,6 +178,8 @@ enabled = true
 enabled = true
 
 [tui]
+terminal_title = ["spinner", "project"]
+
 theme = "ansi"
 
 status_line = [

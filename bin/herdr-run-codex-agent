@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly report_source="boss:codex-exec-wrapper"
+export HERDR_CODEX_LIFECYCLE_OWNER="wrapper"
+
+can_report() {
+    [[ "${HERDR_ENV:-}" == "1" ]] &&
+        [[ -n "${HERDR_PANE_ID:-}" ]] &&
+        command -v herdr >/dev/null 2>&1
+}
+
+release_agent() {
+    if can_report; then
+        herdr pane report-agent "$HERDR_PANE_ID" \
+            --source "$report_source" \
+            --agent codex \
+            --state idle \
+            --message "Codex task finished" >/dev/null 2>&1 || true
+        herdr pane release-agent "$HERDR_PANE_ID" \
+            --source "$report_source" \
+            --agent codex >/dev/null 2>&1 || true
+    fi
+
+}
+
+on_exit() {
+    local exit_code=$?
+    trap - EXIT
+    release_agent "$exit_code"
+    exit "$exit_code"
+}
+
+# Bash 3.2 reads top-level scripts incrementally. Keep the long-running path in
+# one parsed function so replacing this file cannot shift commands beneath a
+# running `codex exec` process.
+main() {
+    if (( $# == 0 )); then
+        printf 'Usage: %s <codex exec arguments...>\n' "${0##*/}" >&2
+        return 2
+    fi
+
+    trap on_exit EXIT
+
+    if can_report; then
+        herdr pane report-agent "$HERDR_PANE_ID" \
+            --source "$report_source" \
+            --agent codex \
+            --state working \
+            --message "Codex task running" >/dev/null 2>&1 || true
+    fi
+
+    local codex_exit_code
+    set +e
+    codex exec "$@"
+    codex_exit_code=$?
+    set -e
+
+    trap - EXIT
+    release_agent "$codex_exit_code"
+    return "$codex_exit_code"
+}
+
+main "$@"

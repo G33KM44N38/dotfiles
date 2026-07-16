@@ -1,0 +1,112 @@
+id = "codex"
+version = "2026.07.16.2"
+min_engine_version = 2
+updated_at = "2026-07-15T00:00:00Z"
+
+# Codex 0.144 renders ["spinner", "project"] as "⠙ project" while working
+# and "project" while idle. Keep word matches for compatible Codex variants.
+[[rules]]
+id = "osc_title_blocked"
+state = "blocked"
+priority = 1100
+region = "osc_title"
+visible_blocker = true
+contains = ["Action Required"]
+
+# Approval dialogs wrap aggressively in narrow Herdr splits, so their full
+# prose is not stable. The paired affirmative/negative key hints are stable.
+[[rules]]
+id = "narrow_permission_blocker"
+state = "blocked"
+priority = 1090
+region = "after_last_prompt_marker"
+visible_blocker = true
+all = [
+  { contains = ["Yes,"] },
+  { contains = ["(y)"] },
+  { contains = ["No,"] },
+  { contains = ["(esc)"] },
+]
+
+[[rules]]
+id = "osc_title_working_words"
+state = "working"
+priority = 1075
+region = "osc_title"
+visible_working = true
+regex = ['^(Starting|Working)(?:$| )']
+
+# Ghostty/Herdr does not always expose Codex OSC titles. The live TUI status
+# remains visible after the latest prompt, including the narrow-pane "Co…"
+# rendering used by Herdr proof panes.
+[[rules]]
+id = "tui_status_working"
+state = "working"
+priority = 1060
+region = "after_last_prompt_marker"
+visible_working = true
+any = [
+  { contains = ["Starting"] },
+  { contains = ["Working"] },
+  { contains = ["Computing"] },
+  { contains = ["Co…"] },
+  { contains = ["C…"] },
+]
+
+[[rules]]
+id = "osc_title_working_spinner"
+state = "working"
+priority = 1050
+region = "osc_title"
+visible_working = true
+regex = ['(?:^| )[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏](?: |$)']
+
+[[rules]]
+id = "transcript_viewer"
+state = "unknown"
+priority = 1000
+region = "after_last_prompt_marker"
+skip_state_update = true
+contains = ["↑/↓ to scroll", "pgup/pgdn to", "home/end to jump", "q to quit"]
+any = [
+  { contains = ["esc to edit prev"] },
+  { contains = ["esc/← to edit prev"] },
+]
+
+[[rules]]
+id = "live_strong_blocker"
+state = "blocked"
+priority = 900
+region = "after_last_prompt_marker"
+visible_blocker = true
+any = [
+  { contains = ["press enter to confirm or esc to cancel"] },
+  { contains = ["enter to submit answer"] },
+  { contains = ["enter to submit all"] },
+  { contains = ["allow command?"] },
+]
+
+[[rules]]
+id = "weak_blocker"
+state = "blocked"
+priority = 600
+region = "whole_recent"
+any = [
+  { contains = ["[y/n]"] },
+  { contains = ["yes (y)"] },
+  { contains = ["do you want to"], any = [{ contains = ["yes"] }, { contains = ["❯"] }] },
+  { contains = ["would you like to"], any = [{ contains = ["yes"] }, { contains = ["❯"] }] },
+]
+
+[[rules]]
+id = "osc_title_idle"
+state = "idle"
+priority = 100
+region = "osc_title"
+visible_idle = true
+regex = ['\S']
+not = [
+  { regex = ['^(Starting|Working)(?:$| )'] },
+  { regex = ['(?:^| )[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏](?: |$)'] },
+  { contains = ["Action Required"] },
+]

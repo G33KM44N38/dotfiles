@@ -1,0 +1,174 @@
+#!/usr/bin/env python3
+"""Read-only checks for the Codex → Herdr lifecycle chain."""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tomllib
+import re
+
+
+CODEX_HOME = Path(os.environ.get("CODEX_HOME", "/Users/boss/.codex"))
+DOTFILES = Path("/Users/boss/.dotfiles")
+OPSWATCH = Path("/Users/boss/coding/perso/orchestration-watch/bin/ops-watch")
+
+
+def run(*command: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(command, text=True, capture_output=True, timeout=30)
+
+
+def main() -> int:
+    checks: list[dict[str, object]] = []
+
+    def check(name: str, ok: bool, detail: str) -> None:
+        checks.append({"name": name, "ok": ok, "detail": detail})
+
+    config = tomllib.loads((CODEX_HOME / "config.toml").read_text())
+    title = config.get("tui", {}).get("terminal_title")
+    check(
+        "codex_terminal_title",
+        title == ["spinner", "project"],
+        f"terminal_title={title!r}; expected ['spinner', 'project']",
+    )
+
+    detector_path = Path("/Users/boss/.config/herdr/agent-detection/codex.toml")
+    try:
+        detector = tomllib.loads(detector_path.read_text())
+        detector_version = str(detector.get("version", ""))
+        detector_rules = detector.get("rules", [])
+        spinner_rule = next(
+            (
+                rule
+                for rule in detector_rules
+                if rule.get("id") == "osc_title_working_spinner"
+            ),
+            {},
+        )
+        spinner_patterns = spinner_rule.get("regex", [])
+        spinner_pattern = (
+            re.compile(spinner_patterns[0]) if spinner_patterns else None
+        )
+        detector_ok = bool(
+            re.fullmatch(r"\d+(?:\.\d+)+", detector_version)
+            and any(rule.get("id") == "osc_title_working_words" for rule in detector_rules)
+            and any(rule.get("id") == "tui_status_working" for rule in detector_rules)
+            and spinner_pattern
+            and spinner_pattern.search("⠙ main-")
+            and not spinner_pattern.search("main-")
+        )
+        detector_detail = (
+            f"version={detector_version!r}; OSC spinner and TUI working rules present"
+        )
+    except (OSError, tomllib.TOMLDecodeError) as error:
+        detector_ok = False
+        detector_detail = f"cannot load local detector: {error}"
+    check("herdr_codex_detector", detector_ok, detector_detail)
+
+    integration = CODEX_HOME / "herdr-agent-state.sh"
+    integration_text = integration.read_text() if integration.exists() else ""
+    check(
+        "herdr_codex_identity_v6",
+        "HERDR_INTEGRATION_VERSION=6" in integration_text
+        and "pane.report_agent_session" in integration_text,
+        "v6 SessionStart identity reporter present",
+    )
+
+    hooks = json.loads((CODEX_HOME / "hooks.json").read_text())
+    session_commands = [
+        hook.get("command", "")
+        for group in hooks.get("hooks", {}).get("SessionStart", [])
+        for hook in group.get("hooks", [])
+    ]
+    check(
+        "codex_session_identity_hook",
+        any("herdr-agent-state.sh' session" in command for command in session_commands),
+        "SessionStart invokes the managed Herdr identity integration",
+    )
+    expected_transitions = {
+        "SessionStart": "start",
+        "PermissionRequest": "blocked",
+        "UserPromptSubmit": "working",
+        "Stop": "idle",
+    }
+    lifecycle_commands = {
+        event: [
+            hook.get("command", "")
+            for group in hooks.get("hooks", {}).get(event, [])
+            for hook in group.get("hooks", [])
+        ]
+        for event in expected_transitions
+    }
+    check(
+        "codex_lifecycle_hooks",
+        all(
+            any(
+                "herdr-codex-lifecycle-hook" in command
+                and command.endswith(f" {state}")
+                for command in lifecycle_commands[event]
+            )
+            for event, state in expected_transitions.items()
+        ),
+        "Best-effort lifecycle hooks present; native screen detector remains authoritative",
+    )
+
+    wrapper = DOTFILES / "bin/herdr-run-codex-agent"
+    wrapper_regression = DOTFILES / "bin/test-herdr-run-codex-agent"
+    wrapper_text = wrapper.read_text() if wrapper.exists() else ""
+    syntax = run("bash", "-n", str(wrapper)) if wrapper.exists() else None
+    wrapper_ok = bool(
+        syntax
+        and syntax.returncode == 0
+        and "--state working" in wrapper_text
+        and "--state idle" in wrapper_text
+        and "release-agent" in wrapper_text
+        and 'HERDR_CODEX_LIFECYCLE_OWNER="wrapper"' in wrapper_text
+        and "main()" in wrapper_text
+        and "codex_exit_code=$?" in wrapper_text
+        and 'release_agent "$codex_exit_code"' in wrapper_text
+        and "OPSWATCH" not in wrapper_text
+        and "ops_watch" not in wrapper_text
+        and wrapper_regression.is_file()
+        and os.access(wrapper_regression, os.X_OK)
+    )
+    check(
+        "programmatic_wrapper",
+        wrapper_ok,
+        "parsed main, explicit child status, Herdr cleanup, no OpsWatch calls, and regression present",
+    )
+
+    integration_status = run("herdr", "integration", "status")
+    check(
+        "herdr_integration_status",
+        integration_status.returncode == 0
+        and any(
+            line.startswith("codex: current (v6)")
+            for line in integration_status.stdout.splitlines()
+        ),
+        "Herdr reports codex integration current (v6)",
+    )
+
+    agents = run("herdr", "agent", "list")
+    try:
+        json.loads(agents.stdout)
+        agents_json = agents.returncode == 0
+    except json.JSONDecodeError:
+        agents_json = False
+    check("herdr_agent_api", agents_json, "agent list returned valid JSON")
+
+    check(
+        "opswatch_disabled",
+        OPSWATCH.is_file() and not os.access(OPSWATCH, os.X_OK),
+        f"disabled and preserved at {OPSWATCH}",
+    )
+
+    ok = all(bool(item["ok"]) for item in checks)
+    print(json.dumps({"ok": ok, "checks": checks}, indent=2))
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
