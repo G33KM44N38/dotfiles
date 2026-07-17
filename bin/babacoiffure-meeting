@@ -15,4 +15,4 @@
 
 # Open Google Meet and Beeper
 open https://meet.google.com/new?_babacoiffure
-open -a "Beeper Desktop"
+# open -a "Beeper Desktop"
