@@ -139,8 +139,10 @@ command = "$HOME/.dotfiles/bin/herdr-focus-tab diff"
 
 [[keys.command]]
 key = "ctrl+shift+n"
-type = "shell"
-command = "$HOME/.dotfiles/bin/herdr-start-pi"
+type = "popup"
+command = "$HOME/.dotfiles/bin/herdr-start-codex"
+width = 60
+height = 12
 
 [[keys.command]]
 key = "alt+g"

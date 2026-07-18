@@ -4,13 +4,18 @@ set -euo pipefail
 lock_dir="/tmp/herdr-start-codex"
 mkdir -p "$lock_dir"
 
-current_json="$(herdr pane current)"
-IFS=$'\t' read -r workspace_id project_path < <(printf '%s\n' "$current_json" | python3 -c '
+if [[ -n "${HERDR_ACTIVE_WORKSPACE_ID:-}" && -n "${HERDR_ACTIVE_PANE_CWD:-}" ]]; then
+  workspace_id="$HERDR_ACTIVE_WORKSPACE_ID"
+  project_path="$HERDR_ACTIVE_PANE_CWD"
+else
+  current_json="$(herdr pane current)"
+  IFS=$'\t' read -r workspace_id project_path < <(printf '%s\n' "$current_json" | python3 -c '
 import json, sys
 
 pane = json.load(sys.stdin)["result"]["pane"]
 print(pane["workspace_id"], pane.get("foreground_cwd") or pane["cwd"], sep="\t")
 ')
+fi
 
 lock_path="$lock_dir/$workspace_id.lockdir"
 if ! mkdir "$lock_path" 2>/dev/null; then
@@ -24,36 +29,76 @@ if ! mkdir "$lock_path" 2>/dev/null; then
 fi
 trap 'rm -rf "$lock_path"' EXIT
 
-recent_file="$lock_dir/$workspace_id.recent"
-now="$(date +%s)"
-if [[ -f "$recent_file" ]]; then
-  last="$(cat "$recent_file" 2>/dev/null || printf '0')"
-  if [[ "$last" =~ ^[0-9]+$ ]] && (( now - last < 10 )); then
+printf '\033[2J\033[H'
+printf 'New Codex agent\n\n'
+
+while true; do
+  requested_name=""
+  if ! IFS= read -r -p 'Name (Enter = automatic): ' requested_name; then
     exit 0
   fi
-fi
-printf '%s\n' "$now" >"$recent_file"
 
-agent_name="$(herdr agent list | python3 -c '
+  agents_json="$(herdr agent list)"
+  if agent_name="$(printf '%s\n' "$agents_json" | python3 -c '
 import json, sys
 
-workspace_id = sys.argv[1]
 agents = json.load(sys.stdin).get("result", {}).get("agents", [])
 names = {
     agent.get("name") or agent.get("agent")
     for agent in agents
-    if agent.get("workspace_id") == workspace_id
+    if agent.get("name") or agent.get("agent")
 }
 
-name = "codex"
-suffix = 2
-while name in names:
-    name = f"codex-{suffix}"
-    suffix += 1
+requested = sys.argv[1].strip()
+if requested:
+    if requested in names:
+        raise SystemExit(2)
+    name = requested
+else:
+    name = "codex"
+    suffix = 2
+    while name in names:
+        name = f"codex-{suffix}"
+        suffix += 1
 print(name)
-' "$workspace_id")"
+' "$requested_name")"; then
+    break
+  fi
 
-start_json="$(herdr agent start "$agent_name" --workspace "$workspace_id" --cwd "$project_path" --focus -- codex)"
+  printf '\nName already in use. Choose another name.\n\n'
+done
+
+agent_tab_id="$(herdr tab list --workspace "$workspace_id" | python3 -c '
+import json, sys
+
+tabs = json.load(sys.stdin).get("result", {}).get("tabs", [])
+for tab in tabs:
+    if tab.get("label") == "agent":
+        print(tab["tab_id"])
+        break
+')"
+
+start_command=(herdr agent start "$agent_name" --cwd "$project_path" --focus)
+if [[ -n "$agent_tab_id" ]]; then
+  start_command+=(--tab "$agent_tab_id")
+else
+  start_command+=(--workspace "$workspace_id")
+fi
+start_command+=(-- codex)
+
+if start_json="$("${start_command[@]}")"; then
+  :
+else
+  start_status=$?
+  printf '\nCould not start %s.\n' "$agent_name" >&2
+  if [[ -n "$start_json" ]]; then
+    printf '%s\n' "$start_json" >&2
+  fi
+  if [[ -t 0 ]]; then
+    IFS= read -r -p 'Press Enter to close... ' _ || true
+  fi
+  exit "$start_status"
+fi
 
 pane_id="$(printf '%s\n' "$start_json" | python3 -c '
 import json, sys
