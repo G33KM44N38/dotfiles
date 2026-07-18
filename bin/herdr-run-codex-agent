@@ -3,6 +3,7 @@ set -euo pipefail
 
 readonly report_source="boss:codex-exec-wrapper"
 export HERDR_CODEX_LIFECYCLE_OWNER="wrapper"
+readonly completion_sound=/Users/boss/.dotfiles/bin/herdr-agent-completion-sound
 
 can_report() {
     [[ "${HERDR_ENV:-}" == "1" ]] &&
@@ -12,6 +13,7 @@ can_report() {
 
 release_agent() {
     if can_report; then
+        "$completion_sound" >/dev/null 2>&1 || true
         herdr pane report-agent "$HERDR_PANE_ID" \
             --source "$report_source" \
             --agent codex \

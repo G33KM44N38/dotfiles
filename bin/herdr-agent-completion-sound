@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+"""Play the completion sound Herdr suppresses for another pane in the active tab."""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+
+
+DEFAULT_DONE_SOUND = Path("/System/Library/Sounds/Glass.aiff")
+
+
+def herdr_focus() -> tuple[str | None, str | None]:
+    try:
+        result = subprocess.run(
+            ["herdr", "api", "snapshot"],
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+        snapshot = json.loads(result.stdout)["result"]["snapshot"]
+    except (OSError, subprocess.SubprocessError, json.JSONDecodeError, KeyError):
+        return None, None
+    return snapshot.get("focused_tab_id"), snapshot.get("focused_pane_id")
+
+
+def frontmost_app() -> str | None:
+    osascript = shutil.which("osascript")
+    if not osascript:
+        return None
+    try:
+        result = subprocess.run(
+            [
+                osascript,
+                "-e",
+                'tell application "System Events" to get name of first application process whose frontmost is true',
+            ],
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return result.stdout.strip().casefold() or None
+
+
+def main() -> int:
+    if os.environ.get("HERDR_ENV") != "1":
+        return 0
+
+    pane_id = os.environ.get("HERDR_PANE_ID")
+    tab_id = os.environ.get("HERDR_TAB_ID")
+    if not pane_id or not tab_id:
+        return 0
+
+    focused_tab_id, focused_pane_id = herdr_focus()
+    if focused_tab_id != tab_id or focused_pane_id in (None, pane_id):
+        return 0
+
+    expected_app = os.environ.get(
+        "HERDR_COMPLETION_SOUND_FRONTMOST_APP", "ghostty"
+    ).casefold()
+    if frontmost_app() != expected_app:
+        # Herdr already plays its native sound when its terminal is not focused.
+        return 0
+
+    player = shutil.which("afplay")
+    sound = DEFAULT_DONE_SOUND
+    if not player or not sound.is_file():
+        return 0
+
+    command = [player, str(sound)]
+    if os.environ.get("HERDR_COMPLETION_SOUND_SYNC") == "1":
+        try:
+            result = subprocess.run(
+                command,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=10,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return 0
+        return result.returncode
+
+    try:
+        subprocess.Popen(
+            command,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except OSError:
+        pass
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

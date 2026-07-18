@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly helper=/Users/boss/.dotfiles/bin/herdr-agent-completion-sound
+test_root="$(mktemp -d /tmp/herdr-completion-sound.XXXXXX)"
+trap 'rm -rf "$test_root"' EXIT
+mkdir -p "$test_root/bin"
+
+cat >"$test_root/bin/herdr" <<'SH'
+#!/bin/sh
+printf '{"result":{"snapshot":{"focused_tab_id":"%s","focused_pane_id":"%s"}}}\n' \
+    "$FAKE_FOCUSED_TAB_ID" "$FAKE_FOCUSED_PANE_ID"
+SH
+
+cat >"$test_root/bin/osascript" <<'SH'
+#!/bin/sh
+printf '%s\n' "$FAKE_FRONTMOST_APP"
+SH
+
+cat >"$test_root/bin/afplay" <<'SH'
+#!/bin/sh
+printf '%s\n' "$*" >>"$FAKE_SOUND_LOG"
+SH
+chmod +x "$test_root/bin/"*
+
+run_case() {
+    local name=$1 expected=$2 focused_tab=$3 focused_pane=$4 frontmost=$5
+    local sound_log="$test_root/$name.log"
+    rm -f "$sound_log"
+
+    PATH="$test_root/bin:/usr/bin:/bin" \
+        HERDR_ENV=1 \
+        HERDR_PANE_ID="w1:p2" \
+        HERDR_TAB_ID="w1:t1" \
+        HERDR_COMPLETION_SOUND_SYNC=1 \
+        HERDR_CONFIG_PATH="$test_root/missing.toml" \
+        FAKE_FOCUSED_TAB_ID="$focused_tab" \
+        FAKE_FOCUSED_PANE_ID="$focused_pane" \
+        FAKE_FRONTMOST_APP="$frontmost" \
+        FAKE_SOUND_LOG="$sound_log" \
+        "$helper"
+
+    local actual=0
+    [[ ! -e "$sound_log" ]] || actual="$(wc -l <"$sound_log" | tr -d ' ')"
+    [[ "$actual" -eq "$expected" ]]
+}
+
+run_case adjacent-pane 1 w1:t1 w1:p1 ghostty
+run_case focused-pane 0 w1:t1 w1:p2 ghostty
+run_case background-tab 0 w1:t2 w1:p3 ghostty
+run_case terminal-unfocused 0 w1:t1 w1:p1 Safari
+
+printf 'herdr-completion-sound-regression-ok\n'

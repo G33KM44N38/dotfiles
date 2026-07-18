@@ -14,7 +14,6 @@ import re
 
 CODEX_HOME = Path(os.environ.get("CODEX_HOME", "/Users/boss/.codex"))
 DOTFILES = Path("/Users/boss/.dotfiles")
-OPSWATCH = Path("/Users/boss/coding/perso/orchestration-watch/bin/ops-watch")
 
 
 def run(*command: str) -> subprocess.CompletedProcess[str]:
@@ -117,7 +116,12 @@ def main() -> int:
 
     wrapper = DOTFILES / "bin/herdr-run-codex-agent"
     wrapper_regression = DOTFILES / "bin/test-herdr-run-codex-agent"
+    lifecycle_hook = DOTFILES / "bin/herdr-codex-lifecycle-hook"
+    completion_sound = DOTFILES / "bin/herdr-agent-completion-sound"
+    completion_sound_regression = DOTFILES / "bin/test-herdr-agent-completion-sound"
     wrapper_text = wrapper.read_text() if wrapper.exists() else ""
+    lifecycle_hook_text = lifecycle_hook.read_text() if lifecycle_hook.exists() else ""
+    completion_sound_text = completion_sound.read_text() if completion_sound.exists() else ""
     syntax = run("bash", "-n", str(wrapper)) if wrapper.exists() else None
     wrapper_ok = bool(
         syntax
@@ -129,15 +133,31 @@ def main() -> int:
         and "main()" in wrapper_text
         and "codex_exit_code=$?" in wrapper_text
         and 'release_agent "$codex_exit_code"' in wrapper_text
-        and "OPSWATCH" not in wrapper_text
-        and "ops_watch" not in wrapper_text
+        and str(completion_sound) in wrapper_text
         and wrapper_regression.is_file()
         and os.access(wrapper_regression, os.X_OK)
     )
     check(
         "programmatic_wrapper",
         wrapper_ok,
-        "parsed main, explicit child status, Herdr cleanup, no OpsWatch calls, and regression present",
+        "parsed main, explicit child status, Herdr cleanup, and regression present",
+    )
+
+    try:
+        compile(completion_sound_text, str(completion_sound), "exec")
+        completion_sound_syntax = True
+    except SyntaxError:
+        completion_sound_syntax = False
+    check(
+        "active_tab_adjacent_pane_sound",
+        completion_sound_syntax
+        and "focused_tab_id != tab_id" in completion_sound_text
+        and "focused_pane_id in (None, pane_id)" in completion_sound_text
+        and str(completion_sound) in lifecycle_hook_text
+        and str(completion_sound) in wrapper_text
+        and completion_sound_regression.is_file()
+        and os.access(completion_sound_regression, os.X_OK),
+        "adjacent panes in the focused tab receive a completion sound without replacing Herdr background sounds",
     )
 
     integration_status = run("herdr", "integration", "status")
@@ -158,12 +178,6 @@ def main() -> int:
     except json.JSONDecodeError:
         agents_json = False
     check("herdr_agent_api", agents_json, "agent list returned valid JSON")
-
-    check(
-        "opswatch_disabled",
-        OPSWATCH.is_file() and not os.access(OPSWATCH, os.X_OK),
-        f"disabled and preserved at {OPSWATCH}",
-    )
 
     ok = all(bool(item["ok"]) for item in checks)
     print(json.dumps({"ok": ok, "checks": checks}, indent=2))
