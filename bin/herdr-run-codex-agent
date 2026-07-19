@@ -2,7 +2,6 @@
 set -euo pipefail
 
 readonly report_source="boss:codex-exec-wrapper"
-export HERDR_CODEX_LIFECYCLE_OWNER="wrapper"
 readonly completion_sound=/Users/boss/.dotfiles/bin/herdr-agent-completion-sound
 
 can_report() {
@@ -33,14 +32,60 @@ on_exit() {
     exit "$exit_code"
 }
 
+close_interactive_container() {
+    local tab_json pane_count
+
+    if ! can_report || [[ -z "${HERDR_TAB_ID:-}" ]]; then
+        return
+    fi
+
+    tab_json="$(herdr tab get "$HERDR_TAB_ID" 2>/dev/null || true)"
+    pane_count="$(printf '%s\n' "$tab_json" | python3 -c '
+import json, sys
+
+try:
+    print(json.load(sys.stdin)["result"]["tab"]["pane_count"])
+except (KeyError, TypeError, ValueError):
+    pass
+' 2>/dev/null || true)"
+
+    if [[ "$pane_count" == "1" ]]; then
+        herdr tab close "$HERDR_TAB_ID" >/dev/null 2>&1 || true
+    elif [[ -n "${HERDR_PANE_ID:-}" ]]; then
+        herdr pane close "$HERDR_PANE_ID" >/dev/null 2>&1 || true
+    fi
+}
+
 # Bash 3.2 reads top-level scripts incrementally. Keep the long-running path in
 # one parsed function so replacing this file cannot shift commands beneath a
 # running `codex exec` process.
 main() {
     if (( $# == 0 )); then
-        printf 'Usage: %s <codex exec arguments...>\n' "${0##*/}" >&2
+        printf 'Usage: %s [--interactive [--close-tab-on-exit] | <codex exec arguments...>]\n' "${0##*/}" >&2
         return 2
     fi
+
+    if [[ "$1" == "--interactive" ]]; then
+        shift
+        local close_tab_on_exit=false
+        if [[ "${1:-}" == "--close-tab-on-exit" ]]; then
+            close_tab_on_exit=true
+            shift
+        fi
+
+        local codex_exit_code
+        set +e
+        codex "$@"
+        codex_exit_code=$?
+        set -e
+
+        if [[ "$close_tab_on_exit" == true ]]; then
+            close_interactive_container
+        fi
+        return "$codex_exit_code"
+    fi
+
+    export HERDR_CODEX_LIFECYCLE_OWNER="wrapper"
 
     trap on_exit EXIT
 

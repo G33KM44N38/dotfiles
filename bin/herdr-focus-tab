@@ -2,6 +2,7 @@
 import fcntl
 import json
 from pathlib import Path
+import shlex
 import subprocess
 import sys
 import time
@@ -34,7 +35,8 @@ def herdr(*args):
     )
     if result.returncode != 0:
         raise SystemExit(result.stderr.strip() or result.stdout.strip())
-    return json.loads(result.stdout)
+    output = result.stdout.strip()
+    return json.loads(output) if output else {}
 
 
 def current_workspace_id():
@@ -69,6 +71,19 @@ def pane_is_idle(pane_id):
     )
 
 
+def pane_has_codex(pane_id):
+    try:
+        processes = herdr("pane", "process-info", "--pane", pane_id)["result"][
+            "process_info"
+        ].get("foreground_processes", [])
+    except SystemExit:
+        return False
+
+    return any(
+        (process.get("name") or "").lower() == "codex" for process in processes
+    )
+
+
 def launch_default_command(pane_id, label):
     command = DEFAULT_COMMANDS.get(label)
     if command is None or not pane_is_idle(pane_id):
@@ -83,21 +98,28 @@ def launch_default_command(pane_id, label):
         herdr("pane", "send-keys", pane_id, "s")
 
 
-def close_idle_sibling_panes(tab_id, agent_pane_id):
-    panes = herdr("pane", "list")["result"]["panes"]
-    for pane in panes:
-        pane_id = pane.get("pane_id")
-        if (
-            pane.get("tab_id") == tab_id
-            and pane_id != agent_pane_id
-            and pane_is_idle(pane_id)
-        ):
-            herdr("pane", "close", pane_id)
+def close_idle_sibling_panes(tab_id, agent_pane_id, timeout=0):
+    deadline = time.monotonic() + timeout
+    while True:
+        panes = herdr("pane", "list")["result"]["panes"]
+        for pane in panes:
+            pane_id = pane.get("pane_id")
+            if (
+                pane.get("tab_id") == tab_id
+                and pane_id != agent_pane_id
+                and pane_is_idle(pane_id)
+            ):
+                herdr("pane", "close", pane_id)
+                return
+
+        if time.monotonic() >= deadline:
+            return
+        time.sleep(0.05)
 
 
 def launch_managed_agent(tab_id):
     # Multiple quick keypresses can start multiple detached workers. Serialize
-    # provisioning globally because Herdr agent names are globally unique.
+    # provisioning so the tab's existing pane receives the command only once.
     with open("/tmp/herdr-focus-tab-agent.lock", "a+") as lock_file:
         fcntl.flock(lock_file, fcntl.LOCK_EX)
         ensure_managed_agent(tab_id)
@@ -113,7 +135,7 @@ def ensure_managed_agent(tab_id):
         ),
         None,
     )
-    if agent is not None:
+    if agent is not None and pane_has_codex(agent["pane_id"]):
         close_idle_sibling_panes(tab_id, agent["pane_id"])
         herdr("agent", "focus", agent["pane_id"])
         return
@@ -126,30 +148,29 @@ def ensure_managed_agent(tab_id):
     if pane is None:
         raise RuntimeError(f"agent tab {tab_id} did not create a pane")
 
-    cwd = pane.get("foreground_cwd") or pane.get("cwd") or str(Path.home())
-    used_names = {agent.get("name") or agent.get("agent") for agent in agents}
-    agent_name = "codex"
-    suffix = 2
-    while agent_name in used_names:
-        agent_name = f"codex-{suffix}"
-        suffix += 1
-
-    herdr(
-        "agent",
-        "start",
-        agent_name,
-        "--cwd",
-        cwd,
-        "--tab",
-        tab_id,
-        "--no-focus",
-        "--",
-        "codex",
+    command = " ".join(
+        (
+            shlex.quote(str(Path(__file__).with_name("herdr-run-codex-agent"))),
+            "--interactive",
+            "--close-tab-on-exit",
+            "--dangerously-bypass-approvals-and-sandbox",
+        )
     )
+    herdr("pane", "run", pane["pane_id"], command)
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
         agents = herdr("agent", "list")["result"]["agents"]
-        agent = next((agent for agent in agents if agent.get("tab_id") == tab_id), None)
+        agent = next(
+            (
+                agent
+                for agent in agents
+                if agent.get("tab_id") == tab_id
+                and agent.get("agent") == "codex"
+                and agent.get("pane_id") == pane["pane_id"]
+                and pane_has_codex(agent["pane_id"])
+            ),
+            None,
+        )
         if agent is not None:
             close_idle_sibling_panes(tab_id, agent["pane_id"])
             herdr("agent", "focus", agent["pane_id"])

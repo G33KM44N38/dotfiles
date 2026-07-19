@@ -28,6 +28,10 @@ cat >"$test_root/bin/herdr" <<'SH'
 #!/bin/sh
 printf '%s\n' "$*" >>"$HERDR_TEST_LOG"
 case "$*" in
+    'tab get proof')
+        [ "${FAKE_TAB_GET_FAIL:-0}" -eq 0 ] || exit 72
+        printf '{"result":{"tab":{"pane_count":%s}}}\n' "${FAKE_PANE_COUNT:-1}"
+        ;;
     *'--state idle'*|*'release-agent'*) [ "${FAIL_CLEANUP:-0}" -eq 0 ] || exit 71 ;;
 esac
 exit 0
@@ -69,5 +73,32 @@ run_case success 0 0 false
 run_case success_cleanup_failure 0 1 false
 run_case failure_cleanup_failure 7 1 false
 run_case success_self_rewrite 0 1 true
+
+run_interactive_case() {
+    local name=$1 pane_count=$2 tab_get_fails=$3 expected_target=$4
+    local herdr_log="$test_root/herdr-interactive-$name.log"
+    : >"$herdr_log"
+
+    PATH="$test_root/bin:/usr/bin:/bin" \
+        HERDR_ENV=1 \
+        HERDR_PANE_ID="proof:$name" \
+        HERDR_TAB_ID=proof \
+        HERDR_TEST_LOG="$herdr_log" \
+        FAKE_PANE_COUNT="$pane_count" \
+        FAKE_TAB_GET_FAIL="$tab_get_fails" \
+        "$wrapper" --interactive --close-tab-on-exit proof
+
+    if [[ "$expected_target" == tab ]]; then
+        grep -Fxq 'tab close proof' "$herdr_log"
+        ! grep -q '^pane close ' "$herdr_log"
+    else
+        grep -Fxq "pane close proof:$name" "$herdr_log"
+        ! grep -q '^tab close ' "$herdr_log"
+    fi
+}
+
+run_interactive_case sole_pane 1 0 tab
+run_interactive_case shared_tab 3 0 pane
+run_interactive_case unknown_layout 0 1 pane
 
 printf 'herdr-wrapper-status-regression-ok\n'
