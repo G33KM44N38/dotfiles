@@ -216,16 +216,31 @@ export function app(name: string): LayerCommand {
   return open(`-a '${name}.app'`);
 }
 
-export function createHomeRowMod(key_code: KeyCode, mod: KeyCode): Manipulator {
+export interface HomeRowModTiming {
+  readonly toIfHeldDownThresholdMilliseconds: number;
+  readonly toIfAloneTimeoutMilliseconds: number;
+}
+
+const homeRowModTiming: HomeRowModTiming = {
+  toIfHeldDownThresholdMilliseconds: 150,
+  toIfAloneTimeoutMilliseconds: 180,
+};
+
+export function createHomeRowMod(
+  key_code: KeyCode,
+  mod: KeyCode,
+  timing: HomeRowModTiming = homeRowModTiming,
+  tapKeyCode: KeyCode = key_code
+): Manipulator {
   return {
-    description: `${key_code} -> ${mod} (optimized for fast typing)`,
+    description: `${key_code} -> ${mod} (tap ${tapKeyCode}, ${timing.toIfHeldDownThresholdMilliseconds}/${timing.toIfAloneTimeoutMilliseconds}ms)`,
     type: "basic",
     from: {
       key_code,
       modifiers: { optional: ["any"] },
     },
     to: [{ key_code: mod, lazy: true }],
-    to_if_alone: [{ key_code: key_code }],
+    to_if_alone: [{ key_code: tapKeyCode }],
     conditions: [
       { type: "variable_if", name: "hyper", value: 0 },
       { type: "variable_if", name: "left_gui_layer", value: 0 },
@@ -234,8 +249,10 @@ export function createHomeRowMod(key_code: KeyCode, mod: KeyCode): Manipulator {
       BuiltinKeyboardCondition,
     ],
     parameters: {
-      "basic.to_if_held_down_threshold_milliseconds": 150,
-      "basic.to_if_alone_timeout_milliseconds": 180,
+      "basic.to_if_held_down_threshold_milliseconds":
+        timing.toIfHeldDownThresholdMilliseconds,
+      "basic.to_if_alone_timeout_milliseconds":
+        timing.toIfAloneTimeoutMilliseconds,
     },
   };
 }

@@ -1,0 +1,2770 @@
+{
+  "familyId": "shared-ergonomic-keyboard-family",
+  "layoutDigest": "316ee9670d260e55",
+  "deviceId": "macbook-built-in",
+  "deviceName": "MacBook built-in keyboard",
+  "target": "karabiner",
+  "adjustments": [],
+  "entries": [
+    {
+      "layer": "base",
+      "position": "left.top.pinky",
+      "input": {
+        "id": "karabiner:q",
+        "label": "q"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "q"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "left.top.ring",
+      "input": {
+        "id": "karabiner:w",
+        "label": "w"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "w"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "left.top.middle",
+      "input": {
+        "id": "karabiner:e",
+        "label": "e"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "e"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "left.top.index",
+      "input": {
+        "id": "karabiner:r",
+        "label": "r"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "r"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "left.top.inner",
+      "input": {
+        "id": "karabiner:t",
+        "label": "t"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "t"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "right.top.inner",
+      "input": {
+        "id": "karabiner:y",
+        "label": "y"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "y"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "right.top.index",
+      "input": {
+        "id": "karabiner:u",
+        "label": "u"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "u"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "right.top.middle",
+      "input": {
+        "id": "karabiner:i",
+        "label": "i"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "i"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "right.top.ring",
+      "input": {
+        "id": "karabiner:o",
+        "label": "o"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "o"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "right.top.pinky",
+      "input": {
+        "id": "karabiner:p",
+        "label": "p"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "p"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "left.home.pinky",
+      "input": {
+        "id": "karabiner:a",
+        "label": "a"
+      },
+      "binding": {
+        "kind": "tapHold",
+        "tap": {
+          "kind": "key",
+          "key": "a"
+        },
+        "hold": {
+          "kind": "modifier",
+          "modifier": "leftGui"
+        },
+        "timing": "homeRow"
+      },
+      "timing": {
+        "tappingTermMs": 150,
+        "aloneTimeoutMs": 180,
+        "flavor": "default"
+      }
+    },
+    {
+      "layer": "base",
+      "position": "left.home.ring",
+      "input": {
+        "id": "karabiner:s",
+        "label": "s"
+      },
+      "binding": {
+        "kind": "tapHold",
+        "tap": {
+          "kind": "key",
+          "key": "s"
+        },
+        "hold": {
+          "kind": "modifier",
+          "modifier": "leftAlt"
+        },
+        "timing": "homeRow"
+      },
+      "timing": {
+        "tappingTermMs": 150,
+        "aloneTimeoutMs": 180,
+        "flavor": "default"
+      }
+    },
+    {
+      "layer": "base",
+      "position": "left.home.middle",
+      "input": {
+        "id": "karabiner:d",
+        "label": "d"
+      },
+      "binding": {
+        "kind": "tapHold",
+        "tap": {
+          "kind": "key",
+          "key": "d"
+        },
+        "hold": {
+          "kind": "modifier",
+          "modifier": "leftShift"
+        },
+        "timing": "homeRow"
+      },
+      "timing": {
+        "tappingTermMs": 150,
+        "aloneTimeoutMs": 180,
+        "flavor": "default"
+      }
+    },
+    {
+      "layer": "base",
+      "position": "left.home.index",
+      "input": {
+        "id": "karabiner:f",
+        "label": "f"
+      },
+      "binding": {
+        "kind": "tapHold",
+        "tap": {
+          "kind": "key",
+          "key": "f"
+        },
+        "hold": {
+          "kind": "modifier",
+          "modifier": "leftControl"
+        },
+        "timing": "homeRow"
+      },
+      "timing": {
+        "tappingTermMs": 150,
+        "aloneTimeoutMs": 180,
+        "flavor": "default"
+      }
+    },
+    {
+      "layer": "base",
+      "position": "left.home.inner",
+      "input": {
+        "id": "karabiner:g",
+        "label": "g"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "g"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "right.home.inner",
+      "input": {
+        "id": "karabiner:h",
+        "label": "h"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "h"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "right.home.index",
+      "input": {
+        "id": "karabiner:j",
+        "label": "j"
+      },
+      "binding": {
+        "kind": "tapHold",
+        "tap": {
+          "kind": "key",
+          "key": "j"
+        },
+        "hold": {
+          "kind": "modifier",
+          "modifier": "rightControl"
+        },
+        "timing": "homeRow"
+      },
+      "timing": {
+        "tappingTermMs": 150,
+        "aloneTimeoutMs": 180,
+        "flavor": "default"
+      }
+    },
+    {
+      "layer": "base",
+      "position": "right.home.middle",
+      "input": {
+        "id": "karabiner:k",
+        "label": "k"
+      },
+      "binding": {
+        "kind": "tapHold",
+        "tap": {
+          "kind": "key",
+          "key": "k"
+        },
+        "hold": {
+          "kind": "modifier",
+          "modifier": "rightShift"
+        },
+        "timing": "homeRow"
+      },
+      "timing": {
+        "tappingTermMs": 150,
+        "aloneTimeoutMs": 180,
+        "flavor": "default"
+      }
+    },
+    {
+      "layer": "base",
+      "position": "right.home.ring",
+      "input": {
+        "id": "karabiner:l",
+        "label": "l"
+      },
+      "binding": {
+        "kind": "tapHold",
+        "tap": {
+          "kind": "key",
+          "key": "l"
+        },
+        "hold": {
+          "kind": "modifier",
+          "modifier": "rightAlt"
+        },
+        "timing": "homeRow"
+      },
+      "timing": {
+        "tappingTermMs": 150,
+        "aloneTimeoutMs": 180,
+        "flavor": "default"
+      }
+    },
+    {
+      "layer": "base",
+      "position": "right.home.pinky",
+      "input": {
+        "id": "karabiner:semicolon",
+        "label": "semicolon"
+      },
+      "binding": {
+        "kind": "tapHold",
+        "tap": {
+          "kind": "key",
+          "key": "semicolon"
+        },
+        "hold": {
+          "kind": "modifier",
+          "modifier": "rightGui"
+        },
+        "timing": "homeRow"
+      },
+      "timing": {
+        "tappingTermMs": 150,
+        "aloneTimeoutMs": 180,
+        "flavor": "default"
+      }
+    },
+    {
+      "layer": "base",
+      "position": "left.bottom.pinky",
+      "input": {
+        "id": "karabiner:z",
+        "label": "z"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "z"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "left.bottom.ring",
+      "input": {
+        "id": "karabiner:x",
+        "label": "x"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "x"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "left.bottom.middle",
+      "input": {
+        "id": "karabiner:c",
+        "label": "c"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "c"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "left.bottom.index",
+      "input": {
+        "id": "karabiner:v",
+        "label": "v"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "v"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "left.bottom.inner",
+      "input": {
+        "id": "karabiner:b",
+        "label": "b"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "b"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "right.bottom.inner",
+      "input": {
+        "id": "karabiner:n",
+        "label": "n"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "n"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "right.bottom.index",
+      "input": {
+        "id": "karabiner:m",
+        "label": "m"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "m"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "right.bottom.middle",
+      "input": {
+        "id": "karabiner:comma",
+        "label": "comma"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "comma"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "right.bottom.ring",
+      "input": {
+        "id": "karabiner:dot",
+        "label": "dot"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "dot"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "right.bottom.pinky",
+      "input": {
+        "id": "karabiner:slash",
+        "label": "slash"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "slash"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "left.thumb.outer",
+      "input": {
+        "id": "karabiner:left_option",
+        "label": "left_option"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "layer",
+          "layer": "functions"
+        }
+      }
+    },
+    {
+      "layer": "base",
+      "position": "left.thumb.middle",
+      "input": {
+        "id": "karabiner:hyper+s",
+        "label": "hyper+s"
+      },
+      "binding": {
+        "kind": "tapHold",
+        "tap": {
+          "kind": "key",
+          "key": "backspace"
+        },
+        "hold": {
+          "kind": "layer",
+          "layer": "system"
+        },
+        "timing": "thumbLayer"
+      },
+      "timing": {
+        "tappingTermMs": 150,
+        "aloneTimeoutMs": 180,
+        "flavor": "default"
+      }
+    },
+    {
+      "layer": "base",
+      "position": "left.thumb.inner",
+      "input": {
+        "id": "karabiner:left_gui",
+        "label": "left_gui"
+      },
+      "binding": {
+        "kind": "tapHold",
+        "tap": {
+          "kind": "key",
+          "key": "enter"
+        },
+        "hold": {
+          "kind": "layer",
+          "layer": "numbers"
+        },
+        "timing": "thumbLayer"
+      },
+      "timing": {
+        "tappingTermMs": 150,
+        "aloneTimeoutMs": 180,
+        "flavor": "default"
+      }
+    },
+    {
+      "layer": "base",
+      "position": "right.thumb.inner",
+      "input": {
+        "id": "karabiner:right_command",
+        "label": "right_command"
+      },
+      "binding": {
+        "kind": "tapHold",
+        "tap": {
+          "kind": "key",
+          "key": "space"
+        },
+        "hold": {
+          "kind": "layer",
+          "layer": "symbols"
+        },
+        "timing": "thumbLayer"
+      },
+      "timing": {
+        "tappingTermMs": 150,
+        "aloneTimeoutMs": 180,
+        "flavor": "default"
+      }
+    },
+    {
+      "layer": "base",
+      "position": "right.thumb.middle",
+      "input": {
+        "id": "karabiner:right_option",
+        "label": "right_option"
+      },
+      "binding": {
+        "kind": "tapHold",
+        "tap": {
+          "kind": "key",
+          "key": "tab"
+        },
+        "hold": {
+          "kind": "modifier",
+          "modifier": "rightShift"
+        },
+        "timing": "shiftTab"
+      },
+      "timing": {
+        "tappingTermMs": 150,
+        "aloneTimeoutMs": 180,
+        "flavor": "default"
+      }
+    },
+    {
+      "layer": "base",
+      "position": "right.thumb.outer",
+      "input": {
+        "id": "karabiner:spacebar",
+        "label": "spacebar"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "hyper"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "left.top.pinky",
+      "input": {
+        "id": "karabiner:q",
+        "label": "q"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "digit1"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "left.top.ring",
+      "input": {
+        "id": "karabiner:w",
+        "label": "w"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "digit2"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "left.top.middle",
+      "input": {
+        "id": "karabiner:e",
+        "label": "e"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "digit3"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "left.top.index",
+      "input": {
+        "id": "karabiner:r",
+        "label": "r"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "digit4"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "left.top.inner",
+      "input": {
+        "id": "karabiner:t",
+        "label": "t"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "digit5"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "right.top.inner",
+      "input": {
+        "id": "karabiner:y",
+        "label": "y"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "digit6"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "right.top.index",
+      "input": {
+        "id": "karabiner:u",
+        "label": "u"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "digit7"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "right.top.middle",
+      "input": {
+        "id": "karabiner:i",
+        "label": "i"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "digit8"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "right.top.ring",
+      "input": {
+        "id": "karabiner:o",
+        "label": "o"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "digit9"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "right.top.pinky",
+      "input": {
+        "id": "karabiner:p",
+        "label": "p"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "digit0"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "left.home.pinky",
+      "input": {
+        "id": "karabiner:a",
+        "label": "a"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "tilde"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "left.home.ring",
+      "input": {
+        "id": "karabiner:s",
+        "label": "s"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "minus"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "left.home.middle",
+      "input": {
+        "id": "karabiner:d",
+        "label": "d"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "plus"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "left.home.index",
+      "input": {
+        "id": "karabiner:f",
+        "label": "f"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "equals"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "left.home.inner",
+      "input": {
+        "id": "karabiner:g",
+        "label": "g"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "right.home.inner",
+      "input": {
+        "id": "karabiner:h",
+        "label": "h"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "left"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "right.home.index",
+      "input": {
+        "id": "karabiner:j",
+        "label": "j"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "down"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "right.home.middle",
+      "input": {
+        "id": "karabiner:k",
+        "label": "k"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "up"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "right.home.ring",
+      "input": {
+        "id": "karabiner:l",
+        "label": "l"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "right"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "right.home.pinky",
+      "input": {
+        "id": "karabiner:semicolon",
+        "label": "semicolon"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "left.bottom.pinky",
+      "input": {
+        "id": "karabiner:z",
+        "label": "z"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "left.bottom.ring",
+      "input": {
+        "id": "karabiner:x",
+        "label": "x"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "left.bottom.middle",
+      "input": {
+        "id": "karabiner:c",
+        "label": "c"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "left.bottom.index",
+      "input": {
+        "id": "karabiner:v",
+        "label": "v"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "left.bottom.inner",
+      "input": {
+        "id": "karabiner:b",
+        "label": "b"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "right.bottom.inner",
+      "input": {
+        "id": "karabiner:n",
+        "label": "n"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "right.bottom.index",
+      "input": {
+        "id": "karabiner:m",
+        "label": "m"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "right.bottom.middle",
+      "input": {
+        "id": "karabiner:comma",
+        "label": "comma"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "right.bottom.ring",
+      "input": {
+        "id": "karabiner:dot",
+        "label": "dot"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "right.bottom.pinky",
+      "input": {
+        "id": "karabiner:slash",
+        "label": "slash"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "left.thumb.outer",
+      "input": {
+        "id": "karabiner:left_option",
+        "label": "left_option"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "left.thumb.middle",
+      "input": {
+        "id": "karabiner:hyper+s",
+        "label": "hyper+s"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "left.thumb.inner",
+      "input": {
+        "id": "karabiner:left_gui",
+        "label": "left_gui"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "right.thumb.inner",
+      "input": {
+        "id": "karabiner:right_command",
+        "label": "right_command"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "right.thumb.middle",
+      "input": {
+        "id": "karabiner:right_option",
+        "label": "right_option"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "numbers",
+      "position": "right.thumb.outer",
+      "input": {
+        "id": "karabiner:spacebar",
+        "label": "spacebar"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "left.top.pinky",
+      "input": {
+        "id": "karabiner:q",
+        "label": "q"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "left.top.ring",
+      "input": {
+        "id": "karabiner:w",
+        "label": "w"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "left.top.middle",
+      "input": {
+        "id": "karabiner:e",
+        "label": "e"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "slash"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "left.top.index",
+      "input": {
+        "id": "karabiner:r",
+        "label": "r"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "underscore"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "left.top.inner",
+      "input": {
+        "id": "karabiner:t",
+        "label": "t"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "right.top.inner",
+      "input": {
+        "id": "karabiner:y",
+        "label": "y"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "right.top.index",
+      "input": {
+        "id": "karabiner:u",
+        "label": "u"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "minus"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "right.top.middle",
+      "input": {
+        "id": "karabiner:i",
+        "label": "i"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "backslash"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "right.top.ring",
+      "input": {
+        "id": "karabiner:o",
+        "label": "o"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "right.top.pinky",
+      "input": {
+        "id": "karabiner:p",
+        "label": "p"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "left.home.pinky",
+      "input": {
+        "id": "karabiner:a",
+        "label": "a"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "pipe"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "left.home.ring",
+      "input": {
+        "id": "karabiner:s",
+        "label": "s"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "underscore"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "left.home.middle",
+      "input": {
+        "id": "karabiner:d",
+        "label": "d"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "leftBracket"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "left.home.index",
+      "input": {
+        "id": "karabiner:f",
+        "label": "f"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "leftBrace"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "left.home.inner",
+      "input": {
+        "id": "karabiner:g",
+        "label": "g"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "leftParen"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "right.home.inner",
+      "input": {
+        "id": "karabiner:h",
+        "label": "h"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "rightParen"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "right.home.index",
+      "input": {
+        "id": "karabiner:j",
+        "label": "j"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "rightBrace"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "right.home.middle",
+      "input": {
+        "id": "karabiner:k",
+        "label": "k"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "rightBracket"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "right.home.ring",
+      "input": {
+        "id": "karabiner:l",
+        "label": "l"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "grave"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "right.home.pinky",
+      "input": {
+        "id": "karabiner:semicolon",
+        "label": "semicolon"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "left.bottom.pinky",
+      "input": {
+        "id": "karabiner:z",
+        "label": "z"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "left.bottom.ring",
+      "input": {
+        "id": "karabiner:x",
+        "label": "x"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "left.bottom.middle",
+      "input": {
+        "id": "karabiner:c",
+        "label": "c"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "left.bottom.index",
+      "input": {
+        "id": "karabiner:v",
+        "label": "v"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "left.bottom.inner",
+      "input": {
+        "id": "karabiner:b",
+        "label": "b"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "right.bottom.inner",
+      "input": {
+        "id": "karabiner:n",
+        "label": "n"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "right.bottom.index",
+      "input": {
+        "id": "karabiner:m",
+        "label": "m"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "right.bottom.middle",
+      "input": {
+        "id": "karabiner:comma",
+        "label": "comma"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "right.bottom.ring",
+      "input": {
+        "id": "karabiner:dot",
+        "label": "dot"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "right.bottom.pinky",
+      "input": {
+        "id": "karabiner:slash",
+        "label": "slash"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "left.thumb.outer",
+      "input": {
+        "id": "karabiner:left_option",
+        "label": "left_option"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "left.thumb.middle",
+      "input": {
+        "id": "karabiner:hyper+s",
+        "label": "hyper+s"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "left.thumb.inner",
+      "input": {
+        "id": "karabiner:left_gui",
+        "label": "left_gui"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "right.thumb.inner",
+      "input": {
+        "id": "karabiner:right_command",
+        "label": "right_command"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "right.thumb.middle",
+      "input": {
+        "id": "karabiner:right_option",
+        "label": "right_option"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "symbols",
+      "position": "right.thumb.outer",
+      "input": {
+        "id": "karabiner:spacebar",
+        "label": "spacebar"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "left.top.pinky",
+      "input": {
+        "id": "karabiner:q",
+        "label": "q"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "left.top.ring",
+      "input": {
+        "id": "karabiner:w",
+        "label": "w"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "left.top.middle",
+      "input": {
+        "id": "karabiner:e",
+        "label": "e"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "left.top.index",
+      "input": {
+        "id": "karabiner:r",
+        "label": "r"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "left.top.inner",
+      "input": {
+        "id": "karabiner:t",
+        "label": "t"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "system",
+          "action": "toggleAppearance"
+        }
+      },
+      "capability": {
+        "route": "host"
+      }
+    },
+    {
+      "layer": "system",
+      "position": "right.top.inner",
+      "input": {
+        "id": "karabiner:y",
+        "label": "y"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "right.top.index",
+      "input": {
+        "id": "karabiner:u",
+        "label": "u"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "system",
+          "action": "volumeUp"
+        }
+      },
+      "capability": {
+        "route": "native"
+      }
+    },
+    {
+      "layer": "system",
+      "position": "right.top.middle",
+      "input": {
+        "id": "karabiner:i",
+        "label": "i"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "system",
+          "action": "brightnessUp"
+        }
+      },
+      "capability": {
+        "route": "native"
+      }
+    },
+    {
+      "layer": "system",
+      "position": "right.top.ring",
+      "input": {
+        "id": "karabiner:o",
+        "label": "o"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "right.top.pinky",
+      "input": {
+        "id": "karabiner:p",
+        "label": "p"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "left.home.pinky",
+      "input": {
+        "id": "karabiner:a",
+        "label": "a"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "left.home.ring",
+      "input": {
+        "id": "karabiner:s",
+        "label": "s"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "left.home.middle",
+      "input": {
+        "id": "karabiner:d",
+        "label": "d"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "left.home.index",
+      "input": {
+        "id": "karabiner:f",
+        "label": "f"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "left.home.inner",
+      "input": {
+        "id": "karabiner:g",
+        "label": "g"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "right.home.inner",
+      "input": {
+        "id": "karabiner:h",
+        "label": "h"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "system",
+          "action": "home"
+        }
+      },
+      "capability": {
+        "route": "host"
+      }
+    },
+    {
+      "layer": "system",
+      "position": "right.home.index",
+      "input": {
+        "id": "karabiner:j",
+        "label": "j"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "system",
+          "action": "volumeDown"
+        }
+      },
+      "capability": {
+        "route": "native"
+      }
+    },
+    {
+      "layer": "system",
+      "position": "right.home.middle",
+      "input": {
+        "id": "karabiner:k",
+        "label": "k"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "system",
+          "action": "brightnessDown"
+        }
+      },
+      "capability": {
+        "route": "native"
+      }
+    },
+    {
+      "layer": "system",
+      "position": "right.home.ring",
+      "input": {
+        "id": "karabiner:l",
+        "label": "l"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "system",
+          "action": "lockScreen"
+        }
+      },
+      "capability": {
+        "route": "native"
+      }
+    },
+    {
+      "layer": "system",
+      "position": "right.home.pinky",
+      "input": {
+        "id": "karabiner:semicolon",
+        "label": "semicolon"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "left.bottom.pinky",
+      "input": {
+        "id": "karabiner:z",
+        "label": "z"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "left.bottom.ring",
+      "input": {
+        "id": "karabiner:x",
+        "label": "x"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "left.bottom.middle",
+      "input": {
+        "id": "karabiner:c",
+        "label": "c"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "system",
+          "action": "controlCenter"
+        }
+      },
+      "capability": {
+        "route": "host"
+      }
+    },
+    {
+      "layer": "system",
+      "position": "left.bottom.index",
+      "input": {
+        "id": "karabiner:v",
+        "label": "v"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "left.bottom.inner",
+      "input": {
+        "id": "karabiner:b",
+        "label": "b"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "right.bottom.inner",
+      "input": {
+        "id": "karabiner:n",
+        "label": "n"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "system",
+          "action": "notificationCenter"
+        }
+      },
+      "capability": {
+        "route": "host"
+      }
+    },
+    {
+      "layer": "system",
+      "position": "right.bottom.index",
+      "input": {
+        "id": "karabiner:m",
+        "label": "m"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "system",
+          "action": "mute"
+        }
+      },
+      "capability": {
+        "route": "native"
+      }
+    },
+    {
+      "layer": "system",
+      "position": "right.bottom.middle",
+      "input": {
+        "id": "karabiner:comma",
+        "label": "comma"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "right.bottom.ring",
+      "input": {
+        "id": "karabiner:dot",
+        "label": "dot"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "right.bottom.pinky",
+      "input": {
+        "id": "karabiner:slash",
+        "label": "slash"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "left.thumb.outer",
+      "input": {
+        "id": "karabiner:left_option",
+        "label": "left_option"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "left.thumb.middle",
+      "input": {
+        "id": "karabiner:hyper+s",
+        "label": "hyper+s"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "left.thumb.inner",
+      "input": {
+        "id": "karabiner:left_gui",
+        "label": "left_gui"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "right.thumb.inner",
+      "input": {
+        "id": "karabiner:right_command",
+        "label": "right_command"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "right.thumb.middle",
+      "input": {
+        "id": "karabiner:right_option",
+        "label": "right_option"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "system",
+      "position": "right.thumb.outer",
+      "input": {
+        "id": "karabiner:spacebar",
+        "label": "spacebar"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "left.top.pinky",
+      "input": {
+        "id": "karabiner:q",
+        "label": "q"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "left.top.ring",
+      "input": {
+        "id": "karabiner:w",
+        "label": "w"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "left.top.middle",
+      "input": {
+        "id": "karabiner:e",
+        "label": "e"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "left.top.index",
+      "input": {
+        "id": "karabiner:r",
+        "label": "r"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "left.top.inner",
+      "input": {
+        "id": "karabiner:t",
+        "label": "t"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "right.top.inner",
+      "input": {
+        "id": "karabiner:y",
+        "label": "y"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "right.top.index",
+      "input": {
+        "id": "karabiner:u",
+        "label": "u"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "right.top.middle",
+      "input": {
+        "id": "karabiner:i",
+        "label": "i"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "right.top.ring",
+      "input": {
+        "id": "karabiner:o",
+        "label": "o"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "right.top.pinky",
+      "input": {
+        "id": "karabiner:p",
+        "label": "p"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "f10"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "left.home.pinky",
+      "input": {
+        "id": "karabiner:a",
+        "label": "a"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "f1"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "left.home.ring",
+      "input": {
+        "id": "karabiner:s",
+        "label": "s"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "f2"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "left.home.middle",
+      "input": {
+        "id": "karabiner:d",
+        "label": "d"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "f3"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "left.home.index",
+      "input": {
+        "id": "karabiner:f",
+        "label": "f"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "f4"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "left.home.inner",
+      "input": {
+        "id": "karabiner:g",
+        "label": "g"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "f5"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "right.home.inner",
+      "input": {
+        "id": "karabiner:h",
+        "label": "h"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "f6"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "right.home.index",
+      "input": {
+        "id": "karabiner:j",
+        "label": "j"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "f7"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "right.home.middle",
+      "input": {
+        "id": "karabiner:k",
+        "label": "k"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "f8"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "right.home.ring",
+      "input": {
+        "id": "karabiner:l",
+        "label": "l"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "key",
+          "key": "f9"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "right.home.pinky",
+      "input": {
+        "id": "karabiner:semicolon",
+        "label": "semicolon"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "left.bottom.pinky",
+      "input": {
+        "id": "karabiner:z",
+        "label": "z"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "left.bottom.ring",
+      "input": {
+        "id": "karabiner:x",
+        "label": "x"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "left.bottom.middle",
+      "input": {
+        "id": "karabiner:c",
+        "label": "c"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "left.bottom.index",
+      "input": {
+        "id": "karabiner:v",
+        "label": "v"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "left.bottom.inner",
+      "input": {
+        "id": "karabiner:b",
+        "label": "b"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "right.bottom.inner",
+      "input": {
+        "id": "karabiner:n",
+        "label": "n"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "right.bottom.index",
+      "input": {
+        "id": "karabiner:m",
+        "label": "m"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "right.bottom.middle",
+      "input": {
+        "id": "karabiner:comma",
+        "label": "comma"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "right.bottom.ring",
+      "input": {
+        "id": "karabiner:dot",
+        "label": "dot"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "right.bottom.pinky",
+      "input": {
+        "id": "karabiner:slash",
+        "label": "slash"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "left.thumb.outer",
+      "input": {
+        "id": "karabiner:left_option",
+        "label": "left_option"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "left.thumb.middle",
+      "input": {
+        "id": "karabiner:hyper+s",
+        "label": "hyper+s"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "left.thumb.inner",
+      "input": {
+        "id": "karabiner:left_gui",
+        "label": "left_gui"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "right.thumb.inner",
+      "input": {
+        "id": "karabiner:right_command",
+        "label": "right_command"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "right.thumb.middle",
+      "input": {
+        "id": "karabiner:right_option",
+        "label": "right_option"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    },
+    {
+      "layer": "functions",
+      "position": "right.thumb.outer",
+      "input": {
+        "id": "karabiner:spacebar",
+        "label": "spacebar"
+      },
+      "binding": {
+        "kind": "emit",
+        "intent": {
+          "kind": "transparent"
+        }
+      }
+    }
+  ],
+  "generatedArtifact": {
+    "path": ".config/karabiner/generated/shared-layout.ts",
+    "sha256": "2471e16f00eec2385daedfc5223f29e6648059df48217fbfc8f2e1d2975cb854"
+  }
+}

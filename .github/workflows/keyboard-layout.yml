@@ -1,0 +1,41 @@
+name: Keyboard layout
+
+on:
+  push:
+    paths:
+      - ".github/workflows/keyboard-layout.yml"
+      - ".config/karabiner/generated/**"
+      - "bin/keyboard-layout"
+      - "keyboard-layout/**"
+  pull_request:
+    paths:
+      - ".github/workflows/keyboard-layout.yml"
+      - ".config/karabiner/generated/**"
+      - "bin/keyboard-layout"
+      - "keyboard-layout/**"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: keyboard-layout/package-lock.json
+      - run: npm ci
+        working-directory: keyboard-layout
+      - run: npm run check
+        working-directory: keyboard-layout
+      - name: Verify generated Karabiner adapter
+        run: |
+          qmk_target="$(mktemp -d)"
+          zmk_target="$(mktemp -d)"
+          ./bin/keyboard-layout sync --write --qmk-repo "$qmk_target" --zmk-repo "$zmk_target"
+          generated_path="$(jq -r '.generatedArtifact.path' .config/karabiner/generated/manifest.json)"
+          expected="$(jq -r '.generatedArtifact.sha256' .config/karabiner/generated/manifest.json)"
+          actual="$(sha256sum "$generated_path" | cut -d ' ' -f 1)"
+          test "$actual" = "$expected"
+          git diff --exit-code -- .config/karabiner/generated

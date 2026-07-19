@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+script_dir="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+dotfiles_dir="$(cd "$script_dir/.." && pwd)"
+
+export KEYBOARD_DOTFILES_REPO="${KEYBOARD_DOTFILES_REPO:-$dotfiles_dir}"
+
+exec npm --prefix "$dotfiles_dir/keyboard-layout" run --silent cli -- "$@"

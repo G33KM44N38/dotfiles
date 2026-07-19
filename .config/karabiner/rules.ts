@@ -1,5 +1,14 @@
 import fs from "fs";
-import { KarabinerRules, Manipulator } from "./types";
+import { KarabinerRules } from "./types";
+import {
+  sharedFunctionLayer,
+  sharedHomeRowMods,
+  sharedHostBridgeRules,
+  sharedLayerTriggers,
+  sharedNumbersLayer,
+  sharedSymbolsLayer,
+  sharedSystemLayer,
+} from "./generated/shared-layout";
 import {
   createHyperSubLayers,
   app,
@@ -48,7 +57,7 @@ const hyperSubLayers = createHyperSubLayers({
     h: app("Home"),
     i: app("Messages"),
     j: app("FaceTime"),
-    k: app("Ledger Wallet"),
+    k: app("ChatGPT"),
     comma: app("Slack"),
     m: app("Music"),
     n: app("Notion"),
@@ -56,30 +65,18 @@ const hyperSubLayers = createHyperSubLayers({
     q: app("Notes"),
     r: app("Finder"),
     s: app("Linear"),
-    semicolon: app("T3 Code (Alpha)"),
+    semicolon: app("Reminders"),
     t: app("Ghostty"),
-    u: app("Reminders"),
+    u: app("Codex"),
     v: app("Visual Studio Code"),
     w: app("WhatsApp"),
     x: app("Discord"),
     y: app("Brave Browser"),
     z: app("Safari"),
-    slash: app("Codex"),
+    quote: app("T3 Code (Alpha)"),
+    slash: app("Google Chrome"),
   },
-  s: {
-    u: { to: [{ key_code: "volume_increment" }] },
-    j: { to: [{ key_code: "volume_decrement" }] },
-    i: { to: [{ key_code: "display_brightness_increment" }] },
-    k: { to: [{ key_code: "display_brightness_decrement" }] },
-    l: {
-      to: [{ key_code: "q", modifiers: ["right_control", "right_command"] }],
-    },
-    h: app("Home"),
-    t: open(`raycast://extensions/raycast/system/toggle-system-appearance`),
-    c: { to: [{ key_code: "c", modifiers: ["fn"] }] },
-    n: { to: [{ key_code: "n", modifiers: ["fn"] }] },
-    m: open("raycast://extensions/raycast/system/toggle-mute"),
-  },
+  s: sharedSystemLayer,
   c: {
     h: { to: [{ key_code: "play_or_pause" }] },
     k: { to: [{ key_code: "fastforward" }] },
@@ -114,88 +111,27 @@ const hyperSubLayers = createHyperSubLayers({
   },
 });
 
-// Define key layers
 const leftGuiLayer = createKeyLayer(
-  "left_gui",
-  {
-    a: {
-      to: [{ key_code: "grave_accent_and_tilde", modifiers: ["left_shift"] }],
-    },
-    q: { to: [{ key_code: "1" }] },
-    w: { to: [{ key_code: "2" }] },
-    e: { to: [{ key_code: "3" }] },
-    r: { to: [{ key_code: "4" }] },
-    t: { to: [{ key_code: "5" }] },
-    y: { to: [{ key_code: "6" }] },
-    u: { to: [{ key_code: "7" }] },
-    i: { to: [{ key_code: "8" }] },
-    o: { to: [{ key_code: "9" }] },
-    p: { to: [{ key_code: "0" }] },
-
-    // arrow key
-    h: { to: [{ key_code: "left_arrow" }] },
-    j: { to: [{ key_code: "down_arrow" }] },
-    k: { to: [{ key_code: "up_arrow" }] },
-    l: { to: [{ key_code: "right_arrow" }] },
-
-    // signs
-    s: { to: [{ key_code: "keypad_hyphen" }] },
-    d: { to: [{ key_code: "keypad_plus" }] },
-    f: { to: [{ key_code: "keypad_equal_sign" }] },
-  },
-  "return_or_enter"
+  sharedLayerTriggers.numbers.input,
+  sharedNumbersLayer,
+  sharedLayerTriggers.numbers.tap
 );
 
 const left_option_layer = createKeyLayer(
-  "left_option",
-  {
-    a: { to: [{ key_code: "f1" }] },
-    s: { to: [{ key_code: "f2" }] },
-    d: { to: [{ key_code: "f3" }] },
-    f: { to: [{ key_code: "f4" }] },
-    g: { to: [{ key_code: "f5" }] },
-    h: { to: [{ key_code: "f6" }] },
-    j: { to: [{ key_code: "f7" }] },
-    k: { to: [{ key_code: "f8" }] },
-    l: { to: [{ key_code: "f9" }] },
-    p: { to: [{ key_code: "f10" }] },
-  },
-  "delete_or_backspace"
+  sharedLayerTriggers.functions.input,
+  sharedFunctionLayer,
+  sharedLayerTriggers.functions.tap
 );
 
 const rightGuiLayer = createKeyLayer(
-  "right_command",
-  {
-    //left hand
-    a: { to: [{ key_code: "backslash", modifiers: ["left_shift"] }] }, // pipe
-    d: { to: [{ key_code: "open_bracket" }] },
-    g: { to: [{ key_code: "9", modifiers: ["left_shift"] }] },
-    f: { to: [{ key_code: "open_bracket", modifiers: ["left_shift"] }] }, // square bracket
-    e: { to: [{ key_code: "slash" }] },
-    r: { to: [{ key_code: "hyphen", modifiers: ["left_shift"] }] },
-    s: { to: [{ key_code: "hyphen", modifiers: ["left_shift"] }] },
-
-    //right hand
-    h: { to: [{ key_code: "0", modifiers: ["left_shift"] }] },
-    u: { to: [{ key_code: "hyphen" }] },
-    j: { to: [{ key_code: "close_bracket", modifiers: ["left_shift"] }] },
-    i: { to: [{ key_code: "backslash" }] },
-    k: { to: [{ key_code: "close_bracket" }] },
-    l: { to: [{ key_code: "grave_accent_and_tilde" }] },
-  },
-  "spacebar"
+  sharedLayerTriggers.symbols.input,
+  sharedSymbolsLayer,
+  sharedLayerTriggers.symbols.tap
 );
 
-const homeRowMods: Manipulator[] = [
-  createHomeRowMod("a", "left_gui"),
-  createHomeRowMod("s", "left_option"),
-  createHomeRowMod("d", "left_shift"),
-  createHomeRowMod("f", "left_control"),
-  createHomeRowMod("j", "right_control"),
-  createHomeRowMod("k", "right_shift"),
-  createHomeRowMod("l", "right_option"),
-  createHomeRowMod("semicolon", "right_gui"),
-];
+const homeRowMods = sharedHomeRowMods.map(({ input, modifier, timing, tap }) =>
+  createHomeRowMod(input, modifier, timing, tap)
+);
 
 const rules: KarabinerRules[] = [
   leftGuiLayer,
@@ -205,6 +141,7 @@ const rules: KarabinerRules[] = [
     description: "Homerow mods",
     manipulators: homeRowMods,
   },
+  ...sharedHostBridgeRules,
   {
     description: "cmd touch",
     manipulators: [
@@ -212,10 +149,6 @@ const rules: KarabinerRules[] = [
         { key_code: "return_or_enter" },
       ]),
     ],
-  },
-  {
-    description: "right option to tab",
-    manipulators: [createBasicManipulator("right_option", "tab", "")],
   },
   {
     description: "caps lock to escape/fn",
