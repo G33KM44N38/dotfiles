@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# Required parameters:
+# @raycast.schemaVersion 1
+# @raycast.title Babacoiffure Billing
+# @raycast.mode compact
+
+# Optional parameters:
+# @raycast.icon 💳
+
+# Documentation:
+# @raycast.description Open Babacoiffure billing dashboards
+# @raycast.author me
+#
+
+open https://dashboard.render.com/billing?babacoiffure
+open https://app.blacksmith.sh/babacoiffure/usage?babacoiffure
+open https://linear.app/babacoiffure/settings/billing
+
+# vi:ft=sh:
