@@ -1,0 +1,93 @@
+---
+- name: Worktree Chore | Check Go source exists
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/.dotfiles/dev/worktree_chore_go/go.mod"
+  register: worktree_chore_go_mod
+
+- name: Worktree Chore | Ensure bin directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/.dotfiles/bin"
+    state: directory
+    mode: "0755"
+  when: worktree_chore_go_mod.stat.exists
+
+- name: Worktree Chore | Build native binary
+  ansible.builtin.shell: |
+    set -euo pipefail
+
+    GO_BIN="$(command -v go || true)"
+    if [ -z "$GO_BIN" ] && [ -x /opt/homebrew/bin/go ]; then GO_BIN=/opt/homebrew/bin/go; fi
+    if [ -z "$GO_BIN" ] && [ -x /opt/homebrew/opt/go/bin/go ]; then GO_BIN=/opt/homebrew/opt/go/bin/go; fi
+    if [ -z "$GO_BIN" ] && [ -x /opt/homebrew/opt/go@1.21/bin/go ]; then GO_BIN=/opt/homebrew/opt/go@1.21/bin/go; fi
+    if [ -z "$GO_BIN" ] && [ -x /usr/local/bin/go ]; then GO_BIN=/usr/local/bin/go; fi
+    if [ -z "$GO_BIN" ] && [ -x /usr/local/go/bin/go ]; then GO_BIN=/usr/local/go/bin/go; fi
+    if [ -z "$GO_BIN" ] && [ -x /snap/bin/go ]; then GO_BIN=/snap/bin/go; fi
+
+    if [ -z "$GO_BIN" ]; then
+      echo "go not found; install the go role before worktree-chore"
+      exit 1
+    fi
+
+    "$GO_BIN" build -trimpath -buildvcs=false -o "{{ ansible_facts.env.HOME }}/.dotfiles/bin/worktree-chore" .
+  args:
+    chdir: "{{ ansible_facts.env.HOME }}/.dotfiles/dev/worktree_chore_go"
+    executable: /bin/bash
+  changed_when: true
+  when: worktree_chore_go_mod.stat.exists
+
+- name: Worktree Chore | Ensure binary is executable
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/.dotfiles/bin/worktree-chore"
+    mode: "0755"
+  when: worktree_chore_go_mod.stat.exists
+
+- name: Worktree Chore | Ensure LaunchAgent log directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/Library/Logs"
+    state: directory
+    mode: "0755"
+  when:
+    - ansible_system == 'Darwin'
+    - worktree_chore_go_mod.stat.exists
+
+- name: Worktree Chore | Install weekly BabaCoiffure cleanup LaunchAgent
+  ansible.builtin.template:
+    src: com.kylian.worktree-chore-babacoiffure.plist.j2
+    dest: "{{ ansible_facts.env.HOME }}/Library/LaunchAgents/com.kylian.worktree-chore-babacoiffure.plist"
+    mode: "0644"
+  register: worktree_chore_launch_agent
+  when:
+    - ansible_system == 'Darwin'
+    - worktree_chore_go_mod.stat.exists
+
+- name: Worktree Chore | Reload changed BabaCoiffure cleanup LaunchAgent
+  ansible.builtin.shell: |
+    launchctl bootout "gui/$(id -u)" "{{ ansible_facts.env.HOME }}/Library/LaunchAgents/com.kylian.worktree-chore-babacoiffure.plist" >/dev/null 2>&1 || true
+    launchctl bootstrap "gui/$(id -u)" "{{ ansible_facts.env.HOME }}/Library/LaunchAgents/com.kylian.worktree-chore-babacoiffure.plist"
+  args:
+    executable: /bin/bash
+  when:
+    - ansible_system == 'Darwin'
+    - worktree_chore_launch_agent.changed
+
+- name: Worktree Chore | Check BabaCoiffure cleanup LaunchAgent
+  ansible.builtin.command: launchctl print gui/{{ ansible_user_uid }}/com.kylian.worktree-chore-babacoiffure
+  register: worktree_chore_launch_agent_status
+  changed_when: false
+  failed_when: false
+  when:
+    - ansible_system == 'Darwin'
+    - worktree_chore_go_mod.stat.exists
+
+- name: Worktree Chore | Load missing BabaCoiffure cleanup LaunchAgent
+  ansible.builtin.command:
+    argv:
+      - launchctl
+      - bootstrap
+      - gui/{{ ansible_user_uid }}
+      - "{{ ansible_facts.env.HOME }}/Library/LaunchAgents/com.kylian.worktree-chore-babacoiffure.plist"
+  when:
+    - ansible_system == 'Darwin'
+    - worktree_chore_go_mod.stat.exists
+    - not worktree_chore_launch_agent.changed
+    - worktree_chore_launch_agent_status.rc != 0

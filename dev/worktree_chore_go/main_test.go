@@ -62,6 +62,16 @@ func TestParseArgsRejectsConflictingFetchFlags(t *testing.T) {
 	}
 }
 
+func TestParseArgsAutomationIsNonInteractiveAndDoesNotPull(t *testing.T) {
+	cfg, err := parseArgs([]string{"--automation"}, func(string) string { return "" })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.automation || !cfg.yes || cfg.autoPull {
+		t.Fatalf("unexpected automation config: %+v", cfg)
+	}
+}
+
 func TestConfiguredJobsDefaultsToFour(t *testing.T) {
 	got, err := configuredJobs(func(string) string { return "" })
 	if err != nil {
@@ -209,7 +219,7 @@ func TestFindStaleDirsScansWorktreeSiblingParents(t *testing.T) {
 		}
 	}
 
-	got := findStaleDirs([]worktree{
+	got := findStaleDirs("", []worktree{
 		{path: filepath.Join(root, "main")},
 		{path: filepath.Join(root, "feature")},
 		{path: filepath.Join(nested, "release")},
@@ -226,7 +236,7 @@ func TestFindStaleDirsScansWorktreeSiblingParents(t *testing.T) {
 
 func TestFindStaleDirsSkipsSystemTempParents(t *testing.T) {
 	temp := filepath.Clean(os.TempDir())
-	got := findStaleDirs([]worktree{
+	got := findStaleDirs("", []worktree{
 		{path: filepath.Join(temp, "registered-one")},
 		{path: filepath.Join(temp, "registered-two")},
 	})
@@ -250,7 +260,7 @@ func TestFindStaleDirsScansConventionalWorktreeFolders(t *testing.T) {
 		}
 	}
 
-	got := findStaleDirs([]worktree{
+	got := findStaleDirs("", []worktree{
 		{path: filepath.Join(tmp, "repo.git", "worktrees", "main")},
 		{path: filepath.Join(branches, "registered-branch")},
 	})
@@ -260,6 +270,36 @@ func TestFindStaleDirsScansConventionalWorktreeFolders(t *testing.T) {
 	}
 	if strings.Join(names, ",") != "stale-branch,stale-thread" {
 		t.Fatalf("stale dirs = %v, want [stale-branch stale-thread]", names)
+	}
+}
+
+func TestFindStaleDirsNeverReturnsBareRepoGitDirectories(t *testing.T) {
+	tmp := t.TempDir()
+	repo := filepath.Join(tmp, "repo.git")
+	for _, dir := range []string{
+		filepath.Join(repo, "hooks"),
+		filepath.Join(repo, "info"),
+		filepath.Join(repo, "logs"),
+		filepath.Join(repo, "objects"),
+		filepath.Join(repo, "refs"),
+		filepath.Join(repo, "rr-cache"),
+		filepath.Join(repo, "worktrees"),
+		filepath.Join(repo, "modules"),
+		filepath.Join(repo, "main-worktree"),
+		filepath.Join(repo, "feature-worktree"),
+		filepath.Join(repo, "abandoned-worktree"),
+	} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	got := findStaleDirs(repo, []worktree{
+		{path: filepath.Join(repo, "main-worktree")},
+		{path: filepath.Join(repo, "feature-worktree")},
+	})
+	if len(got) != 1 || got[0].branch != "abandoned-worktree" {
+		t.Fatalf("stale dirs = %#v, want only abandoned-worktree", got)
 	}
 }
 
@@ -337,6 +377,12 @@ func TestClassifyWorktreesInGitRepo(t *testing.T) {
 		if got.category != want {
 			t.Fatalf("%s category = %s, want %s: %#v", path, got.category, want, got)
 		}
+	}
+
+	a.cfg.automation = true
+	dirty := a.classify(ctx, repo, worktree{path: filepath.Join(tmp, "dirty")})
+	if dirty.category != catAttention || dirty.reason != "local_changes" {
+		t.Fatalf("automation dirty category = %#v, want attention/local_changes", dirty)
 	}
 }
 

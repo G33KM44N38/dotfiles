@@ -24,6 +24,7 @@ const fetchTTL = 5 * time.Minute
 type config struct {
 	dryRun       bool
 	yes          bool
+	automation   bool
 	autoPull     bool
 	forceFetch   bool
 	noFetch      bool
@@ -153,6 +154,7 @@ func parseArgs(args []string, getenv func(string) string) (config, error) {
 	fs.BoolVar(&cfg.dryRun, "n", false, "")
 	fs.BoolVar(&cfg.yes, "yes", false, "")
 	fs.BoolVar(&cfg.yes, "y", false, "")
+	fs.BoolVar(&cfg.automation, "automation", false, "")
 	noPull := fs.Bool("no-pull", false, "")
 	fs.BoolVar(&cfg.forceFetch, "fetch", false, "")
 	fs.BoolVar(&cfg.noFetch, "no-fetch", false, "")
@@ -169,6 +171,10 @@ func parseArgs(args []string, getenv func(string) string) (config, error) {
 		return config{}, errors.New("Error: --fetch and --no-fetch cannot be used together")
 	}
 	cfg.autoPull = !*noPull
+	if cfg.automation {
+		cfg.yes = true
+		cfg.autoPull = false
+	}
 	jobs, err := configuredJobs(getenv)
 	if err != nil {
 		return config{}, err
@@ -212,6 +218,7 @@ Cleans up git worktrees:
 Options:
   -n, --dry-run   Show actions without changing anything
   -y, --yes       Do not ask for confirmation
+  --automation    Remove only clean merged worktrees; skip pulls and stale directories
   --no-pull       Do not auto pull behind branches
   --fetch         Force refreshing remote refs
   --no-fetch      Never refresh remote refs
@@ -241,7 +248,9 @@ func (a app) run(ctx context.Context) error {
 	}
 	fmt.Fprintf(a.out, "%s (parallel jobs: %d)...\n", p.paint(ansiCyan, "🔎 Scanning worktrees"), a.cfg.parallelJobs)
 	pl := a.classifyAll(ctx, repoRoot, trees)
-	pl.staleDirs = findStaleDirs(trees)
+	if !a.cfg.automation {
+		pl.staleDirs = findStaleDirs(repoRoot, trees)
+	}
 	fmt.Fprintln(a.out)
 	renderPlan(a.out, pl, p)
 	if len(pl.safe) == 0 && len(pl.staleDirs) == 0 && len(pl.behind) == 0 {
@@ -432,6 +441,9 @@ func (a app) classify(ctx context.Context, repoRoot string, wt worktree) row {
 		}
 	}
 	if mergedInto != "" {
+		if hasLocalChanges && a.cfg.automation {
+			return row{category: catAttention, path: wt.path, branch: branch, reason: "local_changes"}
+		}
 		reason := "merged"
 		if hasLocalChanges {
 			reason = "merged_with_local_changes"
@@ -480,7 +492,7 @@ func (a app) revCount(ctx context.Context, dir, revspec string) int {
 	return n
 }
 
-func findStaleDirs(trees []worktree) []row {
+func findStaleDirs(repoRoot string, trees []worktree) []row {
 	registered := map[string]bool{}
 	parents := map[string]int{}
 	scanSet := map[string]bool{}
@@ -518,13 +530,33 @@ func findStaleDirs(trees []worktree) []row {
 				continue
 			}
 			path := filepath.Clean(filepath.Join(parent, entry.Name()))
-			if registered[path] || containsRegisteredWorktree(path, registered) {
+			if isGitAdminDir(repoRoot, path) || registered[path] || containsRegisteredWorktree(path, registered) {
 				continue
 			}
 			stale = append(stale, row{path: path, branch: entry.Name(), reason: "not_registered"})
 		}
 	}
 	return stale
+}
+
+// isGitAdminDir protects directories owned by Git when worktrees are stored
+// alongside a bare repository's internal files. These paths must never be
+// treated as abandoned worktrees or passed to os.RemoveAll.
+func isGitAdminDir(repoRoot, path string) bool {
+	if repoRoot == "" {
+		return false
+	}
+	rel, err := filepath.Rel(filepath.Clean(repoRoot), filepath.Clean(path))
+	if err != nil || rel == "." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) || filepath.IsAbs(rel) {
+		return false
+	}
+	top := strings.Split(rel, string(os.PathSeparator))[0]
+	switch top {
+	case "hooks", "info", "logs", "objects", "refs", "rr-cache", "worktrees", "modules", "rebase-apply", "rebase-merge", "svn", "lfs":
+		return true
+	default:
+		return false
+	}
 }
 
 func conventionalWorktreeDirs(path string) []string {
@@ -702,6 +734,9 @@ func (a app) apply(ctx context.Context, repoRoot string, pl plan) {
 			}
 		} else {
 			lines := parallelMap(a.cfg.parallelJobs, pl.staleDirs, func(r row) string {
+				if isGitAdminDir(repoRoot, r.path) {
+					return fmt.Sprintf("  ⚠️  refused to remove protected Git directory %s", r.branch)
+				}
 				if err := os.RemoveAll(r.path); err == nil {
 					return fmt.Sprintf("  ✓ removed %s", r.branch)
 				}
