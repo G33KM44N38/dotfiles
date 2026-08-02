@@ -117,6 +117,9 @@ def main() -> int:
 
     wrapper = DOTFILES / "bin/herdr-run-codex-agent"
     wrapper_regression = DOTFILES / "bin/test-herdr-run-codex-agent"
+    popup_launcher = DOTFILES / "bin/herdr-start-codex"
+    focus_launcher = DOTFILES / "bin/herdr-focus-tab"
+    launcher_regression = DOTFILES / "bin/test-herdr-codex-launchers"
     lifecycle_hook = DOTFILES / "bin/herdr-codex-lifecycle-hook"
     lifecycle_regression = DOTFILES / "bin/test-herdr-codex-lifecycle-hook"
     completion_sound = DOTFILES / "bin/herdr-agent-completion-sound"
@@ -134,6 +137,9 @@ def main() -> int:
         and "pane process-info" in wrapper_text
         and "report_working_when_codex_is_live" in wrapper_text
         and 'HERDR_CODEX_LIFECYCLE_OWNER="wrapper"' in wrapper_text
+        and "--task-name" in wrapper_text
+        and "pane report-metadata" in wrapper_text
+        and "--applies-to-source" in wrapper_text
         and "main()" in wrapper_text
         and "codex_exit_code=$?" in wrapper_text
         and 'release_agent "$codex_exit_code"' in wrapper_text
@@ -145,6 +151,36 @@ def main() -> int:
         "programmatic_wrapper",
         wrapper_ok,
         "parsed main, process-confirmed working state, Herdr cleanup, and regression present",
+    )
+
+    launcher_test = (
+        run(str(launcher_regression))
+        if launcher_regression.is_file() and os.access(launcher_regression, os.X_OK)
+        else None
+    )
+    popup_text = popup_launcher.read_text() if popup_launcher.exists() else ""
+    focus_text = focus_launcher.read_text() if focus_launcher.exists() else ""
+    check(
+        "custom_interactive_launch_identity",
+        bool(
+            launcher_test
+            and launcher_test.returncode == 0
+            and "herdr-codex-launcher-regression-ok" in launcher_test.stdout
+            and "herdr pane run" in popup_text
+            and '"pane", "run"' in focus_text
+            and "herdr-run-codex-agent" in popup_text
+            and "herdr-run-codex-agent" in focus_text
+            and "--interactive" in popup_text
+            and "--close-tab-on-exit" in popup_text
+            and "boss:codex-launch-title" in popup_text
+            and "boss:codex-launch-title" in focus_text
+            and "herdr agent start" not in popup_text
+        ),
+        (
+            "interactive launchers use the custom close-on-exit wrapper plus matching launch metadata"
+            if launcher_test and launcher_test.returncode == 0
+            else f"regression failed: {launcher_test.stderr.strip() if launcher_test else 'missing or non-executable test'}"
+        ),
     )
 
     try:

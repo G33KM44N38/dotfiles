@@ -40,28 +40,34 @@ while true; do
 
   agents_json="$(herdr agent list)"
   if agent_name="$(printf '%s\n' "$agents_json" | python3 -c '
-import json, sys
+import json, os, re, sys, unicodedata
 
 agents = json.load(sys.stdin).get("result", {}).get("agents", [])
 names = {
-    agent.get("name") or agent.get("agent")
+    agent.get("name")
     for agent in agents
-    if agent.get("name") or agent.get("agent")
+    if agent.get("name")
 }
 
 requested = sys.argv[1].strip()
-if requested:
-    if requested in names:
-        raise SystemExit(2)
-    name = requested
-else:
-    name = "codex"
-    suffix = 2
-    while name in names:
-        name = f"codex-{suffix}"
-        suffix += 1
+project = os.path.basename(sys.argv[2].rstrip(os.sep)).lstrip(".") or "workspace"
+source = requested or f"{project}-codex"
+ascii_name = unicodedata.normalize("NFKD", source).encode("ascii", "ignore").decode()
+name = re.sub(r"[^a-z0-9_-]+", "-", ascii_name.lower()).strip("-_")
+if not name or not name[0].isalpha():
+    name = f"codex-{name}" if name else "codex-agent"
+name = name[:32].rstrip("-_")
+if requested and name in names:
+    raise SystemExit(2)
+suffix = 2
+base = name
+while name in names:
+    ending = f"-{suffix}"
+    prefix = base[: 32 - len(ending)].rstrip("-_")
+    name = f"{prefix}{ending}"
+    suffix += 1
 print(name)
-' "$requested_name")"; then
+' "$requested_name" "$project_path")"; then
     break
   fi
 
@@ -138,8 +144,8 @@ if [[ -z "$pane_id" ]]; then
   exit 1
 fi
 
-# Pane creation precedes shell initialization. Wait until startup helpers have
-# exited, otherwise `agent start` rejects the pane as busy.
+# Pane creation precedes shell initialization. Wait until the pane can accept
+# the custom wrapper command.
 pane_ready=false
 for _ in {1..200}; do
   process_json="$(herdr pane process-info --pane "$pane_id" 2>/dev/null || true)"
@@ -170,39 +176,48 @@ if [[ "$pane_ready" == false ]]; then
   exit 1
 fi
 
-start_command=(herdr agent start "$agent_name" --kind codex --pane "$pane_id")
-
-if start_json="$("${start_command[@]}")"; then
-  :
-else
-  start_status=$?
+launch_command="/Users/boss/.dotfiles/bin/herdr-run-codex-agent --interactive --close-tab-on-exit"
+if ! herdr pane run "$pane_id" "$launch_command" >/dev/null; then
   printf '\nCould not start %s.\n' "$agent_name" >&2
-  if [[ -n "$start_json" ]]; then
-    printf '%s\n' "$start_json" >&2
-  fi
   if [[ "$created_tab" == true ]]; then
     herdr tab close "$agent_tab_id" >/dev/null 2>&1 || true
-  elif [[ -n "$pane_id" ]]; then
+  else
     herdr pane close "$pane_id" >/dev/null 2>&1 || true
   fi
-  if [[ -t 0 ]]; then
-    IFS= read -r -p 'Press Enter to close... ' _ || true
-  fi
-  exit "$start_status"
+  exit 1
 fi
 
-pane_id="$(printf '%s\n' "$start_json" | python3 -c '
+agent_started=false
+for _ in {1..200}; do
+  if herdr agent list | python3 -c '
 import json, sys
-data = json.load(sys.stdin).get("result", {})
-for key in ("agent", "pane"):
-    value = data.get(key)
-    if isinstance(value, dict) and value.get("pane_id"):
-        print(value["pane_id"])
-        raise SystemExit(0)
-if data.get("pane_id"):
-    print(data["pane_id"])
-')"
+pane_id = sys.argv[1]
+agents = json.load(sys.stdin).get("result", {}).get("agents", [])
+raise SystemExit(0 if any(
+    agent.get("pane_id") == pane_id and agent.get("agent") == "codex"
+    for agent in agents
+) else 1)
+' "$pane_id"; then
+    agent_started=true
+    break
+  fi
+  sleep 0.05
+done
 
-if [[ -n "${pane_id:-}" ]]; then
-  herdr agent focus "$pane_id" >/dev/null
+if [[ "$agent_started" == false ]]; then
+  printf '\nCodex did not start in pane %s.\n' "$pane_id" >&2
+  if [[ "$created_tab" == true ]]; then
+    herdr tab close "$agent_tab_id" >/dev/null 2>&1 || true
+  else
+    herdr pane close "$pane_id" >/dev/null 2>&1 || true
+  fi
+  exit 1
 fi
+
+herdr agent rename "$pane_id" "$agent_name" >/dev/null
+herdr pane report-metadata "$pane_id" \
+  --source boss:codex-launch-title \
+  --agent codex \
+  --title "$agent_name" \
+  --seq "$(python3 -c 'import time; print(time.time_ns())')" >/dev/null
+herdr agent focus "$pane_id" >/dev/null

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 import fcntl
 import json
+import os
 from pathlib import Path
+import re
 import shlex
 import subprocess
 import sys
@@ -24,6 +26,7 @@ DEFAULT_COMMANDS = {
 }
 
 SHELL_NAMES = {"bash", "fish", "nu", "pwsh", "sh", "zsh"}
+LAUNCH_TITLE_SOURCE = "boss:codex-launch-title"
 
 
 def herdr(*args):
@@ -81,6 +84,41 @@ def pane_has_codex(pane_id):
 
     return any(
         (process.get("name") or "").lower() == "codex" for process in processes
+    )
+
+
+def unique_agent_name(pane, agents):
+    project = os.path.basename(
+        (pane.get("foreground_cwd") or pane.get("cwd") or "workspace").rstrip("/")
+    ).lstrip(".")
+    slug = re.sub(r"[^a-z0-9_-]+", "-", project.lower()).strip("-_")
+    base = f"{slug or 'workspace'}-codex"[:32].rstrip("-_")
+    names = {agent.get("name") for agent in agents if agent.get("name")}
+    if base not in names:
+        return base
+
+    suffix = 2
+    while True:
+        ending = f"-{suffix}"
+        candidate = f"{base[: 32 - len(ending)].rstrip('-_')}{ending}"
+        if candidate not in names:
+            return candidate
+        suffix += 1
+
+
+def publish_launch_title(pane_id, agent_name):
+    herdr(
+        "pane",
+        "report-metadata",
+        pane_id,
+        "--source",
+        LAUNCH_TITLE_SOURCE,
+        "--agent",
+        "codex",
+        "--title",
+        agent_name,
+        "--seq",
+        str(time.time_ns()),
     )
 
 
@@ -148,6 +186,7 @@ def ensure_managed_agent(tab_id):
     if pane is None:
         raise RuntimeError(f"agent tab {tab_id} did not create a pane")
 
+    agent_name = unique_agent_name(pane, agents)
     command = " ".join(
         (
             shlex.quote(str(Path(__file__).with_name("herdr-run-codex-agent"))),
@@ -172,6 +211,8 @@ def ensure_managed_agent(tab_id):
             None,
         )
         if agent is not None:
+            herdr("agent", "rename", agent["pane_id"], agent_name)
+            publish_launch_title(agent["pane_id"], agent_name)
             close_idle_sibling_panes(tab_id, agent["pane_id"])
             herdr("agent", "focus", agent["pane_id"])
             return

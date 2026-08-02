@@ -2,6 +2,7 @@
 set -euo pipefail
 
 readonly report_source="boss:codex-exec-wrapper"
+readonly title_source="boss:codex-exec-title"
 readonly completion_sound=/Users/boss/.dotfiles/bin/herdr-agent-completion-sound
 lifecycle_reporter_pid=
 
@@ -17,6 +18,73 @@ report_working() {
         --agent codex \
         --state working \
         --message "Codex task running" >/dev/null 2>&1 || true
+}
+
+report_title() {
+    local task_name=$1
+
+    herdr pane report-metadata "$HERDR_PANE_ID" \
+        --source "$title_source" \
+        --agent codex \
+        --applies-to-source "$report_source" \
+        --title "$task_name" \
+        --seq "$(python3 -c 'import time; print(time.time_ns())')" >/dev/null 2>&1 || true
+}
+
+derive_task_name() {
+    python3 - "$PWD" "$@" <<'PY'
+import os
+import sys
+import unicodedata
+
+cwd, *arguments = sys.argv[1:]
+value_options = {
+    "-c", "--config", "--enable", "--disable", "-i", "--image",
+    "-m", "--model", "--local-provider", "-p", "--profile", "-s",
+    "--sandbox", "-C", "--cd", "--add-dir", "--output-schema",
+    "--color", "-o", "--output-last-message",
+}
+
+prompt = None
+index = 0
+while index < len(arguments):
+    argument = arguments[index]
+    if argument == "--":
+        prompt = arguments[index + 1] if index + 1 < len(arguments) else None
+        break
+    if argument in {"resume", "review"}:
+        prompt = f"Codex {argument}"
+        break
+    if argument in value_options:
+        index += 2
+        continue
+    if argument.startswith("-"):
+        index += 1
+        continue
+    prompt = argument
+    break
+
+if not prompt or prompt == "-":
+    project = os.path.basename(cwd.rstrip(os.sep)).lstrip(".") or "workspace"
+    prompt = f"Codex task · {project}"
+
+normalized = unicodedata.normalize("NFKC", prompt)
+visible = "".join(
+    " " if character.isspace() else character
+    for character in normalized
+    if character.isspace()
+    or not unicodedata.category(character).startswith("C")
+)
+title = " ".join(visible.split()).lstrip("#>*-0123456789.) ")
+if not title:
+    title = "Codex task"
+if len(title) > 72:
+    clipped = title[:71].rstrip()
+    if " " in clipped:
+        clipped = clipped.rsplit(" ", 1)[0]
+    title = clipped.rstrip(".,;:-") + "…"
+print(title)
+PY
 }
 
 report_working_when_codex_is_live() {
@@ -94,25 +162,36 @@ on_exit() {
 }
 
 close_interactive_container() {
-    local tab_json pane_count
+    local agents_json close_scope
 
     if ! can_report || [[ -z "${HERDR_TAB_ID:-}" ]]; then
         return
     fi
 
-    tab_json="$(herdr tab get "$HERDR_TAB_ID" 2>/dev/null || true)"
-    pane_count="$(printf '%s\n' "$tab_json" | python3 -c '
+    if agents_json="$(herdr agent list 2>/dev/null)"; then
+        close_scope="$(printf '%s\n' "$agents_json" | python3 -c '
 import json, sys
 
+tab_id, pane_id = sys.argv[1:]
 try:
-    print(json.load(sys.stdin)["result"]["tab"]["pane_count"])
-except (KeyError, TypeError, ValueError):
-    pass
-' 2>/dev/null || true)"
+    agents = json.load(sys.stdin)["result"]["agents"]
+except (json.JSONDecodeError, KeyError, TypeError):
+    print("pane")
+    raise SystemExit
 
-    if [[ "$pane_count" == "1" ]]; then
+has_sibling_agent = any(
+    agent.get("tab_id") == tab_id and agent.get("pane_id") != pane_id
+    for agent in agents
+)
+print("pane" if has_sibling_agent else "tab")
+' "$HERDR_TAB_ID" "$HERDR_PANE_ID")"
+    else
+        close_scope=pane
+    fi
+
+    if [[ "$close_scope" == "tab" ]]; then
         herdr tab close "$HERDR_TAB_ID" >/dev/null 2>&1 || true
-    elif [[ -n "${HERDR_PANE_ID:-}" ]]; then
+    else
         herdr pane close "$HERDR_PANE_ID" >/dev/null 2>&1 || true
     fi
 }
@@ -121,12 +200,7 @@ except (KeyError, TypeError, ValueError):
 # one parsed function so replacing this file cannot shift commands beneath a
 # running `codex exec` process.
 main() {
-    if (( $# == 0 )); then
-        printf 'Usage: %s [--interactive [--close-tab-on-exit] | <codex exec arguments...>]\n' "${0##*/}" >&2
-        return 2
-    fi
-
-    if [[ "$1" == "--interactive" ]]; then
+    if [[ "${1:-}" == "--interactive" ]]; then
         shift
         local close_tab_on_exit=false
         if [[ "${1:-}" == "--close-tab-on-exit" ]]; then
@@ -146,6 +220,34 @@ main() {
         return "$codex_exit_code"
     fi
 
+    local task_name=
+    case "${1:-}" in
+        --task-name)
+            if (( $# < 2 )); then
+                printf 'Usage: %s [--interactive [--close-tab-on-exit] [codex arguments...] | [--task-name <name>] [--] <codex exec arguments...>]\n' "${0##*/}" >&2
+                return 2
+            fi
+            task_name=$2
+            shift 2
+            ;;
+        --task-name=*)
+            task_name=${1#--task-name=}
+            shift
+            ;;
+    esac
+    if [[ "${1:-}" == "--" ]]; then
+        shift
+    fi
+    if (( $# == 0 )); then
+        printf 'Usage: %s [--interactive [--close-tab-on-exit] [codex arguments...] | [--task-name <name>] [--] <codex exec arguments...>]\n' "${0##*/}" >&2
+        return 2
+    fi
+    if [[ -z "$task_name" ]]; then
+        task_name="$(derive_task_name "$@")"
+    else
+        task_name="$(derive_task_name -- "$task_name")"
+    fi
+
     export HERDR_CODEX_LIFECYCLE_OWNER="wrapper"
 
     trap on_exit EXIT
@@ -154,6 +256,7 @@ main() {
         # Cover the launch edge immediately, then re-anchor the claim once
         # Herdr observes the actual Codex process generation.
         report_working
+        report_title "$task_name"
         start_lifecycle_reporter
     fi
 

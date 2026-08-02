@@ -1,0 +1,183 @@
+#!/usr/bin/env python3
+"""Focused regression tests for stable interactive Codex pane titles."""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import stat
+import subprocess
+import tempfile
+
+
+HOOK = Path("/Users/boss/.dotfiles/bin/herdr-codex-lifecycle-hook")
+
+
+def write_executable(path: Path, contents: str) -> None:
+    path.write_text(contents)
+    path.chmod(path.stat().st_mode | stat.S_IXUSR)
+
+
+def main() -> int:
+    with tempfile.TemporaryDirectory(prefix="herdr-codex-title-") as root_value:
+        root = Path(root_value)
+        bin_dir = root / "bin"
+        state_dir = root / "state"
+        report_log = root / "reports.jsonl"
+        bin_dir.mkdir()
+
+        write_executable(
+            bin_dir / "herdr",
+            """#!/usr/bin/env python3
+import json, os, sys
+with open(os.environ["HERDR_TEST_REPORT_LOG"], "a", encoding="utf-8") as log:
+    print(json.dumps(sys.argv[1:]), file=log)
+""",
+        )
+        write_executable(bin_dir / "completion-sound", "#!/bin/sh\nexit 0\n")
+
+        env = {
+            **os.environ,
+            "PATH": f"{bin_dir}:/usr/bin:/bin",
+            "HERDR_ENV": "1",
+            "HERDR_PANE_ID": "proof:target-pane",
+            "HERDR_CODEX_LIFECYCLE_STATE_DIR": str(state_dir),
+            "HERDR_CODEX_COMPLETION_SOUND": str(bin_dir / "completion-sound"),
+            "HERDR_TEST_REPORT_LOG": str(report_log),
+        }
+        env.pop("HERDR_CODEX_LIFECYCLE_OWNER", None)
+
+        def invoke(action: str, session_id: str, **fields: object) -> list[list[str]]:
+            before = len(report_log.read_text().splitlines()) if report_log.exists() else 0
+            payload = {
+                "hook_event_name": {
+                    "start": "SessionStart",
+                    "working": "UserPromptSubmit",
+                }.get(action, action),
+                "session_id": session_id,
+                **fields,
+            }
+            subprocess.run(
+                [str(HOOK), action],
+                input=json.dumps(payload),
+                text=True,
+                env=env,
+                check=True,
+            )
+            lines = report_log.read_text().splitlines()[before:]
+            return [json.loads(line) for line in lines]
+
+        def title_from(commands: list[list[str]]) -> str | None:
+            for command in commands:
+                if command[:2] == ["pane", "report-metadata"]:
+                    assert command[2] == "proof:target-pane"
+                    assert "current" not in command
+                    assert "rename" not in command
+                    assert "--display-agent" not in command
+                    assert command[command.index("--agent") + 1] == "codex"
+                    return command[command.index("--title") + 1]
+            return None
+
+        session_one = "019fc240-becc-7261-8e2c-6db899ca2a9d"
+        session_two = "019fc241-cafe-7261-8e2c-6db899ca2a9d"
+        one_suffix = " · codex-019fc240-b"
+        two_suffix = " · codex-019fc241-c"
+
+        assert title_from(invoke("start", session_one, source="startup")) == (
+            "Codex session" + one_suffix
+        )
+        first_title = title_from(
+            invoke(
+                "working",
+                session_one,
+                prompt="##  Implement\n\tan elegant automatic pane title synchronizer safely",
+            )
+        )
+        assert first_title == (
+            "Implement an elegant automatic pane title…" + one_suffix
+        )
+
+        # The durable subject is the first meaningful prompt, never the latest
+        # message. Compaction uses the same id and cannot reset it either.
+        assert title_from(
+            invoke("working", session_one, prompt="Completely different follow-up")
+        ) == first_title
+        assert title_from(
+            invoke("start", session_one, source="compact")
+        ) == first_title
+
+        # /new and /clear arrive with a fresh id and reset immediately. Slash
+        # commands and empty/control-only inputs are not meaningful subjects.
+        assert title_from(invoke("start", session_two, source="clear")) == (
+            "Codex session" + two_suffix
+        )
+        assert title_from(invoke("working", session_two, prompt="/clear")) == (
+            "Codex session" + two_suffix
+        )
+        assert title_from(invoke("working", session_two, prompt="\x00\n***")) == (
+            "Codex session" + two_suffix
+        )
+        assert title_from(
+            invoke("working", session_two, prompt="Fix the sidebar")
+        ) == "Fix the sidebar" + two_suffix
+
+        # Similar subjects remain distinguishable because their ids differ.
+        session_three = "019fc242-dead-7261-8e2c-6db899ca2a9d"
+        assert title_from(invoke("start", session_three, source="startup")) == (
+            "Codex session · codex-019fc242-d"
+        )
+        third_title = title_from(
+            invoke("working", session_three, prompt="Fix the sidebar")
+        )
+        assert third_title == "Fix the sidebar · codex-019fc242-d"
+        assert third_title != "Fix the sidebar" + two_suffix
+
+        # Migration guard: a prompt without prior SessionStart belongs to an
+        # already-running discussion. It must neither infer a subject nor
+        # overwrite display metadata, including after compact with the same id.
+        migrated_session = "019fc100-old0-7261-8e2c-6db899ca2a9d"
+        assert title_from(
+            invoke(
+                "working",
+                migrated_session,
+                prompt="Latest prompt must never become the old session title",
+            )
+        ) is None
+        assert title_from(
+            invoke("start", migrated_session, source="compact")
+        ) is None
+        assert title_from(
+            invoke("working", migrated_session, prompt="Nor may a later prompt")
+        ) is None
+
+        # Programmatic sessions remain fully owned by herdr-run-codex-agent.
+        wrapper_env = {**env, "HERDR_CODEX_LIFECYCLE_OWNER": "wrapper"}
+        before = report_log.read_text()
+        subprocess.run(
+            [str(HOOK), "start"],
+            input=json.dumps({"session_id": "programmatic"}),
+            text=True,
+            env=wrapper_env,
+            check=True,
+        )
+        assert report_log.read_text() == before
+
+        # Without an explicit pane id the hook must never fall back to focus.
+        no_pane_env = {**env}
+        no_pane_env.pop("HERDR_PANE_ID")
+        subprocess.run(
+            [str(HOOK), "working"],
+            input=json.dumps({"session_id": "missing-pane", "prompt": "Do work"}),
+            text=True,
+            env=no_pane_env,
+            check=True,
+        )
+        assert report_log.read_text() == before
+
+    print("herdr-codex-pane-title-regression-ok")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

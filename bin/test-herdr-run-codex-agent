@@ -8,7 +8,13 @@ mkdir -p "$test_root/bin"
 
 cat >"$test_root/bin/codex" <<'SH'
 #!/bin/sh
+printf 'codex-command:%s\n' "$*" >>"$HERDR_TEST_LOG"
+if [ "${1:-}" != exec ]; then
+    printf 'interactive-exit\n' >>"$HERDR_TEST_LOG"
+    exit "${FAKE_CODEX_EXIT:-0}"
+fi
 shift
+printf 'codex-args:%s\n' "$*" >>"$HERDR_TEST_LOG"
 if [ -n "${FAKE_CODEX_LIVE_FILE:-}" ]; then
     sleep 0.1
     printf '%s\n' "$$" >"$FAKE_CODEX_LIVE_FILE"
@@ -63,9 +69,15 @@ case "$*" in
     *'proof:lifetime'*'--state working'*) printf 'working\n' >"$FAKE_HERDR_STATE" ;;
     *'proof:lifetime'*'--state idle'*) printf 'idle\n' >"$FAKE_HERDR_STATE" ;;
     *'release-agent'*'proof:lifetime'*) printf 'unknown\n' >"$FAKE_HERDR_STATE" ;;
-    'tab get proof')
-        [ "${FAKE_TAB_GET_FAIL:-0}" -eq 0 ] || exit 72
-        printf '{"result":{"tab":{"pane_count":%s}}}\n' "${FAKE_PANE_COUNT:-1}"
+    'agent list')
+        case "${FAKE_AGENT_LIST_MODE:-last}" in
+            sibling)
+                printf '%s\n' '{"result":{"agents":[{"pane_id":"proof:p1","tab_id":"proof:t1","agent":"codex"},{"pane_id":"proof:p2","tab_id":"proof:t1","agent":"codex"},{"pane_id":"other:p1","tab_id":"other:t1","agent":"codex"}]}}'
+                ;;
+            last) printf '%s\n' '{"result":{"agents":[]}}' ;;
+            malformed) printf '%s\n' 'not-json' ;;
+            failure) exit 72 ;;
+        esac
         ;;
     *'--state idle'*|*'release-agent'*) [ "${FAIL_CLEANUP:-0}" -eq 0 ] || exit 71 ;;
 esac
@@ -98,16 +110,70 @@ run_case() {
     set -e
 
     [[ "$actual_exit" -eq "$child_exit" ]]
+    grep -Fxq -- "codex-command:exec proof-$name" "$herdr_log"
     grep -q -- '--state working' "$herdr_log"
     grep -q -- '--state idle' "$herdr_log"
     grep -q -- 'release-agent' "$herdr_log"
     grep -q -- 'api snapshot' "$herdr_log"
+    grep -Fq -- "pane report-metadata proof:$name --source boss:codex-exec-title --agent codex --applies-to-source boss:codex-exec-wrapper --title proof-$name" "$herdr_log"
+    ! grep -Fq -- 'command not found' "$test_root/stderr-$name.log"
+    if [[ "$rewrite" == true ]]; then
+        grep -Fxq '#!/bin/sh' "$case_wrapper"
+        grep -Fxq 'exit 99' "$case_wrapper"
+    fi
 }
 
 run_case success 0 0 false
 run_case success_cleanup_failure 0 1 false
 run_case failure_cleanup_failure 7 1 false
 run_case success_self_rewrite 0 1 true
+
+run_explicit_title_case() {
+    local herdr_log="$test_root/herdr-explicit-title.log"
+    : >"$herdr_log"
+
+    PATH="$test_root/bin:/usr/bin:/bin" \
+        HERDR_ENV=1 \
+        HERDR_PANE_ID=proof:explicit \
+        HERDR_WORKSPACE_ID=proof \
+        HERDR_TAB_ID=proof \
+        HERDR_TEST_LOG="$herdr_log" \
+        "$wrapper" --task-name "Release worker" -- "actual task prompt"
+
+    grep -Fq -- 'pane report-metadata proof:explicit --source boss:codex-exec-title --agent codex --applies-to-source boss:codex-exec-wrapper --title Release worker' "$herdr_log"
+    grep -Fxq 'codex-command:exec actual task prompt' "$herdr_log"
+    grep -Fxq 'codex-args:actual task prompt' "$herdr_log"
+    [[ "$(grep -n -m1 'report-metadata' "$herdr_log" | cut -d: -f1)" -lt "$(grep -n -m1 'codex-args:' "$herdr_log" | cut -d: -f1)" ]]
+}
+
+run_explicit_title_case
+
+run_interactive_close_case() {
+    local name=$1 list_mode=$2 expected_close=$3
+    local herdr_log="$test_root/herdr-interactive-$name.log"
+    : >"$herdr_log"
+
+    PATH="$test_root/bin:/usr/bin:/bin" \
+        HERDR_ENV=1 \
+        HERDR_PANE_ID=proof:p1 \
+        HERDR_WORKSPACE_ID=proof \
+        HERDR_TAB_ID=proof:t1 \
+        HERDR_TEST_LOG="$herdr_log" \
+        FAKE_AGENT_LIST_MODE="$list_mode" \
+        "$wrapper" --interactive --close-tab-on-exit \
+        --dangerously-bypass-approvals-and-sandbox
+
+    grep -Fxq 'codex-command:--dangerously-bypass-approvals-and-sandbox' "$herdr_log"
+    grep -Fxq 'interactive-exit' "$herdr_log"
+    grep -Fxq 'agent list' "$herdr_log"
+    grep -Fxq "$expected_close" "$herdr_log"
+    ! grep -q -- 'report-agent\|report-metadata\|release-agent' "$herdr_log"
+}
+
+run_interactive_close_case sibling sibling 'pane close proof:p1'
+run_interactive_close_case last last 'tab close proof:t1'
+run_interactive_close_case malformed malformed 'pane close proof:p1'
+run_interactive_close_case list_failure failure 'pane close proof:p1'
 
 run_lifetime_case() {
     local herdr_log="$test_root/herdr-lifetime.log"
@@ -170,32 +236,5 @@ run_lifetime_case() {
 }
 
 run_lifetime_case
-
-run_interactive_case() {
-    local name=$1 pane_count=$2 tab_get_fails=$3 expected_target=$4
-    local herdr_log="$test_root/herdr-interactive-$name.log"
-    : >"$herdr_log"
-
-    PATH="$test_root/bin:/usr/bin:/bin" \
-        HERDR_ENV=1 \
-        HERDR_PANE_ID="proof:$name" \
-        HERDR_TAB_ID=proof \
-        HERDR_TEST_LOG="$herdr_log" \
-        FAKE_PANE_COUNT="$pane_count" \
-        FAKE_TAB_GET_FAIL="$tab_get_fails" \
-        "$wrapper" --interactive --close-tab-on-exit proof
-
-    if [[ "$expected_target" == tab ]]; then
-        grep -Fxq 'tab close proof' "$herdr_log"
-        ! grep -q '^pane close ' "$herdr_log"
-    else
-        grep -Fxq "pane close proof:$name" "$herdr_log"
-        ! grep -q '^tab close ' "$herdr_log"
-    fi
-}
-
-run_interactive_case sole_pane 1 0 tab
-run_interactive_case shared_tab 3 0 pane
-run_interactive_case unknown_layout 0 1 pane
 
 printf 'herdr-wrapper-status-regression-ok\n'

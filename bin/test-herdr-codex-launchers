@@ -1,0 +1,164 @@
+#!/usr/bin/env python3
+"""Focused regressions for custom interactive Codex launch identity."""
+
+from __future__ import annotations
+
+import importlib.util
+from importlib.machinery import SourceFileLoader
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+
+DOTFILES = Path("/Users/boss/.dotfiles")
+
+
+def write_executable(path: Path, content: str) -> None:
+    path.write_text(content)
+    path.chmod(0o755)
+
+
+def test_popup_launcher() -> None:
+    with tempfile.TemporaryDirectory(prefix="herdr-launchers-") as directory:
+        root = Path(directory)
+        bin_dir = root / "bin"
+        bin_dir.mkdir()
+        log = root / "herdr.log"
+        write_executable(
+            bin_dir / "herdr",
+            """#!/bin/sh
+printf '%s\n' "$*" >>"$HERDR_TEST_LOG"
+case "$*" in
+  'agent list')
+    if [ -e "$HERDR_AGENT_STARTED" ]; then
+      printf '%s\n' '{"result":{"agents":[{"name":"dotfiles-codex"},{"name":"codex","agent":"codex","pane_id":"proof-launch:p2","tab_id":"proof-launch:t1"}]}}'
+    else
+      printf '%s\n' '{"result":{"agents":[{"name":"dotfiles-codex"}]}}'
+    fi
+    ;;
+  'tab list --workspace proof-launch')
+    printf '%s\n' '{"result":{"tabs":[{"tab_id":"proof-launch:t1","label":"agent"}]}}'
+    ;;
+  'pane list --workspace proof-launch')
+    printf '%s\n' '{"result":{"panes":[{"pane_id":"proof-launch:p1","tab_id":"proof-launch:t1"}]}}'
+    ;;
+  'pane split proof-launch:p1 --direction right --cwd /Users/boss/.dotfiles --no-focus')
+    printf '%s\n' '{"result":{"pane":{"pane_id":"proof-launch:p2"}}}'
+    ;;
+  'pane process-info --pane proof-launch:p2')
+    printf '%s\n' '{"result":{"process_info":{"foreground_processes":[{"name":"zsh"}]}}}'
+    ;;
+  'pane run proof-launch:p2 /Users/boss/.dotfiles/bin/herdr-run-codex-agent --interactive --close-tab-on-exit')
+    : >"$HERDR_AGENT_STARTED"
+    ;;
+esac
+""",
+        )
+        env = {
+            **os.environ,
+            "PATH": f"{bin_dir}:/usr/bin:/bin",
+            "HERDR_ACTIVE_WORKSPACE_ID": "proof-launch",
+            "HERDR_ACTIVE_PANE_CWD": str(DOTFILES),
+            "HERDR_TEST_LOG": str(log),
+            "HERDR_AGENT_STARTED": str(root / "agent-started"),
+        }
+        result = subprocess.run(
+            [str(DOTFILES / "bin/herdr-start-codex")],
+            input="\n",
+            text=True,
+            env=env,
+            check=True,
+            capture_output=True,
+        )
+        calls = log.read_text().splitlines()
+        start_call = (
+            "pane run proof-launch:p2 "
+            "/Users/boss/.dotfiles/bin/herdr-run-codex-agent "
+            "--interactive --close-tab-on-exit"
+        )
+        assert calls.count(start_call) == 1, {
+            "calls": calls,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+        }
+        assert result.stderr == ""
+        metadata = next(call for call in calls if call.startswith("pane report-metadata "))
+        assert metadata.startswith(
+            "pane report-metadata proof-launch:p2 --source boss:codex-launch-title "
+            "--agent codex --title dotfiles-codex-2 --seq "
+        )
+        assert "agent rename proof-launch:p2 dotfiles-codex-2" in calls
+        assert "agent focus proof-launch:p2" in calls
+        assert not any(call.startswith("agent start ") for call in calls)
+
+
+def test_focus_tab_launcher() -> None:
+    sys.dont_write_bytecode = True
+    path = DOTFILES / "bin/herdr-focus-tab"
+    loader = SourceFileLoader("herdr_focus_tab", str(path))
+    spec = importlib.util.spec_from_loader("herdr_focus_tab", loader)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    calls: list[tuple[str, ...]] = []
+    agents = [{"name": "dotfiles-codex", "tab_id": "somewhere-else"}]
+
+    def fake_herdr(*arguments: str) -> dict[str, object]:
+        calls.append(arguments)
+        if arguments == ("agent", "list"):
+            return {"result": {"agents": agents}}
+        if arguments[:2] == ("pane", "run"):
+            agents.append(
+                {
+                    "agent": "codex",
+                    "pane_id": "proof:p2",
+                    "tab_id": "proof:t1",
+                    "name": "codex",
+                }
+            )
+        return {}
+
+    module.herdr = fake_herdr
+    module.pane_for_tab = lambda _tab_id, timeout=0: {
+        "pane_id": "proof:p2",
+        "cwd": str(DOTFILES),
+    }
+    module.close_idle_sibling_panes = lambda *_args, **_kwargs: None
+    module.pane_has_codex = lambda _pane_id: True
+    module.ensure_managed_agent("proof:t1")
+
+    assert (
+        "pane",
+        "run",
+        "proof:p2",
+        "/Users/boss/.dotfiles/bin/herdr-run-codex-agent --interactive "
+        "--close-tab-on-exit --dangerously-bypass-approvals-and-sandbox",
+    ) in calls
+    assert ("agent", "rename", "proof:p2", "dotfiles-codex-2") in calls
+    metadata = next(call for call in calls if call[:2] == ("pane", "report-metadata"))
+    assert metadata[2:9] == (
+        "proof:p2",
+        "--source",
+        "boss:codex-launch-title",
+        "--agent",
+        "codex",
+        "--title",
+        "dotfiles-codex-2",
+    )
+    assert ("agent", "focus", "proof:p2") in calls
+    assert not any(call[:2] == ("agent", "start") for call in calls)
+
+
+def main() -> int:
+    test_popup_launcher()
+    test_focus_tab_launcher()
+    print("herdr-codex-launcher-regression-ok")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

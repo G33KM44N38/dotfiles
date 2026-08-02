@@ -46,6 +46,7 @@ printf 'sound\\n' >>\"$HERDR_TEST_SOUND_LOG\"
             "PATH": f"{bin_dir}:/usr/bin:/bin",
             "HERDR_ENV": "1",
             "HERDR_PANE_ID": "proof:p1",
+            "HERDR_TAB_ID": "proof:t1",
             "HERDR_CODEX_LIFECYCLE_STATE_DIR": str(state_dir),
             "HERDR_CODEX_COMPLETION_SOUND": str(bin_dir / "completion-sound"),
             "HERDR_TEST_REPORT_LOG": str(report_log),
@@ -54,6 +55,7 @@ printf 'sound\\n' >>\"$HERDR_TEST_SOUND_LOG\"
         env.pop("HERDR_CODEX_LIFECYCLE_OWNER", None)
 
         def invoke(action: str, **fields: object) -> str:
+            before = len(report_log.read_text().splitlines()) if report_log.exists() else 0
             payload = {
                 "session_id": "parent-session",
                 "turn_id": "parent-turn",
@@ -66,7 +68,10 @@ printf 'sound\\n' >>\"$HERDR_TEST_SOUND_LOG\"
                 env=env,
                 check=True,
             )
-            return report_log.read_text().splitlines()[-1]
+            reports = report_log.read_text().splitlines()[before:]
+            return next(
+                report for report in reports if report.startswith("pane report-agent ")
+            )
 
         assert "--state working" in invoke("working")
         assert "--state working" in invoke("subagent-start", agent_id="child-a")

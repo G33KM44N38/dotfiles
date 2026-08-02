@@ -8,9 +8,11 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import time
+import unicodedata
 
 
 STATES = {
@@ -19,6 +21,9 @@ STATES = {
     "blocked": ("blocked", "Codex permission required"),
 }
 SOURCE = "boss:codex-interactive-lifecycle"
+TITLE_SOURCE = "boss:codex-interactive-title"
+NEUTRAL_SUBJECT = "Codex session"
+MAX_SUBJECT_LENGTH = 48
 COMPLETION_SOUND = os.environ.get(
     "HERDR_CODEX_COMPLETION_SOUND",
     "/Users/boss/.dotfiles/bin/herdr-agent-completion-sound",
@@ -33,7 +38,7 @@ STATE_DIR = Path(
 
 def lifecycle_transition(
     action: str, payload: dict[str, object], pane_id: str
-) -> tuple[str, str] | None:
+) -> tuple[str, str, str | None] | None:
     """Serialize parent/child transitions and return the aggregate pane state."""
     session_id = payload.get("session_id")
     if not isinstance(session_id, str) or not session_id:
@@ -52,8 +57,23 @@ def lifecycle_transition(
             except (json.JSONDecodeError, OSError):
                 state = {}
 
+            title_initialized = state.get("title_initialized") is True
             children = set(state.get("children", []))
             parent_waiting = bool(state.get("parent_waiting", False))
+            subject = state.get("subject")
+            if not isinstance(subject, str) or not subject:
+                # Migrate state written by the initial pane-title implementation.
+                legacy_title = state.get("title")
+                subject = (
+                    legacy_title
+                    if isinstance(legacy_title, str)
+                    and legacy_title
+                    and legacy_title != "New Codex session"
+                    else None
+                )
+            subject_locked = bool(
+                state.get("subject_locked", state.get("title_locked", False))
+            )
             agent_id = payload.get("agent_id")
             child_key = (
                 hashlib.sha256(agent_id.encode()).hexdigest()
@@ -65,9 +85,20 @@ def lifecycle_transition(
                 children.clear()
                 parent_waiting = False
                 result = STATES[action]
+                if not state:
+                    # Only a SessionStart that creates this session's state may
+                    # claim title ownership. A state first seen on a prompt is
+                    # an already-running discussion from before this rollout;
+                    # even a later compact must leave its metadata untouched.
+                    title_initialized = True
             elif action == "working":
                 parent_waiting = False
                 result = STATES[action]
+                if title_initialized and not subject_locked:
+                    prompt_subject = subject_from_prompt(payload.get("prompt"))
+                    if prompt_subject:
+                        subject = prompt_subject
+                        subject_locked = True
             elif action == "blocked":
                 result = STATES[action]
             elif action == "subagent-start":
@@ -97,15 +128,87 @@ def lifecycle_transition(
                 {
                     "children": sorted(children),
                     "parent_waiting": parent_waiting,
+                    "title_initialized": title_initialized,
+                    "subject": subject,
+                    "subject_locked": subject_locked,
                 },
                 state_file,
             )
             state_file.truncate()
-            return result
+            reported_title = None
+            if title_initialized and action in {"start", "working"}:
+                reported_title = session_title(subject, session_id)
+            return (*result, reported_title)
     except OSError:
         # A stale authoritative state is worse than allowing Herdr's screen
         # detector to keep its last observation, so do not report on failure.
         return None
+
+
+def short_session_id(session_id: str) -> str:
+    """Match Codex's compact, human-readable discussion id."""
+    normalized = re.sub(r"[^a-zA-Z0-9-]", "", session_id)
+    return f"codex-{(normalized or 'unknown')[:10]}"
+
+
+def session_title(subject: str | None, session_id: str) -> str:
+    """Couple the durable subject with its discussion discriminator."""
+    return f"{subject or NEUTRAL_SUBJECT} · {short_session_id(session_id)}"
+
+
+def subject_from_prompt(value: object) -> str | None:
+    """Turn the first meaningful user prompt into one safe, compact subject."""
+    if not isinstance(value, str):
+        return None
+
+    normalized = unicodedata.normalize("NFKC", value)
+    visible = "".join(
+        " " if character.isspace() else character
+        for character in normalized
+        if character.isspace()
+        or not unicodedata.category(character).startswith("C")
+    )
+    title = " ".join(visible.split()).lstrip("#>*-0123456789.) ")
+    if not title:
+        return None
+    if title.casefold().split(maxsplit=1)[0] in {"/new", "/clear"}:
+        return None
+    if len(title) <= MAX_SUBJECT_LENGTH:
+        return title
+
+    clipped = title[: MAX_SUBJECT_LENGTH - 1].rstrip()
+    if " " in clipped:
+        clipped = clipped.rsplit(" ", 1)[0]
+    return clipped.rstrip(".,;:-") + "…"
+
+
+def report_title(pane_id: str, title: str) -> None:
+    """Publish display metadata without replacing native agent identity."""
+    command = [
+        "herdr",
+        "pane",
+        "report-metadata",
+        pane_id,
+        "--source",
+        TITLE_SOURCE,
+        "--agent",
+        "codex",
+        "--title",
+        title,
+        "--seq",
+        str(time.time_ns()),
+    ]
+    try:
+        subprocess.run(
+            command,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=2,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        pass
 
 
 def main() -> int:
@@ -119,9 +222,9 @@ def main() -> int:
     action = sys.argv[1] if len(sys.argv) > 1 else ""
     if not pane_id:
         return 0
-
-    # Hook payloads can contain prompts and tool arguments. Read only in memory,
-    # retain only the non-secret session id, and never log payload content.
+    # Hook payloads can contain prompts and tool arguments. Retain only the
+    # session id and the short title intentionally shown by Herdr; never log
+    # the raw payload.
     try:
         payload = json.load(sys.stdin)
     except (json.JSONDecodeError, OSError):
@@ -133,7 +236,7 @@ def main() -> int:
     transition = lifecycle_transition(action, payload, pane_id)
     if transition is None:
         return 0
-    state, message = transition
+    state, message, title = transition
     command = [
         "herdr",
         "pane",
@@ -163,6 +266,9 @@ def main() -> int:
         )
     except (OSError, subprocess.SubprocessError):
         pass
+
+    if title:
+        report_title(pane_id, title)
 
     if state == "idle" and action in {"stop", "idle", "subagent-stop"}:
         try:
