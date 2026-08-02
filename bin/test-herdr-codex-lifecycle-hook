@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+"""Regression for a stopped parent with overlapping Collaboration children."""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import stat
+import subprocess
+import tempfile
+
+
+HOOK = Path("/Users/boss/.dotfiles/bin/herdr-codex-lifecycle-hook")
+
+
+def write_executable(path: Path, contents: str) -> None:
+    path.write_text(contents)
+    path.chmod(path.stat().st_mode | stat.S_IXUSR)
+
+
+def main() -> int:
+    with tempfile.TemporaryDirectory(prefix="herdr-codex-lifecycle-") as root_value:
+        root = Path(root_value)
+        bin_dir = root / "bin"
+        state_dir = root / "state"
+        report_log = root / "reports.jsonl"
+        sound_log = root / "sounds"
+        bin_dir.mkdir()
+
+        write_executable(
+            bin_dir / "herdr",
+            """#!/bin/sh
+printf '%s\\n' \"$*\" >>\"$HERDR_TEST_REPORT_LOG\"
+""",
+        )
+        write_executable(
+            bin_dir / "completion-sound",
+            """#!/bin/sh
+printf 'sound\\n' >>\"$HERDR_TEST_SOUND_LOG\"
+""",
+        )
+
+        env = {
+            **os.environ,
+            "PATH": f"{bin_dir}:/usr/bin:/bin",
+            "HERDR_ENV": "1",
+            "HERDR_PANE_ID": "proof:p1",
+            "HERDR_CODEX_LIFECYCLE_STATE_DIR": str(state_dir),
+            "HERDR_CODEX_COMPLETION_SOUND": str(bin_dir / "completion-sound"),
+            "HERDR_TEST_REPORT_LOG": str(report_log),
+            "HERDR_TEST_SOUND_LOG": str(sound_log),
+        }
+        env.pop("HERDR_CODEX_LIFECYCLE_OWNER", None)
+
+        def invoke(action: str, **fields: object) -> str:
+            payload = {
+                "session_id": "parent-session",
+                "turn_id": "parent-turn",
+                **fields,
+            }
+            subprocess.run(
+                [str(HOOK), action],
+                input=json.dumps(payload),
+                text=True,
+                env=env,
+                check=True,
+            )
+            return report_log.read_text().splitlines()[-1]
+
+        assert "--state working" in invoke("working")
+        assert "--state working" in invoke("subagent-start", agent_id="child-a")
+        assert "--state working" in invoke("subagent-start", agent_id="child-b")
+
+        # This is the regression: Stop is authoritative in Herdr and must not
+        # override a correctly detected working screen while children remain.
+        assert "--state working" in invoke("stop")
+        assert not sound_log.exists()
+
+        assert "--state working" in invoke("subagent-stop", agent_id="child-a")
+        assert not sound_log.exists()
+        assert "--state idle" in invoke("subagent-stop", agent_id="child-b")
+        assert sound_log.read_text().splitlines() == ["sound"]
+
+        # Ordinary parent-only turns still complete directly at Stop.
+        assert "--state working" in invoke("working")
+        assert "--state idle" in invoke("stop")
+        assert sound_log.read_text().splitlines() == ["sound", "sound"]
+
+    print("herdr-codex-parent-child-lifecycle-regression-ok")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

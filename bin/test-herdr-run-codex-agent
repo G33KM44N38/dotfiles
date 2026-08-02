@@ -9,6 +9,14 @@ mkdir -p "$test_root/bin"
 cat >"$test_root/bin/codex" <<'SH'
 #!/bin/sh
 shift
+if [ -n "${FAKE_CODEX_LIVE_FILE:-}" ]; then
+    sleep 0.1
+    printf '%s\n' "$$" >"$FAKE_CODEX_LIVE_FILE"
+    while [ ! -e "$FAKE_CODEX_EXIT_GATE" ]; do
+        sleep 0.02
+    done
+    printf 'codex-exit\n' >>"$HERDR_TEST_LOG"
+fi
 output_file=
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -28,6 +36,33 @@ cat >"$test_root/bin/herdr" <<'SH'
 #!/bin/sh
 printf '%s\n' "$*" >>"$HERDR_TEST_LOG"
 case "$*" in
+    'pane process-info --pane proof:lifetime')
+        if [ -s "$FAKE_CODEX_LIVE_FILE" ]; then
+            pid=$(cat "$FAKE_CODEX_LIVE_FILE")
+            printf '{"result":{"process_info":{"foreground_processes":[{"pid":%s,"name":"codex","argv0":"codex"}]}}}\n' "$pid"
+        else
+            printf 'unknown\n' >"$FAKE_HERDR_STATE"
+            printf '{"result":{"process_info":{"foreground_processes":[]}}}\n'
+        fi
+        ;;
+    'pane process-info --pane '*)
+        printf '{"result":{"process_info":{"foreground_processes":[{"pid":1,"name":"codex","argv0":"codex"}]}}}\n'
+        ;;
+    'pane get proof:lifetime')
+        state=$(cat "$FAKE_HERDR_STATE")
+        [ "$state" != unknown ] || state=done
+        printf '{"result":{"pane":{"pane_id":"proof:lifetime","agent_status":"%s"}}}\n' "$state"
+        ;;
+    'workspace get proof')
+        state=$(cat "$FAKE_HERDR_STATE")
+        # The sibling pane is seen/idle. A working wrapper pane must therefore
+        # make the current workspace working; after release it returns idle.
+        [ "$state" = working ] || state=idle
+        printf '{"result":{"workspace":{"workspace_id":"proof","agent_status":"%s"}}}\n' "$state"
+        ;;
+    *'proof:lifetime'*'--state working'*) printf 'working\n' >"$FAKE_HERDR_STATE" ;;
+    *'proof:lifetime'*'--state idle'*) printf 'idle\n' >"$FAKE_HERDR_STATE" ;;
+    *'release-agent'*'proof:lifetime'*) printf 'unknown\n' >"$FAKE_HERDR_STATE" ;;
     'tab get proof')
         [ "${FAKE_TAB_GET_FAIL:-0}" -eq 0 ] || exit 72
         printf '{"result":{"tab":{"pane_count":%s}}}\n' "${FAKE_PANE_COUNT:-1}"
@@ -73,6 +108,68 @@ run_case success 0 0 false
 run_case success_cleanup_failure 0 1 false
 run_case failure_cleanup_failure 7 1 false
 run_case success_self_rewrite 0 1 true
+
+run_lifetime_case() {
+    local herdr_log="$test_root/herdr-lifetime.log"
+    local live_file="$test_root/codex-live"
+    local exit_gate="$test_root/codex-exit-gate"
+    local state_file="$test_root/herdr-state"
+    : >"$herdr_log"
+    printf 'unknown\n' >"$state_file"
+    rm -f "$live_file" "$exit_gate"
+
+    fake_herdr() {
+        HERDR_TEST_LOG="$herdr_log" \
+            FAKE_HERDR_STATE="$state_file" \
+            FAKE_CODEX_LIVE_FILE="$live_file" \
+            "$test_root/bin/herdr" "$@"
+    }
+
+    PATH="$test_root/bin:/usr/bin:/bin" \
+        HERDR_ENV=1 \
+        HERDR_PANE_ID=proof:lifetime \
+        HERDR_WORKSPACE_ID=proof \
+        HERDR_TAB_ID=proof \
+        HERDR_TEST_LOG="$herdr_log" \
+        FAKE_HERDR_STATE="$state_file" \
+        FAKE_CODEX_LIVE_FILE="$live_file" \
+        FAKE_CODEX_EXIT_GATE="$exit_gate" \
+        "$wrapper" proof-lifetime &
+    local wrapper_pid=$!
+
+    local attempts=0
+    while [[ ! -s "$live_file" ]] ||
+        [[ "$(grep -c -- '--state working' "$herdr_log" || true)" -lt 2 ]] ||
+        [[ "$(cat "$state_file")" != working ]]; do
+        kill -0 "$wrapper_pid" || return 1
+        attempts=$((attempts + 1))
+        [[ "$attempts" -lt 200 ]] || return 1
+        sleep 0.02
+    done
+
+    local codex_pid
+    codex_pid="$(cat "$live_file")"
+    [[ "$codex_pid" != "$wrapper_pid" ]]
+
+    local sample
+    for sample in 1 2 3 4 5; do
+        kill -0 "$wrapper_pid" || return 1
+        kill -0 "$codex_pid" || return 1
+        [[ "$(fake_herdr pane get proof:lifetime | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["pane"]["agent_status"])')" == working ]] || return 1
+        [[ "$(fake_herdr workspace get proof | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["workspace"]["agent_status"])')" == working ]] || return 1
+        ! grep -q 'release-agent' "$herdr_log" || return 1
+        sleep 0.02
+    done
+
+    touch "$exit_gate"
+    wait "$wrapper_pid"
+
+    [[ "$(fake_herdr pane get proof:lifetime | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["pane"]["agent_status"])')" == done ]] || return 1
+    [[ "$(fake_herdr workspace get proof | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["workspace"]["agent_status"])')" == idle ]] || return 1
+    [[ "$(grep -n -m1 'codex-exit' "$herdr_log" | cut -d: -f1)" -lt "$(grep -n -m1 'release-agent' "$herdr_log" | cut -d: -f1)" ]] || return 1
+}
+
+run_lifetime_case
 
 run_interactive_case() {
     local name=$1 pane_count=$2 tab_get_fails=$3 expected_target=$4

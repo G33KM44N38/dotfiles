@@ -7,7 +7,6 @@ import json
 import os
 from pathlib import Path
 import subprocess
-import sys
 import tomllib
 import re
 
@@ -91,7 +90,9 @@ def main() -> int:
         "SessionStart": "start",
         "PermissionRequest": "blocked",
         "UserPromptSubmit": "working",
-        "Stop": "idle",
+        "SubagentStart": "subagent-start",
+        "SubagentStop": "subagent-stop",
+        "Stop": "stop",
     }
     lifecycle_commands = {
         event: [
@@ -111,12 +112,13 @@ def main() -> int:
             )
             for event, state in expected_transitions.items()
         ),
-        "Best-effort lifecycle hooks present; native screen detector remains authoritative",
+        "Authoritative lifecycle hooks cover parent and Collaboration child transitions",
     )
 
     wrapper = DOTFILES / "bin/herdr-run-codex-agent"
     wrapper_regression = DOTFILES / "bin/test-herdr-run-codex-agent"
     lifecycle_hook = DOTFILES / "bin/herdr-codex-lifecycle-hook"
+    lifecycle_regression = DOTFILES / "bin/test-herdr-codex-lifecycle-hook"
     completion_sound = DOTFILES / "bin/herdr-agent-completion-sound"
     completion_sound_regression = DOTFILES / "bin/test-herdr-agent-completion-sound"
     wrapper_text = wrapper.read_text() if wrapper.exists() else ""
@@ -129,6 +131,8 @@ def main() -> int:
         and "--state working" in wrapper_text
         and "--state idle" in wrapper_text
         and "release-agent" in wrapper_text
+        and "pane process-info" in wrapper_text
+        and "report_working_when_codex_is_live" in wrapper_text
         and 'HERDR_CODEX_LIFECYCLE_OWNER="wrapper"' in wrapper_text
         and "main()" in wrapper_text
         and "codex_exit_code=$?" in wrapper_text
@@ -140,7 +144,34 @@ def main() -> int:
     check(
         "programmatic_wrapper",
         wrapper_ok,
-        "parsed main, explicit child status, Herdr cleanup, and regression present",
+        "parsed main, process-confirmed working state, Herdr cleanup, and regression present",
+    )
+
+    try:
+        compile(lifecycle_hook_text, str(lifecycle_hook), "exec")
+        lifecycle_syntax = True
+    except SyntaxError:
+        lifecycle_syntax = False
+    lifecycle_test = (
+        run(str(lifecycle_regression))
+        if lifecycle_regression.is_file()
+        and os.access(lifecycle_regression, os.X_OK)
+        else None
+    )
+    check(
+        "collaboration_parent_child_lifecycle",
+        bool(
+            lifecycle_syntax
+            and lifecycle_test
+            and lifecycle_test.returncode == 0
+            and "herdr-codex-parent-child-lifecycle-regression-ok"
+            in lifecycle_test.stdout
+        ),
+        (
+            "authoritative parent Stop stays working until every child stops"
+            if lifecycle_test and lifecycle_test.returncode == 0
+            else f"regression failed: {lifecycle_test.stderr.strip() if lifecycle_test else 'missing or non-executable test'}"
+        ),
     )
 
     try:

@@ -3,6 +3,7 @@ set -euo pipefail
 
 readonly report_source="boss:codex-exec-wrapper"
 readonly completion_sound=/Users/boss/.dotfiles/bin/herdr-agent-completion-sound
+lifecycle_reporter_pid=
 
 can_report() {
     [[ "${HERDR_ENV:-}" == "1" ]] &&
@@ -10,7 +11,67 @@ can_report() {
         command -v herdr >/dev/null 2>&1
 }
 
+report_working() {
+    herdr pane report-agent "$HERDR_PANE_ID" \
+        --source "$report_source" \
+        --agent codex \
+        --state working \
+        --message "Codex task running" >/dev/null 2>&1 || true
+}
+
+report_working_when_codex_is_live() {
+    local wrapper_pid=$1 process_json
+
+    # A custom Herdr source does not receive full-lifecycle protection. If it
+    # reports before Codex becomes the pane's foreground agent, Herdr can
+    # correctly interpret that pre-launch snapshot as a process exit and clear
+    # the report. Wait for Herdr's own process view to prove Codex is live so
+    # the working authority and the process generation begin together.
+    while kill -0 "$wrapper_pid" >/dev/null 2>&1; do
+        process_json="$(herdr pane process-info --pane "$HERDR_PANE_ID" 2>/dev/null || true)"
+        if printf '%s\n' "$process_json" | python3 -c '
+import json, os, sys
+
+try:
+    processes = json.load(sys.stdin)["result"]["process_info"]["foreground_processes"]
+except (KeyError, TypeError, ValueError):
+    raise SystemExit(1)
+
+raise SystemExit(
+    0 if any(
+        process.get("name") == "codex"
+        or os.path.basename(str(process.get("argv0", ""))) == "codex"
+        for process in processes
+    ) else 1
+)
+' 2>/dev/null; then
+            report_working
+            return
+        fi
+        sleep 0.05
+    done
+}
+
+start_lifecycle_reporter() {
+    local wrapper_pid=$$
+
+    # Keep Codex in the foreground so its terminal and signals remain unchanged.
+    # The reporter is the only background child; its PID is captured immediately
+    # for deterministic cleanup, while the wrapper PID bounds its polling loop.
+    report_working_when_codex_is_live "$wrapper_pid" &
+    lifecycle_reporter_pid=$!
+}
+
+stop_lifecycle_reporter() {
+    if [[ -n "$lifecycle_reporter_pid" ]]; then
+        kill "$lifecycle_reporter_pid" >/dev/null 2>&1 || true
+        wait "$lifecycle_reporter_pid" 2>/dev/null || true
+        lifecycle_reporter_pid=
+    fi
+}
+
 release_agent() {
+    stop_lifecycle_reporter
     if can_report; then
         "$completion_sound" >/dev/null 2>&1 || true
         herdr pane report-agent "$HERDR_PANE_ID" \
@@ -90,11 +151,10 @@ main() {
     trap on_exit EXIT
 
     if can_report; then
-        herdr pane report-agent "$HERDR_PANE_ID" \
-            --source "$report_source" \
-            --agent codex \
-            --state working \
-            --message "Codex task running" >/dev/null 2>&1 || true
+        # Cover the launch edge immediately, then re-anchor the claim once
+        # Herdr observes the actual Codex process generation.
+        report_working
+        start_lifecycle_reporter
     fi
 
     local codex_exit_code
@@ -102,6 +162,8 @@ main() {
     codex exec "$@"
     codex_exit_code=$?
     set -e
+
+    stop_lifecycle_reporter
 
     trap - EXIT
     release_agent "$codex_exit_code"

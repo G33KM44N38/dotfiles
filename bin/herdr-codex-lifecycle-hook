@@ -3,8 +3,11 @@
 
 from __future__ import annotations
 
+import fcntl
+import hashlib
 import json
 import os
+from pathlib import Path
 import subprocess
 import sys
 import time
@@ -13,11 +16,96 @@ import time
 STATES = {
     "start": ("idle", "Codex session ready"),
     "working": ("working", "Codex turn running"),
-    "idle": ("idle", "Codex waiting for input"),
     "blocked": ("blocked", "Codex permission required"),
 }
 SOURCE = "boss:codex-interactive-lifecycle"
-COMPLETION_SOUND = "/Users/boss/.dotfiles/bin/herdr-agent-completion-sound"
+COMPLETION_SOUND = os.environ.get(
+    "HERDR_CODEX_COMPLETION_SOUND",
+    "/Users/boss/.dotfiles/bin/herdr-agent-completion-sound",
+)
+STATE_DIR = Path(
+    os.environ.get(
+        "HERDR_CODEX_LIFECYCLE_STATE_DIR",
+        f"/tmp/herdr-codex-lifecycle-{os.getuid()}",
+    )
+)
+
+
+def lifecycle_transition(
+    action: str, payload: dict[str, object], pane_id: str
+) -> tuple[str, str] | None:
+    """Serialize parent/child transitions and return the aggregate pane state."""
+    session_id = payload.get("session_id")
+    if not isinstance(session_id, str) or not session_id:
+        session_id = "unknown-session"
+    state_key = hashlib.sha256(f"{pane_id}\0{session_id}".encode()).hexdigest()
+
+    try:
+        STATE_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
+        state_path = STATE_DIR / f"{state_key}.json"
+        state_fd = os.open(state_path, os.O_RDWR | os.O_CREAT, 0o600)
+        with os.fdopen(state_fd, "r+", encoding="utf-8") as state_file:
+            fcntl.flock(state_file, fcntl.LOCK_EX)
+            state_file.seek(0)
+            try:
+                state = json.load(state_file)
+            except (json.JSONDecodeError, OSError):
+                state = {}
+
+            children = set(state.get("children", []))
+            parent_waiting = bool(state.get("parent_waiting", False))
+            agent_id = payload.get("agent_id")
+            child_key = (
+                hashlib.sha256(agent_id.encode()).hexdigest()
+                if isinstance(agent_id, str) and agent_id
+                else None
+            )
+
+            if action == "start":
+                children.clear()
+                parent_waiting = False
+                result = STATES[action]
+            elif action == "working":
+                parent_waiting = False
+                result = STATES[action]
+            elif action == "blocked":
+                result = STATES[action]
+            elif action == "subagent-start":
+                if child_key:
+                    children.add(child_key)
+                result = ("working", "Codex child work running")
+            elif action in {"stop", "idle"}:
+                parent_waiting = True
+                result = (
+                    ("working", "Codex waiting for child work")
+                    if children
+                    else ("idle", "Codex waiting for input")
+                )
+            elif action == "subagent-stop":
+                if child_key:
+                    children.discard(child_key)
+                result = (
+                    ("idle", "Codex child work finished")
+                    if parent_waiting and not children
+                    else ("working", "Codex turn running")
+                )
+            else:
+                return None
+
+            state_file.seek(0)
+            json.dump(
+                {
+                    "children": sorted(children),
+                    "parent_waiting": parent_waiting,
+                },
+                state_file,
+            )
+            state_file.truncate()
+            return result
+    except OSError:
+        # A stale authoritative state is worse than allowing Herdr's screen
+        # detector to keep its last observation, so do not report on failure.
+        return None
 
 
 def main() -> int:
@@ -29,7 +117,7 @@ def main() -> int:
 
     pane_id = os.environ.get("HERDR_PANE_ID")
     action = sys.argv[1] if len(sys.argv) > 1 else ""
-    if not pane_id or action not in STATES:
+    if not pane_id:
         return 0
 
     # Hook payloads can contain prompts and tool arguments. Read only in memory,
@@ -42,7 +130,10 @@ def main() -> int:
     if not isinstance(session_id, str) or not session_id:
         session_id = None
 
-    state, message = STATES[action]
+    transition = lifecycle_transition(action, payload, pane_id)
+    if transition is None:
+        return 0
+    state, message = transition
     command = [
         "herdr",
         "pane",
@@ -73,7 +164,7 @@ def main() -> int:
     except (OSError, subprocess.SubprocessError):
         pass
 
-    if action == "idle":
+    if state == "idle" and action in {"stop", "idle", "subagent-stop"}:
         try:
             subprocess.run(
                 [COMPLETION_SOUND],

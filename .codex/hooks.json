@@ -61,11 +61,22 @@
         ]
       }
     ],
+    "SubagentStart" : [
+      {
+        "hooks" : [
+          {
+            "command" : "'\/Users\/boss\/.dotfiles\/bin\/herdr-codex-lifecycle-hook' subagent-start",
+            "timeout" : 3,
+            "type" : "command"
+          }
+        ]
+      }
+    ],
     "Stop" : [
       {
         "hooks" : [
           {
-            "command" : "'\/Users\/boss\/.dotfiles\/bin\/herdr-codex-lifecycle-hook' idle",
+            "command" : "'\/Users\/boss\/.dotfiles\/bin\/herdr-codex-lifecycle-hook' stop",
             "timeout" : 3,
             "type" : "command"
           }
@@ -82,6 +93,15 @@
       }
     ],
     "SubagentStop" : [
+      {
+        "hooks" : [
+          {
+            "command" : "'\/Users\/boss\/.dotfiles\/bin\/herdr-codex-lifecycle-hook' subagent-stop",
+            "timeout" : 3,
+            "type" : "command"
+          }
+        ]
+      },
       {
         "hooks" : [
           {
