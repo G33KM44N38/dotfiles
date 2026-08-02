@@ -78,13 +78,99 @@ for tab in tabs:
         break
 ')"
 
-start_command=(herdr agent start "$agent_name" --cwd "$project_path" --focus)
-if [[ -n "$agent_tab_id" ]]; then
-  start_command+=(--tab "$agent_tab_id")
-else
-  start_command+=(--workspace "$workspace_id")
+created_tab=false
+if [[ -z "$agent_tab_id" ]]; then
+  tab_json="$(herdr tab create \
+    --workspace "$workspace_id" \
+    --cwd "$project_path" \
+    --label agent \
+    --no-focus)"
+  agent_tab_id="$(printf '%s\n' "$tab_json" | python3 -c '
+import json, sys
+
+data = json.load(sys.stdin).get("result", {})
+tab = data.get("tab", data)
+print(tab.get("tab_id", ""))
+')"
+  created_tab=true
 fi
-start_command+=(-- codex)
+
+# Herdr 0.7.5 starts agents in an existing pane. A new tab gets its first pane
+# asynchronously, while an existing agent tab needs a fresh sibling pane.
+pane_id=""
+for _ in {1..100}; do
+  pane_id="$(herdr pane list --workspace "$workspace_id" | python3 -c '
+import json, sys
+
+tab_id = sys.argv[1]
+for pane in json.load(sys.stdin).get("result", {}).get("panes", []):
+    if pane.get("tab_id") == tab_id:
+        print(pane["pane_id"])
+        break
+' "$agent_tab_id")"
+  [[ -z "$pane_id" ]] || break
+  sleep 0.05
+done
+
+if [[ -z "$pane_id" ]]; then
+  printf '\nCould not find a pane in agent tab %s.\n' "$agent_tab_id" >&2
+  [[ "$created_tab" == false ]] || herdr tab close "$agent_tab_id" >/dev/null 2>&1 || true
+  exit 1
+fi
+
+if [[ "$created_tab" == false ]]; then
+  split_json="$(herdr pane split "$pane_id" \
+    --direction right \
+    --cwd "$project_path" \
+    --no-focus)"
+  pane_id="$(printf '%s\n' "$split_json" | python3 -c '
+import json, sys
+
+data = json.load(sys.stdin).get("result", {})
+pane = data.get("pane", data)
+print(pane.get("pane_id", ""))
+')"
+fi
+
+if [[ -z "$pane_id" ]]; then
+  printf '\nCould not create a pane for %s.\n' "$agent_name" >&2
+  [[ "$created_tab" == false ]] || herdr tab close "$agent_tab_id" >/dev/null 2>&1 || true
+  exit 1
+fi
+
+# Pane creation precedes shell initialization. Wait until startup helpers have
+# exited, otherwise `agent start` rejects the pane as busy.
+pane_ready=false
+for _ in {1..200}; do
+  process_json="$(herdr pane process-info --pane "$pane_id" 2>/dev/null || true)"
+  if printf '%s\n' "$process_json" | python3 -c '
+import json, sys
+
+try:
+    processes = json.load(sys.stdin)["result"]["process_info"]["foreground_processes"]
+except (KeyError, TypeError, ValueError):
+    raise SystemExit(1)
+
+ready = len(processes) == 1 and processes[0].get("name") in {"bash", "fish", "sh", "zsh"}
+raise SystemExit(0 if ready else 1)
+' 2>/dev/null; then
+    pane_ready=true
+    break
+  fi
+  sleep 0.05
+done
+
+if [[ "$pane_ready" == false ]]; then
+  printf '\nPane %s did not become ready for %s.\n' "$pane_id" "$agent_name" >&2
+  if [[ "$created_tab" == true ]]; then
+    herdr tab close "$agent_tab_id" >/dev/null 2>&1 || true
+  else
+    herdr pane close "$pane_id" >/dev/null 2>&1 || true
+  fi
+  exit 1
+fi
+
+start_command=(herdr agent start "$agent_name" --kind codex --pane "$pane_id")
 
 if start_json="$("${start_command[@]}")"; then
   :
@@ -93,6 +179,11 @@ else
   printf '\nCould not start %s.\n' "$agent_name" >&2
   if [[ -n "$start_json" ]]; then
     printf '%s\n' "$start_json" >&2
+  fi
+  if [[ "$created_tab" == true ]]; then
+    herdr tab close "$agent_tab_id" >/dev/null 2>&1 || true
+  elif [[ -n "$pane_id" ]]; then
+    herdr pane close "$pane_id" >/dev/null 2>&1 || true
   fi
   if [[ -t 0 ]]; then
     IFS= read -r -p 'Press Enter to close... ' _ || true
