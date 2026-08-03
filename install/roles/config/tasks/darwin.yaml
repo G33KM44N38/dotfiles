@@ -2,6 +2,18 @@
   ansible.builtin.command: defaults write com.apple.dock workspaces-auto-swoosh -bool NO
   changed_when: false
 
+- name: Reserve Control+3 for Arc Space navigation
+  ansible.builtin.command:
+    argv:
+      - defaults
+      - write
+      - com.apple.symbolichotkeys
+      - AppleSymbolicHotKeys
+      - -dict-add
+      - "120"
+      - "{ enabled = false; value = { parameters = (65535, 20, 262144); type = standard; }; }"
+  changed_when: false
+
 - name: Restart the Dock
   ansible.builtin.command: killall Dock
   changed_when: false
