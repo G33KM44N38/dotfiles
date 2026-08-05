@@ -41,6 +41,12 @@ STATE_DIR = Path(
         f"/tmp/herdr-codex-lifecycle-{os.getuid()}",
     )
 )
+TITLE_STATE_DIR = Path(
+    os.environ.get(
+        "HERDR_CODEX_TITLE_STATE_DIR",
+        str(Path.home() / ".local/state/herdr/codex-titles"),
+    )
+)
 
 
 def lifecycle_transition(
@@ -100,7 +106,32 @@ def lifecycle_transition(
                     # claim title ownership. A state first seen on a prompt is
                     # an already-running discussion from before this rollout;
                     # even a later compact must leave its metadata untouched.
-                    title_initialized = True
+                    source = payload.get("source")
+                    if source == "resume":
+                        subject = load_session_subject(session_id)
+                        original_prompt = None
+                        if subject is None:
+                            original_prompt = first_user_prompt(
+                                payload.get("transcript_path")
+                            )
+                            subject = subject_from_prompt(original_prompt)
+                            if subject:
+                                store_session_subject(session_id, subject)
+                        if subject:
+                            title_initialized = True
+                            subject_locked = True
+                            title_generation_started = True
+                            if (
+                                TITLE_GENERATION_ENABLED
+                                and isinstance(original_prompt, str)
+                            ):
+                                generation_request = (session_id, original_prompt)
+                        else:
+                            # Do not replace a useful launch title with a
+                            # generic label when an old transcript is absent.
+                            title_initialized = False
+                    else:
+                        title_initialized = True
             elif action == "working":
                 parent_waiting = False
                 result = STATES[action]
@@ -110,6 +141,7 @@ def lifecycle_transition(
                     if prompt_subject:
                         subject = prompt_subject
                         subject_locked = True
+                        store_session_subject(session_id, subject)
                         if (
                             TITLE_GENERATION_ENABLED
                             and not title_generation_started
@@ -173,6 +205,65 @@ def short_session_id(session_id: str) -> str:
 def session_title(subject: str | None, session_id: str) -> str:
     """Couple the durable subject with its discussion discriminator."""
     return f"{subject or NEUTRAL_SUBJECT} · {short_session_id(session_id)}"
+
+
+def session_subject_path(session_id: str) -> Path:
+    session_key = hashlib.sha256(session_id.encode()).hexdigest()
+    return TITLE_STATE_DIR / f"{session_key}.json"
+
+
+def load_session_subject(session_id: str) -> str | None:
+    """Read the canonical title shared by every pane resuming this discussion."""
+    try:
+        data = json.loads(session_subject_path(session_id).read_text(encoding="utf-8"))
+        subject = data.get("subject")
+        return subject if isinstance(subject, str) and subject else None
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def store_session_subject(session_id: str, subject: str) -> None:
+    """Atomically persist a short, non-sensitive display title by discussion id."""
+    temporary = None
+    try:
+        TITLE_STATE_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
+        destination = session_subject_path(session_id)
+        temporary = destination.with_suffix(f".tmp-{os.getpid()}-{time.time_ns()}")
+        fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as title_file:
+            json.dump({"subject": subject}, title_file)
+        os.replace(temporary, destination)
+    except OSError:
+        if temporary is not None:
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+
+def first_user_prompt(transcript_path: object) -> str | None:
+    """Recover the original user task from a Codex JSONL transcript."""
+    if not isinstance(transcript_path, str) or not transcript_path:
+        return None
+    try:
+        with Path(transcript_path).open(encoding="utf-8") as transcript:
+            for line in transcript:
+                try:
+                    event = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                payload = event.get("payload")
+                if (
+                    event.get("type") == "event_msg"
+                    and isinstance(payload, dict)
+                    and payload.get("type") == "user_message"
+                ):
+                    message = payload.get("message")
+                    if isinstance(message, str) and subject_from_prompt(message):
+                        return message
+    except OSError:
+        pass
+    return None
 
 
 def subject_from_prompt(value: object) -> str | None:
@@ -284,6 +375,7 @@ def store_generated_subject(pane_id: str, session_id: str, subject: str) -> bool
             state_file.seek(0)
             json.dump(state, state_file)
             state_file.truncate()
+        store_session_subject(session_id, subject)
         return True
     except (json.JSONDecodeError, OSError):
         return False

@@ -56,6 +56,7 @@ path.write_text("Corriger les titres Herdr\\n", encoding="utf-8")
             "HERDR_ENV": "1",
             "HERDR_PANE_ID": "proof:target-pane",
             "HERDR_CODEX_LIFECYCLE_STATE_DIR": str(state_dir),
+            "HERDR_CODEX_TITLE_STATE_DIR": str(root / "title-state"),
             "HERDR_CODEX_COMPLETION_SOUND": str(bin_dir / "completion-sound"),
             "HERDR_CODEX_TITLE_GENERATION": "0",
             "HERDR_TEST_CODEX_LOG": str(codex_log),
@@ -86,7 +87,7 @@ path.write_text("Corriger les titres Herdr\\n", encoding="utf-8")
         def title_from(commands: list[list[str]]) -> str | None:
             for command in commands:
                 if command[:2] == ["pane", "report-metadata"]:
-                    assert command[2] == "proof:target-pane"
+                    assert command[2] == env["HERDR_PANE_ID"]
                     assert "current" not in command
                     assert "rename" not in command
                     assert "--display-agent" not in command
@@ -148,6 +149,48 @@ path.write_text("Corriger les titres Herdr\\n", encoding="utf-8")
         assert third_title == "Fix the sidebar · codex-019fc242-d"
         assert third_title != "Fix the sidebar" + two_suffix
 
+        # Resuming the same discussion in another pane restores the exact
+        # canonical subject instead of publishing the generic fallback.
+        env["HERDR_PANE_ID"] = "proof:resumed-pane"
+        assert title_from(
+            invoke("start", session_three, source="resume")
+        ) == third_title
+
+        # Sessions created before the durable title index was introduced can
+        # recover their original task from the transcript supplied by Codex.
+        legacy_resume = "019fc242-old1-7261-8e2c-6db899ca2a9d"
+        legacy_transcript = root / "legacy-resume.jsonl"
+        legacy_transcript.write_text(
+            json.dumps(
+                {
+                    "type": "event_msg",
+                    "payload": {
+                        "type": "user_message",
+                        "message": "Diagnostiquer le cache de production",
+                    },
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        assert title_from(
+            invoke(
+                "start",
+                legacy_resume,
+                source="resume",
+                transcript_path=str(legacy_transcript),
+            )
+        ) == "Diagnostiquer le cache de production · codex-019fc242-o"
+
+        # If Codex cannot supply an old transcript, keep the existing launch
+        # metadata rather than replacing it with "Codex session".
+        missing_resume = "019fc242-miss-7261-8e2c-6db899ca2a9d"
+        assert title_from(
+            invoke("start", missing_resume, source="resume")
+        ) is None
+
+        env["HERDR_PANE_ID"] = "proof:target-pane"
+
         # The first prompt launches Luna outside the hook's blocking path. The
         # deterministic title appears immediately and the generated title then
         # replaces it for the same active discussion.
@@ -200,6 +243,12 @@ path.write_text("Corriger les titres Herdr\\n", encoding="utf-8")
                 break
             time.sleep(0.02)
         assert generated_title == "Corriger les titres Herdr · codex-019fc243-t"
+
+        env["HERDR_PANE_ID"] = "proof:generated-resume-pane"
+        assert title_from(
+            invoke("start", generated_session, source="resume")
+        ) == generated_title
+        env["HERDR_PANE_ID"] = "proof:target-pane"
 
         codex_args = json.loads(codex_log.read_text().splitlines()[0])
         assert codex_args[codex_args.index("--model") + 1] == "gpt-5.6-luna"

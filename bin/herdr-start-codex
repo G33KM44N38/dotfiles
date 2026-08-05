@@ -29,18 +29,9 @@ if ! mkdir "$lock_path" 2>/dev/null; then
 fi
 trap 'rm -rf "$lock_path"' EXIT
 
-printf '\033[2J\033[H'
-printf 'New Codex agent\n\n'
-
-while true; do
-  requested_name=""
-  if ! IFS= read -r -p 'Name (Enter = automatic): ' requested_name; then
-    exit 0
-  fi
-
-  agents_json="$(herdr agent list)"
-  if agent_name="$(printf '%s\n' "$agents_json" | python3 -c '
-import json, os, re, sys, unicodedata
+agents_json="$(herdr agent list)"
+agent_name="$(printf '%s\n' "$agents_json" | python3 -c '
+import json, sys
 
 agents = json.load(sys.stdin).get("result", {}).get("agents", [])
 names = {
@@ -49,16 +40,7 @@ names = {
     if agent.get("name")
 }
 
-requested = sys.argv[1].strip()
-project = os.path.basename(sys.argv[2].rstrip(os.sep)).lstrip(".") or "workspace"
-source = requested or f"{project}-codex"
-ascii_name = unicodedata.normalize("NFKD", source).encode("ascii", "ignore").decode()
-name = re.sub(r"[^a-z0-9_-]+", "-", ascii_name.lower()).strip("-_")
-if not name or not name[0].isalpha():
-    name = f"codex-{name}" if name else "codex-agent"
-name = name[:32].rstrip("-_")
-if requested and name in names:
-    raise SystemExit(2)
+name = "codex-agent"
 suffix = 2
 base = name
 while name in names:
@@ -67,12 +49,7 @@ while name in names:
     name = f"{prefix}{ending}"
     suffix += 1
 print(name)
-' "$requested_name" "$project_path")"; then
-    break
-  fi
-
-  printf '\nName already in use. Choose another name.\n\n'
-done
+')"
 
 agent_tab_id="$(herdr tab list --workspace "$workspace_id" | python3 -c '
 import json, sys
