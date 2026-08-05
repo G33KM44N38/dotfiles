@@ -1,0 +1,116 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+
+SDK_VERSION="${1:-54}"
+WORKDIR="${TMPDIR:-/tmp}/expo-go-simulator-install"
+PAGE_URL="https://expo.dev/go?platform=ios&device=false&sdkVersion=${SDK_VERSION}"
+
+echo "➡️ SDK Expo Go demandé: ${SDK_VERSION}"
+echo "➡️ Page: ${PAGE_URL}"
+
+command -v curl >/dev/null || { echo "❌ curl introuvable"; exit 1; }
+command -v tar >/dev/null || { echo "❌ tar introuvable"; exit 1; }
+command -v xcrun >/dev/null || { echo "❌ xcrun introuvable. Installe Xcode / Command Line Tools."; exit 1; }
+
+echo "➡️ Ouverture du simulateur..."
+open -a Simulator
+
+echo "➡️ Attente d'un simulateur booted..."
+for i in {1..90}; do
+  if xcrun simctl list devices | grep -q "(Booted)"; then
+    break
+  fi
+  sleep 1
+done
+
+if ! xcrun simctl list devices | grep -q "(Booted)"; then
+  echo "❌ Aucun simulateur booted. Ouvre un iPhone dans Simulator puis relance."
+  exit 1
+fi
+
+echo "✅ Simulateur détecté:"
+xcrun simctl list devices | grep "(Booted)"
+
+echo "➡️ Nettoyage du dossier temporaire..."
+rm -rf "$WORKDIR"
+mkdir -p "$WORKDIR"
+
+HTML_FILE="$WORKDIR/expo-go.html"
+
+echo "➡️ Recherche du lien de téléchargement Expo Go..."
+curl -fsSL "$PAGE_URL" -o "$HTML_FILE"
+
+DOWNLOAD_URL="$(
+  grep -Eo 'https://[^"]+\.tar\.gz[^"]*' "$HTML_FILE" \
+    | grep -i 'Expo-Go\|expo-go\|Exponent\|ios' \
+    | head -n 1 \
+    || true
+)"
+
+if [ -z "$DOWNLOAD_URL" ]; then
+  DOWNLOAD_URL="$(
+    grep -Eo 'https://[^"]+\.tar\.gz[^"]*' "$HTML_FILE" \
+      | head -n 1 \
+      || true
+  )"
+fi
+
+if [ -z "$DOWNLOAD_URL" ]; then
+  echo "❌ Impossible de trouver automatiquement le lien .tar.gz."
+  echo ""
+  echo "Ouvre cette page, télécharge Expo Go iOS Simulator manuellement,"
+  echo "puis relance avec le chemin local:"
+  echo ""
+  echo "  $0 ${SDK_VERSION} /chemin/vers/Expo-Go.tar.gz"
+  echo ""
+  echo "Page:"
+  echo "  ${PAGE_URL}"
+  exit 1
+fi
+
+ARCHIVE="$WORKDIR/Expo-Go-SDK-${SDK_VERSION}.tar.gz"
+EXTRACTED="$WORKDIR/extracted"
+APP_PATH="$WORKDIR/Expo-Go-SDK-${SDK_VERSION}.app"
+
+echo "✅ Lien trouvé:"
+echo "$DOWNLOAD_URL"
+
+echo "➡️ Téléchargement..."
+curl -fL "$DOWNLOAD_URL" -o "$ARCHIVE"
+
+echo "➡️ Extraction..."
+mkdir -p "$EXTRACTED"
+tar -xzf "$ARCHIVE" -C "$EXTRACTED"
+
+echo "➡️ Recherche d'un .app existant..."
+FOUND_APP="$(find "$EXTRACTED" -type d -name "*.app" -print -quit || true)"
+
+if [ -n "$FOUND_APP" ]; then
+  echo "✅ .app trouvé:"
+  echo "$FOUND_APP"
+  APP_TO_INSTALL="$FOUND_APP"
+else
+  echo "ℹ️ Aucun .app trouvé. L'archive semble contenir directement le contenu de l'app."
+  echo "➡️ Création du .app..."
+  rm -rf "$APP_PATH"
+  mv "$EXTRACTED" "$APP_PATH"
+  APP_TO_INSTALL="$APP_PATH"
+fi
+
+echo "➡️ Désinstallation éventuelle de l'ancien Expo Go..."
+xcrun simctl uninstall booted host.exp.Exponent >/dev/null 2>&1 || true
+
+echo "➡️ Installation dans le simulateur..."
+xcrun simctl install booted "$APP_TO_INSTALL"
+
+echo "➡️ Lancement d'Expo Go..."
+xcrun simctl launch booted host.exp.Exponent || true
+
+echo "➡️ Suppression de l'archive et des fichiers temporaires..."
+rm -rf "$WORKDIR"
+
+echo ""
+echo "✅ Expo Go SDK ${SDK_VERSION} est installé dans le simulateur."
+echo ""
+echo "Tu peux maintenant lancer:"
+echo "  pnpm exec expo start --ios --go --clear"
