@@ -9,6 +9,7 @@ from pathlib import Path
 import stat
 import subprocess
 import tempfile
+import time
 
 
 HOOK = Path("/Users/boss/.dotfiles/bin/herdr-codex-lifecycle-hook")
@@ -36,7 +37,19 @@ with open(os.environ["HERDR_TEST_REPORT_LOG"], "a", encoding="utf-8") as log:
 """,
         )
         write_executable(bin_dir / "completion-sound", "#!/bin/sh\nexit 0\n")
+        write_executable(
+            bin_dir / "codex",
+            """#!/usr/bin/env python3
+import json, os, pathlib, sys, time
+with open(os.environ["HERDR_TEST_CODEX_LOG"], "a", encoding="utf-8") as log:
+    print(json.dumps(sys.argv[1:]), file=log)
+time.sleep(float(os.environ.get("HERDR_TEST_CODEX_DELAY", "0")))
+path = pathlib.Path(sys.argv[sys.argv.index("--output-last-message") + 1])
+path.write_text("Corriger les titres Herdr\\n", encoding="utf-8")
+""",
+        )
 
+        codex_log = root / "codex.jsonl"
         env = {
             **os.environ,
             "PATH": f"{bin_dir}:/usr/bin:/bin",
@@ -44,6 +57,8 @@ with open(os.environ["HERDR_TEST_REPORT_LOG"], "a", encoding="utf-8") as log:
             "HERDR_PANE_ID": "proof:target-pane",
             "HERDR_CODEX_LIFECYCLE_STATE_DIR": str(state_dir),
             "HERDR_CODEX_COMPLETION_SOUND": str(bin_dir / "completion-sound"),
+            "HERDR_CODEX_TITLE_GENERATION": "0",
+            "HERDR_TEST_CODEX_LOG": str(codex_log),
             "HERDR_TEST_REPORT_LOG": str(report_log),
         }
         env.pop("HERDR_CODEX_LIFECYCLE_OWNER", None)
@@ -132,6 +147,103 @@ with open(os.environ["HERDR_TEST_REPORT_LOG"], "a", encoding="utf-8") as log:
         )
         assert third_title == "Fix the sidebar · codex-019fc242-d"
         assert third_title != "Fix the sidebar" + two_suffix
+
+        # The first prompt launches Luna outside the hook's blocking path. The
+        # deterministic title appears immediately and the generated title then
+        # replaces it for the same active discussion.
+        generated_env = {**env, "HERDR_CODEX_TITLE_GENERATION": "1"}
+        generated_session = "019fc243-title-7261-8e2c-6db899ca2a9d"
+        before = len(report_log.read_text().splitlines())
+        subprocess.run(
+            [str(HOOK), "start"],
+            input=json.dumps({"session_id": generated_session}),
+            text=True,
+            env=generated_env,
+            check=True,
+        )
+        subprocess.run(
+            [str(HOOK), "working"],
+            input=json.dumps(
+                {
+                    "session_id": generated_session,
+                    "prompt": "Le titre initial est beaucoup trop générique",
+                }
+            ),
+            text=True,
+            env=generated_env,
+            check=True,
+        )
+        immediate_commands = [
+            json.loads(line) for line in report_log.read_text().splitlines()[before:]
+        ]
+        assert title_from(immediate_commands) == (
+            "Codex session · codex-019fc243-t"
+        )
+
+        deadline = time.monotonic() + 3
+        generated_title = None
+        while time.monotonic() < deadline:
+            commands = [
+                json.loads(line)
+                for line in report_log.read_text().splitlines()[before:]
+            ]
+            titles = [
+                command[command.index("--title") + 1]
+                for command in commands
+                if command[:2] == ["pane", "report-metadata"]
+            ]
+            generated_title = next(
+                (title for title in titles if title.startswith("Corriger les titres Herdr")),
+                None,
+            )
+            if generated_title:
+                break
+            time.sleep(0.02)
+        assert generated_title == "Corriger les titres Herdr · codex-019fc243-t"
+
+        codex_args = json.loads(codex_log.read_text().splitlines()[0])
+        assert codex_args[codex_args.index("--model") + 1] == "gpt-5.6-luna"
+        assert "--ignore-user-config" in codex_args
+        assert "--ignore-rules" in codex_args
+        assert "--ephemeral" in codex_args
+
+        # A slow result from an old discussion must not rename a pane after a
+        # new session has taken ownership of it.
+        stale_env = {**generated_env, "HERDR_TEST_CODEX_DELAY": "0.2"}
+        stale_session = "019fc244-stale-7261-8e2c-6db899ca2a9d"
+        current_session = "019fc245-fresh-7261-8e2c-6db899ca2a9d"
+        subprocess.run(
+            [str(HOOK), "start"],
+            input=json.dumps({"session_id": stale_session}),
+            text=True,
+            env=stale_env,
+            check=True,
+        )
+        subprocess.run(
+            [str(HOOK), "working"],
+            input=json.dumps({"session_id": stale_session, "prompt": "Ancien travail"}),
+            text=True,
+            env=stale_env,
+            check=True,
+        )
+        subprocess.run(
+            [str(HOOK), "start"],
+            input=json.dumps({"session_id": current_session}),
+            text=True,
+            env=stale_env,
+            check=True,
+        )
+        after_new_session = len(report_log.read_text().splitlines())
+        time.sleep(0.35)
+        later_commands = [
+            json.loads(line)
+            for line in report_log.read_text().splitlines()[after_new_session:]
+        ]
+        assert not any(
+            command[:2] == ["pane", "report-metadata"]
+            and command[command.index("--title") + 1].endswith("codex-019fc244-s")
+            for command in later_commands
+        )
 
         # Migration guard: a prompt without prior SessionStart belongs to an
         # already-running discussion. It must neither infer a subject nor

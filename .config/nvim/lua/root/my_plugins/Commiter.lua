@@ -1,4 +1,4 @@
-local model = "gpt-5.4-mini"
+local model = "gpt-5.6-luna"
 
 local preprompt = [[
 You are generating a git commit message from a staged diff.
