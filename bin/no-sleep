@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Required parameters:
+# @raycast.schemaVersion 1
+# @raycast.title No Sleep
+# @raycast.mode compact
+
+# Optional parameters:
+# @raycast.icon ☕️
+# @raycast.packageName System
+# @raycast.description Prevent this Mac from sleeping
+
+# Documentation:
+# @raycast.author boss
+
+set -euo pipefail
+
+/usr/bin/osascript \
+    -e 'do shell script "/usr/bin/pmset -a disablesleep 1" with administrator privileges'
+
+echo "Sleep disabled."
