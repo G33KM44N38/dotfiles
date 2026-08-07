@@ -1,9 +1,14 @@
 ---
-  - name: Install codex
-    homebrew:
-      name: codex
-      state: present
-      update_homebrew: yes
+  - name: Install latest Codex globally
+    npm:
+      name: "@openai/codex"
+      global: yes
+      state: latest
+
+  - name: Remove invalid codex-code-mode-host shim
+    ansible.builtin.file:
+      path: /opt/homebrew/bin/codex-code-mode-host
+      state: absent
 
   - name: Remove legacy codex-auth package
     npm:
