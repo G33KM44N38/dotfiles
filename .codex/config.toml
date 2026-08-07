@@ -119,14 +119,6 @@ trust_level = "trusted"
 # [mcp_servers.linear.tools.save_issue]
 # approval_mode = "approve"
 
-[mcp_servers.axiom]
-url = "https://mcp.axiom.co/mcp?org-id=babacoiffure-zp6k"
-bearer_token_env_var = "AXIOM_MCP_TOKEN"
-
-[mcp_servers.sentry]
-command = "true"
-enabled = false
-
 [mcp_servers.node_repl]
 args = []
 command = "/Applications/Codex.app/Contents/Resources/cua_node/bin/node_repl"
@@ -161,9 +153,6 @@ fast_default_opt_out = true
 "gpt-5.1-codex-max" = "gpt-5.4"
 "gpt-5.2-codex" = "gpt-5.3-codex"
 "gpt-5.3-codex" = "gpt-5.4"
-
-[plugins."github@openai-curated"]
-enabled = true
 
 [plugins."documents@openai-primary-runtime"]
 enabled = true
