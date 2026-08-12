@@ -1,11 +1,11 @@
 ---
-name: agent-ready-draft-pr
-description: Pick up Linear backlog issues marked agent:ready, implement the requested code change, verify it, update the Linear issue state/comments, push a branch, and open a GitHub draft pull request. Use when the user asks Codex to work the agent-ready queue, take the next agent:ready ticket, implement Linear work, or create draft PRs from ready backlog items.
+name: agent-ready-pr
+description: Pick up Linear backlog issues marked agent:ready, implement the requested code change, verify it, update the Linear issue state/comments, push a branch, and open a GitHub pull request ready for review. Use when the user asks Codex to work the agent-ready queue, take the next agent:ready ticket, implement Linear work, or create PRs from ready backlog items.
 ---
 
-# Agent Ready Draft PR
+# Agent Ready PR
 
-Execute safe backlog items from the Linear `agent:ready` queue and hand them back as GitHub draft PRs.
+Execute safe backlog items from the Linear `agent:ready` queue and hand them back as GitHub PRs ready for review.
 
 This skill is the execution partner to `backlog-manager`. `backlog-manager` prepares the queue; this skill consumes prepared issues. Do not use this skill to triage, relabel, or re-score the backlog except for the minimal state updates needed while doing the work.
 
@@ -71,7 +71,7 @@ Use a conventional, traceable name:
 
 Keep the Linear issue id in the branch name and PR title.
 
-For batch work, every issue must have its own separate worktree, branch, commit, and draft PR. Do not combine unrelated Linear issues into one branch or PR.
+For batch work, every issue must have its own separate worktree, branch, commit, and ready-for-review PR. Do not combine unrelated Linear issues into one branch or PR.
 
 Use `bin/tmux-thread-picker.sh` to switch between and monitor active worktree sessions when multiple issues are in progress.
 
@@ -101,9 +101,9 @@ Refs <LINEAR-ID>
 
 Use `fix`, `chore`, `docs`, `test`, or `refactor` when more accurate than `feat`.
 
-### Step 7 - Open A Draft PR
+### Step 7 - Open A Ready-For-Review PR
 
-Push the branch and open a GitHub draft PR.
+Push the branch and open a GitHub PR ready for review.
 
 The PR title must include the Linear issue id and a concise summary. The body must include:
 - Linear issue link or id
@@ -111,14 +111,14 @@ The PR title must include the Linear issue id and a concise summary. The body mu
 - Verification commands and results
 - Known limitations or follow-up, if any
 
-Keep the PR draft unless the user explicitly asks for a ready-for-review PR.
+Never create or leave the PR as draft unless the user explicitly requests a draft in the current task.
 
 ### Step 8 - Sync Linear
 
-After the draft PR exists:
+After the ready-for-review PR exists:
 1. Link the PR to the Linear issue when the connector or GitHub integration supports it.
 2. Move the issue to an in-review or PR-open status when the workspace has one.
-3. Add a Linear comment with the draft PR URL and verification summary.
+3. Add a Linear comment with the PR URL and verification summary.
 
 Do not close the Linear issue from this skill. Closure belongs to merge/completion sync after review.
 
@@ -143,7 +143,7 @@ End with:
 - Worktree paths
 - Tmux session/window or thread title when used
 - Branch names
-- Draft PR URLs
+- PR URLs
 - Summary of changes
 - Verification run and result
 - Linear status/comment updates made
