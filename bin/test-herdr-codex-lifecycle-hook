@@ -11,7 +11,7 @@ import subprocess
 import tempfile
 
 
-HOOK = Path("/Users/boss/.dotfiles/bin/herdr-codex-lifecycle-hook")
+HOOK = Path(__file__).resolve().with_name("herdr-codex-lifecycle-hook")
 
 
 def write_executable(path: Path, contents: str) -> None:

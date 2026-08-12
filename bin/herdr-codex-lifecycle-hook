@@ -354,30 +354,6 @@ def generated_subject(value: str) -> str | None:
     return subject_from_prompt(first_line)
 
 
-def agent_name_for_title(title: str) -> str:
-    """Derive Herdr's restricted agent identifier from the human pane title."""
-    subject, separator, discriminator = title.rpartition(" · codex-")
-
-    def slug(value: str) -> str:
-        ascii_value = unicodedata.normalize("NFKD", value).encode(
-            "ascii", "ignore"
-        ).decode()
-        return re.sub(r"[^a-z0-9]+", "-", ascii_value.casefold()).strip("-")
-
-    subject_slug = slug(subject if separator else title) or "codex"
-    if not subject_slug[0].isalpha():
-        subject_slug = f"codex-{subject_slug}"
-    if not separator:
-        return subject_slug[:32].rstrip("-")
-
-    session_slug = slug(discriminator)[:10].rstrip("-")
-    if not session_slug:
-        return subject_slug[:32].rstrip("-")
-    subject_limit = 32 - len(session_slug) - 1
-    short_subject = subject_slug[:subject_limit].rstrip("-") or "codex"
-    return f"{short_subject}-{session_slug}"
-
-
 def store_generated_subject(pane_id: str, session_id: str, subject: str) -> bool:
     """Persist a generated subject only while its discussion still owns the pane."""
     if not is_active_session(pane_id, session_id):
@@ -502,7 +478,7 @@ def launch_title_generation(pane_id: str, session_id: str, user_prompt: str) -> 
 
 
 def report_title(pane_id: str, title: str) -> None:
-    """Keep the pane title and restricted Herdr agent name in accordance."""
+    """Publish a human-readable title without changing stable agent identity."""
     metadata_command = [
         "herdr",
         "pane",
@@ -520,22 +496,6 @@ def report_title(pane_id: str, title: str) -> None:
     try:
         subprocess.run(
             metadata_command,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=2,
-            check=False,
-        )
-    except (OSError, subprocess.SubprocessError):
-        pass
-
-    # Herdr renders the agent tab and `agent list` from a lowercase identifier
-    # limited to 32 characters. Preserve the pane title's task and discussion
-    # discriminator in that format, and target the pane explicitly so a
-    # background session cannot rename whichever agent happens to be focused.
-    try:
-        subprocess.run(
-            ["herdr", "agent", "rename", pane_id, agent_name_for_title(title)],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
