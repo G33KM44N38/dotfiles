@@ -1,6 +1,6 @@
 # Global Codex Instructions
 
-- Communication rule: concise, direct, telegraphic; minimal filler and usually one answer. End plans with concise unresolved questions.
+- Communication rule: always answer in exactly one sentence unless the user explicitly asks otherwise; concise, direct, telegraphic; minimal filler and usually one answer. End plans with concise unresolved questions.
 - GitHub CLI rule: use `gh` for GitHub URLs and PR, issue, CI, and release operations; prefer current-branch `gh pr view`/`gh pr diff`. Inspect and reply to review threads with file/line evidence, resolving them only after the fix lands. When GraphQL-backed checks are rate-limited, use REST-backed `gh run list`/`gh run view`; keep detailed recipes in global skills.
 - Pull request readiness rule: always create GitHub pull requests ready for review. Never create or leave a PR as draft, including when a skill or legacy workflow defaults to drafts, unless the user explicitly requests a draft PR in the current task.
 - When making Playwright proof videos, prefer MP4 output. If Playwright only emits WebM, convert the final proof video to MP4 before handing it off.
