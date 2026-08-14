@@ -1,0 +1,4 @@
+interface:
+  display_name: "BabaCoiffure Instagram DMs"
+  short_description: "Read BabaCoiffure Instagram conversations safely"
+  default_prompt: "Use $read-babacoiffure-instagram to read and summarize a BabaCoiffure Instagram DM conversation."
