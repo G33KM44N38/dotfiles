@@ -148,12 +148,12 @@ type = "pane"
 command = "$HOME/.dotfiles/bin/herdr-git.sh menu"
 
 [[keys.command]]
-key = "prefix+shift+a"
+key = "prefix+a"
 type = "shell"
 command = "$HOME/.dotfiles/bin/herdr-focus-agent-status blocked"
 
 [[keys.command]]
-key = "prefix+shift+i"
+key = "prefix+i"
 type = "shell"
 command = "$HOME/.dotfiles/bin/herdr-focus-agent-status idle"
 
