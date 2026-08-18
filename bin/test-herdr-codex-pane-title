@@ -6,14 +6,13 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-import re
 import stat
 import subprocess
 import tempfile
 import time
 
 
-HOOK = Path("/Users/boss/.dotfiles/bin/herdr-codex-lifecycle-hook")
+HOOK = Path(__file__).resolve().with_name("herdr-codex-lifecycle-hook")
 
 
 def write_executable(path: Path, contents: str) -> None:
@@ -96,13 +95,6 @@ path.write_text("Corriger les titres Herdr\\n", encoding="utf-8")
                     return command[command.index("--title") + 1]
             return None
 
-        def agent_name_from(commands: list[list[str]]) -> str | None:
-            for command in commands:
-                if command[:2] == ["agent", "rename"]:
-                    assert command[2] == env["HERDR_PANE_ID"]
-                    return command[3]
-            return None
-
         session_one = "019fc240-becc-7261-8e2c-6db899ca2a9d"
         session_two = "019fc241-cafe-7261-8e2c-6db899ca2a9d"
         one_suffix = " · codex-019fc240-b"
@@ -111,7 +103,6 @@ path.write_text("Corriger les titres Herdr\\n", encoding="utf-8")
         initial_commands = invoke("start", session_one, source="startup")
         initial_title = "Codex session" + one_suffix
         assert title_from(initial_commands) == initial_title
-        assert agent_name_from(initial_commands) == "codex-session-019fc240-b"
         first_title = title_from(
             invoke(
                 "working",
@@ -248,45 +239,15 @@ path.write_text("Corriger les titres Herdr\\n", encoding="utf-8")
                 (title for title in titles if title.startswith("Corriger les titres Herdr")),
                 None,
             )
-            generated_agent_name = next(
-                (
-                    command[3]
-                    for command in commands
-                    if command[:3] == ["agent", "rename", env["HERDR_PANE_ID"]]
-                    and command[3] == "corriger-les-titres-h-019fc243-t"
-                ),
-                None,
-            )
-            if generated_title and generated_agent_name:
+            if generated_title:
                 break
             time.sleep(0.02)
         assert generated_title == "Corriger les titres Herdr · codex-019fc243-t"
-        assert generated_agent_name == "corriger-les-titres-h-019fc243-t"
 
-        # Every pane-title publication must carry the same task/session pair
-        # into Herdr's restricted agent-tab and agent-list identifier.
+        # Display-title updates must never mutate the stable launch-time agent
+        # identity used by Herdr targeting and control.
         all_commands = [json.loads(line) for line in report_log.read_text().splitlines()]
-        metadata_titles = {
-            (command[2], command[command.index("--title") + 1])
-            for command in all_commands
-            if command[:2] == ["pane", "report-metadata"]
-        }
-        agent_names = {
-            (command[2], command[3])
-            for command in all_commands
-            if command[:2] == ["agent", "rename"]
-        }
-        assert len(agent_names) == len(metadata_titles)
-        for pane_id, title in metadata_titles:
-            matching_names = [name for pane, name in agent_names if pane == pane_id]
-            assert matching_names
-            assert all(re.fullmatch(r"[a-z][a-z0-9_-]{0,31}", name) for name in matching_names)
-            discriminator = title.rsplit(" · codex-", 1)[-1]
-            assert any(name.endswith(discriminator) for name in matching_names)
-        assert (
-            env["HERDR_PANE_ID"],
-            "corriger-les-titres-h-019fc243-t",
-        ) in agent_names
+        assert not any(command[:2] == ["agent", "rename"] for command in all_commands)
 
         env["HERDR_PANE_ID"] = "proof:generated-resume-pane"
         assert title_from(
@@ -300,7 +261,7 @@ path.write_text("Corriger les titres Herdr\\n", encoding="utf-8")
         assert "--ignore-rules" in codex_args
         assert "--ephemeral" in codex_args
 
-        # A slow result from an old discussion must not rename a pane after a
+        # A slow result from an old discussion must not retitle a pane after a
         # new session has taken ownership of it.
         stale_env = {**generated_env, "HERDR_TEST_CODEX_DELAY": "0.2"}
         stale_session = "019fc244-stale-7261-8e2c-6db899ca2a9d"

@@ -208,6 +208,12 @@ func (a *app) sourcePath(explicit string) (string, error) {
 		return path, nil
 	}
 	var candidates []string
+	// Prefer the pane that invoked the picker. The globally focused workspace can
+	// briefly point at another repository while commands are running elsewhere.
+	if data, err := a.herdrJSON("pane", "current"); err == nil {
+		pane := jsonMap(jsonMap(data, "result"), "pane")
+		candidates = append(candidates, jsonString(pane, "foreground_cwd"), jsonString(pane, "cwd"))
+	}
 	if data, err := a.herdrJSON("workspace", "list"); err == nil {
 		for _, item := range jsonArray(jsonMap(data, "result"), "workspaces") {
 			workspace := item.(map[string]any)
@@ -218,10 +224,6 @@ func (a *app) sourcePath(explicit string) (string, error) {
 			candidates = append(candidates, jsonString(worktree, "repo_root"), jsonString(worktree, "checkout_path"))
 			break
 		}
-	}
-	if data, err := a.herdrJSON("pane", "current"); err == nil {
-		pane := jsonMap(jsonMap(data, "result"), "pane")
-		candidates = append(candidates, jsonString(pane, "foreground_cwd"), jsonString(pane, "cwd"))
 	}
 	candidates = append(candidates, os.Getenv("PWD"))
 	if cwd, err := os.Getwd(); err == nil {

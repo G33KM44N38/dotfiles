@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Ready PR"
+  short_description: "Turn agent-ready tickets into review-ready PRs"
+  default_prompt: "Use $agent-ready-pr to pick up the next Linear agent:ready issue and open a PR ready for review."

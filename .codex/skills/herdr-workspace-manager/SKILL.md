@@ -84,10 +84,25 @@ herdr agent explain <target> --json
 
 ## Create/open worktrees and workspaces
 
+### Keep the same conversation in another worktree
+
+When the active Codex conversation needs an isolated worktree, keep that same agent and conversation. Do not start a second agent merely because the work moves to another checkout.
+
+1. Record the current workspace, checkout path, branch, and dirty state.
+2. Never run `git switch`, `git checkout`, or an equivalent branch-changing command in the worktree that contains the active conversation or the user's original checkout.
+3. Create or open the task worktree with `--no-focus`.
+4. Keep the current Codex pane and conversation where they are. Run every task command and file operation against the task worktree's absolute path by setting the operation's working directory explicitly.
+5. Verify the task worktree has the intended branch and the original worktree still has its original branch and dirty state.
+6. Continue the task in the same conversation; report the task worktree path so the user can open it later if desired.
+
+Start another agent only when the user explicitly asks to delegate, parallelize, or spin up an agent. Creating or opening a worktree alone is not an agent delegation request.
+
+Background work must change neither the user's Herdr focus nor the branch checked out in their current worktree. Use `--no-focus` when creating or opening the target. Use `--focus` only when the user explicitly asks to switch, focus, open, or attach.
+
 Create a Herdr-managed worktree from the current repo/workspace:
 
 ```bash
-herdr worktree create --cwd "$PWD" --branch <branch-name> --label <label> --focus --json
+herdr worktree create --cwd "$PWD" --branch <branch-name> --label <label> --no-focus --json
 ```
 
 For BabaCoiffure bare repo, use:
@@ -97,21 +112,21 @@ herdr worktree create \
   --cwd /Users/boss/coding/work/babacoiffure_monorepo.git \
   --branch <branch-name> \
   --label <label> \
-  --focus \
+  --no-focus \
   --json
 ```
 
 Open an existing worktree:
 
 ```bash
-herdr worktree open --cwd "$PWD" --branch <branch-name> --label <label> --focus --json
-herdr worktree open --cwd "$PWD" --path <worktree-path> --label <label> --focus --json
+herdr worktree open --cwd "$PWD" --branch <branch-name> --label <label> --no-focus --json
+herdr worktree open --cwd "$PWD" --path <worktree-path> --label <label> --no-focus --json
 ```
 
 Create a plain workspace for a path:
 
 ```bash
-herdr workspace create --cwd <path> --label <label> --focus
+herdr workspace create --cwd <path> --label <label> --no-focus
 ```
 
 Focus or rename a workspace:
