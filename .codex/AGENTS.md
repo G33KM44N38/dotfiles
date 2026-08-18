@@ -7,6 +7,7 @@
 - Never commit or push generated proof videos, screenshots, or test artifacts to product repositories. Keep them local/ignored; attach them manually to GitHub when needed.
 - Deletion safety rule: across every workspace, agent-initiated deletions must use `trash`. Only audited cleanup scripts may permanently delete explicit, validated disposable paths; never permanently delete broad roots or targets containing unresolved variables.
 - macOS/iOS identity rule: never re-sign, ad-hoc sign, or change bundle IDs, entitlements, signing identities, or related app identity settings as a debugging step without announcing the exact change and receiving explicit user approval; these changes can reset or break TCC permissions.
+- Computer-use rule: use the `computer-use` skill and its tools only when the user explicitly asks for computer-use; never invoke them implicitly or as a fallback.
 - Calendar rule: put events involving Warren / Dorali in the `pro - dorali` calendar.
 - Herdr rule: keep `Alt-o` as a fast worktree picker that includes existing worktrees, local branches, and remote branches; do not replace it with Herdr's native `open_worktree` action, which omits remote branches.
 - Personal ops rule: for status reviews, conversation resumes, planning, pending/waiting work, ownership, monitoring, or questions such as "what next?", use the `personal-ops-orchestrator` skill and reconcile `/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Operations/Command Center.md` against live systems before answering.
