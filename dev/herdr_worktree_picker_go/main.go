@@ -479,9 +479,20 @@ func (m *model) applyFilter(reset bool) {
 	query := strings.ToLower(strings.TrimSpace(m.query))
 	m.rows = nil
 	for _, r := range m.allRows {
-		if query == "" || strings.Contains(strings.ToLower(r.searchText()), query) {
+		if query == "" {
+			m.rows = append(m.rows, r)
+			continue
+		}
+		if _, matched := r.matchRank(query); matched {
 			m.rows = append(m.rows, r)
 		}
+	}
+	if query != "" {
+		sort.SliceStable(m.rows, func(i, j int) bool {
+			iRank, _ := m.rows[i].matchRank(query)
+			jRank, _ := m.rows[j].matchRank(query)
+			return iRank < jRank
+		})
 	}
 	if reset || m.cursor >= len(m.rows) {
 		m.cursor = 0
@@ -514,6 +525,44 @@ func (r row) display() string {
 
 func (r row) searchText() string {
 	return strings.Join([]string{r.Kind, r.State, r.Branch, r.Target, r.Workspace, r.Detail, r.Repo}, " ")
+}
+
+// matchRank keeps the default recency ordering as a stable tie-breaker while
+// making the text the user typed the primary ordering signal.
+func (r row) matchRank(query string) (int, bool) {
+	branch := strings.ToLower(r.Branch)
+	if branch == query {
+		return 0, true
+	}
+	if strings.HasPrefix(branch, query) {
+		return 1, true
+	}
+	for _, part := range strings.FieldsFunc(branch, func(value rune) bool {
+		return value == '/' || value == '-' || value == '_' || value == '.'
+	}) {
+		if part == query {
+			return 2, true
+		}
+	}
+	if strings.Contains(branch, query) {
+		return 3, true
+	}
+
+	fields := []string{r.Target, r.Workspace, r.Detail, r.Repo, r.Kind, r.State}
+	for _, field := range fields {
+		if strings.ToLower(field) == query {
+			return 4, true
+		}
+	}
+	for _, field := range fields {
+		if strings.HasPrefix(strings.ToLower(field), query) {
+			return 5, true
+		}
+	}
+	if strings.Contains(strings.ToLower(r.searchText()), query) {
+		return 6, true
+	}
+	return 0, false
 }
 
 func (r row) tsv() string {
