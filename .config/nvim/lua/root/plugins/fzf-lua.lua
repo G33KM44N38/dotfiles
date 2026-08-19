@@ -190,41 +190,8 @@ return {
 		end
 
 		fzf.hidden_files_lua = function()
-			local files = {}
-
-			local function scan_dir(dir)
-				local fs = vim.loop.fs_scandir(dir)
-				if not fs then
-					return
-				end
-
-				while true do
-					local name, type = vim.loop.fs_scandir_next(fs)
-					if not name then
-						break
-					end
-
-					local full_path = dir .. "/" .. name
-
-					if name == "node_modules" then
-						goto continue
-					end
-
-					if type == "file" then
-						table.insert(files, full_path)
-					elseif type == "directory" then
-						scan_dir(full_path)
-					end
-
-					::continue::
-				end
-			end
-
-			scan_dir(".")
-
-			require("fzf-lua").fzf_exec(files, {
-				prompt = "Files> ",
-				actions = require("fzf-lua").defaults.actions.files,
+			fzf.files({
+				cmd = "fd --type f --hidden --follow --exclude node_modules",
 			})
 		end
 
