@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -23,6 +24,7 @@ type config struct {
 	full              bool
 	skipPython        bool
 	analyzeOnly       bool
+	report            bool
 	dryRun            bool
 	skipDocker        bool
 	skipBrew          bool
@@ -86,13 +88,14 @@ func main() {
 		fmt.Printf("%sInteractive simulator runtime selection enabled%s\n\n", colors.yellow, colors.reset)
 	}
 
-	printStorageReport(cfg)
+	if cfg.report {
+		printStorageReport(cfg)
+	}
 
 	steps := []struct {
 		name string
 		fn   func(config)
 	}{
-		{"System Memory Cleanup", cleanSystemMemory},
 		{"Homebrew Cleanup", cleanHomebrew},
 		{"Development Environment Cleanup", cleanDevDirectories},
 		{"Xcode Cleanup", cleanXcode},
@@ -130,6 +133,7 @@ func parseArgs(args []string) (config, error) {
 	fs := flag.NewFlagSet("pc_clean_go", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	fs.BoolVar(&cfg.analyzeOnly, "analyze", false, "Print a storage report without deleting anything")
+	fs.BoolVar(&cfg.report, "report", false, "Print the storage report before cleanup")
 	fs.BoolVar(&cfg.chooseSimRuntime, "choose-sim-runtime", false, "Interactively choose installed simulator runtime(s) to delete")
 	fs.BoolVar(&cfg.dryRun, "dry-run", false, "Show destructive actions without executing them")
 	fs.BoolVar(&cfg.full, "full", false, "Run more aggressive cleanup steps")
@@ -139,7 +143,7 @@ func parseArgs(args []string) (config, error) {
 	fs.BoolVar(&cfg.skipDocker, "skip-docker", false, "Skip Docker cleanup")
 	fs.BoolVar(&cfg.skipXcode, "skip-xcode", false, "Skip Xcode / Simulator cleanup")
 	fs.BoolVar(&cfg.skipAI, "skip-ai", false, "Skip Codex / Claude runtime cleanup")
-	fs.IntVar(&cfg.simRuntimeDays, "sim-runtime-days", 30, "Retention threshold for simulator runtimes in full mode")
+	fs.IntVar(&cfg.simRuntimeDays, "sim-runtime-days", 30, "Retention threshold for simulator devices and runtimes in full mode")
 	fs.IntVar(&cfg.nodeModulesDays, "node-modules-days", 120, "Remove node_modules older than this many days")
 	fs.IntVar(&cfg.generatedDays, "generated-days", 14, "Remove generated project artifacts older than this many days")
 	fs.IntVar(&cfg.aiHistoryDays, "ai-history-days", 30, "Full mode retention for Codex/Claude history-like files")
@@ -166,6 +170,7 @@ Cleanup and analyze development-heavy storage on macOS.
 
 Options:
   --analyze                     Print a storage report without deleting anything
+  --report                      Print the storage report before cleanup
   --choose-sim-runtime          Interactively choose installed simulator runtime(s) to delete
   --dry-run                     Show destructive actions without executing them
   --full                        Run more aggressive cleanup steps
@@ -174,7 +179,7 @@ Options:
   --skip-brew                   Skip Homebrew maintenance
   --skip-docker                 Skip Docker cleanup
   --skip-xcode                  Skip Xcode / Simulator cleanup
-  --sim-runtime-days <days>     Retention threshold for simulator runtimes in full mode
+  --sim-runtime-days <days>     Retention threshold for simulator devices and runtimes in full mode
   --node-modules-days <days>    Remove node_modules older than this many days
   --generated-days <days>       Remove generated project artifacts older than this many days
   --ai-history-days <days>      Full mode retention for Codex/Claude history-like files
@@ -500,15 +505,6 @@ func runExternalCleanupTools(cfg config) {
 	}
 }
 
-func cleanSystemMemory(cfg config) {
-	printHeader("System Memory Cleanup")
-	if commandExists("sudo") && commandExists("purge") {
-		_ = runSilent(cfg, "Purging system memory", "sudo", "purge")
-	} else {
-		warn("Skipping memory purge: sudo or purge is not available")
-	}
-}
-
 func cleanHomebrew(cfg config) {
 	printHeader("Homebrew Cleanup")
 	if cfg.skipBrew {
@@ -553,16 +549,50 @@ func cleanDevDirectories(cfg config) {
 	}
 	for _, p := range []string{
 		path(cfg, "Library", "Caches", "pip"),
+		path(cfg, "Library", "Caches", "ms-playwright"),
+		path(cfg, "Library", "Caches", "pnpm"),
 		path(cfg, ".npm"),
 		path(cfg, ".gradle", "caches"),
 		path(cfg, "Library", "Caches", "CocoaPods"),
-		path(cfg, "Library", "Developer", "Xcode", "DerivedData"),
-		path(cfg, "Library", "Developer", "Xcode", "Archives"),
-		path(cfg, "Library", "Developer", "Xcode", "iOS DeviceSupport"),
 	} {
 		cleanDirectoryContents(cfg, p)
 	}
+	cleanOldNVMVersions(cfg)
 	success("Cache directories cleaned")
+}
+
+func cleanOldNVMVersions(cfg config) {
+	if !cfg.full {
+		info("Standard mode keeps installed Node versions")
+		return
+	}
+	if !commandExists("zsh") {
+		warn("Skipping old Node versions: zsh is not available")
+		return
+	}
+	nvmDir := path(cfg, ".nvm")
+	defaultVersion, err := runCapture("zsh", "-lc", `export NVM_DIR="$1"; source "$NVM_DIR/nvm.sh"; nvm version default`, "_", nvmDir)
+	defaultVersion = strings.TrimSpace(defaultVersion)
+	if err != nil || defaultVersion == "N/A" || defaultVersion == "none" || defaultVersion == "system" {
+		warn("Skipping old Node versions: could not determine the NVM default version")
+		return
+	}
+	keep := map[string]bool{defaultVersion: true}
+	if current, err := runCapture("node", "--version"); err == nil {
+		keep[strings.TrimSpace(current)] = true
+	}
+	versionsRoot := path(cfg, ".nvm", "versions", "node")
+	entries, err := os.ReadDir(versionsRoot)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() || keep[entry.Name()] {
+			continue
+		}
+		version := strings.TrimPrefix(entry.Name(), "v")
+		_ = runSilent(cfg, "Removing inactive Node "+entry.Name(), "zsh", "-lc", `export NVM_DIR="$1"; source "$NVM_DIR/nvm.sh"; nvm uninstall "$2"`, "_", nvmDir, version)
+	}
 }
 
 func cleanOldNodeModules(cfg config, root string) {
@@ -665,7 +695,6 @@ func cleanXcode(cfg config) {
 		return
 	}
 	_ = runSilent(cfg, "Closing Xcode", "osascript", "-e", `quit app "Xcode"`)
-	time.Sleep(time.Second)
 	for _, p := range []string{
 		path(cfg, "Library", "Developer", "Xcode", "DerivedData"),
 		path(cfg, "Library", "Developer", "Xcode", "Archives"),
@@ -679,6 +708,7 @@ func cleanXcode(cfg config) {
 		}
 		_ = runSilent(cfg, "Deleting unavailable simulator devices", "xcrun", "simctl", "delete", "unavailable")
 		if cfg.full {
+			deleteOldSimulatorDevices(cfg)
 			_ = runSilent(cfg, fmt.Sprintf("Deleting simulator runtimes unused for %d days", cfg.simRuntimeDays), "xcrun", "simctl", "runtime", "delete", "--notUsedSinceDays", strconv.Itoa(cfg.simRuntimeDays))
 		} else if cfg.dryRun {
 			_ = runSilent(cfg, fmt.Sprintf("Previewing simulator runtimes unused for %d days", cfg.simRuntimeDays), "xcrun", "simctl", "runtime", "delete", "--notUsedSinceDays", strconv.Itoa(cfg.simRuntimeDays), "--dry-run")
@@ -690,6 +720,43 @@ func cleanXcode(cfg config) {
 		warn("Skipping simulator cleanup: xcrun is not available")
 	}
 	success("Xcode cleanup complete")
+}
+
+type simctlDevice struct {
+	LastBootedAt string `json:"lastBootedAt"`
+	UDID         string `json:"udid"`
+	IsAvailable  bool   `json:"isAvailable"`
+	State        string `json:"state"`
+	Name         string `json:"name"`
+}
+
+func deleteOldSimulatorDevices(cfg config) {
+	out, err := runCapture("xcrun", "simctl", "list", "devices", "-j")
+	if err != nil {
+		warn("Skipping old simulator devices: could not list devices")
+		return
+	}
+	var response struct {
+		Devices map[string][]simctlDevice `json:"devices"`
+	}
+	if err := json.Unmarshal([]byte(out), &response); err != nil {
+		warn("Skipping old simulator devices: invalid simctl output")
+		return
+	}
+	cutoff := time.Now().AddDate(0, 0, -cfg.simRuntimeDays)
+	for _, devices := range response.Devices {
+		for _, device := range devices {
+			if !device.IsAvailable || device.State != "Shutdown" || strings.Contains(strings.ToLower(device.Name), "detox") {
+				continue
+			}
+			lastBooted, err := time.Parse(time.RFC3339, device.LastBootedAt)
+			if err == nil && !lastBooted.Before(cutoff) {
+				continue
+			}
+			description := fmt.Sprintf("Deleting simulator device %s unused for %d days", device.Name, cfg.simRuntimeDays)
+			_ = runSilent(cfg, description, "xcrun", "simctl", "delete", device.UDID)
+		}
+	}
 }
 
 func chooseSimRuntimeToDelete(cfg config) {
@@ -809,8 +876,13 @@ func cleanDocker(cfg config) {
 	}
 	info("Docker usage before cleanup")
 	runOutput("docker", "system", "df")
-	_ = runSilent(cfg, "Pruning unused Docker volumes", "docker", "volume", "prune", "-f")
-	_ = runSilent(cfg, "Pruning Docker system", "docker", "system", "prune", "-af", "--volumes")
+	if cfg.full {
+		warn("Full mode removes all unused Docker images, containers, networks, volumes, and build cache")
+		_ = runSilent(cfg, "Pruning all unused Docker data", "docker", "system", "prune", "-af", "--volumes")
+	} else {
+		info("Standard mode keeps reusable images and volumes")
+		_ = runSilent(cfg, "Pruning stopped containers, unused networks, dangling images, and build cache", "docker", "system", "prune", "-f")
+	}
 	info("Docker usage after cleanup")
 	runOutput("docker", "system", "df")
 	success("Docker cleanup complete")
@@ -822,6 +894,7 @@ func cleanRust(cfg config) {
 		info("Rust not installed, skipping cleanup")
 		return
 	}
+	cleanUnusedRustToolchains(cfg)
 	root := path(cfg, "coding")
 	if !exists(root) {
 		root = path(cfg, "Projects")
@@ -857,6 +930,28 @@ func cleanRust(cfg config) {
 		}
 	}
 	success("Rust cleanup complete (%d projects)", len(dirs))
+}
+
+func cleanUnusedRustToolchains(cfg config) {
+	if !cfg.full {
+		info("Standard mode keeps installed Rust toolchains")
+		return
+	}
+	if !commandExists("rustup") {
+		return
+	}
+	out, err := runCapture("rustup", "toolchain", "list")
+	if err != nil {
+		warn("Skipping old Rust toolchains: could not list toolchains")
+		return
+	}
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) == 0 || strings.Contains(line, "default") || strings.Contains(line, "active") {
+			continue
+		}
+		_ = runSilent(cfg, "Removing inactive Rust toolchain "+fields[0], "rustup", "toolchain", "uninstall", fields[0])
+	}
 }
 
 func cleanGitRepos(cfg config) {
@@ -925,14 +1020,8 @@ func cleanSystemCaches(cfg config) {
 	if entries, err := os.ReadDir(trash); err == nil && len(entries) > 0 {
 		cleanDirectoryContents(cfg, trash)
 	}
-	for _, p := range []string{
-		path(cfg, "Library", "Application Support", "CrashReporter"),
-		path(cfg, "Library", "Application State"),
-		path(cfg, "Library", "Caches"),
-	} {
-		cleanDirectoryContents(cfg, p)
-	}
-	success("System caches cleaned")
+	cleanDirectoryContents(cfg, path(cfg, "Library", "Containers", "com.apple.AMPArtworkAgent", "Data", "Documents", "artwork"))
+	success("Download history, artwork cache, and Trash cleanup complete")
 }
 
 func cleanAIRuntimeState(cfg config) {
