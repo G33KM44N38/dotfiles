@@ -33,7 +33,7 @@ Use local config only. Do not use web search.
 Run:
 
 ```bash
-/Users/boss/.codex/skills/babacoiffure-prod-db/scripts/check-production-db.sh
+/Users/boss/.codex/skills/babacoiffure/babacoiffure-prod-db/scripts/check-production-db.sh
 ```
 
 Expected output shape:

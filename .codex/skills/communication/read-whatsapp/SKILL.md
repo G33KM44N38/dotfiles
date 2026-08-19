@@ -19,7 +19,7 @@ Use this skill to inspect the user's local WhatsApp Desktop data on macOS. Defau
 Prefer the bundled script:
 
 ```bash
-python3 /Users/boss/.codex/skills/read-whatsapp/scripts/read_whatsapp.py --chat "beautyhairmaiidi" --limit 80 --transcribe
+python3 /Users/boss/.codex/skills/communication/read-whatsapp/scripts/read_whatsapp.py --chat "beautyhairmaiidi" --limit 80 --transcribe
 ```
 
 Useful options:

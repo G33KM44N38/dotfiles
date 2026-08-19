@@ -39,8 +39,8 @@ Important: `--send` can open WhatsApp and fill the input without actually sendin
 Use:
 
 ```bash
-python3 ~/.dotfiles/.codex/skills/send-whatsapp-jules/scripts/send_jules_whatsapp.py --message "..." --draft-only
-python3 ~/.dotfiles/.codex/skills/send-whatsapp-jules/scripts/send_jules_whatsapp.py --message "..." --send
+python3 ~/.dotfiles/.codex/skills/babacoiffure/send-whatsapp-jules/scripts/send_jules_whatsapp.py --message "..." --draft-only
+python3 ~/.dotfiles/.codex/skills/babacoiffure/send-whatsapp-jules/scripts/send_jules_whatsapp.py --message "..." --send
 ```
 
 The script finds the WhatsApp chat whose display name is exactly `Jules`. It must not target contacts such as `Eva (jules)`. If the chat is missing or ambiguous, stop and ask the user.

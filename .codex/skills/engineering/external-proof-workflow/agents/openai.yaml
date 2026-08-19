@@ -1,0 +1,4 @@
+interface:
+  display_name: "External Proof Workflow"
+  short_description: "PR proof workflow for Linear, GitHub, Chrome, and Playwright."
+  default_prompt: "Create a tracked PR with browser proof artifacts."

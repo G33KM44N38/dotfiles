@@ -1,0 +1,4 @@
+interface:
+  display_name: "tmux thread picker"
+  short_description: "Inspect and navigate tmux LLM work threads."
+  default_prompt: "Inspect my tmux threads and tell me what LLM work is running or waiting."

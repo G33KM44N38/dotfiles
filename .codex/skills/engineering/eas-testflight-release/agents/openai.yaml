@@ -1,0 +1,4 @@
+interface:
+  display_name: "EAS TestFlight Release"
+  short_description: "Build, submit, and monitor native iOS releases"
+  default_prompt: "Use $eas-testflight-release to prepare, submit, and monitor an iOS TestFlight build."

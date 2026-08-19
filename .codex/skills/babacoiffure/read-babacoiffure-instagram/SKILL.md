@@ -14,20 +14,20 @@ Never source `.env` in a shell: dotenv values may contain shell metacharacters.
 2. Verify the configured account:
 
    ```bash
-   node /Users/boss/.dotfiles/.codex/skills/read-babacoiffure-instagram/scripts/read-instagram-dm.mjs account
+   node /Users/boss/.dotfiles/.codex/skills/babacoiffure/read-babacoiffure-instagram/scripts/read-instagram-dm.mjs account
    ```
 
 3. Find the conversation by handle or name:
 
    ```bash
-   node /Users/boss/.dotfiles/.codex/skills/read-babacoiffure-instagram/scripts/read-instagram-dm.mjs conversations --search kaya
+   node /Users/boss/.dotfiles/.codex/skills/babacoiffure/read-babacoiffure-instagram/scripts/read-instagram-dm.mjs conversations --search kaya
    ```
 
 4. Read message metadata first. Add `--include-text` only when the user explicitly asks to read or summarize message contents:
 
    ```bash
-   node /Users/boss/.dotfiles/.codex/skills/read-babacoiffure-instagram/scripts/read-instagram-dm.mjs messages --username kaya.haven --limit 20
-   node /Users/boss/.dotfiles/.codex/skills/read-babacoiffure-instagram/scripts/read-instagram-dm.mjs messages --username kaya.haven --limit 20 --include-text
+   node /Users/boss/.dotfiles/.codex/skills/babacoiffure/read-babacoiffure-instagram/scripts/read-instagram-dm.mjs messages --username kaya.haven --limit 20
+   node /Users/boss/.dotfiles/.codex/skills/babacoiffure/read-babacoiffure-instagram/scripts/read-instagram-dm.mjs messages --username kaya.haven --limit 20 --include-text
    ```
 
 5. Summarize naturally. Distinguish messages sent by `babacoiffure` from messages received from the participant. Convert timestamps to the user's timezone when useful.

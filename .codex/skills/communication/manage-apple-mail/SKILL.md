@@ -33,10 +33,10 @@ Use `scripts/apple_mail_manager.py` for repeatable terminal automation. Prefer i
 Examples:
 
 ```bash
-python3 /Users/boss/.dotfiles/.codex/skills/manage-apple-mail/scripts/apple_mail_manager.py audit
-python3 /Users/boss/.dotfiles/.codex/skills/manage-apple-mail/scripts/apple_mail_manager.py ensure-default-rules
-python3 /Users/boss/.dotfiles/.codex/skills/manage-apple-mail/scripts/apple_mail_manager.py apply-known --pattern qonto-transfers
-python3 /Users/boss/.dotfiles/.codex/skills/manage-apple-mail/scripts/apple_mail_manager.py add-sender-rule --name "Stripe invoice exact" --sender "invoice+statements@example.com" --destination 02_PRO_FACTURES --scope pro --apply
+python3 /Users/boss/.dotfiles/.codex/skills/communication/manage-apple-mail/scripts/apple_mail_manager.py audit
+python3 /Users/boss/.dotfiles/.codex/skills/communication/manage-apple-mail/scripts/apple_mail_manager.py ensure-default-rules
+python3 /Users/boss/.dotfiles/.codex/skills/communication/manage-apple-mail/scripts/apple_mail_manager.py apply-known --pattern qonto-transfers
+python3 /Users/boss/.dotfiles/.codex/skills/communication/manage-apple-mail/scripts/apple_mail_manager.py add-sender-rule --name "Stripe invoice exact" --sender "invoice+statements@example.com" --destination 02_PRO_FACTURES --scope pro --apply
 ```
 
 The script uses AppleScript through `osascript`, so Mail may need to be open and the shell/Codex may need macOS automation and Full Disk Access permissions.

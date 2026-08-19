@@ -1,0 +1,4 @@
+interface:
+  display_name: "Performance-First Review"
+  short_description: "Review and protect end-to-end performance"
+  default_prompt: "Use $performance-first-review to review this change for latency, waterfalls, and production performance."

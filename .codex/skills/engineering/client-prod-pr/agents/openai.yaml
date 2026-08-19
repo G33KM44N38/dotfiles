@@ -1,0 +1,3 @@
+display_name: Client Prod PR
+short_description: Prepare a French client handoff PR with safe automation.
+default_prompt: Prepare a client production handoff PR. Automate the branch, commit, push, PR body, and French client instructions while protecting secrets and proof artifacts.
