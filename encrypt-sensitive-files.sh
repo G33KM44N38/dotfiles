@@ -9,6 +9,7 @@ FILES_TO_CHECK=(
   ".ssh"
   ".zshrc"
   ".group_env"
+  ".doppler/.doppler.yaml"
   ".hermes/.env"
   ".hermes/auth.json"
   "settings.json"

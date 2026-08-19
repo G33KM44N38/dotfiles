@@ -28,4 +28,5 @@ echo "Default branch: $default_branch"
 echo
 echo "To add a worktree:"
 echo "  cd $main_dir"
-echo "  git worktree add ../${main_dir}-feature -b feature origin/$default_branch"
+echo "  mkdir -p ../${main_dir}-worktrees/branches"
+echo "  git worktree add ../${main_dir}-worktrees/branches/feature -b feature origin/$default_branch"

@@ -20,33 +20,67 @@
 
 set -euo pipefail
 
+target_volume=100
+max_attempts=5
+settle_delay=0.2
+
 # Read current input volume via osascript
 get_input_volume() {
     osascript -e 'input volume of (get volume settings)' 2>/dev/null || echo ""
 }
 
-# Set input volume to 100
-set_input_volume_100() {
-    osascript -e 'set volume input volume 100'
+# Set and immediately read the volume in one AppleScript process. This lets us
+# distinguish a rejected value from one that another app resets shortly after.
+set_and_get_input_volume() {
+    osascript \
+        -e "set volume input volume ${target_volume}" \
+        -e 'input volume of (get volume settings)'
+}
+
+get_input_device() {
+    if command -v SwitchAudioSource >/dev/null 2>&1; then
+        SwitchAudioSource -c -t input 2>/dev/null || true
+    fi
 }
 
 # Run
 before="$(get_input_volume)"
+device="$(get_input_device)"
+
+[ -n "$device" ] && echo "Input device: $device"
 echo "Current input volume: ${before:-unknown}"
 
-set_input_volume_100
+accepted=false
+after=""
+attempt=1
+while [ "$attempt" -le "$max_attempts" ]; do
+    immediate="$(set_and_get_input_volume)"
+    if [ "$immediate" = "$target_volume" ]; then
+        accepted=true
+    fi
 
-# Small pause to let system apply change
-sleep 0.3
+    sleep "$settle_delay"
+    after="$(get_input_volume)"
+    if [ "$after" = "$target_volume" ]; then
+        break
+    fi
 
-after="$(get_input_volume)"
+    attempt=$((attempt + 1))
+done
+
 echo "Input volume after setting: ${after:-unknown}"
 
-if [ "$after" = "100" ]; then
-    echo "Success: input volume is 100."
+if [ "$after" = "$target_volume" ]; then
+    echo "Success: input volume is ${target_volume}."
     exit 0
-else
-    echo "Warning: unable to set input volume to 100. It is ${after:-unknown}."
-    echo "Note: some external microphones ignore system gain — adjust on the device or in its driver/app."
-    exit 2
 fi
+
+if [ "$accepted" = true ]; then
+    echo "Warning: macOS accepted ${target_volume}, but it was reset to ${after:-unknown}."
+    echo "Turn off automatic microphone gain/volume in the active call or recording app, then run this again."
+else
+    echo "Warning: the input device did not accept volume ${target_volume}; it remains ${after:-unknown}."
+    echo "Some external microphones manage gain on the device or in their driver/app."
+fi
+
+exit 2

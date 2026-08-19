@@ -9,7 +9,9 @@ import sys
 
 STATUS_GROUPS = {
     "blocked": {"blocked"},
-    "idle": {"idle", "done"},
+    "done": {"done"},
+    "idle": {"idle"},
+    "working": {"working"},
 }
 
 
@@ -23,6 +25,15 @@ def herdr(*args: str) -> dict:
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or result.stdout.strip())
     return json.loads(result.stdout)
+
+
+def current_workspace_id() -> str:
+    data = herdr("pane", "current")
+    pane = data.get("result", {}).get("pane", {})
+    workspace_id = pane.get("workspace_id")
+    if not workspace_id:
+        raise RuntimeError("current pane has no workspace_id")
+    return workspace_id
 
 
 def next_matching_agent(agents: list[dict], statuses: set[str]) -> dict | None:
@@ -49,7 +60,12 @@ def main() -> int:
     args = parser.parse_args()
 
     data = herdr("agent", "list")
-    agents = data.get("result", {}).get("agents", [])
+    workspace_id = current_workspace_id()
+    agents = [
+        agent
+        for agent in data.get("result", {}).get("agents", [])
+        if agent.get("workspace_id") == workspace_id
+    ]
     target = next_matching_agent(agents, STATUS_GROUPS[args.status])
     if target is None:
         return 0
