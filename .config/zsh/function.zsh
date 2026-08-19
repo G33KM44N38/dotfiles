@@ -57,3 +57,38 @@ _package_json_completion() {
 compdef _package_json_completion jq -c '.' package.json
 
 # neofetch
+
+git_safe_delete_candidates() {
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Not inside a git repository" >&2
+    return 1
+  fi
+
+  local default_base line branch
+  local -a worktree_branches
+
+  git fetch origin --prune >/dev/null 2>&1 || return 1
+  default_base=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)
+
+  while IFS= read -r line; do
+    case "$line" in
+      "branch refs/heads/"*)
+        branch=${line#branch refs/heads/}
+        worktree_branches+=("$branch")
+        ;;
+    esac
+  done < <(git worktree list --porcelain)
+
+  git branch --merged "$default_base" --format='%(refname:short)' | while IFS= read -r branch; do
+    [ -z "$branch" ] && continue
+    case "$branch" in
+      main|master|develop|dev|release|v2) continue ;;
+    esac
+
+    if print -r -l -- "${worktree_branches[@]}" | grep -Fqx -- "$branch"; then
+      continue
+    fi
+
+    printf '%-50s merged into %s\n' "$branch" "$default_base"
+  done
+}

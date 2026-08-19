@@ -26,7 +26,15 @@ const hyperSubLayers = createHyperSubLayers({
     y: open("https://youtube.com?_perso"),
     r: open("https://reddit.com?_perso"),
     c: open("https://claude.ai/?_babacoiffure"),
-    i: open("https://instagram.com?_perso"),
+    i: {
+      to: [
+        {
+          shell_command:
+            "/Users/boss/.dotfiles/bin/focus-arc-tab 'instagram.com' 'https://instagram.com?_perso'",
+        },
+      ],
+      description: "Focus Instagram in Arc",
+    },
     d: open("http://localhost:3000"),
     t: open("raycast://extensions/the-browser-company/arc/search-tabs"),
     x: open("https://www.x.com/?_perso"),

@@ -1,26 +1,12 @@
-local workspace_path = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/"
-local daily_folder = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Daily/"
-local weekly_folder = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/Weekly/"
+local second_brain = require("root.second_brain")
+local workspace_path = second_brain.path
+local daily_folder = second_brain.daily_path
+local weekly_folder = second_brain.weekly_path
 local date_format = "%Y-%m-%d"
 local time_format = "%H:%M"
 
-local function normalize_path(path)
-	if path:sub(-1) ~= "/" then
-		path = path .. "/"
-	end
-	return path
-end
-
-local function in_workspace()
-	local handle = io.popen("pwd")
-	if not handle then
-		return false
-	end
-
-	local cwd = handle:read("*l")
-	handle:close()
-
-	return normalize_path(cwd) == normalize_path(workspace_path)
+local function in_workspace(bufnr)
+	return second_brain.contains_buffer(bufnr)
 end
 
 vim.api.nvim_create_user_command("IsInWorkspace", function()
@@ -1622,80 +1608,57 @@ vim.api.nvim_create_user_command("TmuxNavigateSecondBrain", function()
 	vim.fn.system("tmux-navigate.sh Second_Brain")
 end, {})
 
+vim.api.nvim_create_user_command("ObsidianCheckMetadata", function()
+	check_metadata()
+end, {})
+
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = "markdown",
-	callback = function()
-		if not in_workspace() then
+	group = vim.api.nvim_create_augroup("second-brain-markdown", { clear = true }),
+	callback = function(args)
+		vim.opt_local.wrap = true
+		vim.opt_local.linebreak = true
+		vim.opt_local.breakindent = true
+		vim.opt_local.conceallevel = 1
+
+		if not in_workspace(args.buf) then
 			return
 		end
-		vim.opt_local.autoindent = true
-		vim.api.nvim_set_keymap("n", "<leader>ts", "<cmd>TODOSort<CR>", {})
-		vim.api.nvim_set_keymap("n", "gd", "<cmd>ObsidianFollowLink<CR>", {})
 
-		vim.keymap.set("n", "<leader>fh", ":Headings<CR>", { noremap = true, silent = true, desc = "Find headings" })
-		vim.api.nvim_set_keymap(
-			"n",
-			"[h",
-			"?^#\\+\\s<CR>",
-			{ noremap = true, silent = true, desc = "Go to previous heading" }
-		)
-		vim.api.nvim_set_keymap(
-			"n",
-			"]h",
-			"/^#\\+\\s<CR>",
-			{ noremap = true, silent = true, desc = "Go to next heading" }
-		)
-		-- Weekly
-		vim.api.nvim_set_keymap(
-			"n",
-			"<leader>ww",
-			"<cmd>ObsidianCurrentWeekly<cr>",
-			{ noremap = true, silent = true, desc = "Current Weekly Note" }
-		)
-		vim.api.nvim_set_keymap("n", "<leader>wa", "<cmd>ObsidianFindWeekly<CR>", { noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>wn", "<cmd>WeeklyCreate<CR>", { noremap = true, silent = true })
-		vim.api.nvim_set_keymap(
-			"n",
-			"<leader>wp",
-			"<cmd>ObsidianPreviousWeekly<cr>",
-			{ noremap = true, silent = true, desc = "Previous Weekly Note" }
-		)
-		vim.api.nvim_set_keymap(
-			"n",
-			"<leader>wn",
-			"<cmd>ObsidianNextWeekly<cr>",
-			{ noremap = true, silent = true, desc = "Next Weekly Note" }
-		)
-		-- Daily
-		vim.api.nvim_set_keymap("n", "<leader>da", "<cmd>ObsidianDailies<cr>", { noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>dd", "<cmd>ObsidianToday<cr>", { noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>dp", "<cmd>ObsidianPreviousDaily<cr>", { noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>dn", "<cmd>ObsidianNextDaily<cr>", { noremap = true, silent = true })
-		-- Commands
-		vim.api.nvim_set_keymap(
-			"n",
-			"<leader>ch",
-			"<cmd>ToggleCheckboxWithTimestamp<cr>",
-			{ noremap = true, silent = true }
-		)
-		vim.api.nvim_set_keymap("n", "<leader>ts", "<cmd>TODOSTart<cr>", { noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>bl", "<cmd>ObsidianBacklinks<cr>", { noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>ot", "<cmd>ObsidianTags<cr>", { noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>of", "<cmd>ObsidianTags<cr>", { noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>nt", "<cmd>ObsidianNew<cr>", { noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>it", "<cmd>ObsidianTemplate<cr>", { noremap = true, silent = true })
-		vim.api.nvim_set_keymap("n", "<leader>ef", ":ObsidianEditFrontmatter ", { noremap = true })
-		-- Add keymap for finding completed todos
-		vim.api.nvim_set_keymap(
-			"n",
-			"<leader>td",
-			"<cmd>CompletedTodos<cr>",
-			{ noremap = true, silent = true, desc = "Find completed TODOs" }
-		)
-		-- Create command to check metadata
-		vim.api.nvim_create_user_command("ObsidianCheckMetadata", function()
-			check_metadata()
-		end, {})
+		vim.opt_local.spell = true
+		vim.opt_local.spelllang = { "fr", "en" }
+		vim.opt_local.autoindent = true
+
+		local function map(lhs, rhs, desc)
+			vim.keymap.set("n", lhs, rhs, { buffer = args.buf, noremap = true, silent = true, desc = desc })
+		end
+
+		map("gd", "<cmd>ObsidianFollowLink<CR>", "Follow Obsidian link")
+		map("<leader>fh", "<cmd>Headings<CR>", "Find headings")
+		map("[h", "?^#\\+\\s<CR>", "Previous heading")
+		map("]h", "/^#\\+\\s<CR>", "Next heading")
+
+		map("<leader>ww", "<cmd>ObsidianCurrentWeekly<CR>", "Current weekly note")
+		map("<leader>wa", "<cmd>ObsidianFindWeekly<CR>", "Find weekly note")
+		map("<leader>wc", "<cmd>WeeklyCreate<CR>", "Create weekly note")
+		map("<leader>wp", "<cmd>ObsidianPreviousWeekly<CR>", "Previous weekly note")
+		map("<leader>wn", "<cmd>ObsidianNextWeekly<CR>", "Next weekly note")
+
+		map("<leader>da", "<cmd>ObsidianDailies<CR>", "List daily notes")
+		map("<leader>dd", "<cmd>ObsidianToday<CR>", "Today's daily note")
+		map("<leader>dp", "<cmd>ObsidianPreviousDaily<CR>", "Previous daily note")
+		map("<leader>dn", "<cmd>ObsidianNextDaily<CR>", "Next daily note")
+
+		map("<leader>ch", "<cmd>ToggleCheckboxWithTimestamp<CR>", "Toggle checkbox with timestamp")
+		map("<leader>ts", "<cmd>TODOSTart<CR>", "Start TODO")
+		map("<leader>tS", "<cmd>TODOSort<CR>", "Sort TODOs")
+		map("<leader>td", "<cmd>CompletedTodos<CR>", "Find completed TODOs")
+		map("<leader>bl", "<cmd>ObsidianBacklinks<CR>", "Show backlinks")
+		map("<leader>ot", "<cmd>ObsidianTags<CR>", "Show Obsidian tags")
+		map("<leader>of", "<cmd>ObsidianTags<CR>", "Find Obsidian tags")
+		map("<leader>nt", "<cmd>ObsidianNew<CR>", "Create note")
+		map("<leader>it", "<cmd>ObsidianTemplate<CR>", "Insert template")
+		map("<leader>ef", ":ObsidianEditFrontmatter ", "Edit frontmatter")
 
 		-- local files_in_workspace = scanWorkspace(workspace_path)
 		-- local result_files = executeQuery(dataview_query, files_in_workspace)
@@ -1735,13 +1698,6 @@ vim.api.nvim_create_autocmd({ "BufReadPost", "BufWritePre" }, {
 		if year and month and day then
 			import_todos_from_previous_daily()
 		end
-	end,
-})
-
-vim.api.nvim_create_autocmd("FileType", {
-	pattern = "markdown",
-	callback = function()
-		vim.opt_local.conceallevel = 1
 	end,
 })
 
@@ -2155,6 +2111,9 @@ local obsidian_config = {
 			search_max_lines = 1000,
 			use_advanced_uri = true,
 			mappings = {},
+			ui = {
+				enable = false,
+			},
 			attachments = {
 				img_folder = "Attachments/",
 				---@return string
@@ -2167,14 +2126,6 @@ local obsidian_config = {
 			end,
 		},
 		config = function(_, opts)
-			vim.api.nvim_create_autocmd("FileType", {
-				pattern = "markdown",
-				callback = function()
-					if in_workspace() then
-						vim.opt.spell = true
-					end
-				end,
-			})
 			require("obsidian").setup(opts)
 		end,
 	},

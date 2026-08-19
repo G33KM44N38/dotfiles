@@ -12,6 +12,7 @@
   },
   "scripts": {
     "build": "tsm rules.ts",
+    "tune": "node home-row-tuner-server.mjs",
     "watch": "nodemon --exec yarn build -e ts"
   },
   "dependencies": {

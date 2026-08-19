@@ -84,3 +84,8 @@ goinfre/
 !.hermes/config.yaml
 !.hermes/.env
 !.hermes/auth.json
+
+# Herdr runtime/state: keep only portable config
+.config/herdr/**
+!.config/herdr/
+!.config/herdr/config.toml

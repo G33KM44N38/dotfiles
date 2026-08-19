@@ -3144,10 +3144,10 @@
               {
                 "to": [
                   {
-                    "shell_command": "open https://instagram.com?_perso"
+                    "shell_command": "/Users/boss/.dotfiles/bin/focus-arc-tab 'instagram.com' 'https://instagram.com?_perso'"
                   }
                 ],
-                "description": "Open https://instagram.com?_perso",
+                "description": "Focus Instagram in Arc",
                 "type": "basic",
                 "from": {
                   "key_code": "i",

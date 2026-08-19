@@ -157,6 +157,16 @@ key = "prefix+i"
 type = "shell"
 command = "$HOME/.dotfiles/bin/herdr-focus-agent-status idle"
 
+[[keys.command]]
+key = "prefix+d"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-focus-agent-status done"
+
+[[keys.command]]
+key = "prefix+o"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-focus-agent-status working"
+
 [experimental]
 pane_history = true
 

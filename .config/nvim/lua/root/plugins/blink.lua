@@ -1,31 +1,8 @@
-local workspace_path = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/"
-
-local function normalize_path(path)
-	if not path or path == "" then
-		return ""
-	end
-
-	path = vim.fs.normalize(path)
-	if path:sub(-1) ~= "/" then
-		path = path .. "/"
-	end
-	return path
-end
-
-local function path_is_under(path, target_path)
-	if not path or path == "" or not target_path or target_path == "" then
-		return false
-	end
-
-	path = normalize_path(path)
-	target_path = normalize_path(target_path)
-
-	return path:sub(1, #target_path) == target_path
-end
+local second_brain = require("root.second_brain")
+local workspace_path = second_brain.path
 
 local function in_obsidian_workspace()
-	local current_file = vim.api.nvim_buf_get_name(0)
-	return path_is_under(current_file, workspace_path)
+	return second_brain.contains_buffer()
 end
 
 return {
@@ -52,7 +29,7 @@ return {
 			preset = "none",
 			["<C-j>"] = { "select_next" },
 			["<C-k>"] = { "select_prev" },
-			["<CR>"] = { "accept", "fallback" },
+			["<CR>"] = { "select_and_accept", "fallback" },
 			["<Tab>"] = { "select_next", "fallback" },
 			["<S-Tab>"] = { "select_prev", "fallback" },
 			["<C-b>"] = { "scroll_documentation_up" },
