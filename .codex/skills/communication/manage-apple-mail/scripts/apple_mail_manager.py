@@ -6,16 +6,11 @@ import textwrap
 
 PRO_ACCOUNTS = [
     ("Babacoiffure", "admin@babacoiffure.com"),
-    ("kylian pro", "mayangakylian@gmail.com"),
-    ("renayam pro", "renayam.pro@gmail.com"),
-    ("babacoiffure google 27", "babacoiffure27@gmail.com"),
+    ("kylian pro", "mayanga.kylian@gmail.com"),
 ]
 
 PERSO_ACCOUNTS = [
     ("kylian perso", "kylianmayanga@gmail.com"),
-    ("sunshinedeep", "sunshinedeep81@gmail.com"),
-    ("kylian us", "kylianmayangaus@gmail.com"),
-    ("junk mail", "azertabj2008@gmail.com"),
 ]
 
 SKIP_MAILBOXES = {"Trash", "Corbeille", "Junk", "Spam"}

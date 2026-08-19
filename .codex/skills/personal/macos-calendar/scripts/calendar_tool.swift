@@ -1,5 +1,7 @@
 import EventKit
 import Foundation
+import MapKit
+import CoreLocation
 
 struct BatchEvent: Decodable {
     let title: String
@@ -8,6 +10,11 @@ struct BatchEvent: Decodable {
     let timeZone: String?
     let notes: String?
     let location: String?
+    let travelFrom: String?
+    let travelMode: String?
+    let travelMinutes: Double?
+    let travelBufferMinutes: Double?
+    let travelEnabled: Bool?
 }
 
 func fail(_ message: String) -> Never {
@@ -47,6 +54,137 @@ func parseLocalDateTime(_ value: String, timeZone: TimeZone) -> Date {
         fail("Invalid datetime: \(value). Use YYYY-MM-DDTHH:MM:SS.")
     }
     return date
+}
+
+enum TravelMode: String {
+    case automobile
+    case walking
+    case transit
+
+    var mapKitType: MKDirectionsTransportType {
+        switch self {
+        case .automobile: return .automobile
+        case .walking: return .walking
+        case .transit: return .transit
+        }
+    }
+
+    var calendarRouting: String {
+        switch self {
+        case .automobile: return "CAR"
+        case .walking: return "WALKING"
+        case .transit: return "TRANSIT"
+        }
+    }
+}
+
+func runLoopUntil(_ condition: @escaping () -> Bool, timeout: TimeInterval = 20) {
+    let deadline = Date().addingTimeInterval(timeout)
+    while !condition() && Date() < deadline {
+        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+    }
+}
+
+func findMapItem(_ query: String) -> MKMapItem? {
+    let request = MKLocalSearch.Request()
+    request.naturalLanguageQuery = query
+    var result: MKMapItem?
+    var done = false
+    MKLocalSearch(request: request).start { response, _ in
+        result = response?.mapItems.first
+        done = true
+    }
+    runLoopUntil { done }
+    return result
+}
+
+func structuredLocation(title: String, mapItem: MKMapItem?) -> EKStructuredLocation {
+    let location = EKStructuredLocation(title: title)
+    if let mapItem {
+        let geoLocation: CLLocation?
+        if #available(macOS 26.0, *) {
+            geoLocation = mapItem.location
+        } else {
+            geoLocation = (mapItem as NSObject).value(forKeyPath: "placemark.location") as? CLLocation
+        }
+        if let coordinate = geoLocation?.coordinate {
+            location.geoLocation = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        }
+    }
+    return location
+}
+
+func calculatedTravelTime(from origin: MKMapItem, to destination: MKMapItem, mode: TravelMode, arrival: Date) -> TimeInterval? {
+    let request = MKDirections.Request()
+    request.source = origin
+    request.destination = destination
+    request.transportType = mode.mapKitType
+    request.arrivalDate = arrival
+    var duration: TimeInterval?
+    var done = false
+    MKDirections(request: request).calculate { response, _ in
+        duration = response?.routes.first?.expectedTravelTime
+        done = true
+    }
+    runLoopUntil { done }
+    return duration
+}
+
+func roundedUpToFiveMinutes(_ duration: TimeInterval) -> TimeInterval {
+    ceil(duration / 300) * 300
+}
+
+func configureTravel(on event: EKEvent, item: BatchEvent) {
+    guard let destinationText = item.location?.trimmingCharacters(in: .whitespacesAndNewlines), !destinationText.isEmpty else {
+        if item.travelEnabled == true || item.travelFrom != nil || item.travelMinutes != nil {
+            fail("Event '\(item.title)' has travel data but no physical location.")
+        }
+        return
+    }
+
+    if item.travelEnabled == false { return }
+    guard item.travelFrom != nil || item.travelMinutes != nil else {
+        fail("Physical event '\(item.title)' requires travelFrom or travelMinutes. Set travelEnabled=false only for an intentional opt-out.")
+    }
+
+    let modeText = item.travelMode ?? "automobile"
+    guard let mode = TravelMode(rawValue: modeText) else {
+        fail("Invalid travelMode '\(modeText)' for '\(item.title)'. Use automobile, walking, or transit.")
+    }
+
+    let destinationMapItem = findMapItem(destinationText)
+    let destination = structuredLocation(title: destinationText, mapItem: destinationMapItem)
+    event.structuredLocation = destination
+
+    var originMapItem: MKMapItem?
+    if let originText = item.travelFrom?.trimmingCharacters(in: .whitespacesAndNewlines), !originText.isEmpty {
+        originMapItem = findMapItem(originText)
+        guard originMapItem != nil else { fail("Could not geocode travelFrom '\(originText)' for '\(item.title)'.") }
+        let origin = structuredLocation(title: originText, mapItem: originMapItem)
+        (origin as NSObject).setValue(mode.calendarRouting, forKey: "routing")
+        (event as NSObject).setValue(origin, forKey: "travelStartLocation")
+    }
+
+    let baseDuration: TimeInterval
+    if let minutes = item.travelMinutes {
+        guard minutes > 0 else { fail("travelMinutes must be positive for '\(item.title)'.") }
+        baseDuration = minutes * 60
+    } else {
+        guard let originMapItem, let destinationMapItem else {
+            fail("Event '\(item.title)' needs geocodable travelFrom and location when travelMinutes is omitted.")
+        }
+        guard let calculated = calculatedTravelTime(from: originMapItem, to: destinationMapItem, mode: mode, arrival: event.startDate) else {
+            fail("Apple Maps could not calculate the \(mode.rawValue) route for '\(item.title)'. Supply travelMinutes explicitly.")
+        }
+        baseDuration = roundedUpToFiveMinutes(calculated)
+    }
+
+    let buffer = max(0, item.travelBufferMinutes ?? 0) * 60
+    let totalDuration = baseDuration + buffer
+    let object = event as NSObject
+    object.setValue(totalDuration, forKey: "travelTime")
+    object.setValue(0, forKey: "travelAdvisoryBehavior")
+    event.addAlarm(EKAlarm(relativeOffset: -totalDuration))
 }
 
 let args = Array(CommandLine.arguments.dropFirst())
@@ -129,6 +267,7 @@ case "add-batch":
     let data = try Data(contentsOf: URL(fileURLWithPath: file))
     let batch = try JSONDecoder().decode([BatchEvent].self, from: data)
     var added = 0
+    var plannedAdds: [(title: String, start: Date, end: Date)] = []
     for item in batch {
         let tz = TimeZone(identifier: item.timeZone ?? TimeZone.current.identifier) ?? TimeZone.current
         let start = parseLocalDateTime(item.start, timeZone: tz)
@@ -143,10 +282,27 @@ case "add-batch":
         event.endDate = end
         event.notes = item.notes
         event.location = item.location
+        configureTravel(on: event, item: item)
         try store.save(event, span: .thisEvent, commit: false)
+        plannedAdds.append((item.title, start, end))
         added += 1
     }
     try store.commit()
+    if let earliest = plannedAdds.map(\.start).min(), let latest = plannedAdds.map(\.end).max() {
+        let persisted = store.events(matching: store.predicateForEvents(
+            withStart: earliest.addingTimeInterval(-60),
+            end: latest.addingTimeInterval(60),
+            calendars: [targetCalendar]
+        ))
+        let missing = plannedAdds.filter { planned in
+            !persisted.contains { event in
+                event.title == planned.title && abs(event.startDate.timeIntervalSince(planned.start)) < 60
+            }
+        }
+        if !missing.isEmpty {
+            fail("EventKit persisted only \(plannedAdds.count - missing.count) of \(plannedAdds.count) requested event(s). Rerun the same add-batch command; it is idempotent and will add only the missing events.")
+        }
+    }
     print("Added \(added) event(s).")
 
 default:

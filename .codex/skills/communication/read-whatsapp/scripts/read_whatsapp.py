@@ -7,6 +7,7 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -44,6 +45,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model", type=Path, default=DEFAULT_MODEL)
     parser.add_argument("--download-model", action="store_true")
     parser.add_argument("--workdir", type=Path, default=DEFAULT_WORKDIR)
+    parser.add_argument(
+        "--sync",
+        action="store_true",
+        help="Open WhatsApp and wait for the local database to refresh before reading",
+    )
+    parser.add_argument(
+        "--sync-timeout",
+        type=int,
+        default=30,
+        help="Maximum seconds to wait for a database refresh (default: 30)",
+    )
     return parser.parse_args()
 
 
@@ -55,6 +67,58 @@ def require_file(path: Path, label: str) -> None:
 def require_bin(name: str) -> None:
     if shutil.which(name) is None:
         raise SystemExit(f"Missing binary: {name}")
+
+
+def database_fingerprint(path: Path) -> tuple[tuple[int, int], ...]:
+    paths = (path, Path(f"{path}-wal"), Path(f"{path}-shm"))
+    fingerprint: list[tuple[int, int]] = []
+    for candidate in paths:
+        try:
+            stat = candidate.stat()
+            fingerprint.append((stat.st_mtime_ns, stat.st_size))
+        except FileNotFoundError:
+            fingerprint.append((0, 0))
+    return tuple(fingerprint)
+
+
+def sync_whatsapp(db_path: Path, timeout: int) -> None:
+    if sys.platform != "darwin":
+        raise SystemExit("--sync is only supported on macOS")
+    require_bin("open")
+    require_file(db_path, "WhatsApp DB")
+
+    before = database_fingerprint(db_path)
+    subprocess.run(
+        ["open", "-a", "WhatsApp"],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    deadline = time.monotonic() + max(timeout, 1)
+    changed = False
+    last = before
+    stable_since: float | None = None
+
+    while time.monotonic() < deadline:
+        time.sleep(1)
+        current = database_fingerprint(db_path)
+        if current != before:
+            changed = True
+        if changed and current == last:
+            stable_since = stable_since or time.monotonic()
+            if time.monotonic() - stable_since >= 2:
+                break
+        else:
+            stable_since = None
+        last = current
+
+    status = "changed_and_settled" if changed else "unchanged_after_wait"
+    print(
+        f"WHATSAPP_SYNC status={status} waited_up_to={max(timeout, 1)}s "
+        f"db_mtime={time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(db_path.stat().st_mtime))}",
+        file=sys.stderr,
+    )
 
 
 def download_model(model_path: Path) -> None:
@@ -189,6 +253,8 @@ def print_message(message: Message, args: argparse.Namespace) -> None:
 
 def main() -> int:
     args = parse_args()
+    if args.sync:
+        sync_whatsapp(args.db.expanduser(), args.sync_timeout)
     messages = query_messages(args)
     if not messages:
         print("No WhatsApp messages found.")

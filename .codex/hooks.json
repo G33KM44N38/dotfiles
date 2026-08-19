@@ -9,27 +9,6 @@
             "type" : "command"
           }
         ]
-      },
-      {
-        "hooks" : [
-          {
-            "command" : "'\/Users\/boss\/.vibe-island\/bin\/vibe-island-bridge' --source codex",
-            "timeout" : 7200,
-            "type" : "command"
-          }
-        ]
-      }
-    ],
-    "PostToolUse" : [
-      {
-        "hooks" : [
-          {
-            "command" : "'\/Users\/boss\/.vibe-island\/bin\/vibe-island-bridge' --source codex",
-            "timeout" : 5,
-            "type" : "command"
-          }
-        ],
-        "matcher" : ""
       }
     ],
     "SessionStart" : [
@@ -47,15 +26,6 @@
           {
             "command" : "bash '\/Users\/boss\/.codex\/herdr-agent-state.sh' session",
             "timeout" : 10,
-            "type" : "command"
-          }
-        ]
-      },
-      {
-        "hooks" : [
-          {
-            "command" : "'\/Users\/boss\/.vibe-island\/bin\/vibe-island-bridge' --source codex",
-            "timeout" : 5,
             "type" : "command"
           }
         ]
@@ -81,15 +51,6 @@
             "type" : "command"
           }
         ]
-      },
-      {
-        "hooks" : [
-          {
-            "command" : "'\/Users\/boss\/.vibe-island\/bin\/vibe-island-bridge' --source codex",
-            "timeout" : 5,
-            "type" : "command"
-          }
-        ]
       }
     ],
     "SubagentStop" : [
@@ -101,15 +62,6 @@
             "type" : "command"
           }
         ]
-      },
-      {
-        "hooks" : [
-          {
-            "command" : "'\/Users\/boss\/.vibe-island\/bin\/vibe-island-bridge' --source codex",
-            "timeout" : 5,
-            "type" : "command"
-          }
-        ]
       }
     ],
     "UserPromptSubmit" : [
@@ -118,15 +70,6 @@
           {
             "command" : "'\/Users\/boss\/.dotfiles\/bin\/herdr-codex-lifecycle-hook' working",
             "timeout" : 3,
-            "type" : "command"
-          }
-        ]
-      },
-      {
-        "hooks" : [
-          {
-            "command" : "'\/Users\/boss\/.vibe-island\/bin\/vibe-island-bridge' --source codex",
-            "timeout" : 5,
             "type" : "command"
           }
         ]

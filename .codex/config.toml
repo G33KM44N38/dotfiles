@@ -1,15 +1,12 @@
-model = "gpt-5.5"
-model_reasoning_effort = "low"
-service_tier = "fast"
-notify = [
-	"/Users/boss/.dotfiles/.codex/computer-use/Codex Computer Use.app/Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient",
-	"turn-ended",
-	"--previous-notify",
-	"[\"\\/Users\\/boss\\/.dotfiles\\/bin\\/codex-glow-notify\"]",
-]
+model = "gpt-5.6-sol"
+check_for_update_on_startup = false
+model_reasoning_effort = "medium"
+service_tier = "default"
 approval_policy = "never"
 approvals_reviewer = "user"
 sandbox_mode = "danger-full-access"
+
+notify = ["/Users/boss/.dotfiles/.codex/plugins/cache/openai-bundled/computer-use/1.0.1000387/Codex Computer Use.app/Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient", "turn-ended", "--previous-notify", "[\"\\/Users\\/boss\\/.dotfiles\\/bin\\/codex-glow-notify\"]"]
 
 [projects."/Users/boss/coding/work/babacoiffure_monorepo.git/main"]
 trust_level = "trusted"
@@ -24,6 +21,9 @@ trust_level = "trusted"
 trust_level = "trusted"
 
 [projects."/Users/boss/coding/work/babacoiffure_monorepo.git"]
+trust_level = "trusted"
+
+[projects."/Users/boss/coding/work/babacoiffure_monorepo.git/branches/baba-972-posthog-analytics"]
 trust_level = "trusted"
 
 [projects."/Users/boss/coding/work/babacoiffure_monorepo.git/feature/baba-449-limit-weekly-appointments"]
@@ -113,29 +113,73 @@ trust_level = "trusted"
 [projects."/Users/boss/coding/work/dorali.git"]
 trust_level = "trusted"
 
-# [mcp_servers.linear]
-# url = "https://mcp.linear.app/mcp"
+[projects."/Users/boss/learning"]
+trust_level = "trusted"
 
-# [mcp_servers.linear.tools.save_issue]
-# approval_mode = "approve"
+[projects."/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/find_client"]
+trust_level = "trusted"
+
+[projects."/Users/boss/coding/work/sberrs"]
+trust_level = "trusted"
+
+[projects."/Users/boss/coding/perso"]
+trust_level = "trusted"
+
+[projects."/Users/boss/coding/work/babacoiffure_monorepo.git/codex-/release-"]
+trust_level = "trusted"
+
+[projects."/Users/boss/Documents/Codex/2026-07-13/computer-use-arc-test"]
+trust_level = "trusted"
+
+[projects."/Users/boss/Documents/Codex/2026-07-15/jl"]
+trust_level = "trusted"
+
+[projects."/Users/boss/Documents/Codex/2026-07-15/does"]
+trust_level = "trusted"
+
+[projects."/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/BABACOIFFURE_SECOND_BRAIN"]
+trust_level = "trusted"
+
+[projects."/Volumes/LAB/.GOLD/video-feed-app"]
+trust_level = "trusted"
+
+[projects."/private/tmp/budget-sheet-check"]
+trust_level = "trusted"
+
+[projects."/Users/boss/coding/work/linear-herdr-bridge"]
+trust_level = "trusted"
+
+[projects."/Users/boss/coding/work/go-training"]
+trust_level = "trusted"
 
 [mcp_servers.node_repl]
-args = []
-command = "/Applications/Codex.app/Contents/Resources/cua_node/bin/node_repl"
-startup_timeout_sec = 120
+command = "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl"
+startup_timeout_sec = 120.0
 
 [mcp_servers.node_repl.env]
-NODE_REPL_NATIVE_PIPE_CONNECT_TIMEOUT_MS = "1000"
-NODE_REPL_NODE_MODULE_DIRS = "/Applications/Codex.app/Contents/Resources/cua_node/lib/node_modules"
-NODE_REPL_NODE_PATH = "/Applications/Codex.app/Contents/Resources/cua_node/bin/node"
-NODE_REPL_TRUSTED_CODE_PATHS = "/Users/boss/.codex"
-CODEX_HOME = "/Users/boss/.codex"
-NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S = "a3f3ca79fe2bff56076b895f1f13a8f673168160bd79d880cc34b4500e08a71c"
-BROWSER_USE_AVAILABLE_BACKENDS = "iab"
-NODE_REPL_INSTRUCTIONS_USE_CASE_BROWSER = "Control the in-app browser in conjunction with the Browser Plugin."
+BROWSER_USE_AVAILABLE_BACKENDS = "chrome,iab"
 BROWSER_USE_CODEX_APP_BUILD_FLAVOR = "prod"
-BROWSER_USE_CODEX_APP_VERSION = "26.609.30741"
-CODEX_CLI_PATH = "/Applications/Codex.app/Contents/Resources/codex"
+BROWSER_USE_CODEX_APP_VERSION = "26.707.62119"
+CODEX_CLI_PATH = "/Applications/ChatGPT.app/Contents/Resources/codex"
+CODEX_HOME = "/Users/boss/.codex"
+NODE_REPL_INSTRUCTIONS_USE_CASE_BROWSER = "Control the in-app browser in conjunction with the Browser Plugin."
+NODE_REPL_INSTRUCTIONS_USE_CASE_CHROME = "Control the Chrome browser in conjunction with the Chrome Plugin. Prefer this method of controlling Chrome over alternatives (such as Computer Use) unless the user explicitly mentions an alternative."
+NODE_REPL_INSTRUCTIONS_USE_CASE_COMPUTER_USE = "Control desktop apps on macOS through Computer Use."
+NODE_REPL_NATIVE_PIPE_CONNECT_TIMEOUT_MS = "1000"
+NODE_REPL_NODE_MODULE_DIRS = "/Applications/ChatGPT.app/Contents/Resources/cua_node/lib/node_modules"
+NODE_REPL_NODE_PATH = "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node"
+NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S = "6d25aa7656feac858f3a3bdaea5bcbab0dbfd426c9de8e6931ce90c399ee8e4f,e2cad16d8d9f60f09c9f0951ec7dfdd9e8f59dedd06045c0b6827dc8fa8322f0"
+NODE_REPL_TRUSTED_CODE_PATHS = "/Users/boss/.codex"
+SKY_CUA_SERVICE_PATH = "/Users/boss/.codex/plugins/cache/openai-bundled/computer-use/1.0.1000387/Codex Computer Use.app"
+
+[mcp_servers.computer-use]
+command = "./Codex Computer Use.app/Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient"
+args = ["mcp"]
+cwd = "."
+enabled = false
+
+[mcp_servers.openaiDeveloperDocs]
+url = "https://developers.openai.com/mcp"
 
 # [mcp_servers.codebase-retrieval]
 # command = "auggie"
@@ -163,6 +207,21 @@ enabled = true
 [plugins."presentations@openai-primary-runtime"]
 enabled = true
 
+[plugins."visualize@openai-bundled"]
+enabled = true
+
+[plugins."computer-use@openai-bundled"]
+enabled = true
+
+[plugins."chrome@openai-bundled"]
+enabled = true
+
+[plugins."pdf@openai-primary-runtime"]
+enabled = true
+
+[plugins."template-creator@openai-primary-runtime"]
+enabled = true
+
 [plugins."browser@openai-bundled"]
 enabled = true
 
@@ -171,15 +230,13 @@ terminal_title = ["spinner", "project"]
 
 theme = "ansi"
 
-status_line = [
-	"five-hour-limit",
-	"context-used",
-	"model-with-reasoning",
-	"current-dir",
-]
+status_line = ["weekly-limit", "context-used", "model-with-reasoning", "current-dir"]
+status_line_use_colors = true
+resume_cwd = "current"
 
 [tui.model_availability_nux]
 "gpt-5.5" = 4
+"gpt-5.6-sol" = 4
 
 [features]
 hooks = true
@@ -190,20 +247,20 @@ js_repl = false
 [hooks.state]
 
 [hooks.state."/Users/boss/.codex/hooks.json:permission_request:0:0"]
-trusted_hash = "sha256:99a31184d1fc22b3d6b9b17a2910e43e111646c882a71f6e32d7eb8ebc0bbba2"
+trusted_hash = "sha256:be8f9654db622f44e80e152eb96d932cef38853a571bced8dbb9fbdf635a0677"
 
 [hooks.state."/Users/boss/.codex/hooks.json:post_tool_use:0:0"]
-trusted_hash = "sha256:70e3404ba710ae88997a454400955d04290f91109ad7629c374d959b5f554fc1"
+trusted_hash = "sha256:d0d2b14744cd3e502fec948a7d325d48a77bda3396fe5a6b3fd0b582e50ca7d3"
 
 [hooks.state."/Users/boss/.codex/hooks.json:session_start:0:0"]
-trusted_hash = "sha256:5488e6d4d779a534f43583dc5d8366bb8ac69351073dc94de1fc1a5be4e5d32a"
+trusted_hash = "sha256:624f3c735041508337465fb022a75e5c7c138ba12dc9d79e5ebb1217940d2f60"
 
 [hooks.state."/Users/boss/.codex/hooks.json:stop:0:0"]
-trusted_hash = "sha256:36a65b37668bd50add1694e060901d4d1d2b8273f9cd3402f41e3dd4bc693f63"
+trusted_hash = "sha256:d99db47984cf1f25ef06aeb26a49aa0820ab28b9b5d2fae95f92497494dee96f"
 
 [hooks.state."/Users/boss/.codex/hooks.json:user_prompt_submit:0:0"]
 enabled = true
-trusted_hash = "sha256:cf9c48c973a651179667994905ad563c97f603f5e4b8ab507efea8586c02aaef"
+trusted_hash = "sha256:30edab23bda9b650e5055ff892a2999925528e1ab119d75e6729498e111166c6"
 
 [hooks.state."/Users/boss/Documents/DORALI/.codex/hooks.json:stop:0:0"]
 trusted_hash = "sha256:9392b698078efa56e730fab3a975cccc168d788be979068301106049a16da160"
@@ -233,7 +290,7 @@ trusted_hash = "sha256:f6254a62ddefb39d032df7cb63c28be155b1b4f1ad12881730fe837ad
 trusted_hash = "sha256:d0d2b14744cd3e502fec948a7d325d48a77bda3396fe5a6b3fd0b582e50ca7d3"
 
 [hooks.state."/Users/boss/.codex/hooks.json:session_start:1:0"]
-trusted_hash = "sha256:dccb2d1d9a57f51945d9ce19fb514874df49f09a21421e56acb2eeaf023f8849"
+trusted_hash = "sha256:eab6c5a1befa82a2f795f07cf71554c2a5578f5b27a3ac48a4486a21598905b9"
 
 [hooks.state."/Users/boss/.codex/hooks.json:user_prompt_submit:1:0"]
 trusted_hash = "sha256:0964f451705304ad5334bcaacd42201929be8c31210a527b1b2d4f9fe7549658"
@@ -241,9 +298,23 @@ trusted_hash = "sha256:0964f451705304ad5334bcaacd42201929be8c31210a527b1b2d4f9fe
 [hooks.state."/Users/boss/.codex/hooks.json:stop:1:0"]
 trusted_hash = "sha256:144bcbfbfed57b117eb5bc1cc3ea7e79f1cccc7ff183be324b06589fc31d24ad"
 
+[hooks.state."/Users/boss/.codex/hooks.json:session_start:2:0"]
+trusted_hash = "sha256:dccb2d1d9a57f51945d9ce19fb514874df49f09a21421e56acb2eeaf023f8849"
+
+[hooks.state."/Users/boss/.codex/hooks.json:subagent_stop:0:0"]
+trusted_hash = "sha256:e9f4ace14f6502b0a8dbeb12ddd0f833b9c8f17634067e2905208eb3add5eec4"
+
+[hooks.state."/Users/boss/.codex/hooks.json:subagent_start:0:0"]
+trusted_hash = "sha256:d141968e44175d043eb29328cd1b1c92d3c024ed74dccd548877170a7da6688f"
+
+[hooks.state."/Users/boss/.codex/hooks.json:subagent_stop:1:0"]
+trusted_hash = "sha256:373bbe9413a45bca9046159f03082fa6daf70621a25a2dcc6deb640ba25a622d"
+
 [desktop]
 git-branch-prefix = "codex/r"
 keepRemoteControlAwakeWhilePluggedIn = true
+followUpQueueMode = "queue"
+dock-icon-preference = "codex-system"
 
 [desktop.open-in-target-preferences]
 global = "ghostty"
@@ -252,12 +323,12 @@ global = "ghostty"
 "/Users/boss/coding/work/babacoiffure_monorepo.git/main" = "ghostty"
 
 [marketplaces.openai-bundled]
-last_updated = "2026-06-13T19:20:31Z"
+last_updated = "2026-07-14T10:28:26Z"
 source_type = "local"
 source = "/Users/boss/.dotfiles/.codex/.tmp/bundled-marketplaces/openai-bundled"
 
 [marketplaces.openai-primary-runtime]
-last_updated = "2026-06-01T19:21:14Z"
+last_updated = "2026-07-13T22:21:15Z"
 source_type = "local"
 source = "/Users/boss/.cache/codex-runtimes/codex-primary-runtime/plugins/openai-primary-runtime"
 # multi_agent = true

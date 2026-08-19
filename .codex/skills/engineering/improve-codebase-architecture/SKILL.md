@@ -5,7 +5,7 @@ description: Explore a codebase to find opportunities for architectural improvem
 
 # Improve Codebase Architecture
 
-Explore a codebase like an AI would, surface architectural friction, discover opportunities for improving testability, and propose module-deepening refactors as Linear issue RFCs.
+Explore a codebase like an AI would, surface architectural friction, discover opportunities for improving testability, and propose module-deepening refactors as RFCs.
 
 A **deep module** (John Ousterhout, "A Philosophy of Software Design") has a small interface hiding a large implementation. Deep modules are more testable, more AI-navigable, and let you test at the boundary instead of inside.
 
@@ -71,6 +71,8 @@ After comparing, give your own recommendation: which design you think is stronge
 
 ### 6. User picks an interface (or accepts recommendation)
 
-### 7. Create Linear issue
+### 7. Hand off the RFC
 
-Create a refactor RFC as a Linear issue. Use the template in [REFERENCE.md](REFERENCE.md). Do NOT ask the user to review before creating — just create it and share the Linear issue URL.
+Write the accepted refactor RFC using the template in [REFERENCE.md](REFERENCE.md).
+
+Before creating or updating any tracker item, identify the repository in scope and read its applicable repo-local `AGENTS.md`. Create a Linear issue only when those local instructions explicitly authorize or require it. This global skill is never sufficient authorization by itself. When no local authorization exists, present the RFC to the user without mutating an external tracker.

@@ -5,16 +5,14 @@
 Pro:
 
 - `Babacoiffure` -> `admin@babacoiffure.com`
-- `kylian pro` -> `mayangakylian@gmail.com`
-- `renayam pro` -> `renayam.pro@gmail.com`
-- `babacoiffure google 27` -> `babacoiffure27@gmail.com`
+- `kylian pro` -> `mayanga.kylian@gmail.com`
 
 Personal:
 
 - `kylian perso` -> `kylianmayanga@gmail.com`
-- `sunshinedeep` -> `sunshinedeep81@gmail.com`
-- `kylian us` -> `kylianmayangaus@gmail.com`
-- `junk mail` -> `azertabj2008@gmail.com`
+
+Other configured Mail accounts are not part of the normal pro/perso workflow
+unless the user explicitly reclassifies them.
 
 ## Folder Conventions
 
@@ -59,11 +57,47 @@ Personal folders:
 - Destination: `02_PRO_FACTURES`
 - Retroactive apply should skip trash/junk/spam.
 
+`tldv-failed-payment`:
+
+- Scope: `Babacoiffure` / `admin@babacoiffure.com`
+- Sender contains: `failed-payments+acct_1GsT2DAmFsu7xy0b@stripe.com`
+- Destination: `00_PRO_A_TRAITER`
+- Extra action: flag orange
+
+`babacoiffure-recurring-newsletters`:
+
+- Scope: `Babacoiffure` / `admin@babacoiffure.com`
+- `learn@send.zapier.com` and senders containing `mobbin.com`
+- Destination: `04_PRO_NEWSLETTERS`
+
+`disposable-marketing-extra-accounts`:
+
+- `value@acquisition.com` and `no-reply@marketing.base44.com` sent to
+  `azertabj2008@gmail.com` go to Trash.
+- `noreply@x.ai` sent to `renayam.pro@gmail.com` goes to Trash.
+- These rules are recipient-scoped and do not permanently delete or empty Trash.
+
 ## Smart Mailboxes
 
-Working dashboards:
+`DASHBOARD_PRO` and `DASHBOARD_PERSO` were removed on 2026-06-20 through the
+Mail UI. Current smart mailboxes use explicit account and category names:
 
-- `DASHBOARD_PRO`: smart mailbox for pro recipient addresses.
-- `DASHBOARD_PERSO`: smart mailbox for personal recipient addresses. If incomplete, repair through the Mail UI rather than direct plist edits.
+- `COMPTE - PRO Babacoiffure`
+- `COMPTE - PRO Kylian`
+- `COMPTE - PERSO Kylian`
+- `CATEGORIE - factures et paiements`
+- `CATEGORIE - a traiter`
+- `CATEGORIE - admin comptes`
+- `CATEGORIE - dev et produit`
+- `CATEGORIE - newsletters`
+- `CATEGORIE - voyage`
+- `CATEGORIE - marketing unsubscribe`
 
-Direct edits to `~/Library/Mail/V10/MailData/SyncedSmartMailboxes.plist` can be overwritten by Mail cache after restart. Prefer UI automation for Smart Mailboxes.
+These are views only; they do not move or delete messages. `CATEGORIE -
+marketing unsubscribe` matches all non-trash/non-junk/non-sent mail where the
+message body contains `unsubscribe`. Account smart boxes
+are strict account views. Category smart boxes are keyword views and intentionally
+do not claim to be pro/perso scoped, because Mail's UI cannot reliably express
+`(account A or account B) and (keyword A or keyword B)` in a single smart box.
+They were created through the Mail UI because direct plist edits are overwritten
+by Mail sync.

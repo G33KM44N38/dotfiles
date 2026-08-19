@@ -1,6 +1,6 @@
 ---
 name: read-whatsapp
-description: Read local macOS WhatsApp chats and summarize user requests, including voice-note transcription. Use when the user asks Codex to inspect a WhatsApp conversation, find what someone said, understand a cancellation/request, search recent WhatsApp messages, or transcribe WhatsApp audio/voice notes from the local WhatsApp database/media folder.
+description: Open and synchronize WhatsApp Desktop, read current local macOS chats, verify whether someone replied, and summarize messages, including voice-note transcription. Use when the user asks Codex to inspect a WhatsApp conversation, check for a recent response, find what someone said, understand a cancellation/request, search recent WhatsApp messages, or transcribe WhatsApp audio/voice notes.
 ---
 
 # Read WhatsApp
@@ -9,10 +9,13 @@ Use this skill to inspect the user's local WhatsApp Desktop data on macOS. Defau
 
 ## Workflow
 
-1. Locate the chat by name, phone/JID, or message text.
-2. Pull recent messages with timestamps, sender direction, text, message type, and media paths.
-3. When audio is present, convert it with `ffmpeg` and transcribe locally with `whisper-cli`.
-4. Summarize only the relevant request. State transcript confidence if the model/audio is rough.
+1. When the user asks whether someone replied or requests current/recent state, run the script with `--sync`. This opens WhatsApp and waits for the local database/WAL to refresh before reading.
+2. Read the `WHATSAPP_SYNC` line. If it says `changed_and_settled`, treat the subsequent query as freshly synchronized. If it says `unchanged_after_wait`, report that WhatsApp was opened and allowed to sync but that no database change was observed; never state freshness as certain.
+3. Locate the chat by name, phone/JID, or message text.
+4. Pull recent messages with timestamps, sender direction, text, message type, and media paths.
+5. Compare the newest incoming message with the newest outgoing message before concluding whether a reply exists.
+6. When audio is present, convert it with `ffmpeg` and transcribe locally with `whisper-cli`.
+7. Summarize only the relevant request. State transcript confidence if the model/audio is rough.
 
 ## Script
 
@@ -28,7 +31,10 @@ Useful options:
 python3 .../read_whatsapp.py --search "annuler" --limit 40
 python3 .../read_whatsapp.py --chat "beautyhairmaiidi" --since "2026-06-06" --transcribe
 python3 .../read_whatsapp.py --chat "beautyhairmaiidi" --transcribe --download-model
+python3 .../read_whatsapp.py --chat "annaelle" --limit 40 --sync
 ```
+
+Do not use a non-synchronized database read to assert that a recent reply does not exist merely because WhatsApp was closed. For status audits, include the sync result and the timestamp of the newest incoming/outgoing message.
 
 ## Local Transcription
 

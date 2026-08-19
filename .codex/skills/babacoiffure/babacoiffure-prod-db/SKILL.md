@@ -19,6 +19,9 @@ Use local config only. Do not use web search.
 4. Use this host/db shape:
    `mongodb+srv://<user>:<password>@cluster0.k2k9ux7.mongodb.net/production?retryWrites=true&w=majority&appName=Cluster0`
 5. Verify with read-only commands only unless the user explicitly asks for a write.
+6. If MongoDB Atlas rejects the connection because of Network Access List access, report the allowlist error and ask the user to add the current public IP. After the user confirms, rerun the local verification script.
+
+The local dadbod/env/`mongosh` path is the canonical production read path. Do not bypass an Atlas allowlist failure through Render or another runtime unless the user explicitly asks for that fallback.
 
 ## Safety
 

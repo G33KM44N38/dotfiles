@@ -15,9 +15,12 @@ Use this workflow for PRs where review and remediation both matter.
 - Record PR number, title, base branch, head branch, and current branch.
 
 2. Launch an independent review subagent:
+- Use `general-purpose` only; do not use `Explore` for required review judgment.
 - Ask it to review the PR for correctness bugs, regressions, security/privacy issues, performance risks, and missing tests.
 - Pass only the PR identifier and repo path. Do not pass your own suspected findings.
 - Require findings-first output with file/line references and concise fix suggestions.
+- A valid subagent response must contain a `Findings` section and either concrete findings or `No findings.` Tool-only output, empty output, `(subagent completed without a final message)`, or result previews without findings are invalid.
+- Prefer `run_in_background: false` for the retry so the final answer returns inline; background agents can complete with only result previews/tool traces. If the subagent does not produce valid output, retry once with a fresh `general-purpose` subagent and the strict prompt below. If retry also fails, continue with the main-agent review and report the subagent failure explicitly.
 
 3. Run the main-agent review:
 - Inspect the PR yourself with `gh pr view`, `gh pr diff`, changed files, nearby tests, and relevant docs.
@@ -50,12 +53,38 @@ Use this workflow for PRs where review and remediation both matter.
 - Resolve threads only when the fix has landed and the thread is clearly addressed.
 - Re-check PR status and open comments after replying.
 
+8. Add visual artifacts when requested:
+- Embed the artifact directly in a PR comment so it renders in the conversation.
+- Send Markdown bodies with real newline characters. Never publish escaped `\\n` sequences as visible text.
+- For private repositories, do not embed `raw.githubusercontent.com` repository images: unauthenticated rendering returns 404. Use an authenticated root-relative GitHub blob URL pinned to the commit SHA, for example `/owner/repo/blob/<sha>/path/image.png?raw=true`; GitHub preserves this as the image `src` and the browser supplies repository authentication. A genuine GitHub user attachment is also valid.
+- If a repository image is suitable and publicly accessible, pin it to the PR head commit SHA, not a branch name. Branch names containing `/` make raw asset URLs ambiguous.
+- After posting or editing the comment, read it back through GitHub and verify that the Markdown contains real line breaks and that no embedded asset returns 404.
+- Keep the artifact source in the PR branch and label conceptual mockups as visual summaries rather than executable proof.
+
 ## Subagent Prompt
 
 Use this shape:
 
 ```text
-Review PR <number-or-url> in <repo-path>. Focus on bugs, regressions, security/privacy risks, performance issues, and missing tests. Return findings first, ordered by severity, with file/line references and concise fix suggestions. Do not implement changes.
+Review PR <number-or-url> in <repo-path>. Focus on bugs, regressions, security/privacy risks, performance issues, and missing tests. Do not implement changes.
+
+You MUST end with a final answer in this exact shape:
+
+Findings
+- <severity> — <title>
+  <file:line>
+  Problem: <what can go wrong>
+  Fix: <concise fix>
+
+If there are no findings, use exactly:
+
+Findings
+No findings.
+
+Tests run
+- <commands run, or "Not run: read-only review">
+
+Do not stop after tool use. Do not return tool names. Do not omit the final answer.
 ```
 
 ## Output
