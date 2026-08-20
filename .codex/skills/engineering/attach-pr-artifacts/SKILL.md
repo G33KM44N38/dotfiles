@@ -5,7 +5,9 @@ description: Upload local screenshots, images, GIFs, and proof videos to a GitHu
 
 # Attach PR artifacts
 
-Use GitHub's authenticated web attachment control for binary uploads. Use `gh` for PR discovery, metadata, and read-back verification. GitHub's documented REST and GraphQL APIs do not provide the normal PR attachment upload flow, so do not invent an API endpoint or use an undocumented upload endpoint.
+Upload binaries directly with the GitHub token managed by `gh`. Use `gh` for PR discovery, body or comment updates, and read-back verification. This workflow does not need Chrome, browser control, browser cookies, or Computer Use.
+
+The upload helper uses GitHub's token-authenticated `uploads.github.com/user-attachments/assets` endpoint. This endpoint is not part of GitHub's documented REST API, so treat HTTP failures as a possible upstream protocol change and report them honestly.
 
 ## Workflow
 
@@ -26,14 +28,13 @@ Use GitHub's authenticated web attachment control for binary uploads. Use `gh` f
    - Preserve the rest of the body byte-for-byte where practical. Read the current body before editing.
    - Use a new PR comment only when the user asks for a comment or the body cannot be edited.
 
-4. Upload through the GitHub PR page.
-   - Use an available Browser or Chrome browser-control skill and follow its setup instructions. Do not use Computer Use unless the user explicitly requested Computer Use.
-   - Open the resolved PR URL and use the Conversation tab.
-   - Edit the PR body or open the requested comment box. Place the cursor inside the intended section.
-   - Use GitHub's `Attach files` control and select the local file. Do not paste base64, a `file://` URL, or a repository path.
-   - Wait for each upload to finish. Success means the editor contains a stable `https://github.com/user-attachments/assets/...` URL and no upload placeholder or progress indicator remains.
-   - Add useful alt text to images. Keep the uploaded URL unchanged.
-   - Save the body or submit the comment only after every upload has finished.
+4. Upload through GitHub's user-attachments endpoint.
+   - Run `scripts/upload_artifacts.sh --repo OWNER/REPO <ready-paths...>` from this skill directory.
+   - The helper resolves the repository's numeric ID, checks push permission, reads the active token with `gh auth token`, uploads raw bytes, and prints Markdown containing stable `https://github.com/user-attachments/...` URLs.
+   - Use `--json` when structured output is easier to consume. It prints one JSON object per artifact with `path`, `name`, `kind`, `content_type`, `url`, and `markdown` fields.
+   - Keep each returned URL unchanged. Replace the filename alt text for images with a useful description before publishing.
+   - Use `gh pr edit --body-file` to update a PR body. Use `gh pr comment --body-file` only when the chosen destination is a new comment.
+   - Save only after every upload succeeds. Uploading creates the attachment, but it does not edit the PR by itself.
 
 5. Format the result.
    - Image: `![Short description](https://github.com/user-attachments/assets/...)`
@@ -50,17 +51,19 @@ Use GitHub's authenticated web attachment control for binary uploads. Use `gh` f
 
 6. Verify after saving.
    - Read the saved PR body or comment with `gh` and confirm that every expected attachment URL is present exactly once.
-   - Reopen or refresh the PR page and verify that images render and videos show a playable attachment instead of plain broken text.
+   - Fetch every attachment URL with an authenticated `curl` request and confirm that GitHub returns a successful status and the expected content type. Do not use a browser for verification.
    - Check that labels match the right files and that the rest of the PR body was preserved.
-   - Report success only after this read-back and rendered-page check.
+   - Report success only after the API read-back and attachment checks pass.
 
 ## Failure handling
 
-- If GitHub asks for authentication, ask the user to sign in to the selected browser and continue after they confirm.
-- If upload remains in progress, wait and inspect again. Do not save a temporary `Uploading...` token.
+- If `gh auth status` fails, ask the user to authenticate `gh` and continue after they confirm.
+- If the upload endpoint returns 401 or 403, verify the active `gh` account and repository permission without printing the token.
+- If it returns 404, verify the numeric repository ID and push permission.
+- If it returns 422, re-run preparation and verify the file type and size. The endpoint may reject a type that the web interface accepts.
+- If the upload protocol changes, stop with the exact HTTP error. Do not fall back to Chrome, browser control, Computer Use, release assets, or repository commits unless the user explicitly requests another method.
 - If the file is rejected, re-run the preparation script and fix the reported format or size problem. Do not retry the same invalid binary repeatedly.
 - If the PR body already contains stable GitHub user-attachment URLs, reuse them instead of uploading duplicate binaries.
-- If browser control cannot select a local file, stop and give the user the prepared absolute path plus the exact destination section. Do not claim the artifact was attached.
 - If saving changed unrelated PR text, restore the prior body and retry with the smallest edit.
 
 ## Safety
