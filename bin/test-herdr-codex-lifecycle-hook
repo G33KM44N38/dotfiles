@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -91,6 +92,29 @@ printf 'sound\\n' >>\"$HERDR_TEST_SOUND_LOG\"
         assert "--state working" in invoke("working")
         assert "--state idle" in invoke("stop")
         assert sound_log.read_text().splitlines() == ["sound", "sound"]
+
+        # A stale or partially migrated cache must not make an optional Stop
+        # hook fail the Codex turn. Treat valid non-object JSON as empty state
+        # and replace it with the current schema.
+        state_key = hashlib.sha256(
+            b"proof:p1\0parent-session"
+        ).hexdigest()
+        malformed_state = state_dir / f"{state_key}.json"
+        malformed_state.write_text("[]\n")
+        assert "--state idle" in invoke("stop")
+        repaired_state = json.loads(malformed_state.read_text())
+        assert isinstance(repaired_state, dict)
+        assert repaired_state["parent_waiting"] is True
+
+        # Codex supplies an object today, but malformed stdin should remain a
+        # harmless no-op rather than escaping as exit code 1.
+        subprocess.run(
+            [str(HOOK), "stop"],
+            input="[]",
+            text=True,
+            env=env,
+            check=True,
+        )
 
     print("herdr-codex-parent-child-lifecycle-regression-ok")
     return 0

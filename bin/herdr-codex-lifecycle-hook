@@ -66,12 +66,22 @@ def lifecycle_transition(
             fcntl.flock(state_file, fcntl.LOCK_EX)
             state_file.seek(0)
             try:
-                state = json.load(state_file)
+                loaded_state = json.load(state_file)
+                state = loaded_state if isinstance(loaded_state, dict) else {}
             except (json.JSONDecodeError, OSError):
                 state = {}
 
             title_initialized = state.get("title_initialized") is True
-            children = set(state.get("children", []))
+            loaded_children = state.get("children", [])
+            children = (
+                {
+                    child
+                    for child in loaded_children
+                    if isinstance(child, str) and child
+                }
+                if isinstance(loaded_children, list)
+                else set()
+            )
             parent_waiting = bool(state.get("parent_waiting", False))
             subject = state.get("subject")
             if not isinstance(subject, str) or not subject:
@@ -526,6 +536,8 @@ def main() -> int:
     try:
         payload = json.load(sys.stdin)
     except (json.JSONDecodeError, OSError):
+        payload = {}
+    if not isinstance(payload, dict):
         payload = {}
     session_id = payload.get("session_id")
     if not isinstance(session_id, str) or not session_id:
