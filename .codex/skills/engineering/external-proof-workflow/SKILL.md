@@ -37,7 +37,7 @@ Use this skill when a task leaves the codebase and touches Linear, GitHub, Chrom
 
 5. PR body proof section.
    - Include Linear issue ID/link.
-   - Include screenshot and MP4 artifact names/paths if upload is unavailable.
+   - Use `$attach-pr-artifacts` to upload screenshots and MP4 files into the PR. If upload is blocked, list the prepared paths and state that they are not attached yet.
    - Include exact validation commands run.
    - Include before/after numbers in the PR body, not only in the video.
 

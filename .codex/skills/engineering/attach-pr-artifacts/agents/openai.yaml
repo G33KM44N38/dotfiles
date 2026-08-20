@@ -1,0 +1,4 @@
+interface:
+  display_name: "Attach PR Artifacts"
+  short_description: "Upload images and videos to GitHub PRs"
+  default_prompt: "Use $attach-pr-artifacts to add these screenshots and videos to the current pull request."
