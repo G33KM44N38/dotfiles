@@ -18,6 +18,7 @@ import {
   DisableKeyConfig,
   createKeyLayer,
   createModifierManipulator,
+  CorneKeyboardCondition,
 } from "./utils";
 
 const hyperSubLayers = createHyperSubLayers({
@@ -177,6 +178,25 @@ const rules: KarabinerRules[] = [
         ],
         from: {
           key_code: "caps_lock",
+          modifiers: { optional: ["any"] },
+        },
+        to_if_held_down: [{ apple_vendor_top_case_key_code: "keyboard_fn" }],
+        to_if_alone: [{ key_code: "escape" }],
+        parameters: {
+          "basic.to_if_held_down_threshold_milliseconds": 500,
+        },
+      },
+    ],
+  },
+  {
+    description: "corne escape to escape/fn",
+    manipulators: [
+      {
+        description: "corne escape -> fn (hold), escape (tap)",
+        type: "basic",
+        conditions: [CorneKeyboardCondition],
+        from: {
+          key_code: "escape",
           modifiers: { optional: ["any"] },
         },
         to_if_held_down: [{ apple_vendor_top_case_key_code: "keyboard_fn" }],

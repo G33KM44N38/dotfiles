@@ -394,13 +394,17 @@ const BuiltinKeyboardCondition: DeviceCondition = {
   description: "MacBook Pro built-in keyboard",
 };
 
-export const CrkdbKeyboardCondition: DeviceCondition = {
+export const CorneKeyboardCondition: DeviceCondition = {
   type: "device_if",
   identifiers: [
+    {
+      vendor_id: 18003,
+      product_id: 1,
+    },
     {
       vendor_id: 7504,
       product_id: 24926,
     },
   ],
-  description: "Kylian's crkdb (ZMK Project)",
+  description: "Kylian's wired and wireless Corne keyboards",
 };
