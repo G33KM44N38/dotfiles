@@ -1,0 +1,35 @@
+export ZSH="$HOME/.oh-my-zsh"
+export PATH="$HOME/.dotfiles/bin:$HOME/.local/bin:$HOME/go/bin:$HOME/.cargo/bin:$PATH"
+export EDITOR="nvim"
+export VISUAL="nvim"
+export PNPM_HOME="$HOME/.local/share/pnpm"
+export PATH="$PNPM_HOME:$PATH"
+
+ZSH_THEME="robbyrussell"
+plugins=(git)
+
+if [[ -r "$ZSH/oh-my-zsh.sh" ]]; then
+  source "$ZSH/oh-my-zsh.sh"
+fi
+
+for config in path.zsh alias.zsh keymap.zsh function.zsh; do
+  if [[ -r "$HOME/.config/zsh/$config" ]]; then
+    source "$HOME/.config/zsh/$config"
+  fi
+done
+
+if [[ -r "$HOME/.cargo/env" ]]; then
+  source "$HOME/.cargo/env"
+fi
+
+if command -v zoxide >/dev/null 2>&1; then
+  eval "$(zoxide init zsh)"
+fi
+
+if [[ -r /usr/share/doc/fzf/examples/key-bindings.zsh ]]; then
+  source /usr/share/doc/fzf/examples/key-bindings.zsh
+fi
+
+if [[ -r /usr/share/doc/fzf/examples/completion.zsh ]]; then
+  source /usr/share/doc/fzf/examples/completion.zsh
+fi

@@ -13,7 +13,7 @@
 # @raycast.author me
 
 # Get script directory and load modules
-SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 # Load configuration first
 source "$SCRIPT_DIR/lib/config.sh"
@@ -26,6 +26,8 @@ source "$SCRIPT_DIR/lib/deps.sh"
 # Main execution
 main() {
     set -e
+
+    local playbook
 
     # Load configuration
     if ! load_config; then
@@ -57,6 +59,15 @@ main() {
     # Change to dotfiles directory
     cd "$DOTFILES_DIR" || exit 1
 
+    playbook="$DOTFILES_DIR/install/main.yaml"
+    if _is_linux; then
+        if [[ "$(_get_linux_distro)" != "ubuntu" ]]; then
+            _error "The Linux installer currently supports Ubuntu only"
+            exit 1
+        fi
+        playbook="$DOTFILES_DIR/install/ubuntu.yaml"
+    fi
+
     # Update Ansible Galaxy
     if ! update_ansible_galaxy; then
         exit 1
@@ -65,9 +76,9 @@ main() {
     # Run Ansible playbook
     _task "Running Ansible playbook"
     if [[ -f "$VAULT_SECRET" ]]; then
-        ansible-playbook --ask-become-pass --vault-password-file "$VAULT_SECRET" "$DOTFILES_DIR/install/main.yaml" "$@"
+        ansible-playbook --ask-become-pass --vault-password-file "$VAULT_SECRET" "$playbook" "$@"
     else
-        ansible-playbook --ask-become-pass "$DOTFILES_DIR/install/main.yaml" "$@"
+        ansible-playbook --ask-become-pass "$playbook" "$@"
     fi
     _task_done
 
@@ -78,20 +89,22 @@ main() {
         touch "$IS_FIRST_RUN"
     fi
 
-    # Clean up old zshrc if it exists
-    if [[ -f ~/.zshrc ]]; then
-        rm -f ~/.zshrc
+    if _is_macos; then
+        # The macOS package still uses the repository-wide Stow setup.
+        if [[ -f ~/.zshrc ]]; then
+            rm -f ~/.zshrc
+        fi
+
+        _task "Running final setup tasks"
+        if _cmd_safe "cd ~/.dotfiles/ && stow . --ignore=node_modules && ./decrypt-sensitive-files.sh" "Final setup with stow and decryption"; then
+            _task_done
+        else
+            _error "Final setup tasks failed"
+            exit 1
+        fi
     fi
 
-    # Final setup tasks
-    _task "Running final setup tasks"
-    if _cmd_safe "cd ~/.dotfiles/ && stow . --ignore=node_modules && ./decrypt-sensitive-files.sh" "Final setup with stow and decryption"; then
-        _task_done
-        _success "Dotfiles installation completed successfully!"
-    else
-        _error "Final setup tasks failed"
-        exit 1
-    fi
+    _success "Dotfiles installation completed successfully!"
 }
 
 # Handle command line arguments

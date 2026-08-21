@@ -81,7 +81,7 @@ local function finish_optimistic_switch(token, path, ok, err)
 end
 
 local function build_tmux_refresh_command(session_name, target_path)
-	local layout_script = shell_escape("/Users/boss/.dotfiles/bin/tmux_layout.sh")
+	local layout_script = shell_escape(vim.fn.expand("~/.dotfiles/bin/tmux_layout.sh"))
 	local session_target = shell_escape(session_name)
 	local target_path_escaped = shell_escape(target_path)
 

@@ -1,7 +1,21 @@
+---
 - name: ZSH | Install zsh
-  become: yes
-  ansible.builtin.shell: sudo apt install zsh
+  become: true
+  ansible.builtin.apt:
+    name: zsh
+    state: present
 
-- name: ZSH | Install oh-my-zsh
-  ansible.builtin.shell: sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-  ignore_errors: yes
+- name: ZSH | Download oh-my-zsh installer
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
+    dest: /tmp/install-oh-my-zsh.sh
+    mode: "0755"
+
+- name: ZSH | Install oh-my-zsh without starting a shell
+  ansible.builtin.command: /tmp/install-oh-my-zsh.sh --unattended --keep-zshrc
+  args:
+    creates: "{{ ansible_env.HOME }}/.oh-my-zsh/oh-my-zsh.sh"
+  environment:
+    CHSH: "no"
+    RUNZSH: "no"
+    KEEP_ZSHRC: "yes"

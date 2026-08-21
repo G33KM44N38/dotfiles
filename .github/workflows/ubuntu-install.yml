@@ -1,0 +1,36 @@
+---
+name: Ubuntu installer
+
+"on":
+  push:
+    paths:
+      - ".github/workflows/ubuntu-install.yml"
+      - "bin/dotfiles"
+      - "bin/lib/**"
+      - "install-online.sh"
+      - "install/ubuntu.yaml"
+      - "install/requirements.yml"
+      - "install/roles/**"
+  pull_request:
+    paths:
+      - ".github/workflows/ubuntu-install.yml"
+      - "bin/dotfiles"
+      - "bin/lib/**"
+      - "install-online.sh"
+      - "install/ubuntu.yaml"
+      - "install/requirements.yml"
+      - "install/roles/**"
+
+jobs:
+  syntax:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Ansible
+        run: sudo apt-get update && sudo apt-get install -y ansible
+      - name: Install Ansible collections
+        run: ansible-galaxy install -r install/requirements.yml
+      - name: Check shell scripts
+        run: bash -n bin/dotfiles bin/lib/*.sh install-online.sh
+      - name: Check Ubuntu playbook
+        run: ansible-playbook --syntax-check install/ubuntu.yaml

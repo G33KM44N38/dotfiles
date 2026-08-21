@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly remote_target="${HERDR_UBUNTU_TARGET:-kylian@kylian-ps42-8rb}"
+readonly dotfiles_root="${DOTFILES_ROOT:-$HOME/.dotfiles}"
+readonly remote_home="/home/kylian"
+readonly remote_dotfiles="$remote_home/.dotfiles"
+
+sync_paths=(
+  .config/herdr/config.toml
+  bin/herdr-agent-completion-sound
+  bin/herdr-equalize-panes
+  bin/herdr-focus-agent-status
+  bin/herdr-focus-tab
+  bin/herdr-git.sh
+  bin/herdr-navigate
+  bin/herdr-run-codex-agent
+  bin/herdr-select-worktree
+  bin/herdr-start-codex
+  bin/herdr-worktree
+  bin/herdr-worktree-main
+  bin/herdr-worktree-picker
+  bin/herdr-worktree-release
+  bin/herdr-worktree-root
+  dev/herdr_worktree_picker_go
+  go.mod
+  go.sum
+)
+
+for path in "${sync_paths[@]}"; do
+  if [[ ! -e "$dotfiles_root/$path" ]]; then
+    printf 'sync-herdr-ubuntu: missing source: %s\n' "$dotfiles_root/$path" >&2
+    exit 1
+  fi
+done
+
+readonly nvim_file_list="$(mktemp "${TMPDIR:-/tmp}/sync-herdr-ubuntu.XXXXXX")"
+cleanup() {
+  rm -f -- "$nvim_file_list"
+}
+trap cleanup EXIT
+
+git -C "$dotfiles_root" ls-files .config/nvim > "$nvim_file_list"
+
+ssh "$remote_target" "mkdir -p '$remote_dotfiles' '$remote_home/.config/herdr'"
+
+(
+  cd "$dotfiles_root"
+  rsync -azR -e ssh "${sync_paths[@]}" "$remote_target:$remote_dotfiles/"
+  rsync -azR --files-from="$nvim_file_list" -e ssh ./ "$remote_target:$remote_dotfiles/"
+)
+
+ssh "$remote_target" "
+  set -eu
+  sed -i \
+    -e 's#/Users/boss#/home/kylian#g' \
+    -e 's#coding/work#code#g' \
+    -e 's#Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain#Documents/Second_Brain#g' \
+    '$remote_dotfiles/.config/herdr/config.toml'
+  find '$remote_dotfiles/.config/nvim' -type f -name '*.lua' -exec sed -i \
+    -e 's#/Users/boss#/home/kylian#g' \
+    -e 's#coding/work#code#g' \
+    -e 's#Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain#Documents/Second_Brain#g' \
+    {} +
+  chmod 0755 '$remote_dotfiles'/bin/herdr-*
+  if test ! -e '$remote_home/.config/herdr/config.toml'; then
+    ln -s '$remote_dotfiles/.config/herdr/config.toml' '$remote_home/.config/herdr/config.toml'
+  fi
+  test \"\$(readlink '$remote_home/.config/herdr/config.toml')\" = '$remote_dotfiles/.config/herdr/config.toml'
+  if test ! -e '$remote_home/.config/nvim'; then
+    ln -s '$remote_dotfiles/.config/nvim' '$remote_home/.config/nvim'
+  fi
+  test \"\$(readlink '$remote_home/.config/nvim')\" = '$remote_dotfiles/.config/nvim'
+  python3 -c 'import tomllib; tomllib.load(open(\"/home/kylian/.config/herdr/config.toml\", \"rb\"))'
+  bash -n \
+    '$remote_dotfiles/bin/herdr-start-codex' \
+    '$remote_dotfiles/bin/herdr-run-codex-agent' \
+    '$remote_dotfiles/bin/herdr-worktree-picker' \
+    '$remote_dotfiles/bin/herdr-git.sh'
+"
+
+printf 'Herdr config synced to %s.\n' "$remote_target"

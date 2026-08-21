@@ -11,6 +11,7 @@ from pathlib import Path
 CHILD_SEARCH_ROOTS = (
     "Library/Mobile Documents/iCloud~md~obsidian/Documents",
     "backup",
+    "code",
     "coding",
     "coding/work",
     "coding/perso",
@@ -18,7 +19,7 @@ CHILD_SEARCH_ROOTS = (
     "learning",
 )
 
-EXACT_PATHS = (".dotfiles", "backup", "coding")
+EXACT_PATHS = (".dotfiles", "backup", "code", "coding")
 
 
 def fail(message: str, code: int = 1) -> None:

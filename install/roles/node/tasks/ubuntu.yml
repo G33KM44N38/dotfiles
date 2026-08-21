@@ -1,10 +1,26 @@
-- name: NODE | Install node
+---
+- name: NODE | Check installed version
+  ansible.builtin.command: node --version
+  register: node_version
+  changed_when: false
+  failed_when: false
+
+- name: NODE | Download NodeSource 22 setup
+  ansible.builtin.get_url:
+    url: https://deb.nodesource.com/setup_22.x
+    dest: /tmp/nodesource-setup.sh
+    mode: "0755"
+  when: node_version.rc != 0 or (node_version.stdout | regex_replace('^v', '') | split('.') | first | int) < 22
+
+- name: NODE | Configure NodeSource 22 repository
+  become: true
+  ansible.builtin.command: /tmp/nodesource-setup.sh
+  when: node_version.rc != 0 or (node_version.stdout | regex_replace('^v', '') | split('.') | first | int) < 22
+
+- name: NODE | Install Node.js 22
+  become: true
   ansible.builtin.apt:
     name: nodejs
-    allow_change_held_packages: true
-
-- name: NODE | Install pi-coding-agent globally
-  community.general.npm:
-    name: "@mariozechner/pi-coding-agent"
-    global: true
     state: present
+    update_cache: true
+  when: node_version.rc != 0 or (node_version.stdout | regex_replace('^v', '') | split('.') | first | int) < 22

@@ -1,0 +1,38 @@
+---
+- name: Install Ubuntu workstation packages
+  become: true
+  ansible.builtin.apt:
+    name:
+      - build-essential
+      - ca-certificates
+      - cmake
+      - curl
+      - fd-find
+      - fzf
+      - git
+      - gnupg
+      - jq
+      - openssh-client
+      - python3
+      - python3-pip
+      - ripgrep
+      - stow
+      - unzip
+      - zoxide
+      - zsh
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Create local bin directory
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.local/bin"
+    state: directory
+    mode: "0755"
+
+- name: Expose fd under its standard command name
+  ansible.builtin.file:
+    src: /usr/bin/fdfind
+    dest: "{{ ansible_env.HOME }}/.local/bin/fd"
+    state: link
+  when: ansible_distribution == 'Ubuntu'

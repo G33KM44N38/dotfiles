@@ -1,6 +1,6 @@
 ---
-- name: GO | installation
+- name: Install GitHub CLI
   become: true
   ansible.builtin.apt:
-    name: golang-go
+    name: gh
     state: present

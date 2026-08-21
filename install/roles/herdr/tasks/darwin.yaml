@@ -5,6 +5,15 @@
     state: present
     update_homebrew: yes
 
+- name: Check Herdr agent integration versions
+  ansible.builtin.command: herdr integration status
+  register: herdr_integration_status
+  changed_when: false
+
+- name: Install current Herdr Codex integration
+  ansible.builtin.command: herdr integration install codex
+  when: "'codex: current' not in herdr_integration_status.stdout"
+
 - name: Create Herdr config directory
   ansible.builtin.file:
     path: "{{ ansible_facts['env']['HOME'] }}/.config/herdr"

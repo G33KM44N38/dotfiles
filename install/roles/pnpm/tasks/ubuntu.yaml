@@ -1,0 +1,7 @@
+---
+- name: Install pnpm globally
+  become: true
+  community.general.npm:
+    name: pnpm
+    global: true
+    state: latest

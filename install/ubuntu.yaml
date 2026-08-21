@@ -1,0 +1,72 @@
+---
+- name: Configure Ubuntu workstation
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  gather_subset:
+    - min
+
+  pre_tasks:
+    - name: Require Ubuntu
+      ansible.builtin.assert:
+        that:
+          - ansible_system == 'Linux'
+          - ansible_distribution == 'Ubuntu'
+        fail_msg: "This playbook supports Ubuntu only."
+
+  tasks:
+    - name: Install Ubuntu base packages
+      ansible.builtin.include_role:
+        name: ubuntu-bootstrap
+
+    - name: Install Node.js
+      ansible.builtin.include_role:
+        name: node
+
+    - name: Install Neovim
+      ansible.builtin.include_role:
+        name: nvim
+
+    - name: Install lazygit
+      ansible.builtin.include_role:
+        name: lazygit
+
+    - name: Install Go
+      ansible.builtin.include_role:
+        name: go
+
+    - name: Install zsh
+      ansible.builtin.include_role:
+        name: zsh
+
+    - name: Install portable dotfiles
+      ansible.builtin.include_role:
+        name: ubuntu-dotfiles
+
+    - name: Install Rust
+      ansible.builtin.include_role:
+        name: rust
+
+    - name: Install pnpm
+      ansible.builtin.include_role:
+        name: pnpm
+
+    - name: Install GitHub CLI
+      ansible.builtin.include_role:
+        name: gh
+
+    - name: Install Codex CLI
+      ansible.builtin.include_role:
+        name: codex
+
+    - name: Install Herdr
+      ansible.builtin.include_role:
+        name: herdr
+
+    - name: Install Hunk diff viewer
+      ansible.builtin.include_role:
+        name: hunk
+
+    - name: Install Tailscale
+      ansible.builtin.include_role:
+        name: tailscale

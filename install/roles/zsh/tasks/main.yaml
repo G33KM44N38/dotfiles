@@ -6,9 +6,9 @@
 - name: ZSH | Run darwin task
   ansible.builtin.import_tasks: darwin.yaml
   when: ansible_system == 'Darwin'
-
 - name: ZSH | Include environment variables task
   ansible.builtin.import_tasks: env_vars.yaml
+  when: ansible_system == 'Darwin'
 
 - name: ZSH | Source custom environment variables in .zshrc
   ansible.builtin.lineinfile:
@@ -16,5 +16,4 @@
     line: 'source "{{ ansible_env.HOME }}/.group_env/env.zsh"'
     state: present
     insertafter: EOF
-
-
+  when: ansible_system == 'Darwin'

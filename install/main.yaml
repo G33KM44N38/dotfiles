@@ -118,15 +118,25 @@
      - name: Run roles
        ansible.builtin.include_role:
          name: nvim
-     - name: Run roles
+     - name: Run Codex role
        ansible.builtin.include_role:
          name: codex
+         apply:
+           tags:
+             - codex
+       tags:
+         - codex
      - name: Run roles
        ansible.builtin.include_role:
          name: pnpm
-     - name: Run roles
+     - name: Run Herdr role
        ansible.builtin.include_role:
          name: herdr
+         apply:
+           tags:
+             - herdr
+       tags:
+         - herdr
      - name: Run roles
        ansible.builtin.include_role:
          name: hunk

@@ -19,7 +19,12 @@ fi
 
 lock_path="$lock_dir/$workspace_id.lockdir"
 if ! mkdir "$lock_path" 2>/dev/null; then
-  lock_age="$(( $(date +%s) - $(stat -f %m "$lock_path" 2>/dev/null || printf '0') ))"
+  if lock_mtime="$(stat -f %m "$lock_path" 2>/dev/null)"; then
+    :
+  else
+    lock_mtime="$(stat -c %Y "$lock_path" 2>/dev/null || printf '0')"
+  fi
+  lock_age="$(( $(date +%s) - lock_mtime ))"
   if (( lock_age > 60 )); then
     rm -rf "$lock_path"
     mkdir "$lock_path" 2>/dev/null || exit 0
@@ -153,7 +158,7 @@ if [[ "$pane_ready" == false ]]; then
   exit 1
 fi
 
-launch_command="/Users/boss/.dotfiles/bin/herdr-run-codex-agent --interactive --close-tab-on-exit"
+launch_command="$HOME/.dotfiles/bin/herdr-run-codex-agent --interactive --close-tab-on-exit"
 if ! herdr pane run "$pane_id" "$launch_command" >/dev/null; then
   printf '\nCould not start %s.\n' "$agent_name" >&2
   if [[ "$created_tab" == true ]]; then

@@ -1,4 +1,4 @@
-local workspace_path = "/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/"
+local workspace_path = require("root.second_brain").path
 
 return {
 	-- "supermaven-inc/supermaven-nvim",

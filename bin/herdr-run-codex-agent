@@ -3,7 +3,7 @@ set -euo pipefail
 
 readonly report_source="boss:codex-exec-wrapper"
 readonly title_source="boss:codex-exec-title"
-readonly completion_sound=/Users/boss/.dotfiles/bin/herdr-agent-completion-sound
+readonly completion_sound="$HOME/.dotfiles/bin/herdr-agent-completion-sound"
 lifecycle_reporter_pid=
 
 can_report() {

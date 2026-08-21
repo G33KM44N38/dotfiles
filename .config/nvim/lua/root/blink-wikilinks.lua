@@ -3,9 +3,9 @@
 
 -- Get the workspace path - try multiple sources
 local function get_workspace_path()
-	-- Common Obsidian vault paths for your setup
+	local second_brain = require("root.second_brain")
 	local obsidian_paths = {
-		"/Users/boss/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/",
+		second_brain.path,
 	}
 
 	for _, p in ipairs(obsidian_paths) do

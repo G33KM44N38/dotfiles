@@ -2,14 +2,15 @@
 
 ## Install
 
-### Option 1: One-liner (Recommended)
+### Option 1: one-liner
+
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/G33KM44N38/dotfiles/main/install-online.sh)"
 ```
 
 ### Option 2: Manual clone and run
 ```bash
-git clone git@github.com:G33KM44N38/dotfiles.git ~/.dotfiles
+git clone https://github.com/G33KM44N38/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
 ./bin/dotfiles
 ```
@@ -20,12 +21,19 @@ curl -fsSL -o /tmp/install-dotfiles.sh https://raw.githubusercontent.com/G33KM44
 bash /tmp/install-dotfiles.sh
 ```
 
-## Linux Support
+## Ubuntu
 
-This dotfiles setup now supports Linux with the same keybindings and tools as macOS!
+The installer detects Ubuntu and runs `install/ubuntu.yaml`. It installs the core
+terminal and development tools, links the portable Neovim, Ghostty, and Zsh
+configuration, and installs Tailscale. It does not link macOS settings or
+credential files into the Linux home directory.
 
-- **Window Manager**: i3 (equivalent to aerospace)
-- **Keybindings**: sxhkd + xcape (Karabiner equivalent)
-- **Same shortcuts**: Hyper key, layers, and muscle memory work on both platforms
+After the playbook finishes, authenticate the tools that need an account:
 
-See `.config/README-linux-keymap.md` for Linux-specific setup instructions.
+```bash
+sudo tailscale up
+gh auth login
+codex login
+```
+
+Restart the session once so Zsh becomes the login shell.

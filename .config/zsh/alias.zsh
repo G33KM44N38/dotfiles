@@ -44,6 +44,8 @@ alias ts="tmux list-sessions"
 
 # herdr
 alias h='herdr'
+alias syncubuntu='$HOME/.dotfiles/bin/sync-herdr-ubuntu'
+alias hubuntu='$HOME/.dotfiles/bin/sync-herdr-ubuntu && herdr --remote ssh://kylian@kylian-ps42-8rb --remote-keybindings server'
 
 # Ensure kill-server runs cleanup first
 tmux() {

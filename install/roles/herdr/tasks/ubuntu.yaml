@@ -1,0 +1,59 @@
+---
+- name: HERDR | Require a supported architecture
+  ansible.builtin.assert:
+    that:
+      - ansible_architecture in ['x86_64', 'aarch64']
+    fail_msg: "Herdr supports x86_64 and aarch64 on Linux."
+
+- name: HERDR | Read latest release metadata
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/herdrdev/herdr/releases/latest
+    return_content: true
+  register: herdr_release
+
+- name: HERDR | Select Linux release asset
+  ansible.builtin.set_fact:
+    herdr_asset: >-
+      {{ herdr_release.json.assets
+         | selectattr(
+             'name',
+             'equalto',
+             'herdr-linux-' +
+             ('x86_64' if ansible_architecture == 'x86_64' else 'aarch64')
+           )
+         | first }}
+
+- name: HERDR | Install executable
+  ansible.builtin.get_url:
+    url: "{{ herdr_asset.browser_download_url }}"
+    dest: "{{ ansible_env.HOME }}/.local/bin/herdr"
+    checksum: "{{ herdr_asset.digest }}"
+    mode: "0755"
+
+- name: HERDR | Create config directory
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.config/herdr"
+    state: directory
+    mode: "0755"
+
+- name: HERDR | Install Linux-adapted shared config
+  ansible.builtin.copy:
+    dest: "{{ ansible_env.HOME }}/.config/herdr/config.toml"
+    mode: "0644"
+    content: >-
+      {{ lookup('ansible.builtin.file', herdr_config_source)
+         | replace('/Users/boss', ansible_env.HOME)
+         | replace('coding/work', 'code')
+         | replace(mac_second_brain, 'Documents/Second_Brain') }}
+  vars:
+    herdr_config_source: >-
+      {{ playbook_dir }}/../.config/herdr/config.toml
+    mac_second_brain: >-
+      Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain
+
+- name: HERDR | Install current Codex integration
+  ansible.builtin.command: >-
+    {{ ansible_env.HOME }}/.local/bin/herdr integration install codex
+  register: herdr_codex_integration
+  changed_when: >-
+    'installed' in herdr_codex_integration.stdout | lower

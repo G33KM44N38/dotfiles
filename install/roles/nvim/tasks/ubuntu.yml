@@ -1,12 +1,27 @@
-- name: NVIM | Install nvim
-  become: yes
-  ansible.builtin.shell: |
-     curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
-     sudo rm -rf /opt/nvim
-     sudo tar -C /opt -xzf nvim-linux-x86_64.tar.gz
-     sudo ln -sf /opt/nvim-linux-x86_64/bin/nvim /usr/local/bin/nvim
-     echo 'export PATH="/opt/nvim-linux-x86_64/bin:$PATH"' >> ~/.bashrc
-     echo 'export PATH="/opt/nvim-linux-x86_64/bin:$PATH"' >> ~/.zshrc
+---
+- name: NVIM | Download latest x86_64 release
+  ansible.builtin.get_url:
+    url: https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
+    dest: /tmp/nvim-linux-x86_64.tar.gz
+    mode: "0644"
+  when: ansible_architecture == 'x86_64'
+
+- name: NVIM | Install latest x86_64 release
+  become: true
+  ansible.builtin.unarchive:
+    src: /tmp/nvim-linux-x86_64.tar.gz
+    dest: /opt
+    remote_src: true
+    creates: /opt/nvim-linux-x86_64/bin/nvim
+  when: ansible_architecture == 'x86_64'
+
+- name: NVIM | Link executable
+  become: true
+  ansible.builtin.file:
+    src: /opt/nvim-linux-x86_64/bin/nvim
+    dest: /usr/local/bin/nvim
+    state: link
+  when: ansible_architecture == 'x86_64'
 
 - name: NVIM | Check tree-sitter CLI
   ansible.builtin.shell: command -v tree-sitter
@@ -14,16 +29,10 @@
   changed_when: false
   failed_when: false
 
-- name: NVIM | Install npm for tree-sitter CLI
-  become: yes
-  ansible.builtin.apt:
-     name: npm
-     state: present
-  when: tree_sitter_cli.rc != 0
-
 - name: NVIM | Install tree-sitter CLI
+  become: true
   community.general.npm:
-     name: tree-sitter-cli
-     global: true
-     state: present
+    name: tree-sitter-cli
+    global: true
+    state: present
   when: tree_sitter_cli.rc != 0

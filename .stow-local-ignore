@@ -1,0 +1,30 @@
+# GNU Stow package-local ignores.
+
+RCS
+.+,v
+
+CVS
+\.\#.+
+\.cvsignore
+
+\.svn
+_darcs
+\.hg
+
+\.git
+\.gitignore
+\.gitmodules
+
+.+~
+\#.*\#
+
+^/README.*
+^/LICENSE.*
+^/COPYING
+
+^node_modules$
+^\.DS_Store$
+^\.stow-ignore$
+
+# Source tooling belongs in the repository, not directly in $HOME.
+^/keyboard-layout(?:/.*)?$

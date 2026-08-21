@@ -1,0 +1,30 @@
+---
+- name: Create config directory
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.config"
+    state: directory
+    mode: "0755"
+
+- name: Link portable application configs
+  ansible.builtin.file:
+    src: "{{ ansible_env.HOME }}/.dotfiles/.config/{{ item }}"
+    dest: "{{ ansible_env.HOME }}/.config/{{ item }}"
+    state: link
+    force: false
+  loop:
+    - ghostty
+    - nvim
+    - zsh
+
+- name: Install Ubuntu zsh configuration
+  ansible.builtin.template:
+    src: zshrc.j2
+    dest: "{{ ansible_env.HOME }}/.zshrc"
+    mode: "0644"
+    backup: true
+
+- name: Use zsh as the login shell
+  become: true
+  ansible.builtin.user:
+    name: "{{ ansible_user_id }}"
+    shell: /usr/bin/zsh

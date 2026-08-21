@@ -1,0 +1,7 @@
+---
+- name: Install latest Codex globally
+  become: true
+  community.general.npm:
+    name: "@openai/codex"
+    global: true
+    state: latest

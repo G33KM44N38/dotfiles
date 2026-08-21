@@ -1,0 +1,24 @@
+---
+- name: Check whether Tailscale is installed
+  ansible.builtin.command: tailscale version
+  register: tailscale_version
+  changed_when: false
+  failed_when: false
+
+- name: Download the official Tailscale installer
+  ansible.builtin.get_url:
+    url: https://tailscale.com/install.sh
+    dest: /tmp/tailscale-install.sh
+    mode: "0755"
+  when: tailscale_version.rc != 0
+
+- name: Install Tailscale
+  become: true
+  ansible.builtin.command: /tmp/tailscale-install.sh
+  when: tailscale_version.rc != 0
+
+- name: Show Tailscale login command
+  ansible.builtin.debug:
+    msg: >-
+      Run 'sudo tailscale up' after the playbook and sign in with the same
+      account as the Mac.

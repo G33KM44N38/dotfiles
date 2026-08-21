@@ -1,0 +1,54 @@
+---
+- name: HUNK | Require a supported architecture
+  ansible.builtin.assert:
+    that:
+      - ansible_architecture in ['x86_64', 'aarch64']
+    fail_msg: "Hunk supports x86_64 and aarch64 on Linux."
+
+- name: HUNK | Read latest release metadata
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/modem-dev/hunk/releases/latest
+    return_content: true
+  register: hunk_release
+
+- name: HUNK | Select Linux release asset
+  ansible.builtin.set_fact:
+    hunk_asset: >-
+      {{ hunk_release.json.assets
+         | selectattr(
+             'name',
+             'equalto',
+             'hunkdiff-linux-' +
+             ('x64' if ansible_architecture == 'x86_64' else 'arm64') +
+             '.tar.gz'
+           )
+         | first }}
+    hunk_asset_directory: >-
+      {{ 'hunkdiff-linux-' +
+         ('x64' if ansible_architecture == 'x86_64' else 'arm64') }}
+
+- name: HUNK | Create extraction directory
+  ansible.builtin.file:
+    path: /tmp/hunk-install
+    state: directory
+    mode: "0755"
+
+- name: HUNK | Download archive
+  ansible.builtin.get_url:
+    url: "{{ hunk_asset.browser_download_url }}"
+    dest: /tmp/hunk-install.tar.gz
+    checksum: "{{ hunk_asset.digest }}"
+    mode: "0644"
+
+- name: HUNK | Extract archive
+  ansible.builtin.unarchive:
+    src: /tmp/hunk-install.tar.gz
+    dest: /tmp/hunk-install
+    remote_src: true
+
+- name: HUNK | Install executable
+  ansible.builtin.copy:
+    src: "/tmp/hunk-install/{{ hunk_asset_directory }}/hunk"
+    dest: "{{ ansible_env.HOME }}/.local/bin/hunk"
+    mode: "0755"
+    remote_src: true
