@@ -1,0 +1,281 @@
+#!/usr/bin/env python3
+"""Exercise a real Herdr custom keybinding through an isolated PTY client."""
+
+from __future__ import annotations
+
+import fcntl
+import os
+from pathlib import Path
+import pty
+import re
+import select
+import shlex
+import shutil
+import struct
+import subprocess
+import sys
+import tempfile
+import termios
+import time
+
+
+HERDR = os.environ.get("HERDR_TEST_BIN", "herdr")
+SESSION = f"ke-{os.getpid()}"
+SEQUENCE_NAME = os.environ.get("HERDR_TEST_ALT_O", "csi-u")
+ALT_O_SEQUENCE = b"\x1bo" if SEQUENCE_NAME == "legacy" else b"\x1b[111;3u"
+BINDING = "prefix+o" if SEQUENCE_NAME == "prefix" else "alt+o"
+if SEQUENCE_NAME == "prefix":
+    ALT_O_SEQUENCE = b"\x02o"
+
+
+def wait_for(predicate, timeout: float) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return True
+        time.sleep(0.05)
+    return predicate()
+
+
+def drain(fd: int) -> bytes:
+    output = bytearray()
+    while select.select([fd], [], [], 0)[0]:
+        try:
+            chunk = os.read(fd, 65536)
+        except OSError:
+            break
+        if not chunk:
+            break
+        output.extend(chunk)
+    return bytes(output)
+
+
+def answer_terminal_queries(fd: int, output: bytes) -> None:
+    replies = bytearray()
+    for index in re.findall(rb"\x1b\]4;(\d+);\?\x1b\\", output):
+        replies.extend(b"\x1b]4;" + index + b";rgb:0000/0000/0000\x1b\\")
+    if b"\x1b]10;?\x1b\\" in output:
+        replies.extend(b"\x1b]10;rgb:ffff/ffff/ffff\x1b\\")
+    if b"\x1b]11;?\x1b\\" in output:
+        replies.extend(b"\x1b]11;rgb:0000/0000/0000\x1b\\")
+    if b"\x1b[16t" in output:
+        replies.extend(b"\x1b[6;16;8t")
+    if b"\x1b[?996n" in output:
+        replies.extend(b"\x1b[?997;1n")
+    if replies:
+        os.write(fd, replies)
+
+
+def settle_terminal(fd: int, initial_output: bytes, timeout: float = 2.0) -> bytes:
+    output = bytearray(initial_output)
+    answer_terminal_queries(fd, initial_output)
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if not select.select([fd], [], [], 0.05)[0]:
+            continue
+        chunk = drain(fd)
+        if not chunk:
+            continue
+        output.extend(chunk)
+        answer_terminal_queries(fd, chunk)
+    return bytes(output)
+
+
+def live_main() -> int:
+    environment = {
+        key: value for key, value in os.environ.items() if not key.startswith("HERDR_")
+    }
+    client_pid, master_fd = pty.fork()
+    if client_pid == 0:
+        os.execvpe(
+            HERDR,
+            [HERDR, "session", "attach", "default"],
+            {**environment, "TERM": "xterm-256color", "TERM_PROGRAM": "ghostty"},
+        )
+    try:
+        fcntl.ioctl(master_fd, termios.TIOCSWINSZ, struct.pack("HHHH", 50, 160, 0, 0))
+        time.sleep(0.8)
+        settle_terminal(master_fd, drain(master_fd))
+        os.write(master_fd, ALT_O_SEQUENCE)
+        deadline = time.monotonic() + 5
+        output = bytearray()
+        while time.monotonic() < deadline and b"herdr worktree >" not in output:
+            if select.select([master_fd], [], [], 0.1)[0]:
+                output.extend(drain(master_fd))
+        if b"herdr worktree >" not in output:
+            raise RuntimeError(
+                "live Alt-o did not open the configured picker; client tail: "
+                f"{bytes(output[-2000:]).decode('utf-8', errors='replace')!r}"
+            )
+        os.write(master_fd, b"\x1b")
+        time.sleep(0.3)
+        print(f"live {SEQUENCE_NAME}: configured-alt-o-picker-e2e-ok")
+        return 0
+    finally:
+        try:
+            os.killpg(client_pid, 15)
+        except ProcessLookupError:
+            pass
+        deadline = time.monotonic() + 1
+        while time.monotonic() < deadline:
+            try:
+                if os.waitpid(client_pid, os.WNOHANG)[0]:
+                    break
+            except ChildProcessError:
+                break
+            time.sleep(0.05)
+        else:
+            try:
+                os.killpg(client_pid, 9)
+            except (ChildProcessError, ProcessLookupError):
+                pass
+        os.close(master_fd)
+
+
+def main() -> int:
+    temp_root = Path(tempfile.mkdtemp(prefix="hke-", dir="/tmp"))
+    config_root = temp_root / "config"
+    config_root.mkdir()
+    config_path = temp_root / "config.toml"
+    marker = temp_root / "alt-o-triggered"
+    command = f"/bin/sh -c {shlex.quote(f'printf triggered > {shlex.quote(str(marker))}; sleep 0.2')}"
+    config_path.write_text(
+        "\n".join(
+            [
+                "onboarding = false",
+                "[keys]",
+                "[[keys.command]]",
+                f'key = "{BINDING}"',
+                'type = "pane"',
+                f"command = {command!r}",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    environment = {
+        key: value for key, value in os.environ.items() if not key.startswith("HERDR_")
+    }
+    environment.update(
+        {
+            "XDG_CONFIG_HOME": str(config_root),
+            "HERDR_CONFIG_PATH": str(config_path),
+        }
+    )
+    server: subprocess.Popen[bytes] | None = None
+    client_pid: int | None = None
+    master_fd = -1
+    try:
+        check = subprocess.run(
+            [HERDR, "config", "check"],
+            env=environment,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        if check.returncode != 0:
+            raise RuntimeError(check.stderr.strip() or check.stdout.strip())
+
+        server = subprocess.Popen(
+            [HERDR, "--session", SESSION, "server"],
+            env=environment,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+        def server_ready() -> bool:
+            result = subprocess.run(
+                [HERDR, "--session", SESSION, "status", "server"],
+                env=environment,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return result.returncode == 0
+
+        if not wait_for(server_ready, 5):
+            status = server.poll()
+            detail = ""
+            if status is not None:
+                stdout, stderr = server.communicate()
+                detail = (stderr or stdout).decode("utf-8", errors="replace").strip()
+            raise RuntimeError(
+                f"isolated Herdr server did not start (status={status}): {detail}"
+            )
+
+        client_pid, master_fd = pty.fork()
+        if client_pid == 0:
+            os.execvpe(
+                HERDR,
+                [HERDR, "session", "attach", SESSION],
+                {**environment, "TERM": "xterm-256color"},
+            )
+        fcntl.ioctl(master_fd, termios.TIOCSWINSZ, struct.pack("HHHH", 40, 120, 0, 0))
+        time.sleep(0.8)
+        initial_output = drain(master_fd)
+        exited_pid, status = os.waitpid(client_pid, os.WNOHANG)
+        if exited_pid:
+            client_pid = None
+            raise RuntimeError(
+                "isolated Herdr client exited before input "
+                f"(status={os.waitstatus_to_exitcode(status)}): "
+                f"{initial_output.decode('utf-8', errors='replace')[-2000:]!r}"
+            )
+        settle_terminal(master_fd, initial_output)
+
+        # A plain printable key must reach the pane and must not run the command.
+        os.write(master_fd, b"o")
+        time.sleep(0.3)
+        if marker.exists():
+            raise RuntimeError("plain o incorrectly triggered the Alt-o command")
+
+        # This is the Kitty/CSI-u representation Ghostty emits for Alt-o while
+        # Herdr's enhanced keyboard mode is active.
+        os.write(master_fd, ALT_O_SEQUENCE)
+        if not wait_for(marker.exists, 3):
+            output = drain(master_fd).decode("utf-8", errors="replace")[-2000:]
+            raise RuntimeError(f"Alt-o did not trigger the pane command; client tail: {output!r}")
+
+        version = subprocess.run(
+            [HERDR, "--version"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        print(f"{version}: alt-o-pane-command-e2e-ok ({SEQUENCE_NAME})")
+        return 0
+    finally:
+        if client_pid is not None:
+            try:
+                os.kill(client_pid, 15)
+            except ProcessLookupError:
+                pass
+            wait_for(lambda: os.waitpid(client_pid, os.WNOHANG)[0] != 0, 2)
+        if master_fd >= 0:
+            os.close(master_fd)
+        if server is not None and server.poll() is None:
+            subprocess.run(
+                [HERDR, "--session", SESSION, "server", "stop"],
+                env=environment,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            try:
+                server.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                server.terminate()
+        trash = shutil.which("trash")
+        if os.environ.get("HERDR_TEST_KEEP") == "1":
+            print(f"kept test directory: {temp_root}", file=sys.stderr)
+        elif trash:
+            subprocess.run([trash, str(temp_root)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+if __name__ == "__main__":
+    try:
+        selected_main = live_main if os.environ.get("HERDR_TEST_LIVE") == "1" else main
+        raise SystemExit(selected_main())
+    except (OSError, RuntimeError, subprocess.CalledProcessError) as exc:
+        print(f"herdr-keybinding-e2e: {exc}", file=sys.stderr)
+        raise SystemExit(1)

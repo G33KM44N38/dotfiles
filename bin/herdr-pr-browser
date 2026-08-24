@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+root="$HOME/.dotfiles"
+source_dir="$root/dev/herdr_pr_browser_go"
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/herdr-pr-browser"
+binary="$cache_dir/herdr-pr-browser"
+
+mkdir -p "$cache_dir"
+if [ ! -x "$binary" ] || find "$source_dir" -name '*.go' -newer "$binary" -print -quit | grep -q .; then
+	tmp_binary="$binary.$$"
+	(cd "$root" && go build -o "$tmp_binary" ./dev/herdr_pr_browser_go)
+	mv "$tmp_binary" "$binary"
+fi
+
+exec "$binary" "$@"

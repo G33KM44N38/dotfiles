@@ -9,6 +9,7 @@ usage() {
 Usage: herdr-git.sh <command>
 
 Commands:
+  open-web    Open the current branch's GitHub PR in the browser
   current-pr   Open or focus the Herdr worktree workspace for the current PR
   pick-pr      Pick an open GitHub PR with fzf, then open or focus its worktree
   list-prs     List open GitHub PRs without selecting one
@@ -398,6 +399,20 @@ current_pr() {
 	open_pr_number "$root" "$pr_number"
 }
 
+open_web() {
+	require_bin git
+	require_bin gh
+
+	local root pr_browser
+	root="$(repo_root "$(current_path)")"
+	[ -n "$root" ] || fail "not in a git repository"
+	pr_browser="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/herdr-pr-browser"
+	[ -x "$pr_browser" ] || fail "missing executable: $pr_browser"
+
+	cd "$root"
+	exec "$pr_browser"
+}
+
 menu() {
 	require_bin fzf
 
@@ -427,6 +442,7 @@ menu() {
 }
 
 case "${1:-help}" in
+	open-web) open_web ;;
 	current-pr) current_pr ;;
 	pick-pr | pr) pick_pr ;;
 	list-prs | list) list_prs ;;

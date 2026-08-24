@@ -1,6 +1,7 @@
 onboarding = false
 # herdr configuration
 # Mirrors the tmux muscle memory from ~/.config/tmux/tmux.conf plus Herdr defaults.
+# After a Herdr upgrade: ~/.dotfiles/bin/test-herdr-regressions
 
 [terminal]
 new_cwd = "follow"
@@ -112,6 +113,12 @@ key = "alt+o"
 type = "pane"
 command = "$HOME/.dotfiles/bin/herdr-worktree-picker"
 
+# Karabiner sends this equivalent chord for physical Corne Alt+O in Ghostty.
+[[keys.command]]
+key = "ctrl+alt+o"
+type = "pane"
+command = "$HOME/.dotfiles/bin/herdr-worktree-picker"
+
 [[keys.command]]
 key = "alt+h"
 type = "shell"
@@ -145,7 +152,7 @@ command = "$HOME/.dotfiles/bin/herdr-start-codex"
 [[keys.command]]
 key = "alt+g"
 type = "pane"
-command = "$HOME/.dotfiles/bin/herdr-git.sh menu"
+command = "$HOME/.dotfiles/bin/herdr-git.sh open-web"
 
 [[keys.command]]
 key = "prefix+a"

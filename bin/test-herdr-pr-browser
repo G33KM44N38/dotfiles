@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+"""Regression checks for the Alt-g pull-request browser."""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import subprocess
+
+
+DOTFILES = Path(__file__).resolve().parent.parent
+BROWSER = DOTFILES / "bin/herdr-pr-browser"
+
+PULLS = [[
+    {
+        "number": 12,
+        "title": "Top of stack",
+        "draft": False,
+        "updated_at": "2026-08-23T02:00:00Z",
+        "head": {"ref": "stack-top"},
+        "base": {"ref": "stack-bottom"},
+        "user": {"login": "alice"},
+        "stack": {
+            "number": 90,
+            "position": 2,
+            "base": {"ref": "main"},
+        },
+    },
+    {
+        "number": 22,
+        "title": "Classic PR",
+        "draft": True,
+        "updated_at": "2026-08-23T03:00:00Z",
+        "head": {"ref": "classic-branch"},
+        "base": {"ref": "main"},
+        "user": {"login": "bob"},
+        "stack": None,
+    },
+    {
+        "number": 11,
+        "title": "Bottom of stack",
+        "draft": False,
+        "updated_at": "2026-08-23T01:00:00Z",
+        "head": {"ref": "stack-bottom"},
+        "base": {"ref": "main"},
+        "user": {"login": "alice"},
+        "stack": {
+            "number": 90,
+            "position": 1,
+            "base": {"ref": "main"},
+        },
+    },
+]]
+
+def run(*, branch: str, query: str = "") -> list[str]:
+    environment = {
+        **os.environ,
+        "HERDR_PR_REPO": "example/repo",
+        "HERDR_PR_BRANCH": branch,
+        "HERDR_PR_PULLS_JSON": json.dumps(PULLS),
+        "HERDR_PR_DRY_RUN": "1",
+    }
+    if query:
+        environment["HERDR_PR_FILTER"] = query
+    result = subprocess.run(
+        [BROWSER],
+        cwd=DOTFILES,
+        env=environment,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=True,
+    )
+    return result.stdout.splitlines()
+
+
+def main() -> int:
+    subprocess.run(
+        ["go", "test", "./dev/herdr_pr_browser_go"],
+        cwd=DOTFILES,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    classic_from_main = run(branch="main", query="PR #22")
+    if classic_from_main != ["open pr 22"]:
+        raise AssertionError(f"classic picker mismatch: {classic_from_main}")
+
+    stack_from_main = run(branch="main", query="S#90")
+    if stack_from_main != ["open pr 11", "open pr 12"]:
+        raise AssertionError(f"stack picker mismatch: {stack_from_main}")
+
+    current_classic = run(branch="classic-branch")
+    if current_classic != ["open pr 22"]:
+        raise AssertionError(f"current classic mismatch: {current_classic}")
+
+    current_stack = run(branch="stack-top")
+    if current_stack != ["open pr 11", "open pr 12"]:
+        raise AssertionError(f"current stack mismatch: {current_stack}")
+
+    print("herdr-pr-browser-ok")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

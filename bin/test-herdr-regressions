@@ -1,0 +1,314 @@
+#!/usr/bin/env python3
+"""Regression contracts for the custom Herdr setup.
+
+Run this after every Herdr upgrade.  It intentionally snapshots keybindings:
+changing a shortcut must be accompanied by an explicit update to this test.
+"""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+import json
+import shlex
+import subprocess
+import sys
+import tomllib
+
+
+DOTFILES = Path(__file__).resolve().parent.parent
+CONFIG = DOTFILES / ".config/herdr/config.toml"
+
+EXPECTED_KEYS = {
+    "prefix": "ctrl+a",
+    "new_tab": "prefix+c",
+    "rename_tab": "prefix+comma",
+    "previous_tab": "prefix+p",
+    "next_tab": "prefix+n",
+    "switch_tab": "prefix+1..9",
+    "close_tab": "prefix+ampersand",
+    "last_pane": "prefix+semicolon",
+    "split_vertical": "prefix+|",
+    "split_horizontal": "prefix+minus",
+    "close_pane": "prefix+x",
+    "zoom": "prefix+z",
+    "focus_pane_left": "prefix+h",
+    "focus_pane_down": "prefix+j",
+    "focus_pane_up": "prefix+k",
+    "focus_pane_right": "prefix+l",
+    "swap_pane_left": "prefix+ctrl+h",
+    "swap_pane_down": "prefix+shift+j",
+    "swap_pane_up": "prefix+shift+k",
+    "swap_pane_right": "prefix+shift+l",
+    "help": "prefix+?",
+    "settings": "prefix+s",
+    "detach": "prefix+q",
+    "reload_config": "prefix+shift+r",
+    "open_notification_target": "",
+    "focus_agent": "prefix+alt+1..9",
+    "workspace_picker": "prefix+w",
+    "goto": ["prefix+g", "shift+alt+g"],
+    "new_workspace": "prefix+shift+n",
+    "new_worktree": "ctrl+shift+w",
+    "open_worktree": "",
+    "rename_workspace": "prefix+shift+w",
+    "close_workspace": "prefix+shift+q",
+    "rename_pane": "prefix+shift+p",
+    "edit_scrollback": "prefix+e",
+    "resize_mode": "prefix+r",
+    "toggle_sidebar": "prefix+b",
+    "navigate_workspace_up": ["up", "k"],
+    "navigate_workspace_down": ["down", "j"],
+}
+
+EXPECTED_COMMANDS = [
+    ("prefix+=", "shell", "$HOME/.dotfiles/bin/herdr-equalize-panes"),
+    ("ctrl+f", "pane", "$HOME/.dotfiles/bin/herdr-navigate"),
+    (
+        "prefix+shift+s",
+        "shell",
+        '$HOME/.dotfiles/bin/herdr-navigate "$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain/"',
+    ),
+    (
+        "prefix+shift+b",
+        "shell",
+        '$HOME/.dotfiles/bin/herdr-navigate "$HOME/coding/work/babacoiffure_monorepo.git/"',
+    ),
+    (
+        "prefix+shift+h",
+        "shell",
+        '$HOME/.dotfiles/bin/herdr-navigate "$HOME/coding/work/database/"',
+    ),
+    (
+        "prefix+shift+d",
+        "shell",
+        '$HOME/.dotfiles/bin/herdr-navigate "$HOME/.dotfiles/"',
+    ),
+    ("alt+q", "shell", "$HOME/.dotfiles/bin/herdr-worktree-root"),
+    ("alt+e", "shell", "$HOME/.dotfiles/bin/herdr-worktree-main"),
+    ("alt+r", "shell", "$HOME/.dotfiles/bin/herdr-worktree-release"),
+    ("alt+o", "pane", "$HOME/.dotfiles/bin/herdr-worktree-picker"),
+    ("ctrl+alt+o", "pane", "$HOME/.dotfiles/bin/herdr-worktree-picker"),
+    ("alt+h", "shell", "$HOME/.dotfiles/bin/herdr-focus-tab editor"),
+    ("alt+j", "shell", "$HOME/.dotfiles/bin/herdr-focus-tab agent"),
+    ("alt+k", "shell", "$HOME/.dotfiles/bin/herdr-focus-tab process"),
+    ("alt+l", "shell", "$HOME/.dotfiles/bin/herdr-focus-tab terminal"),
+    ("alt+semicolon", "shell", "$HOME/.dotfiles/bin/herdr-focus-tab diff"),
+    ("ctrl+shift+n", "shell", "$HOME/.dotfiles/bin/herdr-start-codex"),
+    ("alt+g", "pane", "$HOME/.dotfiles/bin/herdr-git.sh open-web"),
+    ("prefix+a", "shell", "$HOME/.dotfiles/bin/herdr-focus-agent-status blocked"),
+    ("prefix+i", "shell", "$HOME/.dotfiles/bin/herdr-focus-agent-status idle"),
+    ("prefix+d", "shell", "$HOME/.dotfiles/bin/herdr-focus-agent-status done"),
+    ("prefix+o", "shell", "$HOME/.dotfiles/bin/herdr-focus-agent-status working"),
+]
+
+# These are the public CLI calls made by the keybound scripts.  Checking their
+# documented spellings catches upgrades that rename a command before a keypress
+# fails inside the TUI.
+CLI_CONTRACTS = {
+    "pane": [
+        "pane current",
+        "pane list",
+        "pane layout",
+        "pane process-info",
+        "pane resize",
+        "pane split",
+        "pane close",
+        "pane run",
+        "pane send-keys",
+        "pane report-metadata",
+    ],
+    "workspace": [
+        "workspace list",
+        "workspace get",
+        "workspace focus",
+        "workspace create",
+    ],
+    "worktree": ["worktree list", "worktree open"],
+    "tab": ["tab list", "tab create", "tab focus", "tab close"],
+    "agent": ["agent list", "agent focus", "agent rename"],
+}
+
+DEEP_TESTS = [
+    "test-herdr-keybinding-e2e",
+    "test-herdr-pr-browser",
+    "test-herdr-agent-completion-sound",
+    "test-herdr-codex-launchers",
+    "test-herdr-codex-lifecycle-hook",
+    "test-herdr-codex-pane-title",
+    "test-herdr-run-codex-agent",
+]
+
+
+def fail(message: str) -> None:
+    raise AssertionError(message)
+
+
+def run(*args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+    result = subprocess.run(
+        args,
+        cwd=DOTFILES,
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode:
+        detail = result.stderr.strip() or result.stdout.strip()
+        fail(f"{' '.join(args)} failed: {detail}")
+    return result
+
+
+def check_config_and_keybindings() -> list[dict[str, str]]:
+    data = tomllib.loads(CONFIG.read_text(encoding="utf-8"))
+    keys = data.get("keys", {})
+    commands = keys.get("command", [])
+    plain_keys = {key: value for key, value in keys.items() if key != "command"}
+    if plain_keys != EXPECTED_KEYS:
+        fail(f"built-in keybinding snapshot changed\nexpected: {EXPECTED_KEYS}\nactual:   {plain_keys}")
+
+    actual_commands = [
+        (command.get("key"), command.get("type"), command.get("command"))
+        for command in commands
+    ]
+    if actual_commands != EXPECTED_COMMANDS:
+        fail(
+            "custom keybinding snapshot changed\n"
+            f"expected: {EXPECTED_COMMANDS}\nactual:   {actual_commands}"
+        )
+
+    key_names = [command[0] for command in actual_commands]
+    duplicates = sorted({key for key in key_names if key_names.count(key) > 1})
+    if duplicates:
+        fail(f"duplicate custom keybindings: {', '.join(duplicates)}")
+
+    alt_o = next(command for command in commands if command["key"] == "alt+o")
+    if alt_o != {
+        "key": "alt+o",
+        "type": "pane",
+        "command": "$HOME/.dotfiles/bin/herdr-worktree-picker",
+    }:
+        fail("Alt-o must remain the custom worktree/branch picker")
+    if keys.get("open_worktree") != "":
+        fail("Herdr's narrower built-in open_worktree action must stay disabled")
+    return commands
+
+
+def check_config_with_installed_herdr() -> None:
+    env = {**os.environ, "HERDR_CONFIG_PATH": str(CONFIG)}
+    result = run("herdr", "config", "check", env=env)
+    if "config: ok" not in result.stdout:
+        fail(f"Herdr did not confirm the config: {result.stdout.strip()}")
+
+
+def reload_live_config() -> bool:
+    if os.environ.get("HERDR_ENV") != "1":
+        return False
+    result = run("herdr", "server", "reload-config")
+    try:
+        payload = json.loads(result.stdout)
+        reload_result = payload["result"]
+    except (json.JSONDecodeError, KeyError, TypeError) as exc:
+        fail(f"Herdr returned an invalid config reload response: {exc}")
+    if reload_result.get("status") != "applied":
+        fail(f"live Herdr config was not applied: {reload_result}")
+    if reload_result.get("diagnostics"):
+        fail(f"live Herdr config has diagnostics: {reload_result['diagnostics']}")
+    return True
+
+
+def check_command_targets(commands: list[dict[str, str]]) -> None:
+    home = str(Path.home())
+    for command in commands:
+        expanded = command["command"].replace("$HOME", home)
+        target = Path(shlex.split(expanded)[0])
+        if not target.is_file():
+            fail(f"{command['key']} targets missing file: {target}")
+        if not os.access(target, os.X_OK):
+            fail(f"{command['key']} targets non-executable file: {target}")
+
+
+def check_terminal_alt_transport() -> None:
+    ghostty_path = DOTFILES / ".config/ghostty/config"
+    if not ghostty_path.exists():
+        return
+    ghostty = ghostty_path.read_text(encoding="utf-8")
+    required = {"macos-option-as-alt = true"}
+    missing = sorted(line for line in required if line not in ghostty)
+    if missing:
+        fail(f"Ghostty no longer transports Herdr Alt-o correctly: {missing}")
+    if "keybind = alt+o=" in ghostty:
+        fail("Ghostty must let its native keyboard protocol transport Alt-o")
+
+
+def check_cli_contracts() -> None:
+    for group, contracts in CLI_CONTRACTS.items():
+        result = subprocess.run(
+            ["herdr", group],
+            cwd=DOTFILES,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        help_text = result.stdout + result.stderr
+        if not help_text.strip():
+            fail(f"installed Herdr returned no help for `herdr {group}`")
+        for contract in contracts:
+            if f"herdr {contract}" not in help_text:
+                fail(f"installed Herdr no longer documents `herdr {contract}`")
+
+
+def check_script_syntax(commands: list[dict[str, str]]) -> None:
+    targets = {
+        Path(shlex.split(command["command"].replace("$HOME", str(Path.home())))[0])
+        for command in commands
+    }
+    # Wrapper targets pull in these implementation files too.
+    targets.update(
+        {
+            DOTFILES / "bin/herdr-pr-browser",
+            DOTFILES / "bin/herdr-worktree",
+            DOTFILES / "bin/herdr-run-codex-agent",
+        }
+    )
+    for target in sorted(targets):
+        first_line = target.read_text(encoding="utf-8").splitlines()[0]
+        if "python" in first_line:
+            compile(target.read_text(encoding="utf-8"), str(target), "exec")
+        elif "bash" in first_line:
+            run("bash", "-n", str(target))
+
+
+def run_deep_tests() -> None:
+    if sys.platform != "darwin":
+        print("  macOS Codex lifecycle tests: skipped on this platform")
+        return
+    for test_name in DEEP_TESTS:
+        result = run(str(DOTFILES / "bin" / test_name))
+        status = result.stdout.strip().splitlines()[-1] if result.stdout.strip() else "ok"
+        print(f"  {test_name}: {status}")
+
+
+def main() -> int:
+    commands = check_config_and_keybindings()
+    check_config_with_installed_herdr()
+    live_reloaded = reload_live_config()
+    check_command_targets(commands)
+    check_terminal_alt_transport()
+    check_cli_contracts()
+    check_script_syntax(commands)
+    print(f"Herdr {run('herdr', '--version').stdout.strip().removeprefix('herdr ')}")
+    print(f"  keybindings: {len(EXPECTED_KEYS)} built-in, {len(EXPECTED_COMMANDS)} custom")
+    live_status = "live config reloaded" if live_reloaded else "live reload skipped outside Herdr"
+    print(f"  config, command targets, Alt-o transport, CLI contracts, syntax: ok; {live_status}")
+    run_deep_tests()
+    print("herdr-regressions-ok")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except (AssertionError, OSError, tomllib.TOMLDecodeError) as exc:
+        print(f"herdr regression failure: {exc}", file=sys.stderr)
+        raise SystemExit(1)

@@ -143,6 +143,32 @@ const homeRowMods = sharedHomeRowMods.map(({ input, modifier, timing, tap }) =>
 );
 
 const rules: KarabinerRules[] = [
+  {
+    description: "Corne Alt+O transport for Herdr in Ghostty",
+    manipulators: [
+      {
+        description: "Send Ctrl+Alt+O so Ghostty reliably forwards Alt+O to Herdr",
+        type: "basic",
+        conditions: [
+          CorneKeyboardCondition,
+          {
+            type: "frontmost_application_if",
+            bundle_identifiers: ["^com\\.mitchellh\\.ghostty$"],
+          },
+        ],
+        from: {
+          key_code: "o",
+          modifiers: { mandatory: ["left_option"] },
+        },
+        to: [
+          {
+            key_code: "o",
+            modifiers: ["left_control", "left_option"],
+          },
+        ],
+      },
+    ],
+  },
   leftGuiLayer,
   rightGuiLayer,
   left_option_layer,

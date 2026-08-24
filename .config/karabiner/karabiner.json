@@ -8,6 +8,54 @@
       "complex_modifications": {
         "rules": [
           {
+            "description": "Corne Alt+O transport for Herdr in Ghostty",
+            "manipulators": [
+              {
+                "description": "Send Ctrl+Alt+O so Ghostty reliably forwards Alt+O to Herdr",
+                "type": "basic",
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 18003,
+                        "product_id": 1
+                      },
+                      {
+                        "vendor_id": 7504,
+                        "product_id": 24926
+                      }
+                    ],
+                    "description": "Kylian's wired and wireless Corne keyboards"
+                  },
+                  {
+                    "type": "frontmost_application_if",
+                    "bundle_identifiers": [
+                      "^com\\.mitchellh\\.ghostty$"
+                    ]
+                  }
+                ],
+                "from": {
+                  "key_code": "o",
+                  "modifiers": {
+                    "mandatory": [
+                      "left_option"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "key_code": "o",
+                    "modifiers": [
+                      "left_control",
+                      "left_option"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
             "description": "Key Layer (left_gui_layer)",
             "manipulators": [
               {
