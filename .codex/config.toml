@@ -332,9 +332,3 @@ last_updated = "2026-07-13T22:21:15Z"
 source_type = "local"
 source = "/Users/boss/.cache/codex-runtimes/codex-primary-runtime/plugins/openai-primary-runtime"
 # multi_agent = true
-
-[mcp_servers.davinci-resolve]
-enabled = false
-command = "/Volumes/LAB/BABACOIFFURE/_REELS/venv/bin/python"
-args = ["/Volumes/LAB/BABACOIFFURE/_REELS/src/server.py"]
-env = { RESOLVE_SCRIPT_API = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting", RESOLVE_SCRIPT_LIB = "/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Libraries/Fusion/fusionscript.so", PYTHONPATH = "/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting/Modules" }
