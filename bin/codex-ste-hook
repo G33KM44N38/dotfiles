@@ -1,0 +1,181 @@
+#!/usr/bin/env python3
+"""Add compact STE guidance and check deterministic reply structure."""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+
+
+LIFECYCLE_HOOK = Path(
+    os.environ.get(
+        "CODEX_STE_LIFECYCLE_HOOK",
+        "/Users/boss/.dotfiles/bin/herdr-codex-lifecycle-hook",
+    )
+)
+
+PROMPT_GUIDANCE = """Use ASD-STE100 Issue 9 principles for all user-facing prose.
+Put the answer first. Use active voice when the agent is known. Use short, approved words when possible.
+Keep procedural sentences at 20 words or fewer. Keep descriptive sentences at 25 words or fewer.
+Keep each paragraph at six sentences or fewer. Do not use semicolons.
+A Stop hook checks these deterministic structural rules and can request one revision."""
+
+FENCE_RE = re.compile(r"^\s*(```|~~~).*?^\s*\1\s*$", re.MULTILINE | re.DOTALL)
+INLINE_CODE_RE = re.compile(r"(`+)(.+?)\1")
+MARKDOWN_LINK_RE = re.compile(r"!?\[([^\]]*)\]\([^)]*\)")
+AUTOLINK_RE = re.compile(r"<https?://[^>]+>")
+URL_RE = re.compile(r"https?://\S+")
+FILE_PATH_RE = re.compile(r"(?<!\w)(?:/|\.{1,2}/)[^\s,;:!?]+")
+FILE_NAME_RE = re.compile(r"\b[A-Za-z0-9_.-]+\.[A-Za-z0-9_-]{1,8}(?::\d+)?\b")
+VERSION_RE = re.compile(r"\b\d+(?:\.\d+){1,}\b")
+PAREN_RE = re.compile(r"\([^()\n]*\)")
+QUOTED_RE = re.compile(r'(["“]).*?(["”])')
+WORD_RE = re.compile(r"[A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*")
+IMPERATIVE_RE = re.compile(
+    r"^(?:do not|make sure|add|change|check|click|close|connect|copy|create|"
+    r"delete|disconnect|enter|install|move|open|press|remove|replace|run|"
+    r"select|set|start|stop|turn|type|update|use)\b",
+    re.IGNORECASE,
+)
+
+
+def without_code(text: str) -> str:
+    """Remove content that the writing rules must not reinterpret."""
+    text = FENCE_RE.sub("\n", text)
+    text = INLINE_CODE_RE.sub(" CODETOKEN ", text)
+    text = AUTOLINK_RE.sub(" URLTOKEN ", text)
+    text = URL_RE.sub(" URLTOKEN ", text)
+    text = FILE_PATH_RE.sub(" FILETOKEN ", text)
+    text = FILE_NAME_RE.sub(" FILETOKEN ", text)
+    text = VERSION_RE.sub(" IDENTIFIER ", text)
+    return text
+
+
+def normalize_prose(text: str) -> str:
+    text = re.sub(r"^\s*#{1,6}\s+.*$", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^\s*>.*$", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^\s*\|.*\|\s*$", "", text, flags=re.MULTILINE)
+    text = MARKDOWN_LINK_RE.sub(lambda match: match.group(1), text)
+    text = re.sub(r"^\s{4,}.*$", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^\s*(?:[-+*]\s+|\d+[.)]\s+)", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^\s*[-:| ]+\s*$", "", text, flags=re.MULTILINE)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = QUOTED_RE.sub(" QUOTEDTEXT ", text)
+    while PAREN_RE.search(text):
+        text = PAREN_RE.sub(" PARENTEXT ", text)
+    for abbreviation in ("e.g.", "i.e.", "Mr.", "Mrs.", "Ms.", "Dr.", "vs."):
+        text = text.replace(abbreviation, abbreviation.replace(".", ""))
+    return text
+
+
+def sentences(paragraph: str) -> list[str]:
+    return [
+        part.strip()
+        for part in re.split(r"(?<=[.!?])(?:[\"'”])?\s+", paragraph)
+        if part.strip()
+    ]
+
+
+def word_count(sentence: str) -> int:
+    return len(WORD_RE.findall(sentence))
+
+
+def preview(sentence: str) -> str:
+    compact = " ".join(sentence.split())
+    return compact if len(compact) <= 100 else f"{compact[:97]}..."
+
+
+def lint(message: str) -> list[str]:
+    prose = normalize_prose(without_code(message))
+    violations: list[str] = []
+
+    for line_number, line in enumerate(prose.splitlines(), start=1):
+        if ";" in line:
+            violations.append(
+                f"STE-8.1 line {line_number}: Do not use a semicolon."
+            )
+
+    # Codex writes Markdown paragraphs and list items on separate lines.
+    paragraphs = [part.strip() for part in prose.splitlines() if part.strip()]
+    for paragraph_number, paragraph in enumerate(paragraphs, start=1):
+        paragraph_sentences = sentences(paragraph)
+        if len(paragraph_sentences) > 6:
+            violations.append(
+                f"STE-6.6 paragraph {paragraph_number}: "
+                f"Use no more than six sentences; found {len(paragraph_sentences)}."
+            )
+        for sentence in paragraph_sentences:
+            count = word_count(sentence)
+            is_procedure = bool(IMPERATIVE_RE.match(sentence))
+            limit = 20 if is_procedure else 25
+            rule = "STE-5.1" if is_procedure else "STE-6.3"
+            if count > limit:
+                violations.append(
+                    f'{rule}: Use no more than {limit} words; found {count} in "{preview(sentence)}"'
+                )
+
+    return violations[:5]
+
+
+def finish_lifecycle(payload_text: str) -> None:
+    try:
+        subprocess.run(
+            [str(LIFECYCLE_HOOK), "stop"],
+            input=payload_text,
+            text=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=3,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
+def stop() -> int:
+    payload_text = sys.stdin.read()
+    try:
+        payload = json.loads(payload_text)
+    except json.JSONDecodeError:
+        payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
+
+    message = payload.get("last_assistant_message", "")
+    retry_active = payload.get("stop_hook_active") is True
+    if retry_active or not isinstance(message, str) or not message.strip():
+        finish_lifecycle(payload_text)
+        print("{}")
+        return 0
+
+    violations = lint(message)
+    if not violations:
+        finish_lifecycle(payload_text)
+        print("{}")
+        return 0
+
+    reason = (
+        "ASD-STE100 Issue 9 structural check failed. Revise the complete answer once. "
+        "Keep all facts, code, links, citations, and file references unchanged. Fix these items:\n- "
+        + "\n- ".join(violations)
+    )
+    print(json.dumps({"decision": "block", "reason": reason}))
+    return 0
+
+
+def main() -> int:
+    if len(sys.argv) != 2 or sys.argv[1] not in {"prompt", "stop"}:
+        print("usage: codex-ste-hook {prompt|stop}", file=sys.stderr)
+        return 2
+    if sys.argv[1] == "prompt":
+        print(PROMPT_GUIDANCE)
+        return 0
+    return stop()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

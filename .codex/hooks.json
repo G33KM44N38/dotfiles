@@ -1,76 +1,81 @@
 {
-  "hooks" : {
-    "PermissionRequest" : [
+  "hooks": {
+    "PermissionRequest": [
       {
-        "hooks" : [
+        "hooks": [
           {
-            "command" : "'\/Users\/boss\/.dotfiles\/bin\/herdr-codex-lifecycle-hook' blocked",
-            "timeout" : 3,
-            "type" : "command"
+            "command": "'/Users/boss/.dotfiles/bin/herdr-codex-lifecycle-hook' blocked",
+            "timeout": 3,
+            "type": "command"
           }
         ]
       }
     ],
-    "SessionStart" : [
+    "SessionStart": [
       {
-        "hooks" : [
+        "hooks": [
           {
-            "command" : "'\/Users\/boss\/.dotfiles\/bin\/herdr-codex-lifecycle-hook' start",
-            "timeout" : 3,
-            "type" : "command"
+            "command": "'/Users/boss/.dotfiles/bin/herdr-codex-lifecycle-hook' start",
+            "timeout": 3,
+            "type": "command"
           }
         ]
       },
       {
-        "hooks" : [
+        "hooks": [
           {
-            "command" : "bash '\/Users\/boss\/.codex\/herdr-agent-state.sh' session",
-            "timeout" : 10,
-            "type" : "command"
+            "command": "bash '/Users/boss/.codex/herdr-agent-state.sh' session",
+            "timeout": 10,
+            "type": "command"
           }
         ]
       }
     ],
-    "SubagentStart" : [
+    "Stop": [
       {
-        "hooks" : [
+        "hooks": [
           {
-            "command" : "'\/Users\/boss\/.dotfiles\/bin\/herdr-codex-lifecycle-hook' subagent-start",
-            "timeout" : 3,
-            "type" : "command"
+            "command": "'/Users/boss/.dotfiles/bin/codex-ste-hook' stop",
+            "timeout": 5,
+            "type": "command"
           }
         ]
       }
     ],
-    "Stop" : [
+    "SubagentStart": [
       {
-        "hooks" : [
+        "hooks": [
           {
-            "command" : "'\/Users\/boss\/.dotfiles\/bin\/herdr-codex-lifecycle-hook' stop",
-            "timeout" : 3,
-            "type" : "command"
+            "command": "'/Users/boss/.dotfiles/bin/herdr-codex-lifecycle-hook' subagent-start",
+            "timeout": 3,
+            "type": "command"
           }
         ]
       }
     ],
-    "SubagentStop" : [
+    "SubagentStop": [
       {
-        "hooks" : [
+        "hooks": [
           {
-            "command" : "'\/Users\/boss\/.dotfiles\/bin\/herdr-codex-lifecycle-hook' subagent-stop",
-            "timeout" : 3,
-            "type" : "command"
+            "command": "'/Users/boss/.dotfiles/bin/herdr-codex-lifecycle-hook' subagent-stop",
+            "timeout": 3,
+            "type": "command"
           }
         ]
       }
     ],
-    "UserPromptSubmit" : [
+    "UserPromptSubmit": [
       {
-        "hooks" : [
+        "hooks": [
           {
-            "command" : "'\/Users\/boss\/.dotfiles\/bin\/herdr-codex-lifecycle-hook' working",
-            "timeout" : 3,
-            "type" : "command"
+            "command": "'/Users/boss/.dotfiles/bin/herdr-codex-lifecycle-hook' working",
+            "timeout": 3,
+            "type": "command"
+          },
+          {
+            "command": "'/Users/boss/.dotfiles/bin/codex-ste-hook' prompt",
+            "timeout": 3,
+            "type": "command"
           }
         ]
       }

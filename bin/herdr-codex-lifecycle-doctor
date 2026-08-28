@@ -92,7 +92,6 @@ def main() -> int:
         "UserPromptSubmit": "working",
         "SubagentStart": "subagent-start",
         "SubagentStop": "subagent-stop",
-        "Stop": "stop",
     }
     lifecycle_commands = {
         event: [
@@ -114,6 +113,28 @@ def main() -> int:
         ),
         "Authoritative lifecycle hooks cover parent and Collaboration child transitions",
     )
+    stop_commands = [
+        hook.get("command", "")
+        for group in hooks.get("hooks", {}).get("Stop", [])
+        for hook in group.get("hooks", [])
+    ]
+    prompt_commands = [
+        hook.get("command", "")
+        for group in hooks.get("hooks", {}).get("UserPromptSubmit", [])
+        for hook in group.get("hooks", [])
+    ]
+    check(
+        "codex_ste_hooks",
+        any(
+            "codex-ste-hook" in command and command.endswith(" stop")
+            for command in stop_commands
+        )
+        and any(
+            "codex-ste-hook" in command and command.endswith(" prompt")
+            for command in prompt_commands
+        ),
+        "UserPromptSubmit supplies STE rules and Stop verifies the reply before lifecycle completion",
+    )
 
     wrapper = DOTFILES / "bin/herdr-run-codex-agent"
     wrapper_regression = DOTFILES / "bin/test-herdr-run-codex-agent"
@@ -122,6 +143,8 @@ def main() -> int:
     launcher_regression = DOTFILES / "bin/test-herdr-codex-launchers"
     lifecycle_hook = DOTFILES / "bin/herdr-codex-lifecycle-hook"
     lifecycle_regression = DOTFILES / "bin/test-herdr-codex-lifecycle-hook"
+    ste_hook = DOTFILES / "bin/codex-ste-hook"
+    ste_regression = DOTFILES / "bin/test-codex-ste-hook"
     completion_sound = DOTFILES / "bin/herdr-agent-completion-sound"
     completion_sound_regression = DOTFILES / "bin/test-herdr-agent-completion-sound"
     wrapper_text = wrapper.read_text() if wrapper.exists() else ""
@@ -207,6 +230,34 @@ def main() -> int:
             "authoritative parent Stop stays working until every child stops"
             if lifecycle_test and lifecycle_test.returncode == 0
             else f"regression failed: {lifecycle_test.stderr.strip() if lifecycle_test else 'missing or non-executable test'}"
+        ),
+    )
+
+    ste_hook_text = ste_hook.read_text() if ste_hook.exists() else ""
+    try:
+        compile(ste_hook_text, str(ste_hook), "exec")
+        ste_syntax = True
+    except SyntaxError:
+        ste_syntax = False
+    ste_test = (
+        run(str(ste_regression))
+        if ste_regression.is_file() and os.access(ste_regression, os.X_OK)
+        else None
+    )
+    check(
+        "codex_ste_feedback_loop",
+        bool(
+            ste_syntax
+            and ste_hook.is_file()
+            and os.access(ste_hook, os.X_OK)
+            and ste_test
+            and ste_test.returncode == 0
+            and "codex-ste-hook-regression-ok" in ste_test.stdout
+        ),
+        (
+            "Issue 9 prompt, structural checks, one-revision limit, and lifecycle handoff pass"
+            if ste_test and ste_test.returncode == 0
+            else f"regression failed: {ste_test.stderr.strip() if ste_test else 'missing or non-executable test'}"
         ),
     )
 

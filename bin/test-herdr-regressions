@@ -135,6 +135,7 @@ DEEP_TESTS = [
     "test-herdr-agent-completion-sound",
     "test-herdr-codex-launchers",
     "test-herdr-codex-lifecycle-hook",
+    "test-codex-ste-hook",
     "test-herdr-codex-pane-title",
     "test-herdr-run-codex-agent",
 ]

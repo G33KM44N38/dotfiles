@@ -1,0 +1,115 @@
+#!/usr/bin/env python3
+"""Regression checks for the Codex STE prompt and Stop hook."""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import stat
+import subprocess
+import tempfile
+
+
+HOOK = Path(__file__).resolve().with_name("codex-ste-hook")
+
+
+def invoke(payload: object, lifecycle: Path, log: Path) -> dict[str, object]:
+    result = subprocess.run(
+        [str(HOOK), "stop"],
+        input=json.dumps(payload),
+        text=True,
+        capture_output=True,
+        env={
+            **os.environ,
+            "CODEX_STE_LIFECYCLE_HOOK": str(lifecycle),
+            "CODEX_STE_TEST_LOG": str(log),
+        },
+        check=True,
+    )
+    return json.loads(result.stdout)
+
+
+def calls(log: Path) -> list[str]:
+    return log.read_text().splitlines() if log.exists() else []
+
+
+def main() -> int:
+    prompt = subprocess.run(
+        [str(HOOK), "prompt"], text=True, capture_output=True, check=True
+    ).stdout
+    assert "Issue 9" in prompt
+    assert "20 words" in prompt
+    assert "25 words" in prompt
+    assert "semicolons" in prompt
+
+    with tempfile.TemporaryDirectory(prefix="codex-ste-hook-") as root_value:
+        root = Path(root_value)
+        lifecycle = root / "lifecycle"
+        log = root / "calls"
+        lifecycle.write_text(
+            "#!/bin/sh\nprintf '%s\\n' \"$*\" >>\"$CODEX_STE_TEST_LOG\"\n"
+        )
+        lifecycle.chmod(lifecycle.stat().st_mode | stat.S_IXUSR)
+
+        assert invoke(
+            {"last_assistant_message": "The hook is ready. It checks the reply."},
+            lifecycle,
+            log,
+        ) == {}
+        assert calls(log) == ["stop"]
+
+        long_sentence = " ".join(f"word{number}" for number in range(1, 27)) + "."
+        blocked = invoke({"last_assistant_message": long_sentence}, lifecycle, log)
+        assert blocked["decision"] == "block"
+        assert "STE-6.3" in str(blocked["reason"])
+        assert calls(log) == ["stop"]
+
+        blocked = invoke(
+            {"last_assistant_message": "The first part is ready; the second part is ready."},
+            lifecycle,
+            log,
+        )
+        assert "STE-8.1" in str(blocked["reason"])
+        assert calls(log) == ["stop"]
+
+        seven_sentences = " ".join(f"Sentence {number}." for number in range(1, 8))
+        blocked = invoke(
+            {"last_assistant_message": seven_sentences}, lifecycle, log
+        )
+        assert "STE-6.6" in str(blocked["reason"])
+
+        seven_items = "\n".join(f"- Item {number}." for number in range(1, 8))
+        assert invoke({"last_assistant_message": seven_items}, lifecycle, log) == {}
+
+        long_heading = "# " + long_sentence
+        assert invoke({"last_assistant_message": long_heading}, lifecycle, log) == {}
+
+        code_reply = """The example is valid.
+
+```python
+value = "this; code line can contain many many many many many many many many many many many many many many many many many many many many many many many words"
+```
+
+Run `printf 'a;b'` to test it."""
+        assert invoke({"last_assistant_message": code_reply}, lifecycle, log) == {}
+
+        blocked = invoke(
+            {
+                "last_assistant_message": long_sentence,
+                "stop_hook_active": True,
+            },
+            lifecycle,
+            log,
+        )
+        assert blocked == {}
+        assert calls(log)[-1] == "stop"
+
+        assert invoke([], lifecycle, log) == {}
+
+    print("codex-ste-hook-regression-ok")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
