@@ -1,0 +1,4 @@
+interface:
+  display_name: "Adversarial Pass"
+  short_description: "Ask for claim, scope, budget, and reachability"
+  default_prompt: "Use $adversarial-pass. Treat me as a newcomer, explain each required item, and ask me for the fence before you start."
