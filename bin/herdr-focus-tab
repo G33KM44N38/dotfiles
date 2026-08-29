@@ -175,7 +175,8 @@ def ensure_managed_agent(tab_id):
     )
     if agent is not None and pane_has_codex(agent["pane_id"]):
         close_idle_sibling_panes(tab_id, agent["pane_id"])
-        herdr("agent", "focus", agent["pane_id"])
+        # The tab switch restores its pane history. Do not override that
+        # choice with the first agent returned by `agent list`.
         return
 
     # Herdr materializes a newly-created tab's first pane asynchronously, and

@@ -28,10 +28,10 @@ split_vertical = "prefix+|"
 split_horizontal = "prefix+minus"
 close_pane = "prefix+x"
 zoom = "prefix+z"
-focus_pane_left = "prefix+h"
-focus_pane_down = "prefix+j"
-focus_pane_up = "prefix+k"
-focus_pane_right = "prefix+l"
+focus_pane_left = ["prefix+h", "alt+shift+h"]
+focus_pane_down = ["prefix+j", "alt+shift+j"]
+focus_pane_up = ["prefix+k", "alt+shift+k"]
+focus_pane_right = ["prefix+l", "alt+shift+l"]
 swap_pane_left = "prefix+ctrl+h"
 swap_pane_down = "prefix+shift+j"
 swap_pane_up = "prefix+shift+k"
@@ -145,6 +145,51 @@ type = "shell"
 command = "$HOME/.dotfiles/bin/herdr-focus-tab diff"
 
 [[keys.command]]
+key = "alt+1"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-focus-agent-pane 1"
+
+[[keys.command]]
+key = "alt+2"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-focus-agent-pane 2"
+
+[[keys.command]]
+key = "alt+3"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-focus-agent-pane 3"
+
+[[keys.command]]
+key = "alt+4"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-focus-agent-pane 4"
+
+[[keys.command]]
+key = "alt+5"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-focus-agent-pane 5"
+
+[[keys.command]]
+key = "alt+6"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-focus-agent-pane 6"
+
+[[keys.command]]
+key = "alt+7"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-focus-agent-pane 7"
+
+[[keys.command]]
+key = "alt+8"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-focus-agent-pane 8"
+
+[[keys.command]]
+key = "alt+9"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-focus-agent-pane 9"
+
+[[keys.command]]
 key = "ctrl+shift+n"
 type = "shell"
 command = "$HOME/.dotfiles/bin/herdr-start-codex"
@@ -176,6 +221,9 @@ command = "$HOME/.dotfiles/bin/herdr-focus-agent-status working"
 
 [experimental]
 pane_history = true
+
+[ui]
+show_agent_labels_on_pane_borders = true
 
 [ui.toast]
 delivery = "off"

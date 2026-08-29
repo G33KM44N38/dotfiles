@@ -152,9 +152,51 @@ def test_focus_tab_launcher() -> None:
     assert not any(call[:2] == ("agent", "start") for call in calls)
 
 
+def test_focus_tab_keeps_selected_agent() -> None:
+    sys.dont_write_bytecode = True
+    path = DOTFILES / "bin/herdr-focus-tab"
+    loader = SourceFileLoader("herdr_focus_tab_existing", str(path))
+    spec = importlib.util.spec_from_loader("herdr_focus_tab_existing", loader)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    calls: list[tuple[str, ...]] = []
+
+    def fake_herdr(*arguments: str) -> dict[str, object]:
+        calls.append(arguments)
+        if arguments == ("agent", "list"):
+            return {
+                "result": {
+                    "agents": [
+                        {
+                            "agent": "codex",
+                            "pane_id": "proof:first-agent",
+                            "tab_id": "proof:t1",
+                        },
+                        {
+                            "agent": "codex",
+                            "pane_id": "proof:selected-agent",
+                            "tab_id": "proof:t1",
+                        },
+                    ]
+                }
+            }
+        return {}
+
+    module.herdr = fake_herdr
+    module.pane_has_codex = lambda _pane_id: True
+    module.close_idle_sibling_panes = lambda *_args, **_kwargs: None
+    module.ensure_managed_agent("proof:t1")
+
+    assert ("agent", "focus", "proof:first-agent") not in calls
+    assert not any(call[:2] == ("pane", "run") for call in calls)
+
+
 def main() -> int:
     test_popup_launcher()
     test_focus_tab_launcher()
+    test_focus_tab_keeps_selected_agent()
     print("herdr-codex-launcher-regression-ok")
     return 0
 
