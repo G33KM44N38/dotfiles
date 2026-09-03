@@ -26,6 +26,9 @@ ALT_O_SEQUENCE = b"\x1bo" if SEQUENCE_NAME == "legacy" else b"\x1b[111;3u"
 BINDING = "prefix+o" if SEQUENCE_NAME == "prefix" else "alt+o"
 if SEQUENCE_NAME == "prefix":
     ALT_O_SEQUENCE = b"\x02o"
+elif SEQUENCE_NAME == "cmd-k":
+    ALT_O_SEQUENCE = b"\x1b[107;9u"
+    BINDING = "cmd+k"
 
 
 def wait_for(predicate, timeout: float) -> bool:
@@ -227,14 +230,13 @@ def main() -> int:
         os.write(master_fd, b"o")
         time.sleep(0.3)
         if marker.exists():
-            raise RuntimeError("plain o incorrectly triggered the Alt-o command")
+            raise RuntimeError("plain o incorrectly triggered the custom command")
 
-        # This is the Kitty/CSI-u representation Ghostty emits for Alt-o while
-        # Herdr's enhanced keyboard mode is active.
+        # Send the Kitty/CSI-u sequence that Ghostty emits for this binding.
         os.write(master_fd, ALT_O_SEQUENCE)
         if not wait_for(marker.exists, 3):
             output = drain(master_fd).decode("utf-8", errors="replace")[-2000:]
-            raise RuntimeError(f"Alt-o did not trigger the pane command; client tail: {output!r}")
+            raise RuntimeError(f"{BINDING} did not trigger the pane command; client tail: {output!r}")
 
         version = subprocess.run(
             [HERDR, "--version"],
@@ -243,7 +245,7 @@ def main() -> int:
             text=True,
             check=True,
         ).stdout.strip()
-        print(f"{version}: alt-o-pane-command-e2e-ok ({SEQUENCE_NAME})")
+        print(f"{version}: custom-pane-command-e2e-ok ({SEQUENCE_NAME})")
         return 0
     finally:
         if client_pid is not None:

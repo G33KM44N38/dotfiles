@@ -69,7 +69,7 @@ type = "shell"
 command = "$HOME/.dotfiles/bin/herdr-equalize-panes"
 
 [[keys.command]]
-key = "ctrl+f"
+key = "cmd+k"
 type = "pane"
 command = "$HOME/.dotfiles/bin/herdr-navigate"
 

@@ -63,7 +63,7 @@ EXPECTED_KEYS = {
 
 EXPECTED_COMMANDS = [
     ("prefix+=", "shell", "$HOME/.dotfiles/bin/herdr-equalize-panes"),
-    ("ctrl+f", "pane", "$HOME/.dotfiles/bin/herdr-navigate"),
+    ("cmd+k", "pane", "$HOME/.dotfiles/bin/herdr-navigate"),
     (
         "prefix+shift+s",
         "shell",
@@ -245,7 +245,7 @@ def check_terminal_alt_transport() -> None:
     if not ghostty_path.exists():
         return
     ghostty = ghostty_path.read_text(encoding="utf-8")
-    required = {"macos-option-as-alt = true"}
+    required = {"macos-option-as-alt = true", r"keybind = cmd+k=text:\x1b[107;9u"}
     missing = sorted(line for line in required if line not in ghostty)
     if missing:
         fail(f"Ghostty no longer transports Herdr Alt-o correctly: {missing}")
@@ -299,6 +299,15 @@ def run_deep_tests() -> None:
         result = run(str(DOTFILES / "bin" / test_name))
         status = result.stdout.strip().splitlines()[-1] if result.stdout.strip() else "ok"
         print(f"  {test_name}: {status}")
+        if test_name == "test-herdr-keybinding-e2e":
+            cmd_k_env = {**os.environ, "HERDR_TEST_ALT_O": "cmd-k"}
+            cmd_k_result = run(str(DOTFILES / "bin" / test_name), env=cmd_k_env)
+            cmd_k_status = (
+                cmd_k_result.stdout.strip().splitlines()[-1]
+                if cmd_k_result.stdout.strip()
+                else "ok"
+            )
+            print(f"  {test_name} Cmd-K: {cmd_k_status}")
 
 
 def main() -> int:

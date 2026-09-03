@@ -3,6 +3,7 @@ background-blur = false
 minimum-contrast = 4.5
 # tmux uses many Alt-based bindings; force macOS Option to act as Alt.
 macos-option-as-alt = true
+keybind = cmd+k=text:\x1b[107;9u
 # Send explicit Meta sequences for tmux worktree picker shortcuts.
 keybind = alt+o=text:\x1bo
 keybind = alt+shift+o=text:\x1bO
