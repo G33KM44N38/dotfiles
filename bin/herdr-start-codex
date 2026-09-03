@@ -1,10 +1,156 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+readonly remote_target="${HERDR_UBUNTU_TARGET:-kylian@kylian-ps42-8rb}"
+readonly remote_runner="/home/kylian/.dotfiles/bin/herdr-run-remote-codex-agent"
+readonly herdr_bin="${HERDR_BIN_PATH:-$(type -P herdr)}"
+readonly local_machine_label="$(if [[ "$(uname -s)" == "Linux" ]]; then printf Ubuntu; else printf Mac; fi)"
+
+herdr() {
+  "$herdr_bin" "$@"
+}
+
+usage() {
+  printf 'Usage: %s [local|mac|ubuntu|ubuntu-attach] [--prompt <text>] [--new-worktree <branch>] [--project-path <path>] [--resume <session>]\n' "${0##*/}" >&2
+}
+
+ubuntu_is_online() {
+  ssh -o BatchMode=yes \
+    -o ConnectTimeout=2 \
+    -o ConnectionAttempts=1 \
+    -o StrictHostKeyChecking=yes \
+    "$remote_target" true >/dev/null 2>&1
+}
+
+choose_target() {
+  local ubuntu_status="offline" selection
+  if [[ "$local_machine_label" == "Ubuntu" ]]; then
+    printf 'mac\n'
+    return
+  fi
+  if ubuntu_is_online; then
+    ubuntu_status="online"
+  fi
+
+  if command -v fzf >/dev/null 2>&1; then
+    selection="$(printf 'mac\t1. Mac · new thread\nubuntu\t2. Ubuntu · new persistent thread · %s\nubuntu-attach\t3. Ubuntu · reconnect · %s\n' \
+      "$ubuntu_status" "$ubuntu_status" |
+      fzf --no-multi --layout=reverse --border=rounded \
+        --prompt='Start Codex on › ' --header='Choose a machine' \
+        --with-nth=2 --delimiter=$'\t' --height=100%)" || return 1
+    printf '%s\n' "${selection%%$'\t'*}"
+    return
+  fi
+
+  printf '1. Mac · new thread\n2. Ubuntu · new persistent thread · %s\n3. Ubuntu · reconnect · %s\n\nChoose: ' \
+    "$ubuntu_status" "$ubuntu_status" >&2
+  IFS= read -r selection
+  case "$selection" in
+    1|1.|mac|Mac) printf 'mac\n' ;;
+    2|2.|ubuntu|Ubuntu) printf 'ubuntu\n' ;;
+    3|3.|ubuntu-attach) printf 'ubuntu-attach\n' ;;
+    *) return 1 ;;
+  esac
+}
+
+target=
+initial_prompt=
+new_worktree_branch=
+project_path_override=
+resume_session=
+while (( $# )); do
+  case "$1" in
+    --prompt)
+      [[ $# -ge 2 ]] || { usage; exit 2; }
+      initial_prompt=$2
+      shift 2
+      ;;
+    --new-worktree)
+      [[ $# -ge 2 ]] || { usage; exit 2; }
+      new_worktree_branch=$2
+      shift 2
+      ;;
+    --project-path)
+      [[ $# -ge 2 ]] || { usage; exit 2; }
+      project_path_override=$2
+      shift 2
+      ;;
+    --resume)
+      [[ $# -ge 2 ]] || { usage; exit 2; }
+      resume_session=$2
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    local|mac|ubuntu|ubuntu-attach)
+      [[ -z "$target" ]] || { usage; exit 2; }
+      target=$1
+      shift
+      ;;
+    *)
+      usage
+      exit 2
+      ;;
+  esac
+done
+
+case "$target" in
+  "") target="$(choose_target)" || exit 0 ;;
+  local) target=mac ;;
+  mac|ubuntu|ubuntu-attach) ;;
+  *) usage; exit 2 ;;
+esac
+
+if [[ -n "$resume_session" && "$target" != "mac" ]]; then
+  printf '\nSaved thread resume is only available on the local machine.\n' >&2
+  exit 2
+fi
+if [[ -n "$resume_session" && -n "$new_worktree_branch" ]]; then
+  printf '\nA saved thread must resume in its existing path.\n' >&2
+  exit 2
+fi
+
 lock_dir="/tmp/herdr-start-codex"
 mkdir -p "$lock_dir"
 
-if [[ -n "${HERDR_ACTIVE_WORKSPACE_ID:-}" && -n "${HERDR_ACTIVE_PANE_CWD:-}" ]]; then
+if [[ -n "$project_path_override" ]]; then
+  if [[ ! -d "$project_path_override" ]]; then
+    printf '\nSaved path is not available: %s\n' "$project_path_override" >&2
+    exit 1
+  fi
+  project_path="$(cd "$project_path_override" && pwd -P)"
+  workspace_id="$(herdr workspace list | python3 -c '
+import json, os, sys
+
+target = os.path.realpath(sys.argv[1])
+for workspace in json.load(sys.stdin).get("result", {}).get("workspaces", []):
+    repository = workspace.get("repository") or {}
+    worktree = workspace.get("worktree") or {}
+    candidate = repository.get("checkout_path") or worktree.get("checkout_path")
+    if candidate and os.path.realpath(candidate) == target:
+        print(workspace.get("workspace_id", ""))
+        break
+' "$project_path")"
+  if [[ -z "$workspace_id" ]]; then
+    workspace_json="$(herdr workspace create \
+      --cwd "$project_path" \
+      --label "$(basename "$project_path")" \
+      --no-focus)"
+    workspace_id="$(printf '%s\n' "$workspace_json" | python3 -c '
+import json, sys
+
+result = json.load(sys.stdin).get("result", {})
+workspace = result.get("workspace", result)
+print(workspace.get("workspace_id", ""))
+')"
+  fi
+  if [[ -z "$workspace_id" ]]; then
+    printf '\nCould not open the saved path in Herdr.\n' >&2
+    exit 1
+  fi
+elif [[ -n "${HERDR_ACTIVE_WORKSPACE_ID:-}" && -n "${HERDR_ACTIVE_PANE_CWD:-}" ]]; then
   workspace_id="$HERDR_ACTIVE_WORKSPACE_ID"
   project_path="$HERDR_ACTIVE_PANE_CWD"
 else
@@ -17,6 +163,63 @@ print(pane["workspace_id"], pane.get("foreground_cwd") or pane["cwd"], sep="\t")
 ')
 fi
 
+project_repo_url="$(git -C "$project_path" remote get-url origin 2>/dev/null || true)"
+project_branch="$(git -C "$project_path" branch --show-current 2>/dev/null || true)"
+project_root="$(git -C "$project_path" rev-parse --show-toplevel 2>/dev/null || printf '%s' "$project_path")"
+project_name="$(basename "$project_root")"
+if [[ -n "$project_repo_url" ]]; then
+  project_name="$(basename "${project_repo_url%.git}")"
+fi
+
+if [[ -n "$new_worktree_branch" && "$target" == "mac" ]]; then
+  worktree_label="${initial_prompt:-${new_worktree_branch##*/}}"
+  create_args=(
+    worktree create
+    --cwd "$project_root"
+    --branch "$new_worktree_branch"
+    --label "$worktree_label"
+    --focus
+    --json
+  )
+  if [[ -n "$project_branch" ]]; then
+    create_args+=(--base "$project_branch")
+  fi
+  worktree_json="$(herdr "${create_args[@]}")"
+  IFS=$'\t' read -r workspace_id project_path < <(printf '%s\n' "$worktree_json" | python3 -c '
+import json, sys
+
+result = json.load(sys.stdin).get("result", {})
+workspace = result.get("workspace", {})
+worktree = result.get("worktree", {})
+print(workspace.get("workspace_id", ""), worktree.get("path", ""), sep="\t")
+')
+  if [[ -z "$workspace_id" || -z "$project_path" ]]; then
+    printf '\nHerdr created no usable worktree.\n' >&2
+    exit 1
+  fi
+fi
+
+remote_project_path=
+if [[ "$target" == ubuntu* ]]; then
+  if ! ubuntu_is_online; then
+    printf '\nUbuntu is offline or SSH is unavailable.\n' >&2
+    exit 1
+  fi
+fi
+
+if [[ "$target" == "ubuntu" ]]; then
+  printf -v remote_resolve_command '%q ' \
+    "$remote_runner" \
+    --remote-worktree \
+    --repo-url "$project_repo_url" \
+    --branch "${new_worktree_branch:-$project_branch}" \
+    --base "$project_branch" \
+    --project-name "$project_name"
+  if ! remote_project_path="$(ssh -o BatchMode=yes "$remote_target" "$remote_resolve_command")"; then
+    exit 1
+  fi
+fi
+
 lock_path="$lock_dir/$workspace_id.lockdir"
 if ! mkdir "$lock_path" 2>/dev/null; then
   if lock_mtime="$(stat -f %m "$lock_path" 2>/dev/null)"; then
@@ -26,18 +229,19 @@ if ! mkdir "$lock_path" 2>/dev/null; then
   fi
   lock_age="$(( $(date +%s) - lock_mtime ))"
   if (( lock_age > 60 )); then
-    rm -rf "$lock_path"
+    rmdir "$lock_path"
     mkdir "$lock_path" 2>/dev/null || exit 0
   else
     exit 0
   fi
 fi
-trap 'rm -rf "$lock_path"' EXIT
+trap 'rmdir "$lock_path"' EXIT
 
 agents_json="$(herdr agent list)"
 agent_name="$(printf '%s\n' "$agents_json" | python3 -c '
 import json, sys
 
+target, local_machine = sys.argv[1:]
 agents = json.load(sys.stdin).get("result", {}).get("agents", [])
 names = {
     agent.get("name")
@@ -45,7 +249,10 @@ names = {
     if agent.get("name")
 }
 
-name = "codex-agent"
+if target == "mac":
+    name = "codex-agent" if local_machine == "Mac" else "ubuntu-codex-agent"
+else:
+    name = "ubuntu-session"
 suffix = 2
 base = name
 while name in names:
@@ -54,7 +261,7 @@ while name in names:
     name = f"{prefix}{ending}"
     suffix += 1
 print(name)
-')"
+' "$target" "$local_machine_label")"
 
 agent_tab_id="$(herdr tab list --workspace "$workspace_id" | python3 -c '
 import json, sys
@@ -158,7 +365,27 @@ if [[ "$pane_ready" == false ]]; then
   exit 1
 fi
 
-launch_command="$HOME/.dotfiles/bin/herdr-run-codex-agent --interactive --close-tab-on-exit"
+if [[ "$target" == "mac" ]]; then
+  if [[ -n "$resume_session" ]]; then
+    printf -v launch_command '%q ' \
+      "$HOME/.dotfiles/bin/herdr-run-codex-agent" \
+      --interactive \
+      --close-tab-on-exit \
+      -C \
+      "$project_path" \
+      resume \
+      --all \
+      "$resume_session"
+  else
+    launch_command="$HOME/.dotfiles/bin/herdr-run-codex-agent --interactive --close-tab-on-exit"
+  fi
+else
+  printf -v launch_command '%q ' \
+    "$HOME/.dotfiles/bin/herdr-run-remote-codex-agent" \
+    --target "$remote_target" \
+    --session default \
+    --close-tab-on-exit
+fi
 if ! herdr pane run "$pane_id" "$launch_command" >/dev/null; then
   printf '\nCould not start %s.\n' "$agent_name" >&2
   if [[ "$created_tab" == true ]]; then
@@ -167,6 +394,39 @@ if ! herdr pane run "$pane_id" "$launch_command" >/dev/null; then
     herdr pane close "$pane_id" >/dev/null 2>&1 || true
   fi
   exit 1
+fi
+
+if [[ "$target" == ubuntu* ]]; then
+  remote_ready=false
+  for _ in {1..100}; do
+    if ssh -o BatchMode=yes "$remote_target" \
+      'HERDR_SESSION=default /usr/local/bin/herdr workspace list' >/dev/null 2>&1; then
+      remote_ready=true
+      break
+    fi
+    sleep 0.1
+  done
+  if [[ "$remote_ready" == false ]]; then
+    printf '\nUbuntu Herdr did not become ready.\n' >&2
+    herdr pane close "$pane_id" >/dev/null 2>&1 || true
+    exit 1
+  fi
+fi
+
+if [[ "$target" == "ubuntu" ]]; then
+  printf -v remote_start_command '%q ' \
+    "$remote_runner" \
+    --remote-start \
+    --remote-path "$remote_project_path" \
+    --session default
+  if [[ -n "$initial_prompt" ]]; then
+    printf -v remote_start_command '%s--prompt %q ' "$remote_start_command" "$initial_prompt"
+  fi
+  if ! ssh -o BatchMode=yes "$remote_target" "$remote_start_command"; then
+    printf '\nCould not start Codex in Ubuntu Herdr.\n' >&2
+    herdr pane close "$pane_id" >/dev/null 2>&1 || true
+    exit 1
+  fi
 fi
 
 agent_started=false
@@ -196,10 +456,51 @@ if [[ "$agent_started" == false ]]; then
   exit 1
 fi
 
+if [[ -n "$resume_session" ]]; then
+  resumed_session=false
+  for _ in {1..200}; do
+    if herdr agent list | python3 -c '
+import json, sys
+
+pane_id, expected_session = sys.argv[1:]
+agents = json.load(sys.stdin).get("result", {}).get("agents", [])
+for agent in agents:
+    if agent.get("pane_id") != pane_id:
+        continue
+    session = agent.get("agent_session") or {}
+    if session.get("value") == expected_session:
+        raise SystemExit(0)
+raise SystemExit(1)
+' "$pane_id" "$resume_session"; then
+      resumed_session=true
+      break
+    fi
+    sleep 0.05
+  done
+  if [[ "$resumed_session" == false ]]; then
+    printf '\nCodex did not resume the selected conversation.\n' >&2
+    if [[ "$created_tab" == true ]]; then
+      herdr tab close "$agent_tab_id" >/dev/null 2>&1 || true
+    else
+      herdr pane close "$pane_id" >/dev/null 2>&1 || true
+    fi
+    exit 1
+  fi
+fi
+
 herdr agent rename "$pane_id" "$agent_name" >/dev/null
 herdr pane report-metadata "$pane_id" \
   --source boss:codex-launch-title \
   --agent codex \
   --title "$agent_name" \
+  --display-agent "$(if [[ "$target" == "mac" ]]; then printf '%s · Codex' "$local_machine_label"; else printf 'Ubuntu · Herdr'; fi)" \
   --seq "$(python3 -c 'import time; print(time.time_ns())')" >/dev/null
 herdr agent focus "$pane_id" >/dev/null
+
+if [[ -n "$initial_prompt" && "$target" == "mac" ]]; then
+  if ! herdr agent wait "$pane_id" --until idle --timeout 30000 >/dev/null; then
+    printf '\nCodex did not become ready for the first message.\n' >&2
+    exit 1
+  fi
+  herdr agent prompt "$pane_id" "$initial_prompt" >/dev/null
+fi

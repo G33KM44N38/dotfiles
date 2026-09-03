@@ -21,7 +21,7 @@ def write_executable(path: Path, content: str) -> None:
     path.chmod(0o755)
 
 
-def test_popup_launcher() -> None:
+def test_machine_launcher_starts_mac_codex() -> None:
     with tempfile.TemporaryDirectory(prefix="herdr-launchers-") as directory:
         root = Path(directory)
         bin_dir = root / "bin"
@@ -32,26 +32,29 @@ def test_popup_launcher() -> None:
             """#!/bin/sh
 printf '%s\n' "$*" >>"$HERDR_TEST_LOG"
 case "$*" in
+  'worktree create --cwd /Users/boss/.dotfiles --branch thread/explain-failure --label Explain the failure --focus --json --base main')
+    printf '%s\n' '{"result":{"workspace":{"workspace_id":"proof-thread"},"worktree":{"path":"/Users/boss/.dotfiles"}}}'
+    ;;
   'agent list')
     if [ -e "$HERDR_AGENT_STARTED" ]; then
-      printf '%s\n' '{"result":{"agents":[{"name":"dotfiles-codex"},{"name":"codex","agent":"codex","pane_id":"proof-launch:p2","tab_id":"proof-launch:t1"}]}}'
+      printf '%s\n' '{"result":{"agents":[{"name":"dotfiles-codex"},{"name":"codex","agent":"codex","pane_id":"proof-thread:p2","tab_id":"proof-thread:t1"}]}}'
     else
       printf '%s\n' '{"result":{"agents":[{"name":"dotfiles-codex"}]}}'
     fi
     ;;
-  'tab list --workspace proof-launch')
-    printf '%s\n' '{"result":{"tabs":[{"tab_id":"proof-launch:t1","label":"agent"}]}}'
+  'tab list --workspace proof-thread')
+    printf '%s\n' '{"result":{"tabs":[{"tab_id":"proof-thread:t1","label":"agent"}]}}'
     ;;
-  'pane list --workspace proof-launch')
-    printf '%s\n' '{"result":{"panes":[{"pane_id":"proof-launch:p1","tab_id":"proof-launch:t1"}]}}'
+  'pane list --workspace proof-thread')
+    printf '%s\n' '{"result":{"panes":[{"pane_id":"proof-thread:p1","tab_id":"proof-thread:t1"}]}}'
     ;;
-  'pane split proof-launch:p1 --direction right --cwd /Users/boss/.dotfiles --no-focus')
-    printf '%s\n' '{"result":{"pane":{"pane_id":"proof-launch:p2"}}}'
+  'pane split proof-thread:p1 --direction right --cwd /Users/boss/.dotfiles --no-focus')
+    printf '%s\n' '{"result":{"pane":{"pane_id":"proof-thread:p2"}}}'
     ;;
-  'pane process-info --pane proof-launch:p2')
+  'pane process-info --pane proof-thread:p2')
     printf '%s\n' '{"result":{"process_info":{"foreground_processes":[{"name":"zsh"}]}}}'
     ;;
-  'pane run proof-launch:p2 /Users/boss/.dotfiles/bin/herdr-run-codex-agent --interactive --close-tab-on-exit')
+  'pane run proof-thread:p2 /Users/boss/.dotfiles/bin/herdr-run-codex-agent --interactive --close-tab-on-exit')
     : >"$HERDR_AGENT_STARTED"
     ;;
 esac
@@ -60,13 +63,21 @@ esac
         env = {
             **os.environ,
             "PATH": f"{bin_dir}:/usr/bin:/bin",
+            "HERDR_BIN_PATH": str(bin_dir / "herdr"),
             "HERDR_ACTIVE_WORKSPACE_ID": "proof-launch",
             "HERDR_ACTIVE_PANE_CWD": str(DOTFILES),
             "HERDR_TEST_LOG": str(log),
             "HERDR_AGENT_STARTED": str(root / "agent-started"),
         }
         result = subprocess.run(
-            [str(DOTFILES / "bin/herdr-start-codex")],
+            [
+                str(DOTFILES / "bin/herdr-start-codex"),
+                "mac",
+                "--prompt",
+                "Explain the failure",
+                "--new-worktree",
+                "thread/explain-failure",
+            ],
             text=True,
             env=env,
             check=True,
@@ -74,7 +85,7 @@ esac
         )
         calls = log.read_text().splitlines()
         start_call = (
-            "pane run proof-launch:p2 "
+            "pane run proof-thread:p2 "
             "/Users/boss/.dotfiles/bin/herdr-run-codex-agent "
             "--interactive --close-tab-on-exit"
         )
@@ -84,14 +95,242 @@ esac
             "stderr": result.stderr,
         }
         assert result.stderr == ""
+        assert (
+            "worktree create --cwd /Users/boss/.dotfiles "
+            "--branch thread/explain-failure --label Explain the failure "
+            "--focus --json --base main"
+        ) in calls
         metadata = next(call for call in calls if call.startswith("pane report-metadata "))
         assert metadata.startswith(
-            "pane report-metadata proof-launch:p2 --source boss:codex-launch-title "
-            "--agent codex --title codex-agent --seq "
+            "pane report-metadata proof-thread:p2 --source boss:codex-launch-title "
+            "--agent codex --title codex-agent --display-agent Mac · Codex --seq "
         )
-        assert "agent rename proof-launch:p2 codex-agent" in calls
-        assert "agent focus proof-launch:p2" in calls
+        assert "agent rename proof-thread:p2 codex-agent" in calls
+        assert "agent focus proof-thread:p2" in calls
+        assert "agent wait proof-thread:p2 --until idle --timeout 30000" in calls
+        assert "agent prompt proof-thread:p2 Explain the failure" in calls
         assert not any(call.startswith("agent start ") for call in calls)
+
+
+def test_saved_thread_resumes_in_its_plain_path() -> None:
+    with tempfile.TemporaryDirectory(prefix="herdr-resume-") as directory:
+        root = Path(directory)
+        checkout = root / "saved-path"
+        checkout.mkdir()
+        bin_dir = root / "bin"
+        bin_dir.mkdir()
+        log = root / "herdr.log"
+        started = root / "agent-started"
+        write_executable(
+            bin_dir / "herdr",
+            f"""#!/bin/sh
+printf '%s\n' "$*" >>"$HERDR_TEST_LOG"
+case "$*" in
+  'workspace list')
+    printf '%s\n' '{{"result":{{"workspaces":[{{"workspace_id":"saved","repository":{{"checkout_path":"{checkout}"}}}}]}}}}'
+    ;;
+  'agent list')
+    if [ -e "$HERDR_AGENT_STARTED" ]; then
+      printf '%s\n' '{{"result":{{"agents":[{{"name":"codex","agent":"codex","pane_id":"saved:p2","tab_id":"saved:t1","agent_session":{{"value":"session-123"}}}}]}}}}'
+    else
+      printf '%s\n' '{{"result":{{"agents":[]}}}}'
+    fi
+    ;;
+  'tab list --workspace saved')
+    printf '%s\n' '{{"result":{{"tabs":[{{"tab_id":"saved:t1","label":"agent"}}]}}}}'
+    ;;
+  'pane list --workspace saved')
+    printf '%s\n' '{{"result":{{"panes":[{{"pane_id":"saved:p1","tab_id":"saved:t1"}}]}}}}'
+    ;;
+  'pane split saved:p1 --direction right --cwd '*' --no-focus')
+    printf '%s\n' '{{"result":{{"pane":{{"pane_id":"saved:p2"}}}}}}'
+    ;;
+  'pane process-info --pane saved:p2')
+    printf '%s\n' '{{"result":{{"process_info":{{"foreground_processes":[{{"name":"zsh"}}]}}}}}}'
+    ;;
+  'pane run saved:p2 '*'-C '*'resume --all session-123'*)
+    : >"$HERDR_AGENT_STARTED"
+    ;;
+esac
+""",
+        )
+        env = {
+            **os.environ,
+            "PATH": f"{bin_dir}:/usr/bin:/bin",
+            "HERDR_BIN_PATH": str(bin_dir / "herdr"),
+            "HERDR_TEST_LOG": str(log),
+            "HERDR_AGENT_STARTED": str(started),
+        }
+
+        result = subprocess.run(
+            [
+                str(DOTFILES / "bin/herdr-start-codex"),
+                "mac",
+                "--project-path",
+                str(checkout),
+                "--resume",
+                "session-123",
+            ],
+            text=True,
+            env=env,
+            capture_output=True,
+        )
+
+        calls = log.read_text().splitlines()
+        assert result.returncode == 0, {
+            "calls": calls,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+        }
+        run_call = next(call for call in calls if call.startswith("pane run saved:p2 "))
+        assert "herdr-run-codex-agent --interactive --close-tab-on-exit -C" in run_call
+        assert "resume --all session-123" in run_call
+        assert "workspace create" not in "\n".join(calls)
+        assert "agent focus saved:p2" in calls
+
+
+def test_remote_project_resolution_requires_matching_branch() -> None:
+    with tempfile.TemporaryDirectory(prefix="herdr-remote-project-") as directory:
+        root = Path(directory)
+        checkout = root / "code" / "project"
+        checkout.mkdir(parents=True)
+        subprocess.run(["git", "init", "-q", "-b", "main", checkout], check=True)
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                checkout,
+                "remote",
+                "add",
+                "origin",
+                "git@github.com:owner/project.git",
+            ],
+            check=True,
+        )
+        env = {**os.environ, "HERDR_REMOTE_CODE_ROOT": str(root / "code")}
+        wrapper = DOTFILES / "bin/herdr-run-remote-codex-agent"
+
+        resolved = subprocess.run(
+            [
+                wrapper,
+                "--remote-resolve",
+                "--repo-url",
+                "https://github.com/owner/project.git",
+                "--branch",
+                "main",
+                "--project-name",
+                "project",
+            ],
+            env=env,
+            text=True,
+            check=True,
+            capture_output=True,
+        )
+        assert resolved.stdout.strip() == str(checkout)
+
+        fork_resolved = subprocess.run(
+            [
+                wrapper,
+                "--remote-resolve",
+                "--repo-url",
+                "git@github.com:another-owner/project.git",
+                "--branch",
+                "main",
+                "--project-name",
+                "project",
+            ],
+            env=env,
+            text=True,
+            check=True,
+            capture_output=True,
+        )
+        assert fork_resolved.stdout.strip() == str(checkout)
+
+        wrong_branch = subprocess.run(
+            [
+                wrapper,
+                "--remote-resolve",
+                "--repo-url",
+                "https://github.com/owner/project.git",
+                "--branch",
+                "feature",
+                "--project-name",
+                "project",
+            ],
+            env=env,
+            text=True,
+            capture_output=True,
+        )
+        assert wrong_branch.returncode == 3
+        assert "on branch main, not feature" in wrong_branch.stderr
+
+
+def test_remote_worktree_is_created_and_reused() -> None:
+    with tempfile.TemporaryDirectory(prefix="herdr-remote-worktree-") as directory:
+        root = Path(directory)
+        checkout = root / "code" / "project"
+        checkout.mkdir(parents=True)
+        subprocess.run(["git", "init", "-q", "-b", "main", checkout], check=True)
+        subprocess.run(["git", "-C", checkout, "config", "user.name", "Test"], check=True)
+        subprocess.run(
+            ["git", "-C", checkout, "config", "user.email", "test@example.com"],
+            check=True,
+        )
+        (checkout / "README.md").write_text("test\n")
+        subprocess.run(["git", "-C", checkout, "add", "README.md"], check=True)
+        subprocess.run(["git", "-C", checkout, "commit", "-q", "-m", "test"], check=True)
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                checkout,
+                "remote",
+                "add",
+                "origin",
+                "git@github.com:owner/project.git",
+            ],
+            check=True,
+        )
+
+        env = {
+            **os.environ,
+            "HERDR_REMOTE_CODE_ROOT": str(root / "code"),
+            "HERDR_REMOTE_WORKTREE_ROOT": str(root / "code" / "work"),
+        }
+        wrapper = DOTFILES / "bin/herdr-run-remote-codex-agent"
+        command = [
+            wrapper,
+            "--remote-worktree",
+            "--repo-url",
+            "https://github.com/owner/project.git",
+            "--branch",
+            "thread/fix-checkout",
+            "--base",
+            "main",
+            "--project-name",
+            "project",
+        ]
+        first = subprocess.run(command, env=env, text=True, check=True, capture_output=True)
+        second = subprocess.run(command, env=env, text=True, check=True, capture_output=True)
+
+        worktree = Path(first.stdout.strip())
+        assert second.stdout.strip() == str(worktree), {
+            "first": first.stdout,
+            "second": second.stdout,
+            "second_stderr": second.stderr,
+        }
+        assert worktree == (
+            root / "code" / "work" / "project.git" / "thread-fix-checkout"
+        ).resolve()
+        assert (
+            subprocess.run(
+                ["git", "-C", worktree, "branch", "--show-current"],
+                text=True,
+                check=True,
+                capture_output=True,
+            ).stdout.strip()
+            == "thread/fix-checkout"
+        )
 
 
 def test_focus_tab_launcher() -> None:
@@ -194,7 +433,10 @@ def test_focus_tab_keeps_selected_agent() -> None:
 
 
 def main() -> int:
-    test_popup_launcher()
+    test_machine_launcher_starts_mac_codex()
+    test_saved_thread_resumes_in_its_plain_path()
+    test_remote_project_resolution_requires_matching_branch()
+    test_remote_worktree_is_created_and_reused()
     test_focus_tab_launcher()
     test_focus_tab_keeps_selected_agent()
     print("herdr-codex-launcher-regression-ok")

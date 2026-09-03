@@ -1,0 +1,430 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly report_source="boss:remote-codex-wrapper"
+readonly remote_code_root="${HERDR_REMOTE_CODE_ROOT:-$HOME/code}"
+readonly remote_worktree_root="${HERDR_REMOTE_WORKTREE_ROOT:-$HOME/code/work}"
+readonly herdr_bin="${HERDR_BIN_PATH:-$(type -P herdr)}"
+lifecycle_reporter_pid=
+
+herdr() {
+    "$herdr_bin" "$@"
+}
+
+usage() {
+    printf 'Usage: %s --target <ssh-target> [--session <name>] [--close-tab-on-exit]\n' "${0##*/}" >&2
+    printf '       %s --remote-resolve --repo-url <url> --branch <branch> --project-name <name>\n' "${0##*/}" >&2
+    printf '       %s --remote-worktree --repo-url <url> --branch <branch> [--base <ref>] --project-name <name>\n' "${0##*/}" >&2
+    printf '       %s --remote-start --remote-path <path> [--session <name>] [--prompt <text>]\n' "${0##*/}" >&2
+}
+
+normalize_repo_url() {
+    python3 - "$1" <<'PY'
+import re
+import sys
+
+value = sys.argv[1].strip()
+value = re.sub(r"^ssh://(?:git@)?", "", value)
+value = re.sub(r"^(?:https?|git)://", "", value)
+value = re.sub(r"^[^@/]+@([^:]+):", r"\1/", value)
+value = value.rstrip("/")
+if value.endswith(".git"):
+    value = value[:-4]
+print(value.lower())
+PY
+}
+
+resolve_remote_project() {
+    local repo_url=$1 requested_branch=$2 project_name=$3
+    local wanted_repo candidate marker candidate_url candidate_repo candidate_branch
+    local first_repo_match= first_name_match= name_branch_match=
+
+    wanted_repo="$(normalize_repo_url "$repo_url")"
+    while IFS= read -r marker; do
+        candidate=${marker%/.git}
+        candidate_url="$(git -C "$candidate" remote get-url origin 2>/dev/null || true)"
+        [[ -n "$candidate_url" ]] || continue
+        candidate_repo="$(normalize_repo_url "$candidate_url")"
+        candidate_branch="$(git -C "$candidate" branch --show-current 2>/dev/null || true)"
+
+        if [[ "${candidate_repo##*/}" == "$project_name" ]]; then
+            [[ -n "$first_name_match" ]] || first_name_match=$candidate
+            if [[ -z "$requested_branch" || "$candidate_branch" == "$requested_branch" ]]; then
+                [[ -n "$name_branch_match" ]] || name_branch_match=$candidate
+            fi
+        fi
+
+        [[ "$candidate_repo" == "$wanted_repo" ]] || continue
+
+        [[ -n "$first_repo_match" ]] || first_repo_match=$candidate
+        if [[ -z "$requested_branch" || "$candidate_branch" == "$requested_branch" ]]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done < <(find "$remote_code_root" -maxdepth 6 \( -type d -o -type f \) -name .git -print 2>/dev/null | sort)
+
+    if [[ -n "$first_repo_match" ]]; then
+        candidate_branch="$(git -C "$first_repo_match" branch --show-current 2>/dev/null || true)"
+        printf 'Ubuntu has %s on branch %s, not %s.\n' \
+            "$first_repo_match" "${candidate_branch:-detached}" "${requested_branch:-detached}" >&2
+        return 3
+    fi
+
+    if [[ -n "$name_branch_match" ]]; then
+        printf '%s\n' "$name_branch_match"
+        return 0
+    fi
+
+    if [[ -n "$first_name_match" ]]; then
+        candidate_branch="$(git -C "$first_name_match" branch --show-current 2>/dev/null || true)"
+        printf 'Ubuntu has %s on branch %s, not %s.\n' \
+            "$first_name_match" "${candidate_branch:-detached}" "${requested_branch:-detached}" >&2
+        return 3
+    fi
+
+    if [[ -z "$wanted_repo" && -d "$remote_code_root/$project_name" ]]; then
+        printf '%s\n' "$remote_code_root/$project_name"
+        return 0
+    fi
+
+    printf 'Ubuntu has no checkout for %s.\n' "${repo_url:-$project_name}" >&2
+    return 4
+}
+
+ensure_remote_worktree() {
+    local repo_url=$1 branch=$2 base=$3 project_name=$4 source_checkout bare_root
+    local existing_path existing_branch slug worktree_path branch_exists=false
+
+    [[ -n "$branch" ]] || {
+        printf 'Ubuntu worktrees require a named branch.\n' >&2
+        return 5
+    }
+
+    [[ -n "$base" ]] || base=$branch
+    source_checkout="$(resolve_remote_project "$repo_url" "$base" "$project_name")" || return
+    bare_root="$remote_worktree_root/$project_name.git"
+    mkdir -p "$remote_worktree_root"
+
+    if [[ ! -d "$bare_root" ]]; then
+        git clone --bare "$source_checkout" "$bare_root" >/dev/null
+        if [[ -n "$repo_url" ]]; then
+            git -C "$bare_root" remote set-url origin "$repo_url"
+        fi
+    fi
+
+    if ! git -C "$bare_root" show-ref --verify --quiet "refs/heads/$base"; then
+        git -C "$bare_root" fetch "$source_checkout" \
+            "refs/heads/$base:refs/heads/$base" >/dev/null
+    fi
+    if git -C "$bare_root" show-ref --verify --quiet "refs/heads/$branch"; then
+        branch_exists=true
+    fi
+
+    existing_path="$(git -C "$bare_root" worktree list --porcelain | python3 -c '
+import sys
+
+branch = sys.argv[1]
+path = ""
+for line in sys.stdin:
+    line = line.rstrip("\n")
+    if line.startswith("worktree "):
+        path = line.removeprefix("worktree ")
+    elif line == f"branch refs/heads/{branch}":
+        print(path)
+        break
+' "$branch")"
+    if [[ -n "$existing_path" ]]; then
+        printf '%s\n' "$existing_path"
+        return 0
+    fi
+
+    slug="$(python3 - "$branch" <<'PY'
+import re
+import sys
+
+slug = re.sub(r"[^A-Za-z0-9._-]+", "-", sys.argv[1]).strip("-.")
+print(slug or "branch")
+PY
+)"
+    worktree_path="$bare_root/$slug"
+    if [[ -e "$worktree_path" ]]; then
+        existing_branch="$(git -C "$worktree_path" branch --show-current 2>/dev/null || true)"
+        printf 'Ubuntu path %s already belongs to branch %s.\n' \
+            "$worktree_path" "${existing_branch:-unknown}" >&2
+        return 6
+    fi
+
+    if [[ "$branch_exists" == true ]]; then
+        git -C "$bare_root" worktree add "$worktree_path" "$branch" >/dev/null
+    else
+        git -C "$bare_root" worktree add -b "$branch" "$worktree_path" "$base" >/dev/null
+    fi
+    worktree_path="$(cd "$worktree_path" && pwd -P)"
+    printf '%s\n' "$worktree_path"
+}
+
+can_report() {
+    [[ "${HERDR_ENV:-}" == "1" ]] &&
+        [[ -n "${HERDR_PANE_ID:-}" ]] &&
+        command -v herdr >/dev/null 2>&1
+}
+
+report_state() {
+    local state=$1
+    herdr pane report-agent "$HERDR_PANE_ID" \
+        --source "$report_source" \
+        --agent codex \
+        --state "$state" \
+        --message "Remote Codex is $state" >/dev/null 2>&1 || true
+}
+
+mirror_remote_agent_state() {
+    local wrapper_pid=$1 target=$2 session=$3 agents_json state previous_state=
+    while kill -0 "$wrapper_pid" >/dev/null 2>&1; do
+        agents_json="$(ssh -o BatchMode=yes -o ConnectTimeout=2 "$target" \
+            "HERDR_SESSION=$(printf '%q' "$session") /usr/local/bin/herdr agent list" 2>/dev/null || true)"
+        state="$(printf '%s\n' "$agents_json" | python3 -c '
+import json, sys
+
+try:
+    agents = json.load(sys.stdin).get("result", {}).get("agents", [])
+except (json.JSONDecodeError, TypeError, AttributeError):
+    print("")
+    raise SystemExit
+
+states = {agent.get("agent_status") for agent in agents}
+if "blocked" in states:
+    print("blocked")
+elif "working" in states:
+    print("working")
+else:
+    print("idle")
+' 2>/dev/null || true)"
+        if [[ -n "$state" && "$state" != "$previous_state" ]]; then
+            report_state "$state"
+            previous_state=$state
+        fi
+        sleep 0.5
+    done
+}
+
+start_lifecycle_reporter() {
+    local target=$1 session=$2
+    mirror_remote_agent_state "$$" "$target" "$session" &
+    lifecycle_reporter_pid=$!
+}
+
+stop_lifecycle_reporter() {
+    if [[ -n "$lifecycle_reporter_pid" ]]; then
+        kill "$lifecycle_reporter_pid" >/dev/null 2>&1 || true
+        wait "$lifecycle_reporter_pid" 2>/dev/null || true
+        lifecycle_reporter_pid=
+    fi
+}
+
+release_agent() {
+    stop_lifecycle_reporter
+    if can_report; then
+        herdr pane report-agent "$HERDR_PANE_ID" \
+            --source "$report_source" \
+            --agent codex \
+            --state idle \
+            --message "Remote Codex task finished" >/dev/null 2>&1 || true
+        herdr pane release-agent "$HERDR_PANE_ID" \
+            --source "$report_source" \
+            --agent codex >/dev/null 2>&1 || true
+    fi
+}
+
+close_interactive_container() {
+    local agents_json close_scope
+
+    if ! can_report || [[ -z "${HERDR_TAB_ID:-}" ]]; then
+        return
+    fi
+
+    if agents_json="$(herdr agent list 2>/dev/null)"; then
+        close_scope="$(printf '%s\n' "$agents_json" | python3 -c '
+import json, sys
+
+tab_id, pane_id = sys.argv[1:]
+try:
+    agents = json.load(sys.stdin)["result"]["agents"]
+except (json.JSONDecodeError, KeyError, TypeError):
+    print("pane")
+    raise SystemExit
+
+has_sibling_agent = any(
+    agent.get("tab_id") == tab_id and agent.get("pane_id") != pane_id
+    for agent in agents
+)
+print("pane" if has_sibling_agent else "tab")
+' "$HERDR_TAB_ID" "$HERDR_PANE_ID")"
+    else
+        close_scope=pane
+    fi
+
+    if [[ "$close_scope" == "tab" ]]; then
+        herdr tab close "$HERDR_TAB_ID" >/dev/null 2>&1 || true
+    else
+        herdr pane close "$HERDR_PANE_ID" >/dev/null 2>&1 || true
+    fi
+}
+
+remote_start() {
+    local remote_path=$1 session=$2 prompt=$3 workspace_json panes_json workspace_id label
+    local common_dir branch open_json
+    export HERDR_SESSION=$session
+
+    workspace_json="$(herdr workspace list)"
+    panes_json="$(herdr pane list)"
+    workspace_id="$(python3 - "$remote_path" "$workspace_json" "$panes_json" <<'PY'
+import json
+import os
+import sys
+
+target = os.path.realpath(sys.argv[1])
+workspaces = json.loads(sys.argv[2]).get("result", {}).get("workspaces", [])
+panes = json.loads(sys.argv[3]).get("result", {}).get("panes", [])
+
+for workspace in workspaces:
+    checkout = (workspace.get("repository") or {}).get("checkout_path")
+    if checkout and os.path.realpath(checkout) == target:
+        print(workspace["workspace_id"])
+        raise SystemExit
+
+for pane in panes:
+    cwd = pane.get("foreground_cwd") or pane.get("cwd")
+    if cwd and os.path.realpath(cwd) == target:
+        print(pane["workspace_id"])
+        raise SystemExit
+PY
+)"
+
+    if [[ -z "$workspace_id" ]]; then
+        branch="$(git -C "$remote_path" branch --show-current 2>/dev/null || true)"
+        label="${branch##*/}"
+        common_dir="$(git -C "$remote_path" rev-parse --git-common-dir 2>/dev/null || true)"
+        if [[ -n "$common_dir" && "$common_dir" != /* ]]; then
+            common_dir="$(cd "$remote_path" && cd "$common_dir" && pwd -P)"
+        fi
+
+        open_json=
+        if [[ -n "$common_dir" ]]; then
+            open_json="$(herdr worktree open \
+                --cwd "$common_dir" \
+                --path "$remote_path" \
+                --label "$label" \
+                --focus \
+                --json 2>/dev/null || true)"
+        fi
+        if [[ -z "$open_json" ]]; then
+            open_json="$(herdr workspace create \
+                --cwd "$remote_path" --label "$label" --focus)"
+        fi
+        workspace_id="$(printf '%s\n' "$open_json" | python3 -c '
+import json, sys
+
+data = json.load(sys.stdin).get("result", {})
+workspace = data.get("workspace", data)
+print(workspace.get("workspace_id", ""))
+')"
+    else
+        herdr workspace focus "$workspace_id" >/dev/null
+    fi
+
+    [[ -n "$workspace_id" ]] || {
+        printf 'Could not create the Ubuntu Herdr workspace.\n' >&2
+        return 1
+    }
+
+    if [[ -n "$prompt" ]]; then
+        HERDR_ACTIVE_WORKSPACE_ID=$workspace_id \
+            HERDR_ACTIVE_PANE_CWD=$remote_path \
+            "$HOME/.dotfiles/bin/herdr-start-codex" mac --prompt "$prompt"
+    else
+        HERDR_ACTIVE_WORKSPACE_ID=$workspace_id \
+            HERDR_ACTIVE_PANE_CWD=$remote_path \
+            "$HOME/.dotfiles/bin/herdr-start-codex" mac
+    fi
+}
+
+main() {
+    if [[ "${1:-}" == "--remote-resolve" ]]; then
+        shift
+        local repo_url= branch= project_name=
+        while (( $# )); do
+            case "$1" in
+                --repo-url) repo_url=${2:-}; shift 2 ;;
+                --branch) branch=${2:-}; shift 2 ;;
+                --project-name) project_name=${2:-}; shift 2 ;;
+                *) usage; return 2 ;;
+            esac
+        done
+        resolve_remote_project "$repo_url" "$branch" "$project_name"
+        return
+    fi
+
+    if [[ "${1:-}" == "--remote-worktree" ]]; then
+        shift
+        local repo_url= branch= base= project_name=
+        while (( $# )); do
+            case "$1" in
+                --repo-url) repo_url=${2:-}; shift 2 ;;
+                --branch) branch=${2:-}; shift 2 ;;
+                --base) base=${2:-}; shift 2 ;;
+                --project-name) project_name=${2:-}; shift 2 ;;
+                *) usage; return 2 ;;
+            esac
+        done
+        ensure_remote_worktree "$repo_url" "$branch" "$base" "$project_name"
+        return
+    fi
+
+    if [[ "${1:-}" == "--remote-start" ]]; then
+        shift
+        local remote_path= session=default prompt=
+        while (( $# )); do
+            case "$1" in
+                --remote-path) remote_path=${2:-}; shift 2 ;;
+                --session) session=${2:-}; shift 2 ;;
+                --prompt) prompt=${2:-}; shift 2 ;;
+                *) usage; return 2 ;;
+            esac
+        done
+        [[ -n "$remote_path" ]] || { usage; return 2; }
+        remote_start "$remote_path" "$session" "$prompt"
+        return
+    fi
+
+    local target= session=default close_tab_on_exit=false
+    while (( $# )); do
+        case "$1" in
+            --target) target=${2:-}; shift 2 ;;
+            --session) session=${2:-}; shift 2 ;;
+            --close-tab-on-exit) close_tab_on_exit=true; shift ;;
+            *) usage; return 2 ;;
+        esac
+    done
+    [[ -n "$target" ]] || { usage; return 2; }
+
+    if can_report; then
+        start_lifecycle_reporter "$target" "$session"
+    fi
+
+    local codex_exit_code
+    set +e
+    ssh -tt -o BatchMode=yes "$target" \
+        env HERDR_SESSION="$session" /usr/local/bin/herdr
+    codex_exit_code=$?
+    set -e
+
+    stop_lifecycle_reporter
+    release_agent
+    if [[ "$close_tab_on_exit" == true ]]; then
+        close_interactive_container
+    fi
+    return "$codex_exit_code"
+}
+
+main "$@"

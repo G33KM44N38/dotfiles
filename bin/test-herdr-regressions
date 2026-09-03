@@ -18,6 +18,7 @@ import tomllib
 
 DOTFILES = Path(__file__).resolve().parent.parent
 CONFIG = DOTFILES / ".config/herdr/config.toml"
+HERDR = os.environ.get("HERDR_BIN_PATH", "herdr")
 
 EXPECTED_KEYS = {
     "prefix": "ctrl+a",
@@ -87,8 +88,8 @@ EXPECTED_COMMANDS = [
     ("alt+q", "shell", "$HOME/.dotfiles/bin/herdr-worktree-root"),
     ("alt+e", "shell", "$HOME/.dotfiles/bin/herdr-worktree-main"),
     ("alt+r", "shell", "$HOME/.dotfiles/bin/herdr-worktree-release"),
-    ("alt+o", "pane", "$HOME/.dotfiles/bin/herdr-worktree-picker"),
-    ("ctrl+alt+o", "pane", "$HOME/.dotfiles/bin/herdr-worktree-picker"),
+    ("cmd+o", "pane", "$HOME/.dotfiles/bin/herdr-worktree-picker"),
+    ("cmd+p", "pane", "$HOME/.dotfiles/bin/herdr-worktree-picker --threads"),
     ("alt+h", "shell", "$HOME/.dotfiles/bin/herdr-focus-tab editor"),
     ("alt+j", "shell", "$HOME/.dotfiles/bin/herdr-focus-tab agent"),
     ("alt+k", "shell", "$HOME/.dotfiles/bin/herdr-focus-tab process"),
@@ -102,7 +103,7 @@ EXPECTED_COMMANDS = [
         )
         for index in range(1, 10)
     ],
-    ("ctrl+shift+n", "shell", "$HOME/.dotfiles/bin/herdr-start-codex"),
+    ("ctrl+shift+n", "popup", "$HOME/.dotfiles/bin/herdr-start-codex"),
     ("alt+g", "pane", "$HOME/.dotfiles/bin/herdr-git.sh open-web"),
     ("prefix+a", "shell", "$HOME/.dotfiles/bin/herdr-focus-agent-status blocked"),
     ("prefix+i", "shell", "$HOME/.dotfiles/bin/herdr-focus-agent-status idle"),
@@ -192,13 +193,13 @@ def check_config_and_keybindings() -> list[dict[str, str]]:
     if duplicates:
         fail(f"duplicate custom keybindings: {', '.join(duplicates)}")
 
-    alt_o = next(command for command in commands if command["key"] == "alt+o")
-    if alt_o != {
-        "key": "alt+o",
+    cmd_o = next(command for command in commands if command["key"] == "cmd+o")
+    if cmd_o != {
+        "key": "cmd+o",
         "type": "pane",
         "command": "$HOME/.dotfiles/bin/herdr-worktree-picker",
     }:
-        fail("Alt-o must remain the custom worktree/branch picker")
+        fail("Cmd-o must remain the custom worktree/branch picker")
     if keys.get("open_worktree") != "":
         fail("Herdr's narrower built-in open_worktree action must stay disabled")
     if data.get("ui", {}).get("show_agent_labels_on_pane_borders") is not True:
@@ -208,7 +209,7 @@ def check_config_and_keybindings() -> list[dict[str, str]]:
 
 def check_config_with_installed_herdr() -> None:
     env = {**os.environ, "HERDR_CONFIG_PATH": str(CONFIG)}
-    result = run("herdr", "config", "check", env=env)
+    result = run(HERDR, "config", "check", env=env)
     if "config: ok" not in result.stdout:
         fail(f"Herdr did not confirm the config: {result.stdout.strip()}")
 
@@ -216,7 +217,7 @@ def check_config_with_installed_herdr() -> None:
 def reload_live_config() -> bool:
     if os.environ.get("HERDR_ENV") != "1":
         return False
-    result = run("herdr", "server", "reload-config")
+    result = run(HERDR, "server", "reload-config")
     try:
         payload = json.loads(result.stdout)
         reload_result = payload["result"]
@@ -240,23 +241,28 @@ def check_command_targets(commands: list[dict[str, str]]) -> None:
             fail(f"{command['key']} targets non-executable file: {target}")
 
 
-def check_terminal_alt_transport() -> None:
+def check_terminal_command_transport() -> None:
     ghostty_path = DOTFILES / ".config/ghostty/config"
     if not ghostty_path.exists():
         return
     ghostty = ghostty_path.read_text(encoding="utf-8")
-    required = {"macos-option-as-alt = true", r"keybind = cmd+k=text:\x1b[107;9u"}
+    required = {
+        "macos-option-as-alt = true",
+        r"keybind = cmd+k=text:\x1b[107;9u",
+        r"keybind = cmd+o=text:\x1b[111;9u",
+        r"keybind = cmd+p=text:\x1b[112;9u",
+    }
     missing = sorted(line for line in required if line not in ghostty)
     if missing:
-        fail(f"Ghostty no longer transports Herdr Alt-o correctly: {missing}")
+        fail(f"Ghostty no longer transports Herdr command keys correctly: {missing}")
     if "keybind = alt+o=" in ghostty:
-        fail("Ghostty must let its native keyboard protocol transport Alt-o")
+        fail("Legacy Alt-o transport must stay removed")
 
 
 def check_cli_contracts() -> None:
     for group, contracts in CLI_CONTRACTS.items():
         result = subprocess.run(
-            ["herdr", group],
+            [HERDR, group],
             cwd=DOTFILES,
             text=True,
             stdout=subprocess.PIPE,
@@ -281,6 +287,7 @@ def check_script_syntax(commands: list[dict[str, str]]) -> None:
             DOTFILES / "bin/herdr-pr-browser",
             DOTFILES / "bin/herdr-worktree",
             DOTFILES / "bin/herdr-run-codex-agent",
+            DOTFILES / "bin/herdr-run-remote-codex-agent",
         }
     )
     for target in sorted(targets):
@@ -300,7 +307,7 @@ def run_deep_tests() -> None:
         status = result.stdout.strip().splitlines()[-1] if result.stdout.strip() else "ok"
         print(f"  {test_name}: {status}")
         if test_name == "test-herdr-keybinding-e2e":
-            cmd_k_env = {**os.environ, "HERDR_TEST_ALT_O": "cmd-k"}
+            cmd_k_env = {**os.environ, "HERDR_TEST_BINDING": "cmd-k"}
             cmd_k_result = run(str(DOTFILES / "bin" / test_name), env=cmd_k_env)
             cmd_k_status = (
                 cmd_k_result.stdout.strip().splitlines()[-1]
@@ -308,6 +315,14 @@ def run_deep_tests() -> None:
                 else "ok"
             )
             print(f"  {test_name} Cmd-K: {cmd_k_status}")
+            cmd_p_env = {**os.environ, "HERDR_TEST_BINDING": "cmd-p"}
+            cmd_p_result = run(str(DOTFILES / "bin" / test_name), env=cmd_p_env)
+            cmd_p_status = (
+                cmd_p_result.stdout.strip().splitlines()[-1]
+                if cmd_p_result.stdout.strip()
+                else "ok"
+            )
+            print(f"  {test_name} Cmd-P: {cmd_p_status}")
 
 
 def main() -> int:
@@ -315,13 +330,13 @@ def main() -> int:
     check_config_with_installed_herdr()
     live_reloaded = reload_live_config()
     check_command_targets(commands)
-    check_terminal_alt_transport()
+    check_terminal_command_transport()
     check_cli_contracts()
     check_script_syntax(commands)
-    print(f"Herdr {run('herdr', '--version').stdout.strip().removeprefix('herdr ')}")
+    print(f"Herdr {run(HERDR, '--version').stdout.strip().removeprefix('herdr ')}")
     print(f"  keybindings: {len(EXPECTED_KEYS)} built-in, {len(EXPECTED_COMMANDS)} custom")
     live_status = "live config reloaded" if live_reloaded else "live reload skipped outside Herdr"
-    print(f"  config, command targets, Alt-o transport, CLI contracts, syntax: ok; {live_status}")
+    print(f"  config, command targets, Cmd-o transport, CLI contracts, syntax: ok; {live_status}")
     run_deep_tests()
     print("herdr-regressions-ok")
     return 0

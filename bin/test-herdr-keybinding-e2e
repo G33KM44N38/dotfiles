@@ -21,14 +21,18 @@ import time
 
 HERDR = os.environ.get("HERDR_TEST_BIN", "herdr")
 SESSION = f"ke-{os.getpid()}"
-SEQUENCE_NAME = os.environ.get("HERDR_TEST_ALT_O", "csi-u")
-ALT_O_SEQUENCE = b"\x1bo" if SEQUENCE_NAME == "legacy" else b"\x1b[111;3u"
-BINDING = "prefix+o" if SEQUENCE_NAME == "prefix" else "alt+o"
+SEQUENCE_NAME = os.environ.get("HERDR_TEST_BINDING", "cmd-o")
+KEY_SEQUENCE = b"\x1b[111;9u"
+BINDING = "cmd+o"
 if SEQUENCE_NAME == "prefix":
-    ALT_O_SEQUENCE = b"\x02o"
+    KEY_SEQUENCE = b"\x02o"
+    BINDING = "prefix+o"
 elif SEQUENCE_NAME == "cmd-k":
-    ALT_O_SEQUENCE = b"\x1b[107;9u"
+    KEY_SEQUENCE = b"\x1b[107;9u"
     BINDING = "cmd+k"
+elif SEQUENCE_NAME == "cmd-p":
+    KEY_SEQUENCE = b"\x1b[112;9u"
+    BINDING = "cmd+p"
 
 
 def wait_for(predicate, timeout: float) -> bool:
@@ -99,20 +103,21 @@ def live_main() -> int:
         fcntl.ioctl(master_fd, termios.TIOCSWINSZ, struct.pack("HHHH", 50, 160, 0, 0))
         time.sleep(0.8)
         settle_terminal(master_fd, drain(master_fd))
-        os.write(master_fd, ALT_O_SEQUENCE)
+        os.write(master_fd, KEY_SEQUENCE)
         deadline = time.monotonic() + 5
         output = bytearray()
-        while time.monotonic() < deadline and b"herdr worktree >" not in output:
+        expected_prompt = b"herdr thread >" if SEQUENCE_NAME == "cmd-p" else b"herdr worktree >"
+        while time.monotonic() < deadline and expected_prompt not in output:
             if select.select([master_fd], [], [], 0.1)[0]:
                 output.extend(drain(master_fd))
-        if b"herdr worktree >" not in output:
+        if expected_prompt not in output:
             raise RuntimeError(
-                "live Alt-o did not open the configured picker; client tail: "
+                f"live {BINDING} did not open the configured picker; client tail: "
                 f"{bytes(output[-2000:]).decode('utf-8', errors='replace')!r}"
             )
         os.write(master_fd, b"\x1b")
         time.sleep(0.3)
-        print(f"live {SEQUENCE_NAME}: configured-alt-o-picker-e2e-ok")
+        print(f"live {SEQUENCE_NAME}: configured-picker-e2e-ok")
         return 0
     finally:
         try:
@@ -140,7 +145,7 @@ def main() -> int:
     config_root = temp_root / "config"
     config_root.mkdir()
     config_path = temp_root / "config.toml"
-    marker = temp_root / "alt-o-triggered"
+    marker = temp_root / "key-triggered"
     command = f"/bin/sh -c {shlex.quote(f'printf triggered > {shlex.quote(str(marker))}; sleep 0.2')}"
     config_path.write_text(
         "\n".join(
@@ -233,7 +238,7 @@ def main() -> int:
             raise RuntimeError("plain o incorrectly triggered the custom command")
 
         # Send the Kitty/CSI-u sequence that Ghostty emits for this binding.
-        os.write(master_fd, ALT_O_SEQUENCE)
+        os.write(master_fd, KEY_SEQUENCE)
         if not wait_for(marker.exists, 3):
             output = drain(master_fd).decode("utf-8", errors="replace")[-2000:]
             raise RuntimeError(f"{BINDING} did not trigger the pane command; client tail: {output!r}")

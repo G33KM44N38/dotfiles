@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -13,26 +14,49 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type row struct {
 	Kind      string
+	Machine   string
 	State     string
 	Branch    string
 	Target    string
 	Workspace string
+	Session   string
+	Prompt    string
 	Detail    string
 	Repo      string
 	Updated   int64
+	Remote    bool
 }
 
 type app struct {
-	gitBin   string
-	herdrBin string
-	root     string
-	rows     []row
+	gitBin           string
+	herdrBin         string
+	sshBin           string
+	remoteTarget     string
+	remoteHerdrBin   string
+	remoteSession    string
+	localMachine     string
+	remoteMachine    string
+	remoteOnline     bool
+	remoteCached     bool
+	remoteLoading    bool
+	remoteErr        error
+	remoteAttachPane string
+	threadsOnly      bool
+	sqliteBin        string
+	historyDB        string
+	historyLoading   bool
+	historyLoaded    bool
+	historyErr       error
+	historyCount     int
+	root             string
+	rows             []row
 }
 
 type palette struct {
@@ -72,6 +96,16 @@ type model struct {
 	err      error
 }
 
+type remoteSnapshotMsg struct {
+	data map[string]any
+	err  error
+}
+
+type historyMsg struct {
+	rows []row
+	err  error
+}
+
 func main() {
 	if err := runMain(); err != nil {
 		fmt.Fprintf(os.Stderr, "herdr-worktree-picker: %s\n", err)
@@ -81,6 +115,7 @@ func main() {
 
 func runMain() error {
 	list := flag.Bool("list", false, "print rows and exit")
+	threadsOnly := flag.Bool("threads", false, "show only existing and new threads")
 	selectQuery := flag.String("select", "", "select without opening the UI")
 	dryRun := flag.Bool("dry-run", false, "print selected command")
 	flag.Parse()
@@ -89,25 +124,62 @@ func runMain() error {
 		explicitPath = flag.Arg(0)
 	}
 
-	a := &app{gitBin: lookPath("git"), herdrBin: lookPath("herdr")}
-	if a.gitBin == "" {
-		return errors.New("git not found in PATH")
+	herdrBin := os.Getenv("HERDR_BIN_PATH")
+	if herdrBin == "" {
+		herdrBin = lookPath("herdr")
+	}
+	localMachine := "Mac"
+	if strings.EqualFold(runtimeOS(), "linux") {
+		localMachine = "Ubuntu"
+	}
+	a := &app{
+		gitBin:         lookPath("git"),
+		herdrBin:       herdrBin,
+		sshBin:         lookPath("ssh"),
+		remoteTarget:   firstNonEmpty(os.Getenv("HERDR_UBUNTU_TARGET"), "kylian@kylian-ps42-8rb"),
+		remoteHerdrBin: firstNonEmpty(os.Getenv("HERDR_REMOTE_HERDR_BIN"), "/usr/local/bin/herdr"),
+		remoteSession:  firstNonEmpty(os.Getenv("HERDR_REMOTE_SESSION"), "default"),
+		localMachine:   localMachine,
+		remoteMachine:  "Ubuntu",
+		threadsOnly:    *threadsOnly,
+		sqliteBin:      lookPath("sqlite3"),
 	}
 	if a.herdrBin == "" {
 		return errors.New("herdr not found in PATH")
 	}
-	source, err := a.sourcePath(explicitPath)
+	var rows []row
+	var err error
+	if a.threadsOnly {
+		a.historyDB, err = a.findHistoryDB()
+		if err != nil {
+			a.historyErr = err
+		}
+		rows = a.buildThreadRows()
+	} else {
+		if a.gitBin == "" {
+			return errors.New("git not found in PATH")
+		}
+		source, sourceErr := a.sourcePath(explicitPath)
+		if sourceErr != nil {
+			return sourceErr
+		}
+		a.root, err = a.repoRoot(source)
+		if err == nil {
+			rows, err = a.buildWorktreeRows()
+		}
+	}
 	if err != nil {
 		return err
 	}
-	root, err := a.repoRoot(source)
-	if err != nil {
-		return err
-	}
-	a.root = root
-	rows, err := a.buildRows()
-	if err != nil {
-		return err
+	rows = a.filterModeRows(rows)
+	if a.threadsOnly && (*list || *selectQuery != "") {
+		history, historyErr := a.loadHistoryRows()
+		if historyErr != nil {
+			return historyErr
+		}
+		merge := model{app: a, allRows: rows}
+		merge.applyHistoryRows(history)
+		rows = merge.allRows
 	}
 	a.rows = rows
 
@@ -120,7 +192,7 @@ func runMain() error {
 	if *selectQuery != "" {
 		selected, ok := chooseNonInteractive(rows, *selectQuery)
 		if !ok {
-			return fmt.Errorf("no worktree/branch matches selector: %s", *selectQuery)
+			return fmt.Errorf("no thread/worktree/branch matches selector: %s", *selectQuery)
 		}
 		return a.openRow(selected, *dryRun)
 	}
@@ -137,14 +209,41 @@ func runMain() error {
 	return a.openRow(*result.selected, *dryRun)
 }
 
-func lookPath(name string) string {
-	if path, err := exec.LookPath(name); err == nil {
-		return path
+func filterThreadRows(rows []row) []row {
+	filtered := make([]row, 0, len(rows))
+	for _, candidate := range rows {
+		if candidate.Kind == "NEW" || candidate.Kind == "TH" || candidate.Kind == "HIST" {
+			filtered = append(filtered, candidate)
+		}
 	}
-	return ""
+	return filtered
 }
 
-func (a *app) output(name string, args ...string) string {
+func filterWorktreeRows(rows []row) []row {
+	filtered := make([]row, 0, len(rows))
+	for _, candidate := range rows {
+		if candidate.Kind == "WT" || candidate.Kind == "BR" || candidate.Kind == "RB" {
+			filtered = append(filtered, candidate)
+		}
+	}
+	return filtered
+}
+
+func (a *app) filterModeRows(rows []row) []row {
+	if a.threadsOnly {
+		return filterThreadRows(rows)
+	}
+	return filterWorktreeRows(rows)
+}
+
+func runtimeOS() string {
+	return aOutput(lookPath("uname"), "-s")
+}
+
+func aOutput(name string, args ...string) string {
+	if name == "" {
+		return ""
+	}
 	cmd := exec.Command(name, args...)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -155,16 +254,228 @@ func (a *app) output(name string, args ...string) string {
 	return strings.TrimSpace(out.String())
 }
 
+func lookPath(name string) string {
+	if path, err := exec.LookPath(name); err == nil {
+		return path
+	}
+	return ""
+}
+
+func (a *app) output(name string, args ...string) string {
+	return a.outputWithTimeout(0, name, args...)
+}
+
+func (a *app) outputWithTimeout(timeout time.Duration, name string, args ...string) string {
+	if name == "" {
+		return ""
+	}
+	ctx := context.Background()
+	var cancel context.CancelFunc
+	if timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
+	cmd := exec.CommandContext(ctx, name, args...)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = bytes.NewBuffer(nil)
+	if cmd.Run() != nil {
+		return ""
+	}
+	return strings.TrimSpace(out.String())
+}
+
+func decodeJSON(raw string) (map[string]any, error) {
+	if raw == "" {
+		return nil, errors.New("command returned no JSON")
+	}
+	var data map[string]any
+	if err := json.Unmarshal([]byte(raw), &data); err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
 func (a *app) herdrJSON(args ...string) (map[string]any, error) {
 	out := a.output(a.herdrBin, args...)
 	if out == "" {
 		return nil, fmt.Errorf("herdr %s returned no JSON", strings.Join(args, " "))
 	}
-	var data map[string]any
-	if err := json.Unmarshal([]byte(out), &data); err != nil {
+	return decodeJSON(out)
+}
+
+func (a *app) fetchRemoteSnapshot() (map[string]any, error) {
+	if a.sshBin == "" {
+		return nil, errors.New("ssh not found in PATH")
+	}
+	out := a.outputWithTimeout(
+		2500*time.Millisecond,
+		a.sshBin,
+		"-o", "BatchMode=yes",
+		"-o", "ConnectTimeout=2",
+		"-o", "ConnectionAttempts=1",
+		"-o", "ControlMaster=auto",
+		"-o", "ControlPersist=10m",
+		"-o", "ControlPath=/tmp/herdr-alt-o-%C",
+		a.remoteTarget,
+		"env", "HERDR_SESSION="+a.remoteSession,
+		a.remoteHerdrBin, "api", "snapshot",
+	)
+	data, err := decodeJSON(out)
+	if err == nil {
+		a.saveRemoteSnapshot(data)
+	}
+	return data, err
+}
+
+func (a *app) remoteSnapshotCachePath() string {
+	cacheRoot := os.Getenv("XDG_CACHE_HOME")
+	if cacheRoot == "" {
+		if home, err := os.UserHomeDir(); err == nil {
+			cacheRoot = filepath.Join(home, ".cache")
+		}
+	}
+	if cacheRoot == "" {
+		return ""
+	}
+	return filepath.Join(cacheRoot, "herdr-worktree-picker", "ubuntu-snapshot.json")
+}
+
+func (a *app) saveRemoteSnapshot(data map[string]any) {
+	path := a.remoteSnapshotCachePath()
+	if path == "" {
+		return
+	}
+	encoded, err := json.Marshal(data)
+	if err != nil || os.MkdirAll(filepath.Dir(path), 0o755) != nil {
+		return
+	}
+	_ = os.WriteFile(path, encoded, 0o600)
+}
+
+func (a *app) loadRemoteSnapshot() (map[string]any, error) {
+	path := a.remoteSnapshotCachePath()
+	if path == "" {
+		return nil, errors.New("cache path unavailable")
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
 		return nil, err
 	}
-	return data, nil
+	return decodeJSON(string(raw))
+}
+
+func (a *app) findHistoryDB() (string, error) {
+	if a.sqliteBin == "" {
+		return "", errors.New("sqlite3 is not installed")
+	}
+	if configured := os.Getenv("HERDR_CODEX_STATE_DB"); configured != "" {
+		if _, err := os.Stat(configured); err != nil {
+			return "", fmt.Errorf("Codex history database: %w", err)
+		}
+		return configured, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	candidates, err := filepath.Glob(filepath.Join(home, ".codex", "state_*.sqlite"))
+	if err != nil || len(candidates) == 0 {
+		return "", errors.New("Codex history database was not found")
+	}
+	sort.SliceStable(candidates, func(i, j int) bool {
+		iInfo, iErr := os.Stat(candidates[i])
+		jInfo, jErr := os.Stat(candidates[j])
+		if iErr != nil || jErr != nil {
+			return candidates[i] > candidates[j]
+		}
+		return iInfo.ModTime().After(jInfo.ModTime())
+	})
+	return candidates[0], nil
+}
+
+type historyRecord struct {
+	ID      string `json:"id"`
+	CWD     string `json:"cwd"`
+	Title   string `json:"title"`
+	Updated int64  `json:"updated"`
+}
+
+func (a *app) loadHistoryRows() ([]row, error) {
+	if a.historyDB == "" {
+		return nil, firstError(a.historyErr, errors.New("Codex history database is unavailable"))
+	}
+	query := `SELECT id, cwd,
+COALESCE(NULLIF(name, ''), NULLIF(title, ''), NULLIF(substr(first_user_message, 1, 240), ''), 'Codex thread') AS title,
+recency_at AS updated
+FROM threads
+WHERE archived = 0 AND preview <> '' AND source IN ('cli', 'vscode')
+ORDER BY recency_at DESC, id DESC;`
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	command := exec.CommandContext(ctx, a.sqliteBin, "-readonly", "-json", a.historyDB, query)
+	var stdout, stderr bytes.Buffer
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+	if err := command.Run(); err != nil {
+		detail := strings.TrimSpace(stderr.String())
+		if ctx.Err() != nil {
+			return nil, errors.New("Codex history load timed out")
+		}
+		if detail == "" {
+			detail = err.Error()
+		}
+		return nil, fmt.Errorf("Codex history load failed: %s", detail)
+	}
+	var records []historyRecord
+	if err := json.Unmarshal(stdout.Bytes(), &records); err != nil {
+		return nil, fmt.Errorf("Codex history returned invalid data: %w", err)
+	}
+	rows := make([]row, 0, len(records))
+	pathStates := make(map[string]string)
+	for _, record := range records {
+		if record.ID == "" {
+			continue
+		}
+		title := oneLine(record.Title)
+		if title == "" {
+			title = "Codex thread"
+		}
+		detail := record.CWD
+		state, known := pathStates[record.CWD]
+		if !known {
+			state = "history"
+			if info, statErr := os.Stat(record.CWD); statErr != nil || !info.IsDir() {
+				state = "missing"
+			}
+			pathStates[record.CWD] = state
+		}
+		if record.Updated > 0 {
+			detail = strings.TrimSpace(fmt.Sprintf("%s · %s", record.CWD, time.Unix(record.Updated, 0).Format("2006-01-02")))
+		}
+		if state == "missing" {
+			detail = "path unavailable · " + detail
+		}
+		rows = append(rows, row{
+			Kind: "HIST", Machine: a.localMachine, State: state, Branch: title,
+			Target: record.CWD, Session: record.ID, Detail: detail,
+			Repo: filepath.Base(record.CWD), Updated: record.Updated,
+		})
+	}
+	return rows, nil
+}
+
+func oneLine(value string) string {
+	return strings.Join(strings.Fields(value), " ")
+}
+
+func firstError(values ...error) error {
+	for _, value := range values {
+		if value != nil {
+			return value
+		}
+	}
+	return nil
 }
 
 func normalizeExistingPath(path string) string {
@@ -255,7 +566,22 @@ func (a *app) repoRoot(path string) (string, error) {
 	return "", fmt.Errorf("not in a git repository: %s", path)
 }
 
-func (a *app) buildRows() ([]row, error) {
+func (a *app) buildThreadRows() []row {
+	localSnapshot, _ := a.herdrJSON("api", "snapshot")
+	threadRows := a.snapshotRows(localSnapshot, a.localMachine, false)
+	if a.localMachine != a.remoteMachine {
+		remoteSnapshot, err := a.loadRemoteSnapshot()
+		if err == nil {
+			a.remoteCached = true
+			threadRows = append(threadRows, a.snapshotRows(remoteSnapshot, a.remoteMachine, true)...)
+		}
+	}
+	threadRows = append(a.newThreadRows(""), threadRows...)
+	sortRows(threadRows)
+	return threadRows
+}
+
+func (a *app) buildWorktreeRows() ([]row, error) {
 	data, err := a.herdrJSON("worktree", "list", "--cwd", a.root, "--json")
 	if err != nil {
 		return nil, err
@@ -287,7 +613,7 @@ func (a *app) buildRows() ([]row, error) {
 		if updated == 0 && !jsonBool(wt, "is_bare") {
 			updated = a.commitTime(path, "HEAD")
 		}
-		out = append(out, row{Kind: "WT", State: state, Branch: branch, Target: path, Workspace: jsonString(wt, "open_workspace_id"), Detail: path, Repo: repoName, Updated: updated})
+		out = append(out, row{Kind: "WT", Machine: a.localMachine, State: state, Branch: branch, Target: path, Workspace: jsonString(wt, "open_workspace_id"), Detail: path, Repo: repoName, Updated: updated})
 	}
 	localBranches := a.branchRefs("refs/heads")
 	localSet := map[string]bool{}
@@ -296,22 +622,148 @@ func (a *app) buildRows() ([]row, error) {
 		if existingBranches[branch] {
 			continue
 		}
-		out = append(out, row{Kind: "BR", State: "branch", Branch: branch, Target: branch, Detail: "local branch", Repo: repoName, Updated: refTimes[branch]})
+		out = append(out, row{Kind: "BR", Machine: a.localMachine, State: "branch", Branch: branch, Target: branch, Detail: "local branch", Repo: repoName, Updated: refTimes[branch]})
 	}
 	for _, remote := range a.branchRefs("refs/remotes") {
 		branch := remoteLocalName(remote)
 		if branch == "" || existingBranches[branch] || localSet[branch] {
 			continue
 		}
-		out = append(out, row{Kind: "RB", State: "remote", Branch: branch, Target: remote, Detail: remote, Repo: repoName, Updated: refTimes[remote]})
+		out = append(out, row{Kind: "RB", Machine: a.localMachine, State: "remote", Branch: branch, Target: remote, Detail: remote, Repo: repoName, Updated: refTimes[remote]})
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].Updated == out[j].Updated {
-			return out[i].Branch < out[j].Branch
-		}
-		return out[i].Updated > out[j].Updated
-	})
+	sortRows(out)
 	return out, nil
+}
+
+func sortRows(rows []row) {
+	sort.SliceStable(rows, func(i, j int) bool {
+		iPriority := rowPriority(rows[i])
+		jPriority := rowPriority(rows[j])
+		if iPriority != jPriority {
+			return iPriority < jPriority
+		}
+		if rows[i].Updated == rows[j].Updated {
+			return rows[i].Branch < rows[j].Branch
+		}
+		return rows[i].Updated > rows[j].Updated
+	})
+}
+
+func (a *app) newThreadRows(prompt string) []row {
+	detail := "start a blank thread"
+	if prompt != "" {
+		detail = prompt
+	}
+	rows := []row{{
+		Kind: "NEW", Machine: a.localMachine, State: "new", Branch: "New thread",
+		Target: "mac", Prompt: prompt, Detail: detail,
+	}}
+	if a.localMachine != a.remoteMachine && a.remoteOnline {
+		rows = append(rows, row{
+			Kind: "NEW", Machine: a.remoteMachine, State: "new", Branch: "New thread",
+			Target: "ubuntu", Prompt: prompt, Detail: detail, Remote: true,
+		})
+	}
+	return rows
+}
+
+type workspaceSnapshot struct {
+	label string
+	repo  string
+	path  string
+}
+
+func (a *app) snapshotRows(data map[string]any, machine string, remote bool) []row {
+	result := jsonMap(data, "result")
+	snapshot := jsonMap(result, "snapshot")
+	workspaces := make(map[string]workspaceSnapshot)
+	var rows []row
+
+	for _, item := range jsonArray(snapshot, "workspaces") {
+		workspace, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		workspaceID := jsonString(workspace, "workspace_id")
+		repository := jsonMap(workspace, "repository")
+		worktree := jsonMap(workspace, "worktree")
+		path := firstNonEmpty(jsonString(repository, "checkout_path"), jsonString(worktree, "checkout_path"))
+		repo := firstNonEmpty(jsonString(repository, "portable_repo_key"), jsonString(repository, "repo_name"), jsonString(worktree, "repo_name"))
+		label := firstNonEmpty(jsonString(workspace, "label"), filepath.Base(path))
+		workspaces[workspaceID] = workspaceSnapshot{label: label, repo: repo, path: path}
+
+		if remote && path != "" {
+			rows = append(rows, row{
+				Kind: "WT", Machine: machine, State: "worktree", Branch: label,
+				Target: path, Workspace: workspaceID, Detail: path, Repo: repo,
+				Remote: true,
+			})
+		}
+	}
+
+	for _, item := range jsonArray(snapshot, "agents") {
+		agent, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		name := jsonString(agent, "name")
+		displayAgent := jsonString(agent, "display_agent")
+		if !remote && strings.HasPrefix(name, "ubuntu-session") && strings.Contains(displayAgent, "Ubuntu") {
+			a.remoteAttachPane = jsonString(agent, "pane_id")
+			continue
+		}
+		workspaceID := jsonString(agent, "workspace_id")
+		workspace := workspaces[workspaceID]
+		cwd := firstNonEmpty(jsonString(agent, "foreground_cwd"), jsonString(agent, "cwd"), workspace.path)
+		title := firstNonEmpty(name, jsonString(agent, "title"), jsonString(agent, "terminal_title_stripped"), workspace.label, filepath.Base(cwd))
+		session := jsonString(jsonMap(agent, "agent_session"), "value")
+		detail := cwd
+		if session != "" {
+			detail = firstNonEmpty(workspace.repo, cwd) + " · " + shortSession(session)
+		}
+		rows = append(rows, row{
+			Kind: "TH", Machine: machine, State: jsonString(agent, "agent_status"),
+			Branch: title, Target: jsonString(agent, "pane_id"), Workspace: workspaceID,
+			Session: session, Detail: detail, Repo: workspace.repo,
+			Updated: jsonInt64(agent, "state_change_seq"), Remote: remote,
+		})
+	}
+	return rows
+}
+
+func shortSession(session string) string {
+	if len(session) <= 12 {
+		return session
+	}
+	return session[:12]
+}
+
+func rowPriority(r row) int {
+	if r.Kind == "NEW" {
+		return 0
+	}
+	if r.Kind == "TH" {
+		switch r.State {
+		case "blocked":
+			return 1
+		case "working":
+			return 2
+		default:
+			return 3
+		}
+	}
+	switch r.Kind {
+	case "HIST":
+		return 4
+	case "WT":
+		return 5
+	case "BR":
+		return 6
+	case "RB":
+		return 7
+	default:
+		return 8
+	}
 }
 
 // refTimes batches timestamp lookup for every local and remote branch into one
@@ -354,8 +806,19 @@ func (a *app) branchRefs(namespace string) []string {
 }
 
 func (a *app) openRow(r row, dryRun bool) error {
+	if r.Kind == "NEW" {
+		return a.openNewThread(r, dryRun)
+	}
+	if r.Kind == "HIST" {
+		return a.openHistoryThread(r, dryRun)
+	}
+	if r.Remote {
+		return a.openRemoteRow(r, dryRun)
+	}
 	var args []string
 	switch r.Kind {
+	case "TH":
+		args = []string{"agent", "focus", r.Target}
 	case "WT":
 		if r.Workspace != "" {
 			args = []string{"workspace", "focus", r.Workspace}
@@ -381,16 +844,157 @@ func (a *app) openRow(r row, dryRun bool) error {
 	return cmd.Run()
 }
 
+func (a *app) openHistoryThread(r row, dryRun bool) error {
+	if r.Session == "" {
+		return errors.New("saved thread has no session id")
+	}
+	info, err := os.Stat(r.Target)
+	if err != nil || !info.IsDir() {
+		return fmt.Errorf("saved path is not available: %s", r.Target)
+	}
+	savedPath, err := filepath.EvalSymlinks(r.Target)
+	if err != nil {
+		return fmt.Errorf("saved path is not available: %s", r.Target)
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	launcher := filepath.Join(home, ".dotfiles/bin/herdr-start-codex")
+	args := []string{"mac", "--project-path", savedPath, "--resume", r.Session}
+	if dryRun {
+		fmt.Printf("%s %s\n", launcher, strings.Join(args, " "))
+		return nil
+	}
+	command := exec.Command(launcher, args...)
+	command.Stdout = os.Stdout
+	command.Stderr = os.Stderr
+	return command.Run()
+}
+
+func (a *app) openNewThread(r row, dryRun bool) error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	launcher := filepath.Join(home, ".dotfiles/bin/herdr-start-codex")
+	args := []string{r.Target, "--new-worktree", threadBranch(r.Prompt, time.Now())}
+	if r.Prompt != "" {
+		args = append(args, "--prompt", r.Prompt)
+	}
+	if dryRun {
+		fmt.Printf("%s %s\n", launcher, strings.Join(args, " "))
+		return nil
+	}
+	command := exec.Command(launcher, args...)
+	command.Stdout = os.Stdout
+	command.Stderr = os.Stderr
+	return command.Run()
+}
+
+func threadBranch(prompt string, now time.Time) string {
+	label := strings.ToLower(strings.TrimSpace(prompt))
+	if label == "" {
+		label = "new"
+	}
+	label = strings.Trim(sanitizeBranch(label), "-./")
+	if label == "" {
+		label = "new"
+	}
+	if len(label) > 48 {
+		label = strings.TrimRight(label[:48], "-.")
+	}
+	return fmt.Sprintf("thread/%s-%s", label, now.Format("20060102-150405"))
+}
+
+func (a *app) openRemoteRow(r row, dryRun bool) error {
+	var remoteArgs []string
+	switch r.Kind {
+	case "TH":
+		remoteArgs = []string{"agent", "focus", r.Target}
+	case "WT":
+		remoteArgs = []string{"workspace", "focus", r.Workspace}
+	default:
+		return fmt.Errorf("unsupported remote row kind: %s", r.Kind)
+	}
+	sshArgs := []string{
+		"-o", "BatchMode=yes",
+		"-o", "ControlMaster=auto",
+		"-o", "ControlPersist=10m",
+		"-o", "ControlPath=/tmp/herdr-alt-o-%C",
+		a.remoteTarget,
+		"env", "HERDR_SESSION=" + a.remoteSession,
+		a.remoteHerdrBin,
+	}
+	sshArgs = append(sshArgs, remoteArgs...)
+	if dryRun {
+		fmt.Printf("ssh %s\n", strings.Join(sshArgs, " "))
+		return nil
+	}
+	command := exec.Command(a.sshBin, sshArgs...)
+	command.Stdout = os.Stdout
+	command.Stderr = os.Stderr
+	if err := command.Run(); err != nil {
+		return err
+	}
+	if a.remoteAttachPane != "" {
+		return exec.Command(a.herdrBin, "agent", "focus", a.remoteAttachPane).Run()
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	attach := exec.Command(filepath.Join(home, ".dotfiles/bin/herdr-start-codex"), "ubuntu-attach")
+	attach.Stdout = os.Stdout
+	attach.Stderr = os.Stderr
+	return attach.Run()
+}
+
 func newModel(a *app, rows []row) model {
+	if a.localMachine != a.remoteMachine {
+		a.remoteLoading = true
+	}
+	if a.threadsOnly && a.historyErr == nil {
+		a.historyLoading = true
+	}
 	m := model{app: a, allRows: rows, width: 100, height: 24}
 	m.applyFilter(true)
 	return m
 }
 
-func (m model) Init() tea.Cmd { return nil }
+func (m model) Init() tea.Cmd {
+	var commands []tea.Cmd
+	if m.app.localMachine != m.app.remoteMachine {
+		commands = append(commands, func() tea.Msg {
+			data, err := m.app.fetchRemoteSnapshot()
+			return remoteSnapshotMsg{data: data, err: err}
+		})
+	}
+	if m.app.threadsOnly && m.app.historyErr == nil {
+		commands = append(commands, func() tea.Msg {
+			rows, err := m.app.loadHistoryRows()
+			return historyMsg{rows: rows, err: err}
+		})
+	}
+	return tea.Batch(commands...)
+}
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case remoteSnapshotMsg:
+		m.app.remoteLoading = false
+		if msg.err == nil {
+			m.applyRemoteSnapshot(msg.data)
+		} else {
+			m.app.remoteErr = msg.err
+		}
+	case historyMsg:
+		m.app.historyLoading = false
+		m.app.historyLoaded = msg.err == nil
+		m.app.historyErr = msg.err
+		if msg.err == nil {
+			m.applyHistoryRows(msg.rows)
+		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -429,6 +1033,49 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *model) applyRemoteSnapshot(data map[string]any) {
+	m.app.remoteOnline = true
+	m.app.remoteCached = false
+	rows := make([]row, 0, len(m.allRows))
+	for _, existing := range m.allRows {
+		if !existing.Remote {
+			rows = append(rows, existing)
+		}
+	}
+	for _, created := range m.app.newThreadRows("") {
+		if created.Remote {
+			rows = append(rows, created)
+		}
+	}
+	rows = append(rows, m.app.snapshotRows(data, m.app.remoteMachine, true)...)
+	sortRows(rows)
+	m.allRows = m.app.filterModeRows(rows)
+	m.applyFilter(false)
+}
+
+func (m *model) applyHistoryRows(history []row) {
+	activeSessions := make(map[string]bool)
+	rows := make([]row, 0, len(m.allRows)+len(history))
+	for _, existing := range m.allRows {
+		if existing.Kind == "HIST" {
+			continue
+		}
+		if existing.Kind == "TH" && existing.Session != "" {
+			activeSessions[existing.Session] = true
+		}
+		rows = append(rows, existing)
+	}
+	for _, saved := range history {
+		if !activeSessions[saved.Session] {
+			rows = append(rows, saved)
+		}
+	}
+	m.app.historyCount = len(history)
+	sortRows(rows)
+	m.allRows = m.app.filterModeRows(rows)
+	m.applyFilter(false)
+}
+
 func (m model) View() string {
 	if m.quit {
 		return ""
@@ -458,8 +1105,45 @@ func (m model) View() string {
 	top := "╭" + strings.Repeat("─", inner+2) + "╮"
 	sep := "├" + strings.Repeat("─", inner+2) + "┤"
 	b.WriteString(top + "\n")
-	b.WriteString(boxLine(color(c.bold+c.cyan, "herdr worktree > ")+m.query, inner) + "\n")
-	b.WriteString(boxLine("      "+color(c.dim, fmt.Sprintf("%-8s  %-38s  %-7s  %s", "state", "branch", "kind", "detail")), inner) + "\n")
+	remoteState := "offline"
+	if m.app.remoteOnline {
+		remoteState = "online"
+	} else if m.app.remoteErr != nil {
+		remoteState = "failed"
+	} else if m.app.remoteCached {
+		remoteState = "offline · cached"
+	}
+	if m.app.remoteLoading {
+		remoteState = "checking"
+		if m.app.remoteCached {
+			remoteState = "cached · checking"
+		}
+	}
+	machineSummary := m.app.localMachine
+	if m.app.localMachine != m.app.remoteMachine {
+		machineSummary += " · " + m.app.remoteMachine + " " + remoteState
+	}
+	if m.app.threadsOnly {
+		historyState := fmt.Sprintf("%d saved", m.app.historyCount)
+		if m.app.historyLoading {
+			historyState = "history loading"
+		} else if m.app.historyErr != nil {
+			historyState = "history failed: " + oneLine(m.app.historyErr.Error())
+		} else if m.app.historyLoaded && m.app.historyCount == 0 {
+			historyState = "no saved threads"
+		}
+		machineSummary += " · " + historyState
+	}
+	prompt := "herdr worktree > "
+	targetHeader := "thread / worktree / branch"
+	enterAction := "start/open/create"
+	if m.app.threadsOnly {
+		prompt = "herdr thread > "
+		targetHeader = "thread"
+		enterAction = "focus/start"
+	}
+	b.WriteString(boxLine(color(c.bold+c.cyan, prompt)+m.query+color(c.dim, "  "+machineSummary), inner) + "\n")
+	b.WriteString(boxLine("      "+color(c.dim, fmt.Sprintf("%-8s  %-9s  %-32s  %-6s  %s", "machine", "state", targetHeader, "kind", "detail")), inner) + "\n")
 	b.WriteString(sep + "\n")
 	for i := start; i < end; i++ {
 		prefix := "  "
@@ -472,7 +1156,7 @@ func (m model) View() string {
 		b.WriteString(boxLine("", inner) + "\n")
 	}
 	b.WriteString(sep + "\n")
-	b.WriteString(boxLine(color(c.dim, "type to search")+" | "+color(c.green, "Enter")+" open/create | "+color(c.yellow, "Esc")+" quit | "+color(c.yellow, "Ctrl-u")+" clear", inner) + "\n")
+	b.WriteString(boxLine(color(c.dim, "type to search")+" | "+color(c.green, "Enter")+" "+enterAction+" | "+color(c.yellow, "Esc")+" quit | "+color(c.yellow, "Ctrl-u")+" clear", inner) + "\n")
 	b.WriteString("╰" + strings.Repeat("─", inner+2) + "╯")
 	return b.String()
 }
@@ -480,10 +1164,17 @@ func (m model) View() string {
 func (m *model) applyFilter(reset bool) {
 	query := strings.ToLower(strings.TrimSpace(m.query))
 	m.rows = nil
+	threadTitleMatch := false
 	for _, r := range m.allRows {
 		if query == "" {
 			m.rows = append(m.rows, r)
 			continue
+		}
+		if r.Kind == "NEW" {
+			continue
+		}
+		if (r.Kind == "TH" || r.Kind == "HIST") && r.threadTitleMatch(query) {
+			threadTitleMatch = true
 		}
 		if _, matched := r.matchRank(query); matched {
 			m.rows = append(m.rows, r)
@@ -496,9 +1187,17 @@ func (m *model) applyFilter(reset bool) {
 			return iRank < jRank
 		})
 	}
+	if query != "" && !threadTitleMatch && m.app != nil {
+		m.rows = append(m.app.newThreadRows(strings.TrimSpace(m.query)), m.rows...)
+	}
 	if reset || m.cursor >= len(m.rows) {
 		m.cursor = 0
 	}
+}
+
+func (r row) threadTitleMatch(query string) bool {
+	return strings.Contains(strings.ToLower(strings.TrimSpace(r.Branch)), query) ||
+		(r.Session != "" && strings.EqualFold(r.Session, query))
 }
 
 func (m *model) move(delta int) {
@@ -517,16 +1216,17 @@ func (m *model) move(delta int) {
 
 func (r row) display() string {
 	return fmt.Sprintf(
-		"%-8s  %-38s  %-7s  %s",
-		color(r.stateColor(), padPlain(r.State, 8)),
-		color(r.branchColor(), padPlain(truncatePlain(r.Branch, 38), 38)),
-		color(r.kindColor(), padPlain(r.Kind, 7)),
+		"%-8s  %-9s  %-32s  %-6s  %s",
+		color(r.machineColor(), padPlain(r.Machine, 8)),
+		color(r.stateColor(), padPlain(r.State, 9)),
+		color(r.branchColor(), padPlain(truncatePlain(r.Branch, 32), 32)),
+		color(r.kindColor(), padPlain(r.Kind, 6)),
 		color(c.dim, truncatePlain(r.Detail, 80)),
 	)
 }
 
 func (r row) searchText() string {
-	return strings.Join([]string{r.Kind, r.State, r.Branch, r.Target, r.Workspace, r.Detail, r.Repo}, " ")
+	return strings.Join([]string{r.Kind, r.Machine, r.State, r.Branch, r.Target, r.Workspace, r.Session, r.Prompt, r.Detail, r.Repo}, " ")
 }
 
 // matchRank keeps the default recency ordering as a stable tie-breaker while
@@ -550,7 +1250,7 @@ func (r row) matchRank(query string) (int, bool) {
 		return 3, true
 	}
 
-	fields := []string{r.Target, r.Workspace, r.Detail, r.Repo, r.Kind, r.State}
+	fields := []string{r.Target, r.Workspace, r.Session, r.Detail, r.Repo, r.Machine, r.Kind, r.State}
 	for _, field := range fields {
 		if strings.ToLower(field) == query {
 			return 4, true
@@ -568,7 +1268,7 @@ func (r row) matchRank(query string) (int, bool) {
 }
 
 func (r row) tsv() string {
-	return strings.Join([]string{r.Kind, r.State, r.Branch, r.Target, r.Workspace, r.Detail, r.Repo}, "\t")
+	return strings.Join([]string{r.Kind, r.Machine, r.State, r.Branch, r.Target, r.Workspace, r.Session, r.Prompt, r.Detail, r.Repo}, "\t")
 }
 
 func chooseNonInteractive(rows []row, selector string) (row, bool) {
@@ -615,6 +1315,12 @@ func color(colorCode, value string) string {
 
 func (r row) kindColor() string {
 	switch r.Kind {
+	case "NEW":
+		return c.blue + c.bold
+	case "TH":
+		return c.green
+	case "HIST":
+		return c.magenta
 	case "WT":
 		return c.cyan
 	case "BR":
@@ -628,6 +1334,18 @@ func (r row) kindColor() string {
 
 func (r row) stateColor() string {
 	switch r.State {
+	case "new":
+		return c.blue + c.bold
+	case "blocked":
+		return c.red + c.bold
+	case "working":
+		return c.yellow + c.bold
+	case "idle":
+		return c.green
+	case "history":
+		return c.magenta
+	case "missing":
+		return c.red + c.bold
 	case "open":
 		return c.green + c.bold
 	case "worktree":
@@ -643,6 +1361,12 @@ func (r row) stateColor() string {
 
 func (r row) branchColor() string {
 	switch r.Kind {
+	case "NEW":
+		return c.blue + c.bold
+	case "TH":
+		return c.green
+	case "HIST":
+		return c.magenta
 	case "WT":
 		if r.State == "open" {
 			return c.green
@@ -655,6 +1379,13 @@ func (r row) branchColor() string {
 	default:
 		return c.reset
 	}
+}
+
+func (r row) machineColor() string {
+	if r.Remote {
+		return c.magenta
+	}
+	return c.blue
 }
 
 var ansiPattern = regexp.MustCompile(`\x1b\[[0-9;]*m`)
@@ -759,6 +1490,11 @@ func jsonArray(data map[string]any, key string) []any {
 func jsonString(data map[string]any, key string) string {
 	value, _ := data[key].(string)
 	return value
+}
+
+func jsonInt64(data map[string]any, key string) int64 {
+	value, _ := data[key].(float64)
+	return int64(value)
 }
 
 func jsonBool(data map[string]any, key string) bool {

@@ -109,15 +109,14 @@ type = "shell"
 command = "$HOME/.dotfiles/bin/herdr-worktree-release"
 
 [[keys.command]]
-key = "alt+o"
+key = "cmd+o"
 type = "pane"
 command = "$HOME/.dotfiles/bin/herdr-worktree-picker"
 
-# Karabiner sends this equivalent chord for physical Corne Alt+O in Ghostty.
 [[keys.command]]
-key = "ctrl+alt+o"
+key = "cmd+p"
 type = "pane"
-command = "$HOME/.dotfiles/bin/herdr-worktree-picker"
+command = "$HOME/.dotfiles/bin/herdr-worktree-picker --threads"
 
 [[keys.command]]
 key = "alt+h"
@@ -191,8 +190,11 @@ command = "$HOME/.dotfiles/bin/herdr-focus-agent-pane 9"
 
 [[keys.command]]
 key = "ctrl+shift+n"
-type = "shell"
+type = "popup"
 command = "$HOME/.dotfiles/bin/herdr-start-codex"
+description = "start Codex on Mac or Ubuntu"
+width = 56
+height = 12
 
 [[keys.command]]
 key = "alt+g"
