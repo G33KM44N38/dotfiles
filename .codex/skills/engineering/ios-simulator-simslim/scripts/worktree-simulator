@@ -1,0 +1,101 @@
+#!/bin/bash
+
+set -euo pipefail
+
+usage() {
+    echo "Usage: $0 {name|find|ensure <source-udid>}" >&2
+}
+
+fail() {
+    echo "worktree-simulator: $*" >&2
+    exit 1
+}
+
+for tool in git simslim python3 shasum; do
+    command -v "$tool" >/dev/null 2>&1 || fail "$tool is required"
+done
+
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 || fail "run this command inside a Git worktree"
+
+worktree_root="$(git rev-parse --show-toplevel)"
+git_dir="$(git rev-parse --path-format=absolute --git-dir)"
+common_dir="$(git rev-parse --path-format=absolute --git-common-dir)"
+
+[[ "$git_dir" != "$common_dir" ]] || fail "this checkout is not a linked Git worktree"
+
+slugify() {
+    printf '%s' "$1" \
+        | tr '[:upper:]' '[:lower:]' \
+        | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' \
+        | cut -c1-40
+}
+
+repo_name="$(basename "$(dirname "$common_dir")")"
+branch_name="$(git branch --show-current)"
+[[ -n "$branch_name" ]] || branch_name="detached"
+
+repo_slug="$(slugify "$repo_name")"
+branch_slug="$(slugify "$branch_name")"
+path_hash="$(printf '%s' "$worktree_root" | shasum -a 256 | awk '{print substr($1, 1, 8)}')"
+clone_name="WT-${repo_slug}-${branch_slug}-${path_hash}"
+
+find_clone() {
+    local matches
+    local match_count
+
+    matches="$(simslim list --json | python3 -c '
+import json
+import sys
+
+name = sys.argv[1]
+for device in json.load(sys.stdin):
+    if device.get("name") == name:
+        print(device["udid"])
+' "$clone_name")"
+    match_count="$(printf '%s\n' "$matches" | sed '/^$/d' | wc -l | tr -d ' ')"
+
+    if [[ "$match_count" -gt 1 ]]; then
+        fail "more than one simulator is named $clone_name"
+    fi
+
+    printf '%s' "$matches"
+}
+
+case "${1:-}" in
+    name)
+        [[ "$#" -eq 1 ]] || { usage; exit 2; }
+        printf '%s\n' "$clone_name"
+        ;;
+    find)
+        [[ "$#" -eq 1 ]] || { usage; exit 2; }
+        clone_udid="$(find_clone)"
+        [[ -n "$clone_udid" ]] || exit 1
+        printf '%s\n' "$clone_udid"
+        ;;
+    ensure)
+        [[ "$#" -eq 2 ]] || { usage; exit 2; }
+        source_udid="$2"
+        simslim list --json | python3 -c '
+import json
+import sys
+
+udid = sys.argv[1]
+devices = json.load(sys.stdin)
+sys.exit(0 if any(device.get("udid") == udid for device in devices) else 1)
+' "$source_udid" \
+            || fail "source simulator $source_udid was not found"
+
+        clone_udid="$(find_clone)"
+        if [[ -z "$clone_udid" ]]; then
+            simslim clone "$source_udid" "$clone_name" >&2
+            clone_udid="$(find_clone)"
+        fi
+
+        [[ -n "$clone_udid" ]] || fail "clone $clone_name was not found after creation"
+        printf '%s\n' "$clone_udid"
+        ;;
+    *)
+        usage
+        exit 2
+        ;;
+esac

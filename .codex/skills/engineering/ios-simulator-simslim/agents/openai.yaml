@@ -1,0 +1,6 @@
+interface:
+  display_name: "iOS Simulator with SimSlim"
+  short_description: "Isolate worktrees with slim simulators"
+  default_prompt: "Use $ios-simulator-simslim to run this iOS task in an isolated simulator."
+policy:
+  allow_implicit_invocation: true

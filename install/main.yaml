@@ -54,6 +54,10 @@
        ansible.builtin.include_role:
          name: slack
        when: ansible_system == 'Darwin'
+     - name: Install SimSlim
+       ansible.builtin.include_role:
+         name: simslim
+       when: ansible_system == 'Darwin'
     # Cross-platform roles (run on both macOS and Linux)
      - name: Run roles
        ansible.builtin.include_role:
