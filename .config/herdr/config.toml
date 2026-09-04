@@ -119,6 +119,11 @@ type = "pane"
 command = "$HOME/.dotfiles/bin/herdr-worktree-picker --threads"
 
 [[keys.command]]
+key = "cmd+alt+p"
+type = "pane"
+command = "$HOME/.dotfiles/bin/herdr-worktree-picker --new-thread"
+
+[[keys.command]]
 key = "alt+h"
 type = "shell"
 command = "$HOME/.dotfiles/bin/herdr-focus-tab editor"

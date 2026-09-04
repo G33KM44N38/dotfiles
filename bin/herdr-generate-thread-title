@@ -1,0 +1,165 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+import time
+import unicodedata
+
+
+MODEL = "gpt-5.6-luna"
+REASONING_EFFORT = "low"
+TITLE_SOURCE = "boss:codex-launch-title"
+
+
+def clean_title(value: str) -> str | None:
+    line = next(
+        (
+            line.strip()
+            for line in value.splitlines()
+            if line.strip() and not line.strip().startswith("```")
+        ),
+        "",
+    )
+    line = line.strip("`\"' #>*-0123456789.)")
+    line = unicodedata.normalize("NFKC", line)
+    line = "".join(
+        " " if character.isspace() else character
+        for character in line
+        if character.isspace() or not unicodedata.category(character).startswith("C")
+    )
+    line = " ".join(line.split()).rstrip(".,;:-")
+    if len(line) < 3:
+        return None
+    if len(line) > 52:
+        line = line[:52].rsplit(" ", 1)[0].rstrip(".,;:-")
+    return line or None
+
+
+def generate_title(prompt: str, project: str, timeout: float) -> str | None:
+    instruction = (
+        "Create a concise work title from the user request below. "
+        "Use 3 to 7 words. Preserve issue IDs. Use the request language. "
+        "Return only the title without quotes or punctuation.\n\n"
+        f"User request:\n{prompt[:1200]}"
+    )
+    wrapper = Path.home() / ".dotfiles/bin/herdr-run-codex-agent"
+    child_environment = os.environ.copy()
+    for key in ("HERDR_ENV", "HERDR_PANE_ID", "HERDR_TAB_ID", "HERDR_WORKSPACE_ID"):
+        child_environment.pop(key, None)
+    with tempfile.NamedTemporaryFile(prefix="herdr-thread-title-", delete=False) as stream:
+        output_path = Path(stream.name)
+    try:
+        command = [
+            str(wrapper),
+            "--task-name",
+            "Generate thread title",
+            "--",
+            "--ephemeral",
+            "--ignore-user-config",
+            "--ignore-rules",
+            "--skip-git-repo-check",
+            "--sandbox",
+            "read-only",
+            "--model",
+            MODEL,
+            "--config",
+            f'model_reasoning_effort="{REASONING_EFFORT}"',
+            "--cd",
+            project,
+            "--output-last-message",
+            str(output_path),
+            instruction,
+        ]
+        result = subprocess.run(
+            command,
+            env=child_environment,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=timeout,
+        )
+        if result.returncode != 0:
+            return None
+        return clean_title(output_path.read_text(encoding="utf-8"))
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    finally:
+        output_path.unlink(missing_ok=True)
+
+
+def herdr(*arguments: str) -> dict:
+    result = subprocess.run(
+        [os.environ.get("HERDR_BIN_PATH", "herdr"), *arguments],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    if result.returncode != 0:
+        return {}
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return {}
+
+
+def apply_title(workspace_id: str, title: str, machine: str) -> None:
+    workspace_title = f"{title} · Ubuntu" if machine == "Ubuntu" else title
+    herdr("workspace", "rename", workspace_id, workspace_title)
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        agents = herdr("agent", "list").get("result", {}).get("agents", [])
+        agent = next(
+            (
+                candidate
+                for candidate in agents
+                if candidate.get("workspace_id") == workspace_id
+                and candidate.get("agent") == "codex"
+            ),
+            None,
+        )
+        if agent:
+            arguments = [
+                "pane",
+                "report-metadata",
+                agent["pane_id"],
+                "--source",
+                TITLE_SOURCE,
+                "--agent",
+                "codex",
+                "--title",
+                title,
+                "--display-agent",
+                f"{machine} · Codex",
+                "--seq",
+                str(time.time_ns()),
+            ]
+            herdr(*arguments)
+            return
+        time.sleep(0.1)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--prompt", required=True)
+    parser.add_argument("--project", required=True)
+    parser.add_argument("--workspace")
+    parser.add_argument("--machine", choices=("Mac", "Ubuntu"), default="Mac")
+    parser.add_argument("--timeout", type=float, default=15)
+    parser.add_argument("--print", action="store_true", dest="print_only")
+    arguments = parser.parse_args()
+    title = generate_title(arguments.prompt, arguments.project, arguments.timeout)
+    if not title:
+        return 1
+    if arguments.print_only:
+        print(title)
+        return 0
+    if not arguments.workspace:
+        parser.error("--workspace is required without --print")
+    apply_title(arguments.workspace, title, arguments.machine)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -145,6 +145,18 @@ def lifecycle_transition(
             elif action == "working":
                 parent_waiting = False
                 result = STATES[action]
+                if not state:
+                    # Herdr can restart while Codex keeps running, which loses
+                    # this pane-local lifecycle state. A durable subject proves
+                    # that this exact session already owned its display title;
+                    # restore it without deriving identity from the new prompt.
+                    durable_subject = load_session_subject(session_id)
+                    if durable_subject:
+                        subject = durable_subject
+                        title_initialized = True
+                        subject_locked = True
+                        title_generation_started = True
+                        mark_active_session(pane_id, session_id)
                 if title_initialized and not subject_locked:
                     raw_prompt = payload.get("prompt")
                     prompt_subject = subject_from_prompt(raw_prompt)

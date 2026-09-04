@@ -69,10 +69,10 @@ def main() -> int:
     integration = CODEX_HOME / "herdr-agent-state.sh"
     integration_text = integration.read_text() if integration.exists() else ""
     check(
-        "herdr_codex_identity_v6",
-        "HERDR_INTEGRATION_VERSION=6" in integration_text
+        "herdr_codex_identity_v7",
+        "HERDR_INTEGRATION_VERSION=7" in integration_text
         and "pane.report_agent_session" in integration_text,
-        "v6 SessionStart identity reporter present",
+        "v7 SessionStart identity reporter present",
     )
 
     hooks = json.loads((CODEX_HOME / "hooks.json").read_text())
@@ -283,10 +283,10 @@ def main() -> int:
         "herdr_integration_status",
         integration_status.returncode == 0
         and any(
-            line.startswith("codex: current (v6)")
+            line.startswith("codex: current (v7)")
             for line in integration_status.stdout.splitlines()
         ),
-        "Herdr reports codex integration current (v6)",
+        "Herdr reports codex integration current (v7)",
     )
 
     agents = run("herdr", "agent", "list")

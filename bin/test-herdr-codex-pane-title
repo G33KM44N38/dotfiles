@@ -95,6 +95,12 @@ path.write_text("Corriger les titres Herdr\\n", encoding="utf-8")
                     return command[command.index("--title") + 1]
             return None
 
+        def agent_session_id_from(commands: list[list[str]]) -> str | None:
+            for command in commands:
+                if command[:2] == ["pane", "report-agent"]:
+                    return command[command.index("--agent-session-id") + 1]
+            return None
+
         session_one = "019fc240-becc-7261-8e2c-6db899ca2a9d"
         session_two = "019fc241-cafe-7261-8e2c-6db899ca2a9d"
         one_suffix = " · codex-019fc240-b"
@@ -123,20 +129,40 @@ path.write_text("Corriger les titres Herdr\\n", encoding="utf-8")
             invoke("start", session_one, source="compact")
         ) == first_title
 
+        # A Herdr restart can discard pane-local lifecycle state while the
+        # session's canonical display subject remains durable. The next prompt
+        # republishes that subject for the same Codex session id, never a title
+        # inferred from the later prompt.
+        original_state_dir = env["HERDR_CODEX_LIFECYCLE_STATE_DIR"]
+        env["HERDR_CODEX_LIFECYCLE_STATE_DIR"] = str(root / "restarted-state")
+        recovered_commands = invoke(
+            "working",
+            session_one,
+            prompt="This later prompt must not replace the durable subject",
+        )
+        assert title_from(recovered_commands) == first_title
+        assert agent_session_id_from(recovered_commands) == session_one
+        env["HERDR_CODEX_LIFECYCLE_STATE_DIR"] = original_state_dir
+
         # /new and /clear arrive with a fresh id and reset immediately. Slash
         # commands and empty/control-only inputs are not meaningful subjects.
-        assert title_from(invoke("start", session_two, source="clear")) == (
+        new_commands = invoke("start", session_two, source="clear")
+        assert title_from(new_commands) == (
             "Codex session" + two_suffix
         )
+        assert agent_session_id_from(new_commands) == session_two
+        assert agent_session_id_from(new_commands) != session_one
         assert title_from(invoke("working", session_two, prompt="/clear")) == (
             "Codex session" + two_suffix
         )
         assert title_from(invoke("working", session_two, prompt="\x00\n***")) == (
             "Codex session" + two_suffix
         )
-        assert title_from(
-            invoke("working", session_two, prompt="Fix the sidebar")
-        ) == "Fix the sidebar" + two_suffix
+        new_subject_commands = invoke(
+            "working", session_two, prompt="Fix the sidebar"
+        )
+        assert title_from(new_subject_commands) == "Fix the sidebar" + two_suffix
+        assert agent_session_id_from(new_subject_commands) == session_two
 
         # Similar subjects remain distinguishable because their ids differ.
         session_three = "019fc242-dead-7261-8e2c-6db899ca2a9d"
@@ -150,11 +176,12 @@ path.write_text("Corriger les titres Herdr\\n", encoding="utf-8")
         assert third_title != "Fix the sidebar" + two_suffix
 
         # Resuming the same discussion in another pane restores the exact
-        # canonical subject instead of publishing the generic fallback.
+        # canonical subject and reports the original Codex session id instead
+        # of creating or renaming any identity.
         env["HERDR_PANE_ID"] = "proof:resumed-pane"
-        assert title_from(
-            invoke("start", session_three, source="resume")
-        ) == third_title
+        resume_commands = invoke("start", session_three, source="resume")
+        assert title_from(resume_commands) == third_title
+        assert agent_session_id_from(resume_commands) == session_three
 
         # Sessions created before the durable title index was introduced can
         # recover their original task from the transcript supplied by Codex.
@@ -244,10 +271,18 @@ path.write_text("Corriger les titres Herdr\\n", encoding="utf-8")
             time.sleep(0.02)
         assert generated_title == "Corriger les titres Herdr · codex-019fc243-t"
 
-        # Display-title updates must never mutate the stable launch-time agent
-        # identity used by Herdr targeting and control.
+        # Display-title updates must never mutate the stable launch-time agent,
+        # pane, terminal, or Codex identity used for targeting and resume.
         all_commands = [json.loads(line) for line in report_log.read_text().splitlines()]
         assert not any(command[:2] == ["agent", "rename"] for command in all_commands)
+        assert not any(command[:2] == ["pane", "rename"] for command in all_commands)
+        assert all(
+            command[:2] in {
+                ("pane", "report-agent"),
+                ("pane", "report-metadata"),
+            }
+            for command in map(tuple, all_commands)
+        )
 
         env["HERDR_PANE_ID"] = "proof:generated-resume-pane"
         assert title_from(
@@ -303,6 +338,7 @@ path.write_text("Corriger les titres Herdr\\n", encoding="utf-8")
         # already-running discussion. It must neither infer a subject nor
         # overwrite display metadata, including after compact with the same id.
         migrated_session = "019fc100-old0-7261-8e2c-6db899ca2a9d"
+        env["HERDR_CODEX_LIFECYCLE_STATE_DIR"] = str(root / "second-restarted-state")
         assert title_from(
             invoke(
                 "working",
@@ -316,6 +352,7 @@ path.write_text("Corriger les titres Herdr\\n", encoding="utf-8")
         assert title_from(
             invoke("working", migrated_session, prompt="Nor may a later prompt")
         ) is None
+        env["HERDR_CODEX_LIFECYCLE_STATE_DIR"] = original_state_dir
 
         # Programmatic sessions remain fully owned by herdr-run-codex-agent.
         wrapper_env = {**env, "HERDR_CODEX_LIFECYCLE_OWNER": "wrapper"}

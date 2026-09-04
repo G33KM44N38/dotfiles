@@ -3,10 +3,13 @@ package main
 import (
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func TestApplyFilterRanksExactBranchFirst(t *testing.T) {
@@ -144,8 +147,46 @@ func TestSnapshotRowsHideLocalUbuntuAttachProxy(t *testing.T) {
 	}
 }
 
-func TestQuestionCreatesPromptRowsWhenNoThreadMatches(t *testing.T) {
-	a := &app{localMachine: "Mac", remoteMachine: "Ubuntu", remoteOnline: true}
+func TestSnapshotRowsShowsDirectUbuntuCodexAsRemoteHosted(t *testing.T) {
+	data := map[string]any{
+		"result": map[string]any{
+			"snapshot": map[string]any{
+				"workspaces": []any{map[string]any{
+					"workspace_id": "w1",
+					"label":        "Fix login",
+					"repository": map[string]any{
+						"checkout_path":     "/local/repo",
+						"portable_repo_key": "github.com/example/repo",
+					},
+				}},
+				"agents": []any{map[string]any{
+					"name":          "ubuntu-codex",
+					"display_agent": "Ubuntu · Codex",
+					"agent_status":  "working",
+					"pane_id":       "w1:p2",
+					"workspace_id":  "w1",
+				}},
+			},
+		},
+	}
+	a := &app{remoteMachine: "Ubuntu"}
+
+	rows := a.snapshotRows(data, "Mac", false)
+
+	if len(rows) != 1 {
+		t.Fatalf("got %d rows, want direct remote thread", len(rows))
+	}
+	thread := rows[0]
+	if thread.Machine != "Ubuntu" || !thread.RemoteHost || thread.Remote {
+		t.Fatalf("unexpected direct remote row: %#v", thread)
+	}
+	if thread.Target != "w1:p2" || thread.Repo != "github.com/example/repo" {
+		t.Fatalf("direct remote identity was not retained: %#v", thread)
+	}
+}
+
+func TestGlobalThreadSearchOffersCreationAfterNoMatch(t *testing.T) {
+	a := &app{localMachine: "Mac", remoteMachine: "Ubuntu", remoteOnline: true, root: "/work/current"}
 	m := model{
 		app: a,
 		allRows: []row{{
@@ -156,12 +197,58 @@ func TestQuestionCreatesPromptRowsWhenNoThreadMatches(t *testing.T) {
 
 	m.applyFilter(true)
 
-	if len(m.rows) != 2 {
-		t.Fatalf("got %d rows, want one create row per online machine", len(m.rows))
+	if len(m.rows) != 1 || m.rows[0].Kind != "NEW" || m.rows[0].Prompt != "why does checkout fail" {
+		t.Fatalf("global search did not offer creation: %#v", m.rows)
 	}
-	for _, created := range m.rows {
-		if created.Kind != "NEW" || created.Prompt != "why does checkout fail" {
-			t.Fatalf("unexpected create row: %#v", created)
+}
+
+func TestProjectThreadModeKeepsOnlyCurrentRepo(t *testing.T) {
+	a := &app{newThreadOnly: true, root: "/work/current", localMachine: "Mac"}
+	rows := []row{
+		{Kind: "NEW", Branch: "New thread"},
+		{Kind: "TH", Branch: "current", Repo: "github.com/example/current"},
+		{Kind: "HIST", Branch: "other", Repo: "github.com/example/other"},
+	}
+
+	filtered := a.filterModeRows(rows)
+
+	if len(filtered) != 2 || filtered[0].Kind != "NEW" || filtered[1].Branch != "current" {
+		t.Fatalf("unexpected project rows: %#v", filtered)
+	}
+}
+
+func TestProjectFilterDoesNotRunGitForEachHistoryPath(t *testing.T) {
+	directory := t.TempDir()
+	logPath := filepath.Join(directory, "calls")
+	gitPath := filepath.Join(directory, "git")
+	script := "#!/bin/sh\nprintf x >>\"$HERDR_GIT_CALL_LOG\"\nexit 1\n"
+	if err := os.WriteFile(gitPath, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HERDR_GIT_CALL_LOG", logPath)
+	a := &app{newThreadOnly: true, root: filepath.Join(directory, "repo"), gitBin: gitPath}
+	rows := make([]row, 100)
+	for index := range rows {
+		rows[index] = row{Kind: "HIST", Repo: "other", Target: filepath.Join(directory, "other", string(rune(index+65)))}
+	}
+
+	a.filterModeRows(rows)
+	raw, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(raw) > 3 {
+		t.Fatalf("project filter ran Git %d times, want at most 3", len(raw))
+	}
+}
+
+func TestNormalizeRepoKeyMatchesHerdrPortableKey(t *testing.T) {
+	for _, remote := range []string{
+		"git@github.com:example/repo.git",
+		"https://github.com/example/repo.git",
+	} {
+		if got := normalizeRepoKey(remote); got != "github.com/example/repo" {
+			t.Fatalf("normalizeRepoKey(%q) = %q", remote, got)
 		}
 	}
 }
@@ -228,6 +315,75 @@ func TestThreadBranchUsesPromptAndTimestamp(t *testing.T) {
 
 	if got != "thread/fix-checkout-failure-20260902-140506" {
 		t.Fatalf("branch = %q", got)
+	}
+}
+
+func TestThreadTitleComesFromFirstPrompt(t *testing.T) {
+	prompt := "Fix the checkout flow when the remote default branch changes unexpectedly"
+
+	got := generatedThreadTitle(prompt)
+
+	if got != "Fix the checkout flow when the remote…" {
+		t.Fatalf("title = %q", got)
+	}
+}
+
+func TestNewThreadLaunchArgsKeepDraftChoices(t *testing.T) {
+	when := time.Date(2026, 9, 4, 12, 30, 0, 0, time.UTC)
+	r := row{
+		Target: "ubuntu", Prompt: "Fix login", GitSpace: "worktree", Source: "origin", Base: "develop",
+	}
+
+	got := newThreadLaunchArgs(r, "/work/repo", "main", when)
+	want := []string{
+		"ubuntu", "--project-path", "/work/repo",
+		"--git-space", "worktree", "--source", "origin",
+		"--default-branch", "develop", "--thread-title", "Fix login", "--new-worktree",
+		"thread/fix-login-20260904-123000", "--prompt", "Fix login",
+	}
+	if strings.Join(got, "\x00") != strings.Join(want, "\x00") {
+		t.Fatalf("args = %#v, want %#v", got, want)
+	}
+}
+
+func TestDefaultBranchFollowsOriginHead(t *testing.T) {
+	repository := t.TempDir()
+	git := lookPath("git")
+	for _, args := range [][]string{
+		{"init", "-q", "-b", "develop", repository},
+		{"-C", repository, "remote", "add", "origin", "https://example.test/repo.git"},
+		{"-C", repository, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/develop"},
+	} {
+		if output, err := exec.Command(git, args...).CombinedOutput(); err != nil {
+			t.Fatalf("git %v failed: %v: %s", args, err, output)
+		}
+	}
+
+	a := app{gitBin: git, root: repository}
+	if got := a.defaultBranch(); got != "develop" {
+		t.Fatalf("default branch = %q, want develop", got)
+	}
+}
+
+func TestRepoRootRecoversStaleLinkedCheckout(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "repo.git")
+	checkout := filepath.Join(root, "main")
+	if err := os.MkdirAll(checkout, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	git := lookPath("git")
+	if output, err := exec.Command(git, "init", "-q", "--bare", root).CombinedOutput(); err != nil {
+		t.Fatalf("bare init failed: %v: %s", err, output)
+	}
+	staleGitDir := filepath.Join(root, "worktrees", "main")
+	if err := os.WriteFile(filepath.Join(checkout, ".git"), []byte("gitdir: "+staleGitDir+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	a := app{gitBin: git}
+	got, err := a.repoRoot(checkout)
+	if err != nil || got != root {
+		t.Fatalf("repoRoot() = %q, %v, want %q", got, err, root)
 	}
 }
 
@@ -392,15 +548,153 @@ func TestRemoteSuccessReplacesCachedRowsWithoutChangingLocalRows(t *testing.T) {
 	if !m.app.remoteOnline || m.app.remoteCached {
 		t.Fatalf("unexpected remote state: online=%v cached=%v", m.app.remoteOnline, m.app.remoteCached)
 	}
-	var sawLocal, sawFresh, sawStale, sawRemoteNew bool
+	var sawLocal, sawFresh, sawStale bool
 	for _, candidate := range m.allRows {
 		sawLocal = sawLocal || (!candidate.Remote && candidate.Branch == "local")
 		sawFresh = sawFresh || (candidate.Remote && candidate.Branch == "fresh")
 		sawStale = sawStale || candidate.Branch == "stale"
-		sawRemoteNew = sawRemoteNew || (candidate.Remote && candidate.Kind == "NEW")
 	}
-	if !sawLocal || !sawFresh || sawStale || !sawRemoteNew {
+	if !sawLocal || !sawFresh || sawStale {
 		t.Fatalf("unexpected merged rows: %#v", m.allRows)
+	}
+}
+
+func TestNewThreadSelectionOpensDraftBeforeCreate(t *testing.T) {
+	a := &app{localMachine: "Mac", remoteMachine: "Ubuntu", remoteOnline: true}
+	m := model{
+		app:    a,
+		rows:   []row{{Kind: "NEW", Machine: "Mac", Target: "mac", Prompt: "fix login"}},
+		width:  120,
+		height: 24,
+	}
+
+	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	got := updated.(model)
+
+	if cmd != nil || got.quit || got.selected != nil || got.draft == nil {
+		t.Fatalf("new thread skipped configuration: %#v", got)
+	}
+	if got.draft.gitSpace != "worktree" || got.draft.source != "origin" {
+		t.Fatalf("unexpected draft defaults: %#v", got.draft)
+	}
+	if !got.draft.editingTitle {
+		t.Fatal("prompt composer did not open")
+	}
+}
+
+func TestBlankThreadRequiresNameBeforeCreation(t *testing.T) {
+	a := &app{localMachine: "Mac", root: "/work/repo"}
+	m := model{app: a, rows: []row{{Kind: "NEW", Machine: "Mac"}}}
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updated.(model)
+	if !m.draft.editingTitle || m.selected != nil {
+		t.Fatal("empty title was accepted")
+	}
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("Fix checkout")})
+	m = updated.(model)
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updated.(model)
+	if m.selected == nil || m.selected.Prompt != "Fix checkout" {
+		t.Fatalf("named thread was not created: %#v", m.selected)
+	}
+}
+
+func TestPromptInputSupportsReadlineEditing(t *testing.T) {
+	m := model{draft: &threadDraft{
+		row:          row{Prompt: "fix checkout failure"},
+		editingTitle: true,
+		promptCursor: len([]rune("fix checkout failure")),
+	}}
+
+	updated, _ := m.updateThreadTitle("ctrl+w")
+	m = updated.(model)
+	if m.draft.row.Prompt != "fix checkout " || m.draft.promptCursor != len([]rune("fix checkout ")) {
+		t.Fatalf("Ctrl-w result = %q at %d", m.draft.row.Prompt, m.draft.promptCursor)
+	}
+	updated, _ = m.updateThreadTitle("ctrl+y")
+	m = updated.(model)
+	if m.draft.row.Prompt != "fix checkout failure" {
+		t.Fatalf("Ctrl-y result = %q", m.draft.row.Prompt)
+	}
+	updated, _ = m.updateThreadTitle("ctrl+a")
+	m = updated.(model)
+	updated, _ = m.updateThreadTitle("urgent ")
+	m = updated.(model)
+	if m.draft.row.Prompt != "urgent fix checkout failure" {
+		t.Fatalf("cursor insertion result = %q", m.draft.row.Prompt)
+	}
+}
+
+func TestPromptKeymapListsTerminalEditingKeys(t *testing.T) {
+	m := model{
+		draft:  &threadDraft{showKeymap: true},
+		width:  100,
+		height: 32,
+	}
+
+	view := stripANSI(m.View())
+	for _, key := range []string{"Ctrl-a", "Ctrl-e", "Ctrl-w", "Alt-d", "Ctrl-k", "Ctrl-y", "Ctrl-t"} {
+		if !strings.Contains(view, key) {
+			t.Fatalf("keymap does not show %s", key)
+		}
+	}
+}
+
+func TestThreadDraftCarriesMachineSpaceSourceAndDefaultBranch(t *testing.T) {
+	a := &app{localMachine: "Mac", remoteMachine: "Ubuntu", remoteOnline: true}
+	m := model{
+		app: a,
+		draft: &threadDraft{
+			row:           row{Kind: "NEW", Machine: "Mac", Target: "mac", Prompt: "Test task"},
+			gitSpace:      "worktree",
+			source:        "origin",
+			defaultBranch: "develop",
+		},
+	}
+
+	m.toggleThreadDraftField(0)
+	m.toggleThreadDraftField(1)
+	m.toggleThreadDraftField(2)
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	got := updated.(model)
+
+	if got.selected == nil {
+		t.Fatal("draft did not create a selection")
+	}
+	selected := *got.selected
+	if selected.Target != "ubuntu" || !selected.Remote || selected.GitSpace != "default" || selected.Source != "local" || selected.Base != "develop" {
+		t.Fatalf("draft selection was not retained: %#v", selected)
+	}
+}
+
+func TestThreadDraftViewUsesFullScreenLayout(t *testing.T) {
+	m := model{
+		app: &app{localMachine: "Mac", remoteMachine: "Ubuntu", remoteOnline: true},
+		draft: &threadDraft{
+			row:           row{Machine: "Mac"},
+			gitSpace:      "worktree",
+			source:        "origin",
+			defaultBranch: "main",
+			project:       "example",
+		},
+		width:  120,
+		height: 24,
+	}
+
+	view := stripANSI(m.View())
+	if !strings.Contains(view, "PROMPT") || !strings.Contains(view, "TITLE") || !strings.Contains(view, "git space") || !strings.Contains(view, "origin") {
+		t.Fatalf("draft view is incomplete: %q", view)
+	}
+	if lines := strings.Count(view, "\n") + 1; lines != 24 {
+		t.Fatalf("view uses %d lines, want 24", lines)
+	}
+
+	m.width = 80
+	for index, line := range strings.Split(stripANSI(m.View()), "\n") {
+		if width := len([]rune(line)); width != 80 {
+			t.Fatalf("line %d uses %d columns, want 80: %q", index, width, line)
+		}
 	}
 }
 

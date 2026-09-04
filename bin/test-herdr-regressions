@@ -90,6 +90,7 @@ EXPECTED_COMMANDS = [
     ("alt+r", "shell", "$HOME/.dotfiles/bin/herdr-worktree-release"),
     ("cmd+o", "pane", "$HOME/.dotfiles/bin/herdr-worktree-picker"),
     ("cmd+p", "pane", "$HOME/.dotfiles/bin/herdr-worktree-picker --threads"),
+    ("cmd+alt+p", "pane", "$HOME/.dotfiles/bin/herdr-worktree-picker --new-thread"),
     ("alt+h", "shell", "$HOME/.dotfiles/bin/herdr-focus-tab editor"),
     ("alt+j", "shell", "$HOME/.dotfiles/bin/herdr-focus-tab agent"),
     ("alt+k", "shell", "$HOME/.dotfiles/bin/herdr-focus-tab process"),

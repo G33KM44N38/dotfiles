@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly herdr_bin="${HERDR_BIN_PATH:-$(type -P herdr)}"
+
+usage() {
+  printf 'Usage: %s --target <ssh-target> --remote-path <path> --kind <editor|terminal|process|diff>\n' "${0##*/}" >&2
+}
+
+target=
+remote_path=
+kind=
+while (( $# )); do
+  case "$1" in
+    --target) target=${2:-}; shift 2 ;;
+    --remote-path) remote_path=${2:-}; shift 2 ;;
+    --kind) kind=${2:-}; shift 2 ;;
+    *) usage; exit 2 ;;
+  esac
+done
+
+[[ -n "$target" && -n "$remote_path" ]] || { usage; exit 2; }
+case "$kind" in
+  editor|terminal|process|diff) ;;
+  *) usage; exit 2 ;;
+esac
+
+case "$kind" in
+  editor) display_kind=Editor ;;
+  terminal) display_kind=Terminal ;;
+  process) display_kind=Process ;;
+  diff) display_kind=Diff ;;
+esac
+if [[ "${HERDR_ENV:-}" == 1 && -n "${HERDR_PANE_ID:-}" ]]; then
+  "$herdr_bin" pane rename "$HERDR_PANE_ID" "Ubuntu · $display_kind" >/dev/null 2>&1 || true
+  "$herdr_bin" pane report-metadata "$HERDR_PANE_ID" \
+    --source boss:remote-pane \
+    --title "Ubuntu · $display_kind" \
+    --display-agent "Ubuntu · $display_kind" \
+    --token machine=Ubuntu \
+    --seq "$(python3 -c 'import time; print(time.time_ns())')" >/dev/null 2>&1 || true
+fi
+
+case "$kind" in
+  editor) remote_program='exec nvim .' ;;
+  diff) remote_program='exec hunk diff --watch' ;;
+  terminal|process) remote_program='exec "${SHELL:-/bin/bash}" -l' ;;
+esac
+
+printf -v remote_command 'cd -- %q && %s' "$remote_path" "$remote_program"
+set +e
+ssh -tt -o BatchMode=yes "$target" "$remote_command"
+remote_exit_code=$?
+set -e
+
+if [[ "${HERDR_ENV:-}" == 1 && -n "${HERDR_PANE_ID:-}" ]]; then
+  close_scope=pane
+  if [[ -n "${HERDR_TAB_ID:-}" && -n "${HERDR_WORKSPACE_ID:-}" ]]; then
+    pane_count="$("$herdr_bin" pane list --workspace "$HERDR_WORKSPACE_ID" | python3 -c '
+import json
+import sys
+
+tab_id = sys.argv[1]
+panes = json.load(sys.stdin).get("result", {}).get("panes", [])
+print(sum(pane.get("tab_id") == tab_id for pane in panes))
+' "$HERDR_TAB_ID" 2>/dev/null || printf '2')"
+    if [[ "$pane_count" == 1 ]]; then
+      close_scope=tab
+    fi
+  fi
+  if [[ "$close_scope" == tab ]]; then
+    "$herdr_bin" tab close "$HERDR_TAB_ID" >/dev/null 2>&1 || true
+  else
+    "$herdr_bin" pane close "$HERDR_PANE_ID" >/dev/null 2>&1 || true
+  fi
+fi
+
+exit "$remote_exit_code"

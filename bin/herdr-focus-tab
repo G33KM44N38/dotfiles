@@ -27,6 +27,11 @@ DEFAULT_COMMANDS = {
 
 SHELL_NAMES = {"bash", "fish", "nu", "pwsh", "sh", "zsh"}
 LAUNCH_TITLE_SOURCE = "boss:codex-launch-title"
+REMOTE_SUFFIX = " · Ubuntu"
+REMOTE_CONTEXT_ROOT = (
+    Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
+    / "herdr/remote-workspaces"
+)
 
 
 def herdr(*args):
@@ -43,15 +48,94 @@ def herdr(*args):
 
 
 def current_workspace_id():
-    return herdr("pane", "current")["result"]["pane"]["workspace_id"]
+    return herdr("pane", "current", "--current")["result"]["pane"]["workspace_id"]
+
+
+def base_tab_label(label):
+    return (label or "").split(" · ", 1)[0].lower()
 
 
 def tab_for_label(workspace_id, label):
     tabs = herdr("tab", "list", "--workspace", workspace_id)["result"]["tabs"]
     for tab in tabs:
-        if (tab.get("label") or "").lower() == label:
+        if base_tab_label(tab.get("label")) == label:
             return tab
     return None
+
+
+def registered_tab(context, label):
+    tab_id = (context.get("tabs") or {}).get(label)
+    if not tab_id:
+        return None
+    try:
+        tab = herdr("tab", "get", tab_id)["result"]["tab"]
+    except (KeyError, SystemExit):
+        return None
+    return tab if base_tab_label(tab.get("label")) == label else None
+
+
+def register_tab(workspace_id, context, label, tab):
+    if not context:
+        return
+    context.setdefault("tabs", {})[label] = tab["tab_id"]
+    save_remote_context(workspace_id, context)
+
+
+def save_remote_context(workspace_id, context):
+    REMOTE_CONTEXT_ROOT.mkdir(parents=True, exist_ok=True)
+    path = REMOTE_CONTEXT_ROOT / f"{workspace_id}.json"
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text(json.dumps(context) + "\n")
+    temporary.chmod(0o600)
+    temporary.replace(path)
+
+
+def discover_remote_context(workspace_id):
+    panes = herdr("pane", "list", "--workspace", workspace_id)["result"]["panes"]
+    for pane in panes:
+        try:
+            processes = herdr("pane", "process-info", "--pane", pane["pane_id"])["result"][
+                "process_info"
+            ].get("foreground_processes", [])
+        except SystemExit:
+            continue
+        for process in processes:
+            arguments = process.get("argv") or []
+            for index, argument in enumerate(arguments):
+                if os.path.basename(argument) != "herdr-run-remote-codex-agent":
+                    continue
+                try:
+                    context = {
+                        "target": arguments[arguments.index("--target", index) + 1],
+                        "path": arguments[arguments.index("--remote-path", index) + 1],
+                    }
+                except (ValueError, IndexError):
+                    continue
+                save_remote_context(workspace_id, context)
+                return context
+    return None
+
+
+def remote_context(workspace_id):
+    path = REMOTE_CONTEXT_ROOT / f"{workspace_id}.json"
+    try:
+        context = json.loads(path.read_text())
+        if context.get("target") and context.get("path"):
+            return context
+    except (OSError, json.JSONDecodeError, AttributeError):
+        pass
+    return discover_remote_context(workspace_id)
+
+
+def mark_remote_workspace(workspace_id, context):
+    if not context:
+        return
+    workspaces = herdr("workspace", "list")["result"]["workspaces"]
+    workspace = next(
+        (item for item in workspaces if item.get("workspace_id") == workspace_id), None
+    )
+    if workspace and not (workspace.get("label") or "").endswith(REMOTE_SUFFIX):
+        herdr("workspace", "rename", workspace_id, workspace.get("label", "Thread") + REMOTE_SUFFIX)
 
 
 def pane_for_tab(tab_id, timeout=0):
@@ -106,8 +190,8 @@ def unique_agent_name(pane, agents):
         suffix += 1
 
 
-def publish_launch_title(pane_id, agent_name):
-    herdr(
+def publish_launch_title(pane_id, agent_name, context=None):
+    arguments = [
         "pane",
         "report-metadata",
         pane_id,
@@ -117,13 +201,29 @@ def publish_launch_title(pane_id, agent_name):
         "codex",
         "--title",
         agent_name,
-        "--seq",
-        str(time.time_ns()),
+    ]
+    if context:
+        arguments.extend(("--display-agent", "Ubuntu · Codex", "--token", "machine=Ubuntu"))
+    arguments.extend(("--seq", str(time.time_ns())))
+    herdr(*arguments)
+
+
+def remote_pane_command(label, context):
+    return " ".join(
+        (
+            shlex.quote(str(Path(__file__).with_name("herdr-run-remote-pane"))),
+            "--target",
+            shlex.quote(context["target"]),
+            "--remote-path",
+            shlex.quote(context["path"]),
+            "--kind",
+            shlex.quote(label),
+        )
     )
 
 
-def launch_default_command(pane_id, label):
-    command = DEFAULT_COMMANDS.get(label)
+def launch_default_command(pane_id, label, context=None):
+    command = remote_pane_command(label, context) if context else DEFAULT_COMMANDS.get(label)
     if command is None or not pane_is_idle(pane_id):
         return
 
@@ -134,6 +234,20 @@ def launch_default_command(pane_id, label):
         # shortcut forces it open once the TUI has mounted.
         time.sleep(0.5)
         herdr("pane", "send-keys", pane_id, "s")
+
+
+def launch_tab_command(tab_id, label, context=None):
+    lock_name = re.sub(r"[^a-zA-Z0-9_-]+", "-", tab_id)
+    with open(f"/tmp/herdr-focus-tab-launch-{lock_name}.lock", "a+") as lock_file:
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+        pane = pane_for_tab(tab_id, timeout=5)
+        if pane is None:
+            raise RuntimeError(f"{label} tab {tab_id} did not create a pane")
+        launch_default_command(pane["pane_id"], label, context)
+        if context:
+            deadline = time.monotonic() + 2
+            while pane_is_idle(pane["pane_id"]) and time.monotonic() < deadline:
+                time.sleep(0.05)
 
 
 def close_idle_sibling_panes(tab_id, agent_pane_id, timeout=0):
@@ -155,15 +269,15 @@ def close_idle_sibling_panes(tab_id, agent_pane_id, timeout=0):
         time.sleep(0.05)
 
 
-def launch_managed_agent(tab_id):
+def launch_managed_agent(tab_id, context=None):
     # Multiple quick keypresses can start multiple detached workers. Serialize
     # provisioning so the tab's existing pane receives the command only once.
     with open("/tmp/herdr-focus-tab-agent.lock", "a+") as lock_file:
         fcntl.flock(lock_file, fcntl.LOCK_EX)
-        ensure_managed_agent(tab_id)
+        ensure_managed_agent(tab_id, context)
 
 
-def ensure_managed_agent(tab_id):
+def ensure_managed_agent(tab_id, context=None):
     agents = herdr("agent", "list")["result"]["agents"]
     agent = next(
         (
@@ -173,7 +287,7 @@ def ensure_managed_agent(tab_id):
         ),
         None,
     )
-    if agent is not None and pane_has_codex(agent["pane_id"]):
+    if agent is not None and (context or pane_has_codex(agent["pane_id"])):
         close_idle_sibling_panes(tab_id, agent["pane_id"])
         # The tab switch restores its pane history. Do not override that
         # choice with the first agent returned by `agent list`.
@@ -188,14 +302,28 @@ def ensure_managed_agent(tab_id):
         raise RuntimeError(f"agent tab {tab_id} did not create a pane")
 
     agent_name = unique_agent_name(pane, agents)
-    command = " ".join(
-        (
-            shlex.quote(str(Path(__file__).with_name("herdr-run-codex-agent"))),
-            "--interactive",
-            "--close-tab-on-exit",
-            "--dangerously-bypass-approvals-and-sandbox",
+    if context:
+        command = " ".join(
+            (
+                shlex.quote(str(Path(__file__).with_name("herdr-run-remote-codex-agent"))),
+                "--target",
+                shlex.quote(context["target"]),
+                "--remote-path",
+                shlex.quote(context["path"]),
+                "--close-tab-on-exit",
+                "--title",
+                shlex.quote("Ubuntu Codex"),
+            )
         )
-    )
+    else:
+        command = " ".join(
+            (
+                shlex.quote(str(Path(__file__).with_name("herdr-run-codex-agent"))),
+                "--interactive",
+                "--close-tab-on-exit",
+                "--dangerously-bypass-approvals-and-sandbox",
+            )
+        )
     herdr("pane", "run", pane["pane_id"], command)
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
@@ -207,13 +335,13 @@ def ensure_managed_agent(tab_id):
                 if agent.get("tab_id") == tab_id
                 and agent.get("agent") == "codex"
                 and agent.get("pane_id") == pane["pane_id"]
-                and pane_has_codex(agent["pane_id"])
+                and (context or pane_has_codex(agent["pane_id"]))
             ),
             None,
         )
         if agent is not None:
             herdr("agent", "rename", agent["pane_id"], agent_name)
-            publish_launch_title(agent["pane_id"], agent_name)
+            publish_launch_title(agent["pane_id"], agent_name, context)
             close_idle_sibling_panes(tab_id, agent["pane_id"])
             herdr("agent", "focus", agent["pane_id"])
             return
@@ -221,14 +349,16 @@ def ensure_managed_agent(tab_id):
     raise RuntimeError(f"Codex did not start in agent tab {tab_id}")
 
 
-def schedule_default_command(tab, label):
+def schedule_default_command(tab, label, context=None):
     if label == "agent":
+        remote_arguments = [context["target"], context["path"]] if context else []
         subprocess.Popen(
             [
                 sys.executable,
                 __file__,
                 "--managed-agent",
                 tab["tab_id"],
+                *remote_arguments,
             ],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
@@ -237,19 +367,14 @@ def schedule_default_command(tab, label):
         )
         return
 
-    if label not in DEFAULT_COMMANDS:
+    if not context and label not in DEFAULT_COMMANDS:
         return
 
-    # A newly created tab gets its first pane asynchronously.
-    pane = pane_for_tab(tab["tab_id"], timeout=1)
-    if pane is None or not pane_is_idle(pane["pane_id"]):
-        return
-
-    # Both tab.focus and pane.run can terminate the keybinding's source
-    # process. Launch in a detached worker so focusing and starting happen
-    # independently during the same keypress.
+    # Focus creates the first pane asynchronously. Resolve it inside the
+    # detached worker after the parent focuses the tab.
+    remote_arguments = [context["target"], context["path"]] if context else []
     subprocess.Popen(
-        [sys.executable, __file__, "--launch", pane["pane_id"], label],
+        [sys.executable, __file__, "--launch-tab", tab["tab_id"], label, *remote_arguments],
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -258,13 +383,20 @@ def schedule_default_command(tab, label):
 
 
 def main():
-    if len(sys.argv) == 3 and sys.argv[1] == "--managed-agent":
-        launch_managed_agent(sys.argv[2])
+    if len(sys.argv) in (3, 5) and sys.argv[1] == "--managed-agent":
+        context = {"target": sys.argv[3], "path": sys.argv[4]} if len(sys.argv) == 5 else None
+        launch_managed_agent(sys.argv[2], context)
         return 0
 
-    if len(sys.argv) == 4 and sys.argv[1] == "--launch":
+    if len(sys.argv) in (4, 6) and sys.argv[1] == "--launch":
+        context = {"target": sys.argv[4], "path": sys.argv[5]} if len(sys.argv) == 6 else None
         time.sleep(0.1)
-        launch_default_command(sys.argv[2], sys.argv[3])
+        launch_default_command(sys.argv[2], sys.argv[3], context)
+        return 0
+
+    if len(sys.argv) in (4, 6) and sys.argv[1] == "--launch-tab":
+        context = {"target": sys.argv[4], "path": sys.argv[5]} if len(sys.argv) == 6 else None
+        launch_tab_command(sys.argv[2], sys.argv[3], context)
         return 0
 
     if len(sys.argv) != 2:
@@ -273,11 +405,27 @@ def main():
 
     label = ALIASES.get(sys.argv[1].lower(), sys.argv[1].lower())
     workspace_id = current_workspace_id()
-    tab = tab_for_label(workspace_id, label)
-    if tab is None:
-        tab = herdr("tab", "create", "--workspace", workspace_id, "--label", label, "--no-focus")["result"]["tab"]
-    schedule_default_command(tab, label)
-    herdr("tab", "focus", tab["tab_id"])
+    lock_name = re.sub(r"[^a-zA-Z0-9_-]+", "-", f"{workspace_id}-{label}")
+    with open(f"/tmp/herdr-focus-tab-create-{lock_name}.lock", "a+") as lock_file:
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+        context = remote_context(workspace_id)
+        mark_remote_workspace(workspace_id, context)
+        tab = registered_tab(context, label) if context else None
+        if tab is None:
+            tab = tab_for_label(workspace_id, label)
+        if tab is None:
+            tab = herdr(
+                "tab",
+                "create",
+                "--workspace",
+                workspace_id,
+                "--label",
+                label,
+                "--no-focus",
+            )["result"]["tab"]
+        register_tab(workspace_id, context, label, tab)
+        schedule_default_command(tab, label, context)
+        herdr("tab", "focus", tab["tab_id"])
     return 0
 
 

@@ -12,10 +12,37 @@ herdr() {
 }
 
 usage() {
-    printf 'Usage: %s --target <ssh-target> [--session <name>] [--close-tab-on-exit]\n' "${0##*/}" >&2
+    printf 'Usage: %s --target <ssh-target> --remote-path <path> [--prompt <text>] [--title <text>] [--close-tab-on-exit]\n' "${0##*/}" >&2
     printf '       %s --remote-resolve --repo-url <url> --branch <branch> --project-name <name>\n' "${0##*/}" >&2
-    printf '       %s --remote-worktree --repo-url <url> --branch <branch> [--base <ref>] --project-name <name>\n' "${0##*/}" >&2
+    printf '       %s --remote-default --repo-url <url> --branch <branch> --source <local|origin> --project-name <name>\n' "${0##*/}" >&2
+    printf '       %s --remote-worktree --repo-url <url> --branch <branch> [--base <ref>] [--source <local|origin>] --project-name <name>\n' "${0##*/}" >&2
     printf '       %s --remote-start --remote-path <path> [--session <name>] [--prompt <text>]\n' "${0##*/}" >&2
+}
+
+report_title() {
+    local title=$1
+    [[ -n "$title" ]] || return
+    herdr pane report-metadata "$HERDR_PANE_ID" \
+        --source boss:remote-codex-title \
+        --agent codex \
+        --applies-to-source "$report_source" \
+        --title "$title" \
+        --display-agent 'Ubuntu · Codex' \
+        --seq "$(python3 -c 'import time; print(time.time_ns())')" >/dev/null 2>&1 || true
+}
+
+sync_remote_default() {
+    local repo_url=$1 branch=$2 source_mode=$3 project_name=$4 checkout
+    checkout="$(resolve_remote_project "$repo_url" "$branch" "$project_name")" || return
+    if [[ "$source_mode" == origin ]]; then
+        if [[ -n "$(git -C "$checkout" status --porcelain)" ]]; then
+            printf 'The Ubuntu default branch checkout has local changes: %s\n' "$checkout" >&2
+            return 1
+        fi
+        git -C "$checkout" fetch --prune origin "$branch" >/dev/null
+        git -C "$checkout" merge --ff-only "origin/$branch" >/dev/null
+    fi
+    printf '%s\n' "$checkout"
 }
 
 normalize_repo_url() {
@@ -92,8 +119,8 @@ resolve_remote_project() {
 }
 
 ensure_remote_worktree() {
-    local repo_url=$1 branch=$2 base=$3 project_name=$4 source_checkout bare_root
-    local existing_path existing_branch slug worktree_path branch_exists=false
+    local repo_url=$1 branch=$2 base=$3 project_name=$4 source_mode=$5 source_checkout bare_root
+    local existing_path existing_branch slug worktree_path branch_exists=false base_ref
 
     [[ -n "$branch" ]] || {
         printf 'Ubuntu worktrees require a named branch.\n' >&2
@@ -112,7 +139,12 @@ ensure_remote_worktree() {
         fi
     fi
 
-    if ! git -C "$bare_root" show-ref --verify --quiet "refs/heads/$base"; then
+    base_ref="$base"
+    if [[ "$source_mode" == origin ]]; then
+        git -C "$bare_root" fetch --prune origin \
+            "refs/heads/$base:refs/remotes/origin/$base" >/dev/null
+        base_ref="origin/$base"
+    elif ! git -C "$bare_root" show-ref --verify --quiet "refs/heads/$base"; then
         git -C "$bare_root" fetch "$source_checkout" \
             "refs/heads/$base:refs/heads/$base" >/dev/null
     fi
@@ -157,7 +189,7 @@ PY
     if [[ "$branch_exists" == true ]]; then
         git -C "$bare_root" worktree add "$worktree_path" "$branch" >/dev/null
     else
-        git -C "$bare_root" worktree add -b "$branch" "$worktree_path" "$base" >/dev/null
+        git -C "$bare_root" worktree add -b "$branch" "$worktree_path" "$base_ref" >/dev/null
     fi
     worktree_path="$(cd "$worktree_path" && pwd -P)"
     printf '%s\n' "$worktree_path"
@@ -365,19 +397,36 @@ main() {
         return
     fi
 
+    if [[ "${1:-}" == "--remote-default" ]]; then
+        shift
+        local repo_url= branch= source_mode=local project_name=
+        while (( $# )); do
+            case "$1" in
+                --repo-url) repo_url=${2:-}; shift 2 ;;
+                --branch) branch=${2:-}; shift 2 ;;
+                --source) source_mode=${2:-}; shift 2 ;;
+                --project-name) project_name=${2:-}; shift 2 ;;
+                *) usage; return 2 ;;
+            esac
+        done
+        sync_remote_default "$repo_url" "$branch" "$source_mode" "$project_name"
+        return
+    fi
+
     if [[ "${1:-}" == "--remote-worktree" ]]; then
         shift
-        local repo_url= branch= base= project_name=
+        local repo_url= branch= base= source_mode=local project_name=
         while (( $# )); do
             case "$1" in
                 --repo-url) repo_url=${2:-}; shift 2 ;;
                 --branch) branch=${2:-}; shift 2 ;;
                 --base) base=${2:-}; shift 2 ;;
+                --source) source_mode=${2:-}; shift 2 ;;
                 --project-name) project_name=${2:-}; shift 2 ;;
                 *) usage; return 2 ;;
             esac
         done
-        ensure_remote_worktree "$repo_url" "$branch" "$base" "$project_name"
+        ensure_remote_worktree "$repo_url" "$branch" "$base" "$project_name" "$source_mode"
         return
     fi
 
@@ -397,25 +446,36 @@ main() {
         return
     fi
 
-    local target= session=default close_tab_on_exit=false
+    local target= remote_path= prompt= title= close_tab_on_exit=false
     while (( $# )); do
         case "$1" in
             --target) target=${2:-}; shift 2 ;;
-            --session) session=${2:-}; shift 2 ;;
+            --session) shift 2 ;;
+            --remote-path) remote_path=${2:-}; shift 2 ;;
+            --prompt) prompt=${2:-}; shift 2 ;;
+            --title) title=${2:-}; shift 2 ;;
             --close-tab-on-exit) close_tab_on_exit=true; shift ;;
             *) usage; return 2 ;;
         esac
     done
-    [[ -n "$target" ]] || { usage; return 2; }
+    [[ -n "$target" && -n "$remote_path" ]] || { usage; return 2; }
 
     if can_report; then
-        start_lifecycle_reporter "$target" "$session"
+        report_state working
+        report_title "$title"
+        "$HOME/.dotfiles/bin/herdr-monitor-remote-codex" \
+            --pane "$HERDR_PANE_ID" \
+            --owner-pid "$$" &
+        lifecycle_reporter_pid=$!
     fi
 
-    local codex_exit_code
+    local codex_exit_code remote_command
+    printf -v remote_command 'cd -- %q && exec /usr/local/bin/codex' "$remote_path"
+    if [[ -n "$prompt" ]]; then
+        printf -v remote_command '%s %q' "$remote_command" "$prompt"
+    fi
     set +e
-    ssh -tt -o BatchMode=yes "$target" \
-        env HERDR_SESSION="$session" /usr/local/bin/herdr
+    ssh -tt -o BatchMode=yes "$target" "$remote_command"
     codex_exit_code=$?
     set -e
 

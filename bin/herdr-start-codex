@@ -4,6 +4,7 @@ set -euo pipefail
 readonly remote_target="${HERDR_UBUNTU_TARGET:-kylian@kylian-ps42-8rb}"
 readonly remote_runner="/home/kylian/.dotfiles/bin/herdr-run-remote-codex-agent"
 readonly herdr_bin="${HERDR_BIN_PATH:-$(type -P herdr)}"
+readonly title_generator="${HERDR_TITLE_GENERATOR:-$HOME/.dotfiles/bin/herdr-generate-thread-title}"
 readonly local_machine_label="$(if [[ "$(uname -s)" == "Linux" ]]; then printf Ubuntu; else printf Mac; fi)"
 
 herdr() {
@@ -11,7 +12,66 @@ herdr() {
 }
 
 usage() {
-  printf 'Usage: %s [local|mac|ubuntu|ubuntu-attach] [--prompt <text>] [--new-worktree <branch>] [--project-path <path>] [--resume <session>]\n' "${0##*/}" >&2
+  printf 'Usage: %s [local|mac|ubuntu|ubuntu-attach] [--prompt <text>] [--thread-title <text>] [--git-space <current|default|worktree>] [--source <local|origin>] [--default-branch <name>] [--new-worktree <branch>] [--project-path <path>] [--resume <session>]\n' "${0##*/}" >&2
+}
+
+workspace_for_path() {
+  local path=$1
+  herdr workspace list | python3 -c '
+import json, os, sys
+
+target = os.path.realpath(sys.argv[1])
+for workspace in json.load(sys.stdin).get("result", {}).get("workspaces", []):
+    repository = workspace.get("repository") or {}
+    worktree = workspace.get("worktree") or {}
+    candidate = repository.get("checkout_path") or worktree.get("checkout_path")
+    if candidate and os.path.realpath(candidate) == target:
+        print(workspace.get("workspace_id", ""))
+        break
+' "$path"
+}
+
+ensure_workspace_for_path() {
+  local path=$1 label=$2 workspace_id workspace_json
+  workspace_id="$(workspace_for_path "$path")"
+  if [[ -z "$workspace_id" ]]; then
+    workspace_json="$(herdr workspace create --cwd "$path" --label "$label" --no-focus)"
+    workspace_id="$(printf '%s\n' "$workspace_json" | python3 -c '
+import json, sys
+
+result = json.load(sys.stdin).get("result", {})
+workspace = result.get("workspace", result)
+print(workspace.get("workspace_id", ""))
+')"
+  fi
+  printf '%s\n' "$workspace_id"
+}
+
+checkout_for_branch() {
+  local repository=$1 branch=$2
+  git -C "$repository" worktree list --porcelain | python3 -c '
+import os, sys
+
+wanted = "refs/heads/" + sys.argv[1]
+path = ""
+for raw in sys.stdin:
+    line = raw.rstrip("\n")
+    if line.startswith("worktree "):
+        path = line.removeprefix("worktree ")
+    elif line == "branch " + wanted:
+        print(os.path.realpath(path))
+        break
+' "$branch"
+}
+
+sync_default_checkout() {
+  local path=$1 branch=$2
+  if [[ -n "$(git -C "$path" status --porcelain)" ]]; then
+    printf '\nThe default branch checkout has local changes: %s\n' "$path" >&2
+    return 1
+  fi
+  git -C "$path" fetch --prune origin "$branch"
+  git -C "$path" merge --ff-only "origin/$branch"
 }
 
 ubuntu_is_online() {
@@ -55,9 +115,13 @@ choose_target() {
 
 target=
 initial_prompt=
+thread_title=
 new_worktree_branch=
 project_path_override=
 resume_session=
+git_space=current
+source_mode=local
+default_branch=
 while (( $# )); do
   case "$1" in
     --prompt)
@@ -65,9 +129,29 @@ while (( $# )); do
       initial_prompt=$2
       shift 2
       ;;
+    --thread-title)
+      [[ $# -ge 2 ]] || { usage; exit 2; }
+      thread_title=$2
+      shift 2
+      ;;
     --new-worktree)
       [[ $# -ge 2 ]] || { usage; exit 2; }
       new_worktree_branch=$2
+      shift 2
+      ;;
+    --git-space)
+      [[ $# -ge 2 ]] || { usage; exit 2; }
+      git_space=$2
+      shift 2
+      ;;
+    --source)
+      [[ $# -ge 2 ]] || { usage; exit 2; }
+      source_mode=$2
+      shift 2
+      ;;
+    --default-branch)
+      [[ $# -ge 2 ]] || { usage; exit 2; }
+      default_branch=$2
       shift 2
       ;;
     --project-path)
@@ -96,6 +180,18 @@ while (( $# )); do
   esac
 done
 
+case "$git_space" in
+  current|default|worktree) ;;
+  *) usage; exit 2 ;;
+esac
+case "$source_mode" in
+  local|origin) ;;
+  *) usage; exit 2 ;;
+esac
+if [[ -n "$new_worktree_branch" && "$git_space" == current ]]; then
+  git_space=worktree
+fi
+
 case "$target" in
   "") target="$(choose_target)" || exit 0 ;;
   local) target=mac ;;
@@ -121,31 +217,7 @@ if [[ -n "$project_path_override" ]]; then
     exit 1
   fi
   project_path="$(cd "$project_path_override" && pwd -P)"
-  workspace_id="$(herdr workspace list | python3 -c '
-import json, os, sys
-
-target = os.path.realpath(sys.argv[1])
-for workspace in json.load(sys.stdin).get("result", {}).get("workspaces", []):
-    repository = workspace.get("repository") or {}
-    worktree = workspace.get("worktree") or {}
-    candidate = repository.get("checkout_path") or worktree.get("checkout_path")
-    if candidate and os.path.realpath(candidate) == target:
-        print(workspace.get("workspace_id", ""))
-        break
-' "$project_path")"
-  if [[ -z "$workspace_id" ]]; then
-    workspace_json="$(herdr workspace create \
-      --cwd "$project_path" \
-      --label "$(basename "$project_path")" \
-      --no-focus)"
-    workspace_id="$(printf '%s\n' "$workspace_json" | python3 -c '
-import json, sys
-
-result = json.load(sys.stdin).get("result", {})
-workspace = result.get("workspace", result)
-print(workspace.get("workspace_id", ""))
-')"
-  fi
+  workspace_id="$(ensure_workspace_for_path "$project_path" "$(basename "$project_path")")"
   if [[ -z "$workspace_id" ]]; then
     printf '\nCould not open the saved path in Herdr.\n' >&2
     exit 1
@@ -154,7 +226,7 @@ elif [[ -n "${HERDR_ACTIVE_WORKSPACE_ID:-}" && -n "${HERDR_ACTIVE_PANE_CWD:-}" ]
   workspace_id="$HERDR_ACTIVE_WORKSPACE_ID"
   project_path="$HERDR_ACTIVE_PANE_CWD"
 else
-  current_json="$(herdr pane current)"
+  current_json="$(herdr pane current --current)"
   IFS=$'\t' read -r workspace_id project_path < <(printf '%s\n' "$current_json" | python3 -c '
 import json, sys
 
@@ -171,8 +243,36 @@ if [[ -n "$project_repo_url" ]]; then
   project_name="$(basename "${project_repo_url%.git}")"
 fi
 
-if [[ -n "$new_worktree_branch" && "$target" == "mac" ]]; then
-  worktree_label="${initial_prompt:-${new_worktree_branch##*/}}"
+if [[ -z "$default_branch" ]]; then
+  default_branch="$(git -C "$project_root" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || true)"
+  default_branch="${default_branch#origin/}"
+fi
+default_branch="${default_branch:-$project_branch}"
+if [[ -z "$default_branch" && "$git_space" != current ]]; then
+  printf '\nCould not resolve the repository default branch.\n' >&2
+  exit 1
+fi
+
+if [[ "$target" == mac && "$git_space" == default ]]; then
+  default_checkout="$(checkout_for_branch "$project_root" "$default_branch")"
+  if [[ -z "$default_checkout" ]]; then
+    printf '\nNo checkout exists for the default branch %s.\n' "$default_branch" >&2
+    exit 1
+  fi
+  if [[ "$source_mode" == origin ]]; then
+    sync_default_checkout "$default_checkout" "$default_branch"
+  fi
+  project_path="$default_checkout"
+  workspace_id="$(ensure_workspace_for_path "$project_path" "$default_branch")"
+fi
+
+if [[ "$git_space" == worktree && -n "$new_worktree_branch" && "$target" == "mac" ]]; then
+  worktree_label="${thread_title:-${initial_prompt:-${new_worktree_branch##*/}}}"
+  worktree_base="$default_branch"
+  if [[ "$source_mode" == origin ]]; then
+    git -C "$project_root" fetch --prune origin "$default_branch"
+    worktree_base="origin/$default_branch"
+  fi
   create_args=(
     worktree create
     --cwd "$project_root"
@@ -181,9 +281,7 @@ if [[ -n "$new_worktree_branch" && "$target" == "mac" ]]; then
     --focus
     --json
   )
-  if [[ -n "$project_branch" ]]; then
-    create_args+=(--base "$project_branch")
-  fi
+  create_args+=(--base "$worktree_base")
   worktree_json="$(herdr "${create_args[@]}")"
   IFS=$'\t' read -r workspace_id project_path < <(printf '%s\n' "$worktree_json" | python3 -c '
 import json, sys
@@ -208,16 +306,74 @@ if [[ "$target" == ubuntu* ]]; then
 fi
 
 if [[ "$target" == "ubuntu" ]]; then
-  printf -v remote_resolve_command '%q ' \
-    "$remote_runner" \
-    --remote-worktree \
-    --repo-url "$project_repo_url" \
-    --branch "${new_worktree_branch:-$project_branch}" \
-    --base "$project_branch" \
-    --project-name "$project_name"
+  if [[ "$git_space" == default ]]; then
+    printf -v remote_resolve_command '%q ' \
+      "$remote_runner" \
+      --remote-default \
+      --repo-url "$project_repo_url" \
+      --branch "$default_branch" \
+      --source "$source_mode" \
+      --project-name "$project_name"
+  else
+    printf -v remote_resolve_command '%q ' \
+      "$remote_runner" \
+      --remote-worktree \
+      --repo-url "$project_repo_url" \
+      --branch "${new_worktree_branch:-$project_branch}" \
+      --base "$default_branch" \
+      --source "$source_mode" \
+      --project-name "$project_name"
+  fi
   if ! remote_project_path="$(ssh -o BatchMode=yes "$remote_target" "$remote_resolve_command")"; then
     exit 1
   fi
+
+  # Represent the remote thread in the local repository group. The process and
+  # Git worktree stay on Ubuntu, while this workspace provides local navigation.
+  proxy_label="${thread_title:-${initial_prompt:-Thread}} · Ubuntu"
+  proxy_workspace_json="$(herdr workspace create \
+    --cwd "$project_root" \
+    --label "$proxy_label" \
+    --no-focus)"
+  workspace_id="$(printf '%s\n' "$proxy_workspace_json" | python3 -c '
+import json, sys
+
+result = json.load(sys.stdin).get("result", {})
+workspace = result.get("workspace", result)
+print(workspace.get("workspace_id", ""))
+')"
+  if [[ -z "$workspace_id" ]]; then
+    printf '\nCould not create the local Ubuntu thread entry.\n' >&2
+    exit 1
+  fi
+  remote_context_dir="${XDG_STATE_HOME:-$HOME/.local/state}/herdr/remote-workspaces"
+  mkdir -p "$remote_context_dir"
+  python3 - "$remote_context_dir/$workspace_id.json" "$remote_target" "$remote_project_path" <<'PY'
+import json
+import os
+import sys
+
+path, target, remote_path = sys.argv[1:]
+temporary = path + ".tmp"
+with open(temporary, "w", encoding="utf-8") as stream:
+    json.dump({"target": target, "path": remote_path}, stream)
+    stream.write("\n")
+os.chmod(temporary, 0o600)
+os.replace(temporary, path)
+PY
+  project_path="$project_root"
+fi
+
+if [[ "$git_space" == worktree && -n "$initial_prompt" ]]; then
+  title_machine="$local_machine_label"
+  if [[ "$target" == ubuntu* ]]; then
+    title_machine=Ubuntu
+  fi
+  nohup "$title_generator" \
+    --prompt "$initial_prompt" \
+    --project "$project_root" \
+    --workspace "$workspace_id" \
+    --machine "$title_machine" >/dev/null 2>&1 &
 fi
 
 lock_path="$lock_dir/$workspace_id.lockdir"
@@ -252,7 +408,7 @@ names = {
 if target == "mac":
     name = "codex-agent" if local_machine == "Mac" else "ubuntu-codex-agent"
 else:
-    name = "ubuntu-session"
+    name = "ubuntu-codex"
 suffix = 2
 base = name
 while name in names:
@@ -268,7 +424,7 @@ import json, sys
 
 tabs = json.load(sys.stdin).get("result", {}).get("tabs", [])
 for tab in tabs:
-    if tab.get("label") == "agent":
+    if (tab.get("label") or "").split(" · ", 1)[0] == "agent":
         print(tab["tab_id"])
         break
 ')"
@@ -383,8 +539,14 @@ else
   printf -v launch_command '%q ' \
     "$HOME/.dotfiles/bin/herdr-run-remote-codex-agent" \
     --target "$remote_target" \
-    --session default \
+    --remote-path "$remote_project_path" \
     --close-tab-on-exit
+  if [[ -n "$initial_prompt" ]]; then
+    printf -v launch_command '%s--prompt %q ' "$launch_command" "$initial_prompt"
+  fi
+  if [[ -n "$thread_title" ]]; then
+    printf -v launch_command '%s--title %q ' "$launch_command" "$thread_title"
+  fi
 fi
 if ! herdr pane run "$pane_id" "$launch_command" >/dev/null; then
   printf '\nCould not start %s.\n' "$agent_name" >&2
@@ -396,38 +558,8 @@ if ! herdr pane run "$pane_id" "$launch_command" >/dev/null; then
   exit 1
 fi
 
-if [[ "$target" == ubuntu* ]]; then
-  remote_ready=false
-  for _ in {1..100}; do
-    if ssh -o BatchMode=yes "$remote_target" \
-      'HERDR_SESSION=default /usr/local/bin/herdr workspace list' >/dev/null 2>&1; then
-      remote_ready=true
-      break
-    fi
-    sleep 0.1
-  done
-  if [[ "$remote_ready" == false ]]; then
-    printf '\nUbuntu Herdr did not become ready.\n' >&2
-    herdr pane close "$pane_id" >/dev/null 2>&1 || true
-    exit 1
-  fi
-fi
-
-if [[ "$target" == "ubuntu" ]]; then
-  printf -v remote_start_command '%q ' \
-    "$remote_runner" \
-    --remote-start \
-    --remote-path "$remote_project_path" \
-    --session default
-  if [[ -n "$initial_prompt" ]]; then
-    printf -v remote_start_command '%s--prompt %q ' "$remote_start_command" "$initial_prompt"
-  fi
-  if ! ssh -o BatchMode=yes "$remote_target" "$remote_start_command"; then
-    printf '\nCould not start Codex in Ubuntu Herdr.\n' >&2
-    herdr pane close "$pane_id" >/dev/null 2>&1 || true
-    exit 1
-  fi
-fi
+# Show Codex while project setup continues in the terminal tab.
+herdr tab focus "$agent_tab_id" >/dev/null
 
 agent_started=false
 for _ in {1..200}; do
@@ -492,8 +624,8 @@ herdr agent rename "$pane_id" "$agent_name" >/dev/null
 herdr pane report-metadata "$pane_id" \
   --source boss:codex-launch-title \
   --agent codex \
-  --title "$agent_name" \
-  --display-agent "$(if [[ "$target" == "mac" ]]; then printf '%s · Codex' "$local_machine_label"; else printf 'Ubuntu · Herdr'; fi)" \
+  --title "${thread_title:-$agent_name}" \
+  --display-agent "$(if [[ "$target" == "mac" ]]; then printf '%s · Codex' "$local_machine_label"; else printf 'Ubuntu · Codex'; fi)" \
   --seq "$(python3 -c 'import time; print(time.time_ns())')" >/dev/null
 herdr agent focus "$pane_id" >/dev/null
 

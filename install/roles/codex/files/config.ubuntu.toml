@@ -1,0 +1,33 @@
+model = "gpt-5.6-sol"
+model_reasoning_effort = "medium"
+service_tier = "default"
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+check_for_update_on_startup = false
+
+[features]
+apps = true
+goals = true
+hooks = false
+js_repl = false
+memories = false
+
+[memories]
+generate_memories = false
+use_memories = false
+
+[mcp_servers.openaiDeveloperDocs]
+url = "https://developers.openai.com/mcp"
+
+[projects."/home/kylian"]
+trust_level = "trusted"
+
+[projects."/home/kylian/code/babacoiffure_monorepo"]
+trust_level = "trusted"
+
+[tui]
+resume_cwd = "current"
+status_line = ["weekly-limit", "context-used", "model-with-reasoning", "current-dir"]
+status_line_use_colors = true
+terminal_title = ["spinner", "project"]
+theme = "ansi"

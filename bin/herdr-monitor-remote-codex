@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+import argparse
+import os
+import subprocess
+import time
+
+
+REPORT_SOURCE = "boss:remote-codex-wrapper"
+
+
+def herdr(*arguments: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [os.environ.get("HERDR_BIN_PATH", "herdr"), *arguments],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def process_exists(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def screen_state(screen: str) -> str | None:
+    lines = screen.splitlines()
+    tail = lines[-16:]
+    blocked_markers = (
+        "would you like to run",
+        "do you want to proceed",
+        "press enter to confirm",
+    )
+    if any(marker in line.lower() for marker in blocked_markers for line in tail):
+        return "blocked"
+    if any("esc to interrupt" in line.lower() for line in tail):
+        return "working"
+    if any("ask codex to do anything" in line.lower() for line in tail):
+        return "idle"
+    return None
+
+
+def report_state(pane_id: str, state: str) -> bool:
+    result = herdr(
+        "pane",
+        "report-agent",
+        pane_id,
+        "--source",
+        REPORT_SOURCE,
+        "--agent",
+        "codex",
+        "--state",
+        state,
+        "--message",
+        f"Remote Codex is {state}",
+        "--seq",
+        str(time.time_ns()),
+    )
+    return result.returncode == 0
+
+
+def monitor(pane_id: str, owner_pid: int, interval: float) -> None:
+    previous = None
+    while process_exists(owner_pid):
+        result = herdr(
+            "pane",
+            "read",
+            pane_id,
+            "--source",
+            "detection",
+            "--lines",
+            "32",
+        )
+        if result.returncode != 0:
+            return
+        state = screen_state(result.stdout)
+        if state and state != previous:
+            if not report_state(pane_id, state):
+                return
+            previous = state
+        time.sleep(interval)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--pane", required=True)
+    parser.add_argument("--owner-pid", type=int, required=True)
+    parser.add_argument("--interval", type=float, default=0.25)
+    arguments = parser.parse_args()
+    monitor(arguments.pane, arguments.owner_pid, arguments.interval)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -15,23 +15,41 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type row struct {
-	Kind      string
-	Machine   string
-	State     string
-	Branch    string
-	Target    string
-	Workspace string
-	Session   string
-	Prompt    string
-	Detail    string
-	Repo      string
-	Updated   int64
-	Remote    bool
+	Kind       string
+	Machine    string
+	State      string
+	Branch     string
+	Target     string
+	Workspace  string
+	Session    string
+	Prompt     string
+	Detail     string
+	Repo       string
+	Updated    int64
+	Remote     bool
+	RemoteHost bool
+	GitSpace   string
+	Source     string
+	Base       string
+}
+
+type threadDraft struct {
+	row           row
+	cursor        int
+	gitSpace      string
+	source        string
+	defaultBranch string
+	project       string
+	editingTitle  bool
+	promptCursor  int
+	killBuffer    string
+	showKeymap    bool
 }
 
 type app struct {
@@ -49,6 +67,7 @@ type app struct {
 	remoteErr        error
 	remoteAttachPane string
 	threadsOnly      bool
+	newThreadOnly    bool
 	sqliteBin        string
 	historyDB        string
 	historyLoading   bool
@@ -94,6 +113,7 @@ type model struct {
 	selected *row
 	quit     bool
 	err      error
+	draft    *threadDraft
 }
 
 type remoteSnapshotMsg struct {
@@ -115,10 +135,14 @@ func main() {
 
 func runMain() error {
 	list := flag.Bool("list", false, "print rows and exit")
-	threadsOnly := flag.Bool("threads", false, "show only existing and new threads")
+	threadsOnly := flag.Bool("threads", false, "show only existing threads")
+	newThreadOnly := flag.Bool("new-thread", false, "search and create threads for the current repository")
 	selectQuery := flag.String("select", "", "select without opening the UI")
 	dryRun := flag.Bool("dry-run", false, "print selected command")
 	flag.Parse()
+	if *threadsOnly && *newThreadOnly {
+		return errors.New("--threads and --new-thread cannot be used together")
+	}
 	explicitPath := ""
 	if flag.NArg() > 0 {
 		explicitPath = flag.Arg(0)
@@ -142,6 +166,7 @@ func runMain() error {
 		localMachine:   localMachine,
 		remoteMachine:  "Ubuntu",
 		threadsOnly:    *threadsOnly,
+		newThreadOnly:  *newThreadOnly,
 		sqliteBin:      lookPath("sqlite3"),
 	}
 	if a.herdrBin == "" {
@@ -149,12 +174,27 @@ func runMain() error {
 	}
 	var rows []row
 	var err error
-	if a.threadsOnly {
+	if a.threadsOnly || a.newThreadOnly {
+		if a.gitBin == "" {
+			if a.newThreadOnly {
+				return errors.New("git not found in PATH")
+			}
+		} else if source, sourceErr := a.sourcePath(explicitPath); sourceErr == nil {
+			a.root, _ = a.repoRoot(source)
+		} else if a.newThreadOnly || explicitPath != "" {
+			return sourceErr
+		}
+		if a.newThreadOnly && a.root == "" {
+			return errors.New("unable to resolve the current Git repository")
+		}
 		a.historyDB, err = a.findHistoryDB()
 		if err != nil {
 			a.historyErr = err
 		}
 		rows = a.buildThreadRows()
+		if a.root != "" {
+			rows = append(a.newThreadRows(""), rows...)
+		}
 	} else {
 		if a.gitBin == "" {
 			return errors.New("git not found in PATH")
@@ -172,7 +212,7 @@ func runMain() error {
 		return err
 	}
 	rows = a.filterModeRows(rows)
-	if a.threadsOnly && (*list || *selectQuery != "") {
+	if (a.threadsOnly || a.newThreadOnly) && (*list || *selectQuery != "") {
 		history, historyErr := a.loadHistoryRows()
 		if historyErr != nil {
 			return historyErr
@@ -230,10 +270,82 @@ func filterWorktreeRows(rows []row) []row {
 }
 
 func (a *app) filterModeRows(rows []row) []row {
-	if a.threadsOnly {
-		return filterThreadRows(rows)
+	if a.threadsOnly || a.newThreadOnly {
+		rows = filterThreadRows(rows)
+		if a.newThreadOnly {
+			rows = a.filterCurrentRepoRows(rows)
+		}
+		return rows
 	}
 	return filterWorktreeRows(rows)
+}
+
+func (a *app) filterCurrentRepoRows(rows []row) []row {
+	current := a.repoKeyForPath(a.root)
+	project := strings.ToLower(a.projectName())
+	filtered := make([]row, 0, len(rows))
+	for _, candidate := range rows {
+		if candidate.Kind == "NEW" {
+			filtered = append(filtered, candidate)
+			continue
+		}
+		rowKey := normalizeRepoKey(candidate.Repo)
+		matches := current != "" && rowKey == current
+		if !matches && rowKey != "" {
+			matches = strings.EqualFold(filepath.Base(rowKey), project)
+		}
+		if !matches && candidate.Target != "" && filepath.IsAbs(candidate.Target) {
+			matches = pathWithin(candidate.Target, a.root)
+		}
+		if matches {
+			filtered = append(filtered, candidate)
+		}
+	}
+	return filtered
+}
+
+func pathWithin(path, root string) bool {
+	if path == "" || root == "" {
+		return false
+	}
+	path = filepath.Clean(path)
+	root = filepath.Clean(root)
+	relative, err := filepath.Rel(root, path)
+	return err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
+}
+
+func (a *app) repoKeyForPath(path string) string {
+	if path == "" || a.gitBin == "" {
+		return ""
+	}
+	remote := a.output(a.gitBin, "-C", path, "remote", "get-url", "origin")
+	if remote != "" {
+		return normalizeRepoKey(remote)
+	}
+	common := a.output(a.gitBin, "-C", path, "rev-parse", "--git-common-dir")
+	if common == "" {
+		return ""
+	}
+	if !filepath.IsAbs(common) {
+		common = filepath.Join(path, common)
+	}
+	resolved, err := filepath.EvalSymlinks(common)
+	if err == nil {
+		common = resolved
+	}
+	return strings.ToLower(strings.TrimSuffix(filepath.Clean(common), string(filepath.Separator)+".git"))
+}
+
+func normalizeRepoKey(value string) string {
+	value = strings.TrimSpace(value)
+	if split := strings.Index(value, "://"); split >= 0 {
+		value = value[split+3:]
+	} else if at := strings.Index(value, "@"); at >= 0 {
+		value = value[at+1:]
+		value = strings.Replace(value, ":", "/", 1)
+	}
+	value = strings.TrimSuffix(strings.TrimRight(value, "/"), ".git")
+	return strings.ToLower(value)
 }
 
 func runtimeOS() string {
@@ -521,7 +633,7 @@ func (a *app) sourcePath(explicit string) (string, error) {
 	var candidates []string
 	// Prefer the pane that invoked the picker. The globally focused workspace can
 	// briefly point at another repository while commands are running elsewhere.
-	if data, err := a.herdrJSON("pane", "current"); err == nil {
+	if data, err := a.herdrJSON("pane", "current", "--current"); err == nil {
 		pane := jsonMap(jsonMap(data, "result"), "pane")
 		candidates = append(candidates, jsonString(pane, "foreground_cwd"), jsonString(pane, "cwd"))
 	}
@@ -542,8 +654,10 @@ func (a *app) sourcePath(explicit string) (string, error) {
 	}
 	for _, candidate := range candidates {
 		path := normalizeExistingPath(candidate)
-		if path != "" && a.output(a.gitBin, "-C", path, "rev-parse", "--git-common-dir") != "" {
-			return path, nil
+		if path != "" {
+			if _, repoErr := a.repoRoot(path); repoErr == nil {
+				return path, nil
+			}
 		}
 	}
 	return "", errors.New("unable to resolve source git path")
@@ -563,7 +677,28 @@ func (a *app) repoRoot(path string) (string, error) {
 	if top != "" {
 		return top, nil
 	}
+	if linkedRoot := a.linkedRepoRoot(path); linkedRoot != "" {
+		return linkedRoot, nil
+	}
 	return "", fmt.Errorf("not in a git repository: %s", path)
+}
+
+func (a *app) linkedRepoRoot(path string) string {
+	raw, err := os.ReadFile(filepath.Join(path, ".git"))
+	if err != nil {
+		return ""
+	}
+	gitDir := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(string(raw)), "gitdir:"))
+	marker := string(filepath.Separator) + "worktrees" + string(filepath.Separator)
+	index := strings.LastIndex(gitDir, marker)
+	if index < 0 {
+		return ""
+	}
+	root := gitDir[:index]
+	if a.output(a.gitBin, "-C", root, "rev-parse", "--is-bare-repository") == "true" {
+		return root
+	}
+	return ""
 }
 
 func (a *app) buildThreadRows() []row {
@@ -576,7 +711,6 @@ func (a *app) buildThreadRows() []row {
 			threadRows = append(threadRows, a.snapshotRows(remoteSnapshot, a.remoteMachine, true)...)
 		}
 	}
-	threadRows = append(a.newThreadRows(""), threadRows...)
 	sortRows(threadRows)
 	return threadRows
 }
@@ -654,17 +788,33 @@ func (a *app) newThreadRows(prompt string) []row {
 	if prompt != "" {
 		detail = prompt
 	}
-	rows := []row{{
+	return []row{{
 		Kind: "NEW", Machine: a.localMachine, State: "new", Branch: "New thread",
 		Target: "mac", Prompt: prompt, Detail: detail,
 	}}
-	if a.localMachine != a.remoteMachine && a.remoteOnline {
-		rows = append(rows, row{
-			Kind: "NEW", Machine: a.remoteMachine, State: "new", Branch: "New thread",
-			Target: "ubuntu", Prompt: prompt, Detail: detail, Remote: true,
-		})
+}
+
+func (a *app) defaultBranch() string {
+	if a.root == "" {
+		return "main"
 	}
-	return rows
+	branch := a.output(a.gitBin, "-C", a.root, "symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD")
+	if strings.HasPrefix(branch, "origin/") {
+		return strings.TrimPrefix(branch, "origin/")
+	}
+	branch = a.output(a.gitBin, "-C", a.root, "branch", "--show-current")
+	return firstNonEmpty(branch, "main")
+}
+
+func (a *app) projectName() string {
+	if a.root == "" {
+		return "project"
+	}
+	remote := a.output(a.gitBin, "-C", a.root, "remote", "get-url", "origin")
+	if remote != "" {
+		return strings.TrimSuffix(filepath.Base(remote), ".git")
+	}
+	return strings.TrimSuffix(filepath.Base(a.root), ".git")
 }
 
 type workspaceSnapshot struct {
@@ -712,6 +862,11 @@ func (a *app) snapshotRows(data map[string]any, machine string, remote bool) []r
 			a.remoteAttachPane = jsonString(agent, "pane_id")
 			continue
 		}
+		directRemote := !remote && strings.HasPrefix(name, "ubuntu-codex") && strings.Contains(displayAgent, "Ubuntu")
+		rowMachine := machine
+		if directRemote {
+			rowMachine = firstNonEmpty(a.remoteMachine, "Ubuntu")
+		}
 		workspaceID := jsonString(agent, "workspace_id")
 		workspace := workspaces[workspaceID]
 		cwd := firstNonEmpty(jsonString(agent, "foreground_cwd"), jsonString(agent, "cwd"), workspace.path)
@@ -722,10 +877,10 @@ func (a *app) snapshotRows(data map[string]any, machine string, remote bool) []r
 			detail = firstNonEmpty(workspace.repo, cwd) + " · " + shortSession(session)
 		}
 		rows = append(rows, row{
-			Kind: "TH", Machine: machine, State: jsonString(agent, "agent_status"),
+			Kind: "TH", Machine: rowMachine, State: jsonString(agent, "agent_status"),
 			Branch: title, Target: jsonString(agent, "pane_id"), Workspace: workspaceID,
 			Session: session, Detail: detail, Repo: workspace.repo,
-			Updated: jsonInt64(agent, "state_change_seq"), Remote: remote,
+			Updated: jsonInt64(agent, "state_change_seq"), Remote: remote, RemoteHost: directRemote,
 		})
 	}
 	return rows
@@ -878,10 +1033,7 @@ func (a *app) openNewThread(r row, dryRun bool) error {
 		return err
 	}
 	launcher := filepath.Join(home, ".dotfiles/bin/herdr-start-codex")
-	args := []string{r.Target, "--new-worktree", threadBranch(r.Prompt, time.Now())}
-	if r.Prompt != "" {
-		args = append(args, "--prompt", r.Prompt)
-	}
+	args := newThreadLaunchArgs(r, a.root, a.defaultBranch(), time.Now())
 	if dryRun {
 		fmt.Printf("%s %s\n", launcher, strings.Join(args, " "))
 		return nil
@@ -892,11 +1044,31 @@ func (a *app) openNewThread(r row, dryRun bool) error {
 	return command.Run()
 }
 
-func threadBranch(prompt string, now time.Time) string {
-	label := strings.ToLower(strings.TrimSpace(prompt))
-	if label == "" {
-		label = "new"
+func newThreadLaunchArgs(r row, projectPath, fallbackBase string, now time.Time) []string {
+	gitSpace := firstNonEmpty(r.GitSpace, "worktree")
+	source := firstNonEmpty(r.Source, "origin")
+	base := firstNonEmpty(r.Base, fallbackBase)
+	args := []string{
+		r.Target,
+		"--project-path", projectPath,
+		"--git-space", gitSpace,
+		"--source", source,
+		"--default-branch", base,
 	}
+	if gitSpace == "worktree" {
+		args = append(args,
+			"--thread-title", generatedThreadTitle(r.Prompt),
+			"--new-worktree", threadBranch(r.Prompt, now),
+		)
+	}
+	if r.Prompt != "" {
+		args = append(args, "--prompt", r.Prompt)
+	}
+	return args
+}
+
+func threadBranch(prompt string, now time.Time) string {
+	label := strings.ToLower(generatedThreadTitle(prompt))
 	label = strings.Trim(sanitizeBranch(label), "-./")
 	if label == "" {
 		label = "new"
@@ -905,6 +1077,35 @@ func threadBranch(prompt string, now time.Time) string {
 		label = strings.TrimRight(label[:48], "-.")
 	}
 	return fmt.Sprintf("thread/%s-%s", label, now.Format("20060102-150405"))
+}
+
+func generatedThreadTitle(prompt string) string {
+	words := strings.Fields(oneLine(prompt))
+	if len(words) == 0 {
+		return "New thread"
+	}
+	truncated := false
+	if len(words) > 7 {
+		words = words[:7]
+		truncated = true
+	}
+	title := strings.Join(words, " ")
+	runes := []rune(title)
+	if len(runes) > 52 {
+		title = strings.TrimSpace(string(runes[:52]))
+		if space := strings.LastIndex(title, " "); space >= 24 {
+			title = title[:space]
+		}
+		truncated = true
+	}
+	title = strings.Trim(title, " \t\n.,:;-_")
+	if title == "" {
+		return "New thread"
+	}
+	if truncated {
+		title += "…"
+	}
+	return title
 }
 
 func (a *app) openRemoteRow(r row, dryRun bool) error {
@@ -954,7 +1155,7 @@ func newModel(a *app, rows []row) model {
 	if a.localMachine != a.remoteMachine {
 		a.remoteLoading = true
 	}
-	if a.threadsOnly && a.historyErr == nil {
+	if (a.threadsOnly || a.newThreadOnly) && a.historyErr == nil {
 		a.historyLoading = true
 	}
 	m := model{app: a, allRows: rows, width: 100, height: 24}
@@ -970,7 +1171,7 @@ func (m model) Init() tea.Cmd {
 			return remoteSnapshotMsg{data: data, err: err}
 		})
 	}
-	if m.app.threadsOnly && m.app.historyErr == nil {
+	if (m.app.threadsOnly || m.app.newThreadOnly) && m.app.historyErr == nil {
 		commands = append(commands, func() tea.Msg {
 			rows, err := m.app.loadHistoryRows()
 			return historyMsg{rows: rows, err: err}
@@ -999,6 +1200,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 	case tea.KeyMsg:
+		if m.draft != nil {
+			return m.updateThreadDraft(msg.String())
+		}
 		switch msg.String() {
 		case "ctrl+c", "esc":
 			m.quit = true
@@ -1006,6 +1210,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if len(m.rows) > 0 {
 				selected := m.rows[m.cursor]
+				if selected.Kind == "NEW" {
+					m.beginThreadDraft(selected)
+					return m, nil
+				}
 				m.selected = &selected
 			}
 			m.quit = true
@@ -1031,6 +1239,266 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+func (m *model) beginThreadDraft(selected row) {
+	m.draft = &threadDraft{
+		row:           selected,
+		gitSpace:      "worktree",
+		source:        "origin",
+		defaultBranch: m.app.defaultBranch(),
+		project:       m.app.projectName(),
+		editingTitle:  true,
+		promptCursor:  len([]rune(selected.Prompt)),
+	}
+}
+
+func (m model) updateThreadDraft(key string) (tea.Model, tea.Cmd) {
+	if m.draft == nil {
+		return m, nil
+	}
+	if m.draft.editingTitle {
+		return m.updateThreadTitle(key)
+	}
+	if m.draft.showKeymap {
+		return m.updateThreadKeymap(key)
+	}
+	switch key {
+	case "ctrl+c", "q":
+		m.quit = true
+		return m, tea.Quit
+	case "esc":
+		m.draft = nil
+		return m, nil
+	case "enter":
+		if strings.TrimSpace(m.draft.row.Prompt) == "" {
+			m.draft.editingTitle = true
+			return m, nil
+		}
+		return m.finishThreadDraft()
+	case "up", "k", "shift+tab":
+		m.draft.cursor = (m.draft.cursor + 2) % 3
+	case "down", "j", "tab":
+		m.draft.cursor = (m.draft.cursor + 1) % 3
+	case "left", "right", "h", "l", " ", "space":
+		m.toggleThreadDraftField(m.draft.cursor)
+	case "m":
+		m.draft.cursor = 0
+		m.toggleThreadDraftField(0)
+	case "w":
+		m.draft.cursor = 1
+		m.toggleThreadDraftField(1)
+	case "o":
+		m.draft.cursor = 2
+		m.toggleThreadDraftField(2)
+	case "t":
+		m.draft.editingTitle = true
+		m.draft.promptCursor = len([]rune(m.draft.row.Prompt))
+	case "alt+?":
+		m.draft.showKeymap = true
+	}
+	return m, nil
+}
+
+func (m model) updateThreadTitle(key string) (tea.Model, tea.Cmd) {
+	if m.draft == nil {
+		return m, nil
+	}
+	switch key {
+	case "ctrl+c":
+		m.quit = true
+		return m, tea.Quit
+	case "esc":
+		m.draft = nil
+	case "enter":
+		m.draft.row.Prompt = strings.TrimSpace(m.draft.row.Prompt)
+		if m.draft.row.Prompt != "" {
+			return m.finishThreadDraft()
+		}
+	case "tab":
+		m.draft.editingTitle = false
+		m.draft.cursor = 0
+	case "shift+tab":
+		m.draft.editingTitle = false
+		m.draft.cursor = 2
+	case "alt+m":
+		m.toggleThreadDraftField(0)
+	case "alt+w":
+		m.toggleThreadDraftField(1)
+	case "alt+o":
+		m.toggleThreadDraftField(2)
+	case "alt+?":
+		m.draft.showKeymap = true
+		m.draft.editingTitle = false
+	case "left", "ctrl+b":
+		m.draft.promptCursor = max(0, m.draft.promptCursor-1)
+	case "right", "ctrl+f":
+		m.draft.promptCursor = min(len([]rune(m.draft.row.Prompt)), m.draft.promptCursor+1)
+	case "home", "ctrl+a":
+		m.draft.promptCursor = 0
+	case "end", "ctrl+e":
+		m.draft.promptCursor = len([]rune(m.draft.row.Prompt))
+	case "alt+b", "alt+left", "ctrl+left":
+		m.draft.promptCursor = previousWordBoundary([]rune(m.draft.row.Prompt), m.draft.promptCursor)
+	case "alt+f", "alt+right", "ctrl+right":
+		m.draft.promptCursor = nextWordBoundary([]rune(m.draft.row.Prompt), m.draft.promptCursor)
+	case "ctrl+w", "alt+backspace":
+		m.deletePromptRange(previousWordBoundary([]rune(m.draft.row.Prompt), m.draft.promptCursor), m.draft.promptCursor)
+	case "alt+d":
+		m.deletePromptRange(m.draft.promptCursor, nextWordBoundary([]rune(m.draft.row.Prompt), m.draft.promptCursor))
+	case "ctrl+u":
+		m.deletePromptRange(0, m.draft.promptCursor)
+	case "ctrl+k":
+		m.deletePromptRange(m.draft.promptCursor, len([]rune(m.draft.row.Prompt)))
+	case "delete", "ctrl+d":
+		m.deletePromptRange(m.draft.promptCursor, min(len([]rune(m.draft.row.Prompt)), m.draft.promptCursor+1))
+	case "ctrl+y":
+		m.insertPrompt(m.draft.killBuffer)
+	case "ctrl+t":
+		m.transposePromptCharacters()
+	case "ctrl+l":
+		return m, nil
+	case "backspace", "ctrl+h":
+		m.deletePromptRange(max(0, m.draft.promptCursor-1), m.draft.promptCursor)
+	default:
+		printable := make([]rune, 0, len([]rune(key)))
+		for _, character := range []rune(key) {
+			if character >= ' ' && character != 0x7f {
+				printable = append(printable, character)
+			}
+		}
+		if len(printable) > 0 {
+			m.insertPrompt(string(printable))
+		}
+	}
+	return m, nil
+}
+
+func (m model) updateThreadKeymap(key string) (tea.Model, tea.Cmd) {
+	if m.draft == nil {
+		return m, nil
+	}
+	switch key {
+	case "ctrl+c":
+		m.quit = true
+		return m, tea.Quit
+	case "esc", "alt+?", "enter":
+		m.draft.showKeymap = false
+		m.draft.editingTitle = true
+	}
+	return m, nil
+}
+
+func (m *model) insertPrompt(value string) {
+	if m.draft == nil || value == "" {
+		return
+	}
+	runes := []rune(m.draft.row.Prompt)
+	cursor := min(max(0, m.draft.promptCursor), len(runes))
+	inserted := []rune(value)
+	runes = append(runes[:cursor], append(inserted, runes[cursor:]...)...)
+	m.draft.row.Prompt = string(runes)
+	m.draft.promptCursor = cursor + len(inserted)
+}
+
+func (m *model) deletePromptRange(start, end int) {
+	if m.draft == nil {
+		return
+	}
+	runes := []rune(m.draft.row.Prompt)
+	start = min(max(0, start), len(runes))
+	end = min(max(start, end), len(runes))
+	if start == end {
+		return
+	}
+	m.draft.killBuffer = string(runes[start:end])
+	m.draft.row.Prompt = string(append(runes[:start], runes[end:]...))
+	m.draft.promptCursor = start
+}
+
+func (m *model) transposePromptCharacters() {
+	if m.draft == nil {
+		return
+	}
+	runes := []rune(m.draft.row.Prompt)
+	if len(runes) < 2 || m.draft.promptCursor == 0 {
+		return
+	}
+	right := min(m.draft.promptCursor, len(runes)-1)
+	left := right - 1
+	runes[left], runes[right] = runes[right], runes[left]
+	m.draft.row.Prompt = string(runes)
+	m.draft.promptCursor = min(len(runes), right+1)
+}
+
+func previousWordBoundary(runes []rune, cursor int) int {
+	cursor = min(max(0, cursor), len(runes))
+	for cursor > 0 && unicode.IsSpace(runes[cursor-1]) {
+		cursor--
+	}
+	for cursor > 0 && !unicode.IsSpace(runes[cursor-1]) {
+		cursor--
+	}
+	return cursor
+}
+
+func nextWordBoundary(runes []rune, cursor int) int {
+	cursor = min(max(0, cursor), len(runes))
+	for cursor < len(runes) && unicode.IsSpace(runes[cursor]) {
+		cursor++
+	}
+	for cursor < len(runes) && !unicode.IsSpace(runes[cursor]) {
+		cursor++
+	}
+	return cursor
+}
+
+func (m model) finishThreadDraft() (tea.Model, tea.Cmd) {
+	if m.draft == nil || strings.TrimSpace(m.draft.row.Prompt) == "" {
+		return m, nil
+	}
+	selected := m.draft.row
+	selected.Prompt = strings.TrimSpace(selected.Prompt)
+	selected.Branch = generatedThreadTitle(selected.Prompt)
+	selected.GitSpace = m.draft.gitSpace
+	selected.Source = m.draft.source
+	selected.Base = m.draft.defaultBranch
+	m.selected = &selected
+	m.quit = true
+	return m, tea.Quit
+}
+
+func (m *model) toggleThreadDraftField(field int) {
+	if m.draft == nil {
+		return
+	}
+	switch field {
+	case 0:
+		if m.app.localMachine == m.app.remoteMachine || !m.app.remoteOnline {
+			return
+		}
+		if m.draft.row.Remote {
+			m.draft.row.Machine = m.app.localMachine
+			m.draft.row.Target = "mac"
+			m.draft.row.Remote = false
+		} else {
+			m.draft.row.Machine = m.app.remoteMachine
+			m.draft.row.Target = "ubuntu"
+			m.draft.row.Remote = true
+		}
+	case 1:
+		if m.draft.gitSpace == "worktree" {
+			m.draft.gitSpace = "default"
+		} else {
+			m.draft.gitSpace = "worktree"
+		}
+	case 2:
+		if m.draft.source == "origin" {
+			m.draft.source = "local"
+		} else {
+			m.draft.source = "origin"
+		}
+	}
 }
 
 func (m *model) applyRemoteSnapshot(data map[string]any) {
@@ -1080,9 +1548,12 @@ func (m model) View() string {
 	if m.quit {
 		return ""
 	}
+	if m.draft != nil {
+		return m.threadDraftView()
+	}
 	width := m.width
-	if width < 90 {
-		width = 90
+	if width < 60 {
+		width = 60
 	}
 	height := m.height
 	if height < 10 {
@@ -1123,7 +1594,7 @@ func (m model) View() string {
 	if m.app.localMachine != m.app.remoteMachine {
 		machineSummary += " · " + m.app.remoteMachine + " " + remoteState
 	}
-	if m.app.threadsOnly {
+	if m.app.threadsOnly || m.app.newThreadOnly {
 		historyState := fmt.Sprintf("%d saved", m.app.historyCount)
 		if m.app.historyLoading {
 			historyState = "history loading"
@@ -1137,10 +1608,13 @@ func (m model) View() string {
 	prompt := "herdr worktree > "
 	targetHeader := "thread / worktree / branch"
 	enterAction := "start/open/create"
-	if m.app.threadsOnly {
+	if m.app.threadsOnly || m.app.newThreadOnly {
 		prompt = "herdr thread > "
 		targetHeader = "thread"
 		enterAction = "focus/start"
+	}
+	if m.app.newThreadOnly {
+		machineSummary += " · " + m.app.projectName() + " only"
 	}
 	b.WriteString(boxLine(color(c.bold+c.cyan, prompt)+m.query+color(c.dim, "  "+machineSummary), inner) + "\n")
 	b.WriteString(boxLine("      "+color(c.dim, fmt.Sprintf("%-8s  %-9s  %-32s  %-6s  %s", "machine", "state", targetHeader, "kind", "detail")), inner) + "\n")
@@ -1159,6 +1633,218 @@ func (m model) View() string {
 	b.WriteString(boxLine(color(c.dim, "type to search")+" | "+color(c.green, "Enter")+" "+enterAction+" | "+color(c.yellow, "Esc")+" quit | "+color(c.yellow, "Ctrl-u")+" clear", inner) + "\n")
 	b.WriteString("╰" + strings.Repeat("─", inner+2) + "╯")
 	return b.String()
+}
+
+func (m model) threadDraftView() string {
+	draft := m.draft
+	if draft == nil {
+		return ""
+	}
+	if draft.showKeymap {
+		return m.threadKeymapView()
+	}
+	width := m.width
+	if width < 60 {
+		width = 60
+	}
+	height := m.height
+	if height < 17 {
+		height = 17
+	}
+	bodyHeight := height - 8
+	heading := color(c.bold+c.cyan, "new thread") + color(c.dim, "  · "+draft.project)
+	project := color(c.dim, "Your first prompt creates the title, Git space, and agent.")
+
+	machineDetail := "local"
+	if draft.row.Remote {
+		machineDetail = "remote"
+	} else if m.app.localMachine != m.app.remoteMachine && !m.app.remoteOnline {
+		machineDetail = "local · Ubuntu offline"
+	}
+	spaceValue := color(c.cyan, "new worktree")
+	if draft.gitSpace == "default" {
+		spaceValue = color(c.green, "default branch")
+	}
+	sourceValue := color(c.magenta, "origin")
+	sourceDetail := "remote-first"
+	if draft.source == "local" {
+		sourceValue = color(c.green, "local state")
+		sourceDetail = "unchanged"
+	}
+	prompt := strings.TrimSpace(draft.row.Prompt)
+	promptValue := prompt
+	if promptValue == "" {
+		promptValue = "Describe what you want the agent to do"
+	} else if draft.editingTitle {
+		promptValue = promptWithCursor(draft.row.Prompt, draft.promptCursor)
+	}
+	if prompt == "" && draft.editingTitle {
+		promptValue += "  █"
+	}
+	promptLines := wrapPlain(promptValue, width-8, 3)
+	if prompt == "" {
+		for index := range promptLines {
+			promptLines[index] = color(c.dim, promptLines[index])
+		}
+	}
+
+	controlPrefix := func(index int) string {
+		if !draft.editingTitle && draft.cursor == index {
+			return color(c.cyan+c.bold, "> ")
+		}
+		return "  "
+	}
+	body := []string{color(c.bold, "PROMPT")}
+	for _, line := range promptLines {
+		body = append(body, "  "+line)
+	}
+	body = append(body,
+		color(c.dim, "TITLE  ")+color(c.green, generatedThreadTitle(prompt)),
+		"",
+		controlPrefix(0)+color(c.dim, "machine    ")+color(draft.row.machineColor()+c.bold, draft.row.Machine)+color(c.dim, "  · "+machineDetail+"  [⌥m]"),
+		controlPrefix(1)+color(c.dim, "git space  ")+spaceValue+color(c.dim, "  · "+draft.defaultBranch+"  [⌥w]"),
+		controlPrefix(2)+color(c.dim, "source     ")+sourceValue+color(c.dim, "  · "+sourceDetail+"  [⌥o]"),
+		"",
+		color(c.green, "● ")+"Ready",
+	)
+
+	var b strings.Builder
+	b.WriteString("╭" + strings.Repeat("─", width-2) + "╮\n")
+	b.WriteString(boxLine(heading, width-4) + "\n")
+	b.WriteString(boxLine(project, width-4) + "\n")
+	b.WriteString("├" + strings.Repeat("─", width-2) + "┤\n")
+	for index := 0; index < bodyHeight; index++ {
+		line := ""
+		if index < len(body) {
+			line = body[index]
+		}
+		b.WriteString(boxLine(line, width-4) + "\n")
+	}
+	b.WriteString("├" + strings.Repeat("─", width-2) + "┤\n")
+	if draft.editingTitle {
+		b.WriteString(boxLine(color(c.green, "Enter")+" send and create  "+color(c.yellow, "Tab")+" controls  "+color(c.yellow, "Esc")+" back  "+color(c.blue, "⌥?")+" keys", width-4) + "\n")
+		b.WriteString(boxLine(color(c.blue, "⌥m")+" machine  "+color(c.cyan, "⌥w")+" git space  "+color(c.magenta, "⌥o")+" source  "+color(c.yellow, "Ctrl-w")+" delete word", width-4) + "\n")
+	} else {
+		b.WriteString(boxLine(color(c.dim, "↑/k ↓/j")+" move  "+color(c.cyan, "←/h →/l Space")+" change  "+color(c.yellow, "Tab")+" next", width-4) + "\n")
+		b.WriteString(boxLine(color(c.blue, "m")+" machine  "+color(c.cyan, "w")+" git space  "+color(c.magenta, "o")+" source  "+color(c.blue, "t")+" prompt  "+color(c.green, "Enter")+" create  "+color(c.yellow, "Esc")+" back", width-4) + "\n")
+	}
+	b.WriteString("╰" + strings.Repeat("─", width-2) + "╯")
+	return b.String()
+}
+
+func promptWithCursor(value string, cursor int) string {
+	runes := []rune(value)
+	cursor = min(max(0, cursor), len(runes))
+	return string(runes[:cursor]) + "█" + string(runes[cursor:])
+}
+
+func (m model) threadKeymapView() string {
+	width := max(60, m.width)
+	height := max(20, m.height)
+	bodyHeight := height - 6
+	rows := []string{
+		color(c.bold+c.cyan, "READLINE INPUT KEYS"),
+		"",
+		color(c.bold, "Move"),
+		"  Ctrl-a / Home       start of line",
+		"  Ctrl-e / End        end of line",
+		"  Ctrl-b / ←          one character left",
+		"  Ctrl-f / →          one character right",
+		"  Alt-b / Ctrl-←      one word left",
+		"  Alt-f / Ctrl-→      one word right",
+		"",
+		color(c.bold, "Edit"),
+		"  Backspace / Ctrl-h  delete previous character",
+		"  Delete / Ctrl-d     delete next character",
+		"  Ctrl-w / Alt-BS     delete previous word",
+		"  Alt-d               delete next word",
+		"  Ctrl-u              delete before cursor",
+		"  Ctrl-k              delete after cursor",
+		"  Ctrl-y              paste last deleted text",
+		"  Ctrl-t              swap characters",
+		"  Ctrl-l              redraw",
+		"",
+		color(c.bold, "Create"),
+		"  Enter               send prompt and create",
+		"  Tab                 open controls",
+		"  Alt-m / Alt-w / Alt-o  machine / Git space / source",
+		"  Esc                 return to thread search",
+		"  Ctrl-c              close",
+	}
+
+	var b strings.Builder
+	b.WriteString("╭" + strings.Repeat("─", width-2) + "╮\n")
+	b.WriteString(boxLine(color(c.bold+c.cyan, "input keymap")+color(c.dim, "  · terminal style"), width-4) + "\n")
+	b.WriteString("├" + strings.Repeat("─", width-2) + "┤\n")
+	for index := 0; index < bodyHeight; index++ {
+		line := ""
+		if index < len(rows) {
+			line = rows[index]
+		}
+		b.WriteString(boxLine(line, width-4) + "\n")
+	}
+	b.WriteString("├" + strings.Repeat("─", width-2) + "┤\n")
+	b.WriteString(boxLine(color(c.yellow, "Esc / Enter / ⌥?")+" back to prompt", width-4) + "\n")
+	b.WriteString("╰" + strings.Repeat("─", width-2) + "╯")
+	return b.String()
+}
+
+func wrapPlain(value string, width, limit int) []string {
+	if width < 1 || limit < 1 {
+		return nil
+	}
+	words := strings.Fields(oneLine(value))
+	if len(words) == 0 {
+		return []string{""}
+	}
+	lines := make([]string, 0, limit)
+	for _, word := range words {
+		if len(lines) == 0 || len([]rune(lines[len(lines)-1]+" "+word)) > width {
+			if len(lines) == limit {
+				last := strings.TrimRight(lines[limit-1], "…")
+				lines[limit-1] = truncatePlain(last+"…", width)
+				return lines
+			}
+			lines = append(lines, truncatePlain(word, width))
+			continue
+		}
+		lines[len(lines)-1] += " " + word
+	}
+	return lines
+}
+
+func (draft threadDraft) plan() []string {
+	steps := []string{"Run in the local Herdr workspace"}
+	if draft.row.Remote {
+		steps = []string{"Run Codex on Ubuntu over SSH"}
+	}
+	if draft.source == "origin" {
+		steps = append(steps, "Fetch origin on the selected machine")
+	}
+	if draft.gitSpace == "default" {
+		if draft.source == "origin" {
+			steps = append(steps, "Fast-forward "+draft.defaultBranch+" from origin/"+draft.defaultBranch)
+		} else {
+			steps = append(steps, "Use the "+draft.defaultBranch+" checkout unchanged")
+		}
+	} else {
+		base := draft.defaultBranch
+		if draft.source == "origin" {
+			base = "origin/" + base
+		}
+		steps = append(steps, "Create a new thread branch from "+base, "Let Herdr choose the worktree path")
+	}
+	if draft.row.Remote {
+		return append(steps, "Create the thread entry under the local repository", "Open remote Codex in a local Herdr pane")
+	}
+	return append(steps, "Create or reuse the hidden Herdr workspace", "Start Codex and bind its session to the thread")
+}
+
+func splitBoxLine(left, right string, leftWidth, rightWidth int) string {
+	left = ansiTruncate(left, leftWidth)
+	right = ansiTruncate(right, rightWidth)
+	return "│ " + left + strings.Repeat(" ", leftWidth-ansiVisibleLen(left)) +
+		" │ " + right + strings.Repeat(" ", rightWidth-ansiVisibleLen(right)) + " │"
 }
 
 func (m *model) applyFilter(reset bool) {
@@ -1187,7 +1873,7 @@ func (m *model) applyFilter(reset bool) {
 			return iRank < jRank
 		})
 	}
-	if query != "" && !threadTitleMatch && m.app != nil {
+	if query != "" && !threadTitleMatch && m.app != nil && m.app.root != "" {
 		m.rows = append(m.app.newThreadRows(strings.TrimSpace(m.query)), m.rows...)
 	}
 	if reset || m.cursor >= len(m.rows) {
@@ -1382,7 +2068,7 @@ func (r row) branchColor() string {
 }
 
 func (r row) machineColor() string {
-	if r.Remote {
+	if r.Remote || r.RemoteHost {
 		return c.magenta
 	}
 	return c.blue
