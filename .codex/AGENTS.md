@@ -1,21 +1,19 @@
 # Global Codex Instructions
 
-- Render CLI rule: use `/Users/boss/.dotfiles/bin/render-oauth ...` for Render CLI operations and start audits with `render-oauth whoami`. The wrapper preserves global API-key exports for REST scripts while preventing `RENDER_API_KEY` from shadowing the CLI OAuth session. Validate global keys with `render-credentials-check`. Never inspect secret files with commands that print matching lines or values; report only variable names and validation status.
-- GitHub CLI rule: use `gh` for GitHub URLs and PR, issue, CI, and release operations; prefer current-branch `gh pr view`/`gh pr diff`. Inspect and reply to review threads with file/line evidence, resolving them only after the fix lands. When GraphQL-backed checks are rate-limited, use REST-backed `gh run list`/`gh run view`; keep detailed recipes in global skills.
-- Pull request readiness rule: always create GitHub pull requests ready for review. Never create or leave a PR as draft, including when a skill or legacy workflow defaults to drafts, unless the user explicitly requests a draft PR in the current task.
-- Pull request stack rule: when work spans multiple stacked PRs, create or reuse one ready-for-review aggregate PR from the stack tip to the final base (or use the configured stack service's aggregate view), and link the ordered component PRs plus their evidence from it. When the user asks to open or view the stack, open only that aggregate PR/view. Never open every component PR or multiple browser tabs unless the user explicitly asks for them.
-- When making Playwright proof videos, prefer MP4 output. If Playwright only emits WebM, convert the final proof video to MP4 before handing it off.
-- Never commit or push generated proof videos, screenshots, or test artifacts to product repositories. Keep them local/ignored; attach them manually to GitHub when needed.
-- Deletion safety rule: across every workspace, agent-initiated deletions must use `trash`. Only audited cleanup scripts may permanently delete explicit, validated disposable paths; never permanently delete broad roots or targets containing unresolved variables.
-- macOS/iOS identity rule: never re-sign, ad-hoc sign, or change bundle IDs, entitlements, signing identities, or related app identity settings as a debugging step without announcing the exact change and receiving explicit user approval; these changes can reset or break TCC permissions.
-- Computer-use rule: use the `computer-use` skill and its tools only when the user explicitly asks for computer-use; never invoke them implicitly or as a fallback.
-- Calendar rule: put events involving Warren / Dorali in the `pro - dorali` calendar.
-- Herdr rule: keep `Cmd-o` as a fast worktree picker that includes existing worktrees, local branches, and remote branches; do not replace it with Herdr's native `open_worktree` action, which omits remote branches.
-- Agent worktree isolation rule: use linked-worktree isolation only for repositories already organized around Git worktrees. If the current checkout is already a linked worktree, keep the task in that worktree; if the repository is a bare worktree source, reuse or create a dedicated task worktree with plain Git worktree commands. For an ordinary single-checkout repository, work in the current checkout and do not introduce a worktree unless the user explicitly asks. Do not create or open a Herdr workspace unless the user explicitly asks for Herdr. Never change the branch checked out in the user's original worktree or mix new task changes into a dirty checkout; preserve existing changes and leave cleanup, migration, or removal to explicit user direction.
-- Personal ops rule: for status reviews, conversation resumes, planning, pending/waiting work, ownership, monitoring, or questions such as "what next?", use the `personal-ops-orchestrator` skill and inspect the native sources of truth before answering.
-- Linear scope rule: before any Linear mutation, identify the repository in scope and read its applicable repo-local `AGENTS.md`. Create or update a Linear issue only when those repo-local instructions explicitly authorize or require it. If no repository is in scope, or its instructions do not authorize Linear, do not mutate Linear; a global skill or generic RFC workflow is never sufficient authorization.
-- Herdr Codex rule: launch programmatic Codex agents with `/Users/boss/.dotfiles/bin/herdr-run-codex-agent --task-name <name> -- <codex exec arguments...>`, never raw `codex exec`, so Herdr receives an immediate stable title plus explicit working/idle state. Launch interactive Codex agents with Herdr 0.7.5 native `herdr agent start <unique-name> --kind codex --pane <pane-id> -- <codex arguments...>` and immediately publish the same name through pane metadata.
-- Keyboard layout source-of-truth rule: keep shared ergonomic intent in `/Users/boss/.dotfiles/keyboard-layout`; QMK, ZMK, and Karabiner are target adapters. Keep per-device timing, physical input mapping, scope, and wiring compensation in device profiles rather than duplicating shared behavior across targets.
-- Corne thumb rule: the canonical middle left-thumb position is Backspace/Delete when tapped and System when held; the canonical inner left-thumb position is Enter when tapped and Numbers when held. Compensate for the other Corne's reversed physical inputs only in its device profile; never change the canonical finger roles.
-- Keyboard flash rule: never flash a keyboard without announcing it immediately beforehand and receiving explicit confirmation, because the user may be working in another worktree.
-- When we are encountering an issue that can be shared across multiple parts or branches of the codebase, propose to create an issue on that in the tracking system, it should have the minimum scope possible, and if we fix it in a way  propose the way we've fixed it in the tracking system
+This file is the catalog for global instructions. Detailed rules live in `/Users/boss/.dotfiles/.codex/instructions/`.
+
+Read every matching file before you act. If no row matches, read `/Users/boss/.dotfiles/.codex/instructions/CONTEXT.md`.
+
+| When the task involves | Read |
+|---|---|
+| Render or Render credentials | `/Users/boss/.dotfiles/.codex/instructions/render.md` |
+| GitHub, pull requests, CI, releases, reviews, or proof artifacts | `/Users/boss/.dotfiles/.codex/instructions/github.md` |
+| Creating or updating tracker issues, including Linear issues | `/Users/boss/.dotfiles/.codex/instructions/tracking.md` |
+| Deleting files or cleaning a workspace | `/Users/boss/.dotfiles/.codex/instructions/deletion.md` |
+| macOS or iOS signing, identities, entitlements, or bundle IDs | `/Users/boss/.dotfiles/.codex/instructions/apple-platforms.md` |
+| Computer use | `/Users/boss/.dotfiles/.codex/instructions/computer-use.md` |
+| Worktrees, branches, or checkout isolation | `/Users/boss/.dotfiles/.codex/instructions/worktrees.md` |
+| Herdr, panes, workspaces, or Codex agent launches | `/Users/boss/.dotfiles/.codex/instructions/herdr.md` |
+| Status, planning, ownership, pending work, monitoring, or calendars | `/Users/boss/.dotfiles/.codex/instructions/personal-ops.md` |
+| Keyboard layouts, Corne keys, device profiles, or keyboard flashing | `/Users/boss/.dotfiles/.codex/instructions/keyboard.md` |
+| Architecture, scope, or implementation choices | `/Users/boss/.dotfiles/.codex/instructions/engineering-values.md` |

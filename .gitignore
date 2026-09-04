@@ -74,9 +74,11 @@ goinfre/
 .config/simple-update-notifier/nodemon.json
 .claude/
 
-# Codex runtime/state: keep only instructions file
+# Codex runtime/state: keep portable instructions
 .codex/**
 !.codex/AGENTS.md
+!.codex/instructions/
+!.codex/instructions/**
 
 # Hermes runtime/state: keep portable config and encrypted secrets only
 .hermes/**
