@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -28,6 +29,7 @@ type config struct {
 	autoPull     bool
 	forceFetch   bool
 	noFetch      bool
+	scanRoot     string
 	parallelJobs int
 }
 
@@ -38,21 +40,31 @@ type commandRunner interface {
 type execRunner struct{}
 
 func (execRunner) Run(ctx context.Context, dir string, name string, args ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), "GIT_PAGER=cat")
+	cmd.Env = append(os.Environ(), "GIT_PAGER=cat", "GIT_TERMINAL_PROMPT=0", "GIT_OPTIONAL_LOCKS=0")
 	var out bytes.Buffer
 	cmd.Stdout = &out
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 	err := cmd.Run()
-	return out.String(), err
+	if err != nil {
+		return out.String(), fmt.Errorf("%s %s: %w: %s", name, strings.Join(args, " "), err, strings.TrimSpace(stderr.String()))
+	}
+	return out.String(), nil
 }
 
 type app struct {
-	cfg    config
-	runner commandRunner
-	in     io.Reader
-	out    io.Writer
-	errOut io.Writer
+	cfg                config
+	runner             commandRunner
+	in                 io.Reader
+	out                io.Writer
+	errOut             io.Writer
+	protectedPaths     map[string]bool
+	loadProtectedPaths func(context.Context) (map[string]bool, error)
+	gitSemaphore       chan struct{}
 }
 
 type palette struct {
@@ -95,6 +107,11 @@ type worktree struct {
 	branch string
 }
 
+type repository struct {
+	root string
+	key  string
+}
+
 type category string
 
 const (
@@ -113,11 +130,11 @@ type row struct {
 	a          string
 	b          string
 	compareRef string
+	head       string
 }
 
 type plan struct {
 	safe      []row
-	staleDirs []row
 	behind    []row
 	unpushed  []row
 	attention []row
@@ -140,6 +157,7 @@ func main() {
 		out:    os.Stdout,
 		errOut: os.Stderr,
 	}
+	a.loadProtectedPaths = a.herdrProtectedPaths
 	if err := a.run(context.Background()); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -158,6 +176,7 @@ func parseArgs(args []string, getenv func(string) string) (config, error) {
 	noPull := fs.Bool("no-pull", false, "")
 	fs.BoolVar(&cfg.forceFetch, "fetch", false, "")
 	fs.BoolVar(&cfg.noFetch, "no-fetch", false, "")
+	fs.StringVar(&cfg.scanRoot, "root", "", "")
 	help := fs.Bool("help", false, "")
 	shortHelp := fs.Bool("h", false, "")
 	if err := fs.Parse(args); err != nil {
@@ -190,8 +209,8 @@ func configuredJobs(getenv func(string) string) (int, error) {
 	}
 	if raw == "" {
 		n := runtime.NumCPU()
-		if n > 4 {
-			n = 4
+		if n > 8 {
+			n = 8
 		}
 		if n < 1 {
 			n = 1
@@ -206,82 +225,143 @@ func configuredJobs(getenv func(string) string) (int, error) {
 }
 
 func printUsage(w io.Writer) {
-	fmt.Fprint(w, `Usage: worktree-chore [--dry-run|-n] [--yes|-y] [--fetch|--no-fetch] [--no-pull] [--help|-h]
+	fmt.Fprint(w, `Usage: worktree-chore [--root PATH] [--dry-run|-n] [--yes|-y] [--fetch|--no-fetch] [--no-pull] [--help|-h]
 
 Cleans up git worktrees:
 - SAFE REMOVE: HEAD already merged into origin/main|origin/release
-- BEHIND: can auto pull --rebase
+- MANUAL ONLY: clean branches synchronized with a remote upstream
+- BEHIND: can auto pull --ff-only
 - UNPUSHED: local commits not on upstream
-- ATTENTION: uncommitted/untracked, diverged, detached, unreadable, no upstream
+- ATTENTION: tracked/untracked/ignored local files, diverged, detached, unreadable, no upstream
 - KEEP: unique work
 
 Options:
+  --root PATH     Discover repositories below PATH; only change worktrees inside PATH
   -n, --dry-run   Show actions without changing anything
   -y, --yes       Do not ask for confirmation
-  --automation    Remove only clean merged worktrees; skip pulls and stale directories
+  --automation    Remove only clean merged worktrees; skip pulls
   --no-pull       Do not auto pull behind branches
   --fetch         Force refreshing remote refs
   --no-fetch      Never refresh remote refs
   -h, --help      Show help
 
 Environment:
-  WORKTREE_CHORE_JOBS         Parallel scan/action jobs, default: CPU count capped at 8
+  WORKTREE_CHORE_JOBS         Concurrent Git jobs across all repositories, default: CPU count capped at 8
   WORKTREE_CHORE_REMOVE_JOBS  Deprecated alias for WORKTREE_CHORE_JOBS
+
+Unregistered directories are never removed. Ignored files also prevent cleanup.
+Discovery skips Git internals, node_modules, .venv, and .cache directories.
+Protection covers workspaces, panes, and agents in the queried Herdr session.
 `)
 }
 
-func (a app) run(ctx context.Context) error {
-	p := palette{enabled: colorsEnabled(a.out)}
-	repoRoot, err := a.repoRoot(ctx)
+func (a *app) run(ctx context.Context) error {
+	if a.gitSemaphore == nil {
+		a.gitSemaphore = make(chan struct{}, a.cfg.parallelJobs)
+	}
+	if err := a.refreshProtectedPaths(ctx); err != nil {
+		return err
+	}
+	if a.cfg.scanRoot == "" {
+		root, err := a.repoRoot(ctx)
+		if err != nil {
+			return err
+		}
+		return a.runRepository(ctx, root)
+	}
+	repositories, err := a.discoverRepositories(ctx, a.cfg.scanRoot)
 	if err != nil {
 		return err
 	}
+	if len(repositories) == 0 {
+		return fmt.Errorf("no Git repositories found below %s", a.cfg.scanRoot)
+	}
+	type prepared struct {
+		repo   repository
+		plan   plan
+		output string
+		err    error
+	}
+	results := parallelMap(min(a.cfg.parallelJobs, len(repositories)), repositories, func(repo repository) prepared {
+		var output bytes.Buffer
+		child := *a
+		child.out = &output
+		child.errOut = &output
+		pl, err := child.prepareRepository(ctx, repo.root)
+		return prepared{repo, pl, output.String(), err}
+	})
+	var combined plan
+	var failures []error
+	for _, result := range results {
+		fmt.Fprintf(a.out, "\n📁 Repository: %s\n%s", result.repo.root, result.output)
+		if result.err != nil {
+			failures = append(failures, result.err)
+			fmt.Fprintln(a.errOut, result.err)
+			continue
+		}
+		combined.safe = append(combined.safe, result.plan.safe...)
+		combined.behind = append(combined.behind, result.plan.behind...)
+	}
+	if a.hasActions(combined) && !a.cfg.yes && !a.cfg.dryRun && !a.confirm(combined) {
+		fmt.Fprintln(a.out, "Aborted.")
+		return errors.Join(failures...)
+	}
+	for _, result := range results {
+		if result.err == nil && a.hasActions(result.plan) {
+			if err := a.apply(ctx, result.repo.root, result.plan); err != nil {
+				failures = append(failures, err)
+			}
+		}
+	}
+	return errors.Join(failures...)
+}
+
+func (a app) hasActions(pl plan) bool {
+	return len(pl.safe) > 0 || (a.cfg.autoPull && len(pl.behind) > 0)
+}
+
+func (a *app) prepareRepository(ctx context.Context, root string) (plan, error) {
 	mode := "LIVE"
 	if a.cfg.dryRun {
 		mode = "DRY-RUN"
 	}
-	fmt.Fprintf(a.out, "%s  (mode: %s)\n", p.paint(ansiBold+ansiCyan, "🧹 worktree cleanup"), p.paint(ansiBold, mode))
-	a.refreshRemotes(ctx, repoRoot)
-	trees, err := a.listWorktrees(ctx, repoRoot)
+	fmt.Fprintf(a.out, "🧹 worktree cleanup (mode: %s)\n", mode)
+	if err := a.refreshRemotes(ctx, root); err != nil {
+		return plan{}, fmt.Errorf("%s: remote refresh failed; refusing cleanup: %w", root, err)
+	}
+	trees, err := a.listWorktrees(ctx, root)
 	if err != nil {
-		return err
+		return plan{}, err
 	}
-	fmt.Fprintf(a.out, "%s (parallel jobs: %d)...\n", p.paint(ansiCyan, "🔎 Scanning worktrees"), a.cfg.parallelJobs)
-	pl := a.classifyAll(ctx, repoRoot, trees)
-	if !a.cfg.automation {
-		pl.staleDirs = findStaleDirs(repoRoot, trees)
-	}
-	fmt.Fprintln(a.out)
-	renderPlan(a.out, pl, p)
-	if len(pl.safe) == 0 && len(pl.staleDirs) == 0 && len(pl.behind) == 0 {
+	pl := a.classifyAll(ctx, root, trees)
+	renderPlan(a.out, pl, palette{enabled: colorsEnabled(a.out)})
+	if !a.hasActions(pl) {
 		fmt.Fprintln(a.out, "✓ Nothing to do automatically.")
-		return nil
 	}
-	if !a.cfg.yes && !a.cfg.dryRun {
-		if !a.confirm(pl) {
-			fmt.Fprintln(a.out, "Aborted.")
-			return nil
-		}
-	}
-	a.apply(ctx, repoRoot, pl)
-	if a.cfg.dryRun {
-		fmt.Fprintln(a.out, "[DRY RUN] git worktree prune")
-	} else {
-		_, _ = a.git(ctx, repoRoot, "worktree", "prune")
-	}
-	fmt.Fprintln(a.out, "✓ Done.")
-	return nil
+	return pl, nil
 }
 
-func (a app) refreshRemotes(ctx context.Context, repoRoot string) {
+func (a *app) runRepository(ctx context.Context, root string) error {
+	pl, err := a.prepareRepository(ctx, root)
+	if err != nil || !a.hasActions(pl) {
+		return err
+	}
+	if !a.cfg.yes && !a.cfg.dryRun && !a.confirm(pl) {
+		fmt.Fprintln(a.out, "Aborted.")
+		return nil
+	}
+	return a.apply(ctx, root, pl)
+}
+
+func (a app) refreshRemotes(ctx context.Context, repoRoot string) error {
 	if a.cfg.noFetch {
 		fmt.Fprintln(a.out, "🌐 Using cached remote refs (--no-fetch)")
-		return
+		return nil
 	}
 	age, fresh := a.fetchAge(ctx, repoRoot)
 	if !a.cfg.forceFetch && fresh && age < fetchTTL {
 		fmt.Fprintf(a.out, "🌐 Using remote refs updated %s ago\n", age.Round(time.Second))
-		return
+		return nil
 	}
 	fmt.Fprintln(a.out, "🌐 Refreshing remote refs...")
 	args := []string{"fetch", "--all", "--prune"}
@@ -289,8 +369,9 @@ func (a app) refreshRemotes(ctx context.Context, repoRoot string) {
 		args = append(args, "--dry-run")
 	}
 	if _, err := a.git(ctx, repoRoot, args...); err != nil {
-		fmt.Fprintln(a.errOut, "Warning: remote refresh failed; using cached refs")
+		return err
 	}
+	return nil
 }
 
 func (a app) fetchAge(ctx context.Context, repoRoot string) (time.Duration, bool) {
@@ -307,6 +388,173 @@ func (a app) fetchAge(ctx context.Context, repoRoot string) (time.Duration, bool
 		age = 0
 	}
 	return age, true
+}
+
+func (a *app) refreshProtectedPaths(ctx context.Context) error {
+	if a.loadProtectedPaths == nil {
+		return nil
+	}
+	paths, err := a.loadProtectedPaths(ctx)
+	if err != nil {
+		return fmt.Errorf("cannot read active Herdr workspaces; refusing cleanup: %w", err)
+	}
+	a.protectedPaths = paths
+	return nil
+}
+
+func (a app) herdrProtectedPaths(ctx context.Context) (map[string]bool, error) {
+	herdr, err := findHerdr()
+	if err != nil {
+		return nil, err
+	}
+	paths := map[string]bool{}
+	for _, group := range []string{"workspace", "pane", "agent"} {
+		raw, err := a.runner.Run(ctx, "", herdr, group, "list")
+		if err != nil {
+			return nil, err
+		}
+		var envelope struct {
+			Result map[string]json.RawMessage `json:"result"`
+			Error  json.RawMessage            `json:"error"`
+		}
+		if err := json.Unmarshal([]byte(raw), &envelope); err != nil {
+			return nil, fmt.Errorf("parse Herdr %s: %w", group, err)
+		}
+		data, exists := envelope.Result[group+"s"]
+		if !exists || string(data) == "null" || (len(envelope.Error) > 0 && string(envelope.Error) != "null") {
+			return nil, fmt.Errorf("invalid Herdr %s list response", group)
+		}
+		var records []struct {
+			CWD           string `json:"cwd"`
+			ForegroundCWD string `json:"foreground_cwd"`
+			Worktree      struct {
+				CheckoutPath string `json:"checkout_path"`
+			} `json:"worktree"`
+			Repository struct {
+				CheckoutPath string `json:"checkout_path"`
+			} `json:"repository"`
+		}
+		if err := json.Unmarshal(data, &records); err != nil {
+			return nil, fmt.Errorf("parse Herdr %s records: %w", group, err)
+		}
+		for _, record := range records {
+			for _, path := range []string{record.CWD, record.ForegroundCWD, record.Worktree.CheckoutPath, record.Repository.CheckoutPath} {
+				addProtectedPath(paths, path)
+			}
+		}
+	}
+	return paths, nil
+}
+
+func findHerdr() (string, error) {
+	for _, candidate := range []string{"/opt/homebrew/bin/herdr", "/usr/local/bin/herdr"} {
+		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+			return candidate, nil
+		}
+	}
+	return exec.LookPath("herdr")
+}
+
+func addProtectedPath(paths map[string]bool, path string) {
+	if path != "" {
+		paths[canonicalPath(path)] = true
+	}
+}
+
+func (a app) isProtected(path string) bool {
+	clean := canonicalPath(path)
+	for protected := range a.protectedPaths {
+		rel, err := filepath.Rel(clean, canonicalPath(protected))
+		if err == nil && (rel == "." || (!filepath.IsAbs(rel) && rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)))) {
+			return true
+		}
+	}
+	return false
+}
+
+func canonicalPath(path string) string {
+	if absolute, err := filepath.Abs(path); err == nil {
+		path = absolute
+	}
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		path = resolved
+	}
+	return filepath.Clean(path)
+}
+
+func withinRoot(root, path string) bool {
+	rel, err := filepath.Rel(canonicalPath(root), canonicalPath(path))
+	return err == nil && rel != ".." && !filepath.IsAbs(rel) && !strings.HasPrefix(rel, ".."+string(os.PathSeparator))
+}
+
+func (a app) discoverRepositories(ctx context.Context, root string) ([]repository, error) {
+	root, err := filepath.Abs(root)
+	if err != nil {
+		return nil, err
+	}
+	info, err := os.Stat(root)
+	if err != nil {
+		return nil, err
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf("Error: scan root is not a directory: %s", root)
+	}
+
+	byKey := map[string]repository{}
+	err = filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if !entry.IsDir() {
+			return nil
+		}
+		if path != root {
+			switch entry.Name() {
+			case ".git", "node_modules", ".venv", ".cache":
+				return filepath.SkipDir
+			}
+		}
+		if !isRepositoryCandidate(path) {
+			return nil
+		}
+		commonDir, err := a.git(ctx, path, "rev-parse", "--path-format=absolute", "--git-common-dir")
+		if err != nil {
+			return nil
+		}
+		key := filepath.Clean(strings.TrimSpace(commonDir))
+		if resolved, err := filepath.EvalSymlinks(key); err == nil {
+			key = resolved
+		}
+		if _, exists := byKey[key]; !exists {
+			byKey[key] = repository{root: key, key: key}
+		}
+		if isFile(filepath.Join(path, "HEAD")) && isDir(filepath.Join(path, "objects")) {
+			return filepath.SkipDir
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	repositories := make([]repository, 0, len(byKey))
+	for _, repo := range byKey {
+		repositories = append(repositories, repo)
+	}
+	sort.Slice(repositories, func(i, j int) bool { return repositories[i].root < repositories[j].root })
+	return repositories, nil
+}
+
+func isRepositoryCandidate(path string) bool {
+	if _, err := os.Lstat(filepath.Join(path, ".git")); err == nil {
+		return true
+	}
+	return isFile(filepath.Join(path, "HEAD")) && isDir(filepath.Join(path, "objects")) && isDir(filepath.Join(path, "refs"))
+}
+
+func isFile(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
 }
 
 func (a app) repoRoot(ctx context.Context) (string, error) {
@@ -335,6 +583,14 @@ func (a app) repoRoot(ctx context.Context) (string, error) {
 }
 
 func (a app) git(ctx context.Context, dir string, args ...string) (string, error) {
+	if a.gitSemaphore != nil {
+		select {
+		case a.gitSemaphore <- struct{}{}:
+		case <-ctx.Done():
+			return "", ctx.Err()
+		}
+		defer func() { <-a.gitSemaphore }()
+	}
 	return a.runner.Run(ctx, dir, "git", args...)
 }
 
@@ -376,15 +632,12 @@ func parseWorktrees(input string) []worktree {
 
 func (a app) classifyAll(ctx context.Context, repoRoot string, trees []worktree) plan {
 	rows := make([]row, len(trees))
-	sem := make(chan struct{}, a.cfg.parallelJobs)
 	var wg sync.WaitGroup
 	for i, wt := range trees {
 		i, wt := i, wt
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
 			rows[i] = a.classify(ctx, repoRoot, wt)
 		}()
 	}
@@ -418,19 +671,40 @@ func (a app) classify(ctx context.Context, repoRoot string, wt worktree) row {
 	if wt.path == "" || !isDir(wt.path) {
 		return row{}
 	}
+	if a.cfg.scanRoot != "" && !withinRoot(a.cfg.scanRoot, wt.path) {
+		return row{category: catKeep, path: wt.path, branch: wt.branch, reason: "outside scan root"}
+	}
 	if _, err := a.git(ctx, wt.path, "rev-parse", "--git-dir"); err != nil {
 		return row{category: catAttention, path: wt.path, branch: wt.branch, reason: "unreadable"}
 	}
-	branchOut, _ := a.git(ctx, wt.path, "rev-parse", "--abbrev-ref", "HEAD")
+	branchOut, err := a.git(ctx, wt.path, "rev-parse", "--abbrev-ref", "HEAD")
+	if err != nil {
+		return row{category: catAttention, path: wt.path, branch: wt.branch, reason: "unreadable"}
+	}
 	branch := strings.TrimSpace(branchOut)
 	if branch == "" || branch == "HEAD" {
 		return row{category: catAttention, path: wt.path, branch: "(detached)", reason: "detached"}
 	}
-	if branch == "main" || branch == "release" {
+	defaultRef, _ := a.git(ctx, repoRoot, "symbolic-ref", "--quiet", "refs/remotes/origin/HEAD")
+	if branch == "main" || branch == "release" || branch == "master" || strings.TrimSpace(defaultRef) == "refs/remotes/origin/"+branch {
 		return row{category: catKeep, path: wt.path, branch: branch, reason: "protected"}
 	}
-	status, _ := a.git(ctx, wt.path, "status", "--porcelain", "--untracked-files=normal")
+	if a.isProtected(wt.path) {
+		return row{category: catKeep, path: wt.path, branch: branch, reason: "active_workspace"}
+	}
+	headOut, err := a.git(ctx, wt.path, "rev-parse", "HEAD")
+	if err != nil {
+		return row{category: catAttention, path: wt.path, branch: branch, reason: "unreadable"}
+	}
+	head := strings.TrimSpace(headOut)
+	status, err := a.git(ctx, wt.path, "status", "--porcelain", "--untracked-files=all", "--ignored=matching")
+	if err != nil {
+		return row{category: catAttention, path: wt.path, branch: branch, reason: "unreadable"}
+	}
 	hasLocalChanges := strings.TrimSpace(status) != ""
+	if hasLocalChanges {
+		return row{category: catAttention, path: wt.path, branch: branch, reason: "local_changes", head: head}
+	}
 	mergedInto := ""
 	for _, target := range []string{"main", "release"} {
 		if _, err := a.git(ctx, repoRoot, "show-ref", "--verify", "--quiet", "refs/remotes/origin/"+target); err == nil {
@@ -441,20 +715,13 @@ func (a app) classify(ctx context.Context, repoRoot string, wt worktree) row {
 		}
 	}
 	if mergedInto != "" {
-		if hasLocalChanges && a.cfg.automation {
-			return row{category: catAttention, path: wt.path, branch: branch, reason: "local_changes"}
-		}
-		reason := "merged"
-		if hasLocalChanges {
-			reason = "merged_with_local_changes"
-		}
-		return row{category: catSafe, path: wt.path, branch: branch, reason: reason, a: mergedInto}
+		return row{category: catSafe, path: wt.path, branch: branch, reason: "merged", a: mergedInto, head: head}
 	}
-	if hasLocalChanges {
-		return row{category: catAttention, path: wt.path, branch: branch, reason: "local_changes"}
-	}
-	upstream, _ := a.git(ctx, wt.path, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")
+	upstream, _ := a.git(ctx, wt.path, "rev-parse", "--symbolic-full-name", "@{upstream}")
 	compareRef := strings.TrimSpace(upstream)
+	if compareRef != "" && !strings.HasPrefix(compareRef, "refs/remotes/") {
+		return row{category: catAttention, path: wt.path, branch: branch, reason: "upstream is not a remote branch"}
+	}
 	if compareRef == "" {
 		if _, err := a.git(ctx, repoRoot, "show-ref", "--verify", "--quiet", "refs/remotes/origin/"+branch); err == nil {
 			compareRef = "origin/" + branch
@@ -462,8 +729,14 @@ func (a app) classify(ctx context.Context, repoRoot string, wt worktree) row {
 	}
 	ahead, behind := 0, 0
 	if compareRef != "" {
-		ahead = a.revCount(ctx, wt.path, compareRef+"..HEAD")
-		behind = a.revCount(ctx, wt.path, "HEAD.."+compareRef)
+		ahead, err = a.revCount(ctx, wt.path, compareRef+"..HEAD")
+		if err != nil {
+			return row{category: catAttention, path: wt.path, branch: branch, reason: "unreadable", head: head}
+		}
+		behind, err = a.revCount(ctx, wt.path, "HEAD.."+compareRef)
+		if err != nil {
+			return row{category: catAttention, path: wt.path, branch: branch, reason: "unreadable", head: head}
+		}
 	}
 	if compareRef == "" {
 		return row{category: catAttention, path: wt.path, branch: branch, reason: "no_upstream"}
@@ -475,122 +748,24 @@ func (a app) classify(ctx context.Context, repoRoot string, wt worktree) row {
 		return row{category: catUnpushed, path: wt.path, branch: branch, reason: "unpushed", a: strconv.Itoa(ahead), compareRef: compareRef}
 	}
 	if behind > 0 {
-		return row{category: catBehind, path: wt.path, branch: branch, reason: "behind", a: strconv.Itoa(behind), compareRef: compareRef}
+		return row{category: catBehind, path: wt.path, branch: branch, reason: "behind", a: strconv.Itoa(behind), compareRef: compareRef, head: head}
 	}
-	return row{category: catSafe, path: wt.path, branch: branch, reason: "synced_clean", a: compareRef}
+	if a.cfg.automation {
+		return row{category: catKeep, path: wt.path, branch: branch, reason: "synced but not merged"}
+	}
+	return row{category: catSafe, path: wt.path, branch: branch, reason: "synced_clean", a: compareRef, head: head}
 }
 
-func (a app) revCount(ctx context.Context, dir, revspec string) int {
+func (a app) revCount(ctx context.Context, dir, revspec string) (int, error) {
 	out, err := a.git(ctx, dir, "rev-list", "--count", revspec)
 	if err != nil {
-		return 0
+		return 0, err
 	}
 	n, err := strconv.Atoi(strings.TrimSpace(out))
 	if err != nil {
-		return 0
+		return 0, err
 	}
-	return n
-}
-
-func findStaleDirs(repoRoot string, trees []worktree) []row {
-	registered := map[string]bool{}
-	parents := map[string]int{}
-	scanSet := map[string]bool{}
-	for _, wt := range trees {
-		if wt.path == "" {
-			continue
-		}
-		clean := filepath.Clean(wt.path)
-		registered[clean] = true
-		parents[filepath.Dir(clean)]++
-		for _, dir := range conventionalWorktreeDirs(clean) {
-			scanSet[dir] = true
-		}
-	}
-
-	var scanParents []string
-	for parent, count := range parents {
-		if count > 1 && !isSystemTempDir(parent) {
-			scanSet[parent] = true
-		}
-	}
-	for parent := range scanSet {
-		scanParents = append(scanParents, parent)
-	}
-	sort.Strings(scanParents)
-
-	var stale []row
-	for _, parent := range scanParents {
-		entries, err := os.ReadDir(parent)
-		if err != nil {
-			continue
-		}
-		for _, entry := range entries {
-			if !entry.IsDir() {
-				continue
-			}
-			path := filepath.Clean(filepath.Join(parent, entry.Name()))
-			if isGitAdminDir(repoRoot, path) || registered[path] || containsRegisteredWorktree(path, registered) {
-				continue
-			}
-			stale = append(stale, row{path: path, branch: entry.Name(), reason: "not_registered"})
-		}
-	}
-	return stale
-}
-
-// isGitAdminDir protects directories owned by Git when worktrees are stored
-// alongside a bare repository's internal files. These paths must never be
-// treated as abandoned worktrees or passed to os.RemoveAll.
-func isGitAdminDir(repoRoot, path string) bool {
-	if repoRoot == "" {
-		return false
-	}
-	rel, err := filepath.Rel(filepath.Clean(repoRoot), filepath.Clean(path))
-	if err != nil || rel == "." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) || filepath.IsAbs(rel) {
-		return false
-	}
-	top := strings.Split(rel, string(os.PathSeparator))[0]
-	switch top {
-	case "hooks", "info", "logs", "objects", "refs", "rr-cache", "worktrees", "modules", "rebase-apply", "rebase-merge", "svn", "lfs":
-		return true
-	default:
-		return false
-	}
-}
-
-func conventionalWorktreeDirs(path string) []string {
-	sep := string(os.PathSeparator)
-	marker := sep + "worktrees" + sep
-	idx := strings.Index(path, marker)
-	if idx < 0 {
-		return nil
-	}
-	root := path[:idx+len(marker)-1]
-	return []string{
-		filepath.Join(root, "branches"),
-		filepath.Join(root, "threads"),
-	}
-}
-
-func isSystemTempDir(path string) bool {
-	clean := filepath.Clean(path)
-	for _, temp := range []string{os.TempDir(), "/tmp", "/private/tmp", "/var/tmp", "/private/var/tmp"} {
-		if clean == filepath.Clean(temp) {
-			return true
-		}
-	}
-	return false
-}
-
-func containsRegisteredWorktree(path string, registered map[string]bool) bool {
-	prefix := path + string(os.PathSeparator)
-	for wtPath := range registered {
-		if strings.HasPrefix(wtPath, prefix) {
-			return true
-		}
-	}
-	return false
+	return n, nil
 }
 
 func isDir(path string) bool {
@@ -605,8 +780,6 @@ func renderPlan(w io.Writer, pl plan, p palette) {
 			switch r.reason {
 			case "merged":
 				fmt.Fprintf(w, "  • %s  (merged into origin/%s)\n", r.branch, r.a)
-			case "merged_with_local_changes":
-				fmt.Fprintf(w, "  • %s  (merged into origin/%s; local changes will be discarded)\n", r.branch, r.a)
 			case "synced_clean":
 				fmt.Fprintf(w, "  • %s  (clean and synced with %s)\n", r.branch, valueOr(r.a, "upstream"))
 			default:
@@ -616,16 +789,8 @@ func renderPlan(w io.Writer, pl plan, p palette) {
 		}
 		fmt.Fprintln(w)
 	}
-	if len(pl.staleDirs) > 0 {
-		fmt.Fprintln(w, p.paint(ansiBold+ansiMagenta, "🧽 STALE DIRECTORIES"))
-		for _, r := range pl.staleDirs {
-			fmt.Fprintf(w, "  • %s  (not registered as a git worktree)\n", r.branch)
-			fmt.Fprintf(w, "    %s\n", p.paint(ansiDim, r.path))
-		}
-		fmt.Fprintln(w)
-	}
 	if len(pl.behind) > 0 {
-		fmt.Fprintln(w, p.paint(ansiBold+ansiBlue, "🔄 BEHIND (can pull --rebase)"))
+		fmt.Fprintln(w, p.paint(ansiBold+ansiBlue, "🔄 BEHIND (can pull --ff-only)"))
 		for _, r := range pl.behind {
 			fmt.Fprintf(w, "  • %s  (%s behind %s)\n", r.branch, r.a, valueOr(r.compareRef, "upstream"))
 			fmt.Fprintf(w, "    %s\n", p.paint(ansiDim, r.path))
@@ -645,7 +810,7 @@ func renderPlan(w io.Writer, pl plan, p palette) {
 		for _, r := range pl.attention {
 			switch r.reason {
 			case "local_changes":
-				fmt.Fprintf(w, "  • %s  (local changes: tracked/staged/untracked)\n", r.branch)
+				fmt.Fprintf(w, "  • %s  (local changes: tracked/staged/untracked/ignored)\n", r.branch)
 			case "diverged":
 				fmt.Fprintf(w, "  • %s  (diverged from %s: %s ahead, %s behind)\n", r.branch, valueOr(r.compareRef, "upstream"), r.a, r.b)
 			case "detached":
@@ -666,6 +831,8 @@ func renderPlan(w io.Writer, pl plan, p palette) {
 		for _, r := range pl.keep {
 			if r.reason == "protected" {
 				fmt.Fprintf(w, "  • %s  (protected)\n", r.branch)
+			} else if r.reason == "active_workspace" {
+				fmt.Fprintf(w, "  • %s  (open in Herdr / active agent)\n", r.branch)
 			} else {
 				fmt.Fprintf(w, "  • %s  (%s)\n", r.branch, r.reason)
 			}
@@ -687,9 +854,6 @@ func (a app) confirm(pl plan) bool {
 	if len(pl.safe) > 0 {
 		fmt.Fprintf(a.out, "  • remove %d worktree(s)\n", len(pl.safe))
 	}
-	if len(pl.staleDirs) > 0 {
-		fmt.Fprintf(a.out, "  • remove %d stale directories\n", len(pl.staleDirs))
-	}
 	if len(pl.behind) > 0 && a.cfg.autoPull {
 		fmt.Fprintf(a.out, "  • pull %d worktree(s)\n", len(pl.behind))
 	}
@@ -703,75 +867,62 @@ func (a app) confirm(pl plan) bool {
 	return ans == "y" || ans == "yes"
 }
 
-func (a app) apply(ctx context.Context, repoRoot string, pl plan) {
-	if len(pl.safe) > 0 {
-		fmt.Fprintln(a.out, "🗑️  Removing safe worktrees...")
+func (a *app) apply(ctx context.Context, root string, pl plan) error {
+	var failures []error
+	for _, r := range pl.safe {
 		if a.cfg.dryRun {
-			for _, r := range pl.safe {
-				fmt.Fprintf(a.out, "  [DRY RUN] git worktree remove --force %q\n", r.path)
-				fmt.Fprintf(a.out, "  [DRY RUN] git branch -d %q\n", r.branch)
+			fmt.Fprintf(a.out, "[DRY RUN] revalidate, then git worktree remove %q\n", r.path)
+			continue
+		}
+		message, err := a.removeSafeWorktree(ctx, root, r)
+		fmt.Fprintln(a.out, message)
+		if err != nil {
+			failures = append(failures, err)
+		}
+	}
+	if a.cfg.autoPull {
+		for _, r := range pl.behind {
+			if a.cfg.dryRun {
+				fmt.Fprintf(a.out, "[DRY RUN] git -C %q pull --ff-only\n", r.path)
+				continue
 			}
-		} else {
-			fmt.Fprintf(a.out, "  parallel jobs: %d\n", a.cfg.parallelJobs)
-			lines := parallelMap(a.cfg.parallelJobs, pl.safe, func(r row) string {
-				if _, err := a.git(ctx, repoRoot, "worktree", "remove", "--force", r.path); err == nil {
-					_, _ = a.git(ctx, repoRoot, "branch", "-d", r.branch)
-					return fmt.Sprintf("  ✓ removed %s", r.branch)
-				}
-				return fmt.Sprintf("  ⚠️  failed to remove %s", r.branch)
-			})
-			for _, line := range lines {
-				fmt.Fprintln(a.out, line)
+			if err := a.refreshProtectedPaths(ctx); err != nil {
+				failures = append(failures, err)
+				continue
+			}
+			current := a.classify(ctx, root, worktree{path: r.path, branch: r.branch})
+			if current.category != catBehind || current.branch != r.branch || current.head != r.head {
+				fmt.Fprintf(a.out, "Skipped %s: worktree changed or became active.\n", r.branch)
+				continue
+			}
+			if _, err := a.git(ctx, r.path, "pull", "--ff-only"); err != nil {
+				failures = append(failures, err)
 			}
 		}
-		fmt.Fprintln(a.out)
 	}
-	if len(pl.staleDirs) > 0 {
-		fmt.Fprintln(a.out, "🧽 Removing stale directories...")
-		if a.cfg.dryRun {
-			for _, r := range pl.staleDirs {
-				fmt.Fprintf(a.out, "  [DRY RUN] rm -rf %q\n", r.path)
-			}
-		} else {
-			lines := parallelMap(a.cfg.parallelJobs, pl.staleDirs, func(r row) string {
-				if isGitAdminDir(repoRoot, r.path) {
-					return fmt.Sprintf("  ⚠️  refused to remove protected Git directory %s", r.branch)
-				}
-				if err := os.RemoveAll(r.path); err == nil {
-					return fmt.Sprintf("  ✓ removed %s", r.branch)
-				}
-				return fmt.Sprintf("  ⚠️  failed to remove %s", r.branch)
-			})
-			for _, line := range lines {
-				fmt.Fprintln(a.out, line)
-			}
-		}
-		fmt.Fprintln(a.out)
-	}
-	if len(pl.behind) > 0 && a.cfg.autoPull {
-		fmt.Fprintln(a.out, "⬇️  Pulling behind worktrees...")
-		if a.cfg.dryRun {
-			for _, r := range pl.behind {
-				fmt.Fprintf(a.out, "  [DRY RUN] (cd %q && git pull --rebase)\n", r.path)
-			}
-		} else {
-			fmt.Fprintf(a.out, "  parallel jobs: %d\n", a.cfg.parallelJobs)
-			lines := parallelMap(a.cfg.parallelJobs, pl.behind, func(r row) string {
-				if _, err := a.git(ctx, r.path, "pull", "--rebase"); err == nil {
-					return fmt.Sprintf("  ✓ pulled %s", r.branch)
-				}
-				return fmt.Sprintf("  ⚠️  failed pull %s", r.branch)
-			})
-			for _, line := range lines {
-				fmt.Fprintln(a.out, line)
-			}
-		}
-		fmt.Fprintln(a.out)
-	}
+	// Do not prune unrelated registration records outside the selected scope.
+	return errors.Join(failures...)
 }
 
-func parallelMap[T any](jobs int, items []T, fn func(T) string) []string {
-	out := make([]string, len(items))
+func (a *app) removeSafeWorktree(ctx context.Context, root string, planned row) (string, error) {
+	if err := a.refreshProtectedPaths(ctx); err != nil {
+		return "Cleanup stopped: protection check failed.", err
+	}
+	current := a.classify(ctx, root, worktree{path: planned.path, branch: planned.branch})
+	if current.category != catSafe || current.branch != planned.branch || current.head == "" || current.head != planned.head {
+		return fmt.Sprintf("Skipped %s: worktree changed or became active.", planned.branch), nil
+	}
+	if _, err := a.git(ctx, root, "worktree", "remove", planned.path); err != nil {
+		return fmt.Sprintf("Failed to remove %s safely.", planned.branch), err
+	}
+	if _, err := a.git(ctx, root, "branch", "-d", planned.branch); err != nil {
+		return fmt.Sprintf("Removed worktree %s, but kept its branch.", planned.branch), err
+	}
+	return fmt.Sprintf("Removed %s.", planned.branch), nil
+}
+
+func parallelMap[T, R any](jobs int, items []T, fn func(T) R) []R {
+	out := make([]R, len(items))
 	sem := make(chan struct{}, jobs)
 	var wg sync.WaitGroup
 	for i, item := range items {

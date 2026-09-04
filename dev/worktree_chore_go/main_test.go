@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -63,23 +64,54 @@ func TestParseArgsRejectsConflictingFetchFlags(t *testing.T) {
 }
 
 func TestParseArgsAutomationIsNonInteractiveAndDoesNotPull(t *testing.T) {
-	cfg, err := parseArgs([]string{"--automation"}, func(string) string { return "" })
+	cfg, err := parseArgs([]string{"--automation", "--root", "/tmp/work"}, func(string) string { return "" })
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !cfg.automation || !cfg.yes || cfg.autoPull {
+	if !cfg.automation || !cfg.yes || cfg.autoPull || cfg.scanRoot != "/tmp/work" {
 		t.Fatalf("unexpected automation config: %+v", cfg)
 	}
 }
 
-func TestConfiguredJobsDefaultsToFour(t *testing.T) {
+func TestRunRepositoryFailsClosedWhenFetchFails(t *testing.T) {
+	runner := &failingFetchRunner{}
+	a := app{
+		cfg:    config{forceFetch: true, parallelJobs: 1},
+		runner: runner,
+		out:    &bytes.Buffer{},
+		errOut: &bytes.Buffer{},
+	}
+	err := a.runRepository(context.Background(), "/repo")
+	if err == nil || !strings.Contains(err.Error(), "refusing cleanup") {
+		t.Fatalf("expected fail-closed fetch error, got %v", err)
+	}
+	if runner.listCalled {
+		t.Fatal("worktrees were scanned after fetch failed")
+	}
+}
+
+type failingFetchRunner struct {
+	listCalled bool
+}
+
+func (r *failingFetchRunner) Run(_ context.Context, _ string, name string, args ...string) (string, error) {
+	if name == "git" && len(args) > 0 && args[0] == "fetch" {
+		return "", errors.New("network unavailable")
+	}
+	if name == "git" && len(args) > 1 && args[0] == "worktree" && args[1] == "list" {
+		r.listCalled = true
+	}
+	return "", nil
+}
+
+func TestConfiguredJobsDefaultsToCPUCountUpToEight(t *testing.T) {
 	got, err := configuredJobs(func(string) string { return "" })
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := runtime.NumCPU()
-	if want > 4 {
-		want = 4
+	if want > 8 {
+		want = 8
 	}
 	if got != want {
 		t.Fatalf("default jobs = %d, want %d", got, want)
@@ -94,7 +126,7 @@ func TestRepoRootAcceptsWorktree(t *testing.T) {
 	tmp := t.TempDir()
 	repo := filepath.Join(tmp, "repo")
 	runGit(t, tmp, "init", repo)
-	t.Chdir(repo)
+	chdir(t, repo)
 
 	a := app{runner: execRunner{}}
 	got, err := a.repoRoot(context.Background())
@@ -114,7 +146,7 @@ func TestRepoRootAcceptsBareRepository(t *testing.T) {
 	tmp := t.TempDir()
 	bare := filepath.Join(tmp, "repo.git")
 	runGit(t, tmp, "init", "--bare", bare)
-	t.Chdir(bare)
+	chdir(t, bare)
 
 	a := app{runner: execRunner{}}
 	got, err := a.repoRoot(context.Background())
@@ -123,6 +155,33 @@ func TestRepoRootAcceptsBareRepository(t *testing.T) {
 	}
 	if !samePath(t, got, bare) {
 		t.Fatalf("repoRoot = %q, want %q", got, bare)
+	}
+}
+
+func TestDiscoverRepositoriesDeduplicatesLinkedWorktrees(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git unavailable")
+	}
+
+	root := t.TempDir()
+	repo := filepath.Join(root, "source")
+	runGit(t, root, "init", repo)
+	runGit(t, repo, "config", "user.email", "test@example.com")
+	runGit(t, repo, "config", "user.name", "Test User")
+	mustWrite(t, filepath.Join(repo, "README.md"), "base\n")
+	runGit(t, repo, "add", "README.md")
+	runGit(t, repo, "commit", "-m", "base")
+	runGit(t, repo, "branch", "linked")
+	runGit(t, repo, "worktree", "add", filepath.Join(root, "linked"), "linked")
+	runGit(t, root, "init", "--bare", filepath.Join(root, "other.git"))
+
+	a := app{runner: execRunner{}}
+	repositories, err := a.discoverRepositories(context.Background(), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(repositories) != 2 {
+		t.Fatalf("repositories = %#v, want two shared Git directories", repositories)
 	}
 }
 
@@ -137,6 +196,22 @@ func samePath(t *testing.T, a, b string) bool {
 		t.Fatal(err)
 	}
 	return os.SameFile(aInfo, bInfo)
+}
+
+func chdir(t *testing.T, path string) {
+	t.Helper()
+	previous, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(path); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(previous); err != nil {
+			t.Errorf("restore working directory: %v", err)
+		}
+	})
 }
 
 func TestParseWorktrees(t *testing.T) {
@@ -173,7 +248,6 @@ bare
 func TestRenderPlanMatchesShellSections(t *testing.T) {
 	pl := plan{}
 	pl.add(row{category: catSafe, path: "/tmp/safe", branch: "feat-safe", reason: "merged", a: "main"})
-	pl.staleDirs = append(pl.staleDirs, row{path: "/tmp/stale", branch: "stale", reason: "not_registered"})
 	pl.add(row{category: catBehind, path: "/tmp/behind", branch: "feat-behind", reason: "behind", a: "2", compareRef: "origin/feat-behind"})
 	pl.add(row{category: catUnpushed, path: "/tmp/ahead", branch: "feat-ahead", reason: "unpushed", a: "1", compareRef: "origin/feat-ahead"})
 	pl.add(row{category: catAttention, path: "/tmp/dirty", branch: "feat-dirty", reason: "local_changes"})
@@ -185,121 +259,18 @@ func TestRenderPlanMatchesShellSections(t *testing.T) {
 	for _, part := range []string{
 		"✅ SAFE TO REMOVE",
 		"feat-safe  (merged into origin/main)",
-		"🧽 STALE DIRECTORIES",
-		"stale  (not registered as a git worktree)",
-		"🔄 BEHIND (can pull --rebase)",
+		"🔄 BEHIND (can pull --ff-only)",
 		"feat-behind  (2 behind origin/feat-behind)",
 		"📤 UNPUSHED COMMITS",
 		"feat-ahead  (1 commit(s) not pushed to origin/feat-ahead)",
 		"⚠️  ATTENTION (manual review)",
-		"feat-dirty  (local changes: tracked/staged/untracked)",
+		"feat-dirty  (local changes: tracked/staged/untracked/ignored)",
 		"ℹ️  KEEP",
 		"main  (protected)",
 	} {
 		if !strings.Contains(text, part) {
 			t.Fatalf("rendered plan missing %q:\n%s", part, text)
 		}
-	}
-}
-
-func TestFindStaleDirsScansWorktreeSiblingParents(t *testing.T) {
-	tmp := t.TempDir()
-	root := filepath.Join(tmp, "codex-")
-	nested := filepath.Join(root, "r-")
-	for _, dir := range []string{
-		filepath.Join(root, "main"),
-		filepath.Join(root, "feature"),
-		filepath.Join(root, "orphan"),
-		nested,
-		filepath.Join(nested, "release"),
-		filepath.Join(nested, "old-release"),
-	} {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	got := findStaleDirs("", []worktree{
-		{path: filepath.Join(root, "main")},
-		{path: filepath.Join(root, "feature")},
-		{path: filepath.Join(nested, "release")},
-		{path: filepath.Join(nested, "other")},
-	})
-	var names []string
-	for _, row := range got {
-		names = append(names, row.branch)
-	}
-	if strings.Join(names, ",") != "orphan,old-release" {
-		t.Fatalf("stale dirs = %v, want [orphan old-release]", names)
-	}
-}
-
-func TestFindStaleDirsSkipsSystemTempParents(t *testing.T) {
-	temp := filepath.Clean(os.TempDir())
-	got := findStaleDirs("", []worktree{
-		{path: filepath.Join(temp, "registered-one")},
-		{path: filepath.Join(temp, "registered-two")},
-	})
-	if len(got) != 0 {
-		t.Fatalf("system temp stale dirs = %#v, want none", got)
-	}
-}
-
-func TestFindStaleDirsScansConventionalWorktreeFolders(t *testing.T) {
-	tmp := t.TempDir()
-	branches := filepath.Join(tmp, "repo.git", "worktrees", "branches")
-	threads := filepath.Join(tmp, "repo.git", "worktrees", "threads")
-	for _, dir := range []string{
-		filepath.Join(tmp, "repo.git", "worktrees", "main"),
-		filepath.Join(branches, "registered-branch"),
-		filepath.Join(branches, "stale-branch"),
-		filepath.Join(threads, "stale-thread"),
-	} {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	got := findStaleDirs("", []worktree{
-		{path: filepath.Join(tmp, "repo.git", "worktrees", "main")},
-		{path: filepath.Join(branches, "registered-branch")},
-	})
-	var names []string
-	for _, row := range got {
-		names = append(names, row.branch)
-	}
-	if strings.Join(names, ",") != "stale-branch,stale-thread" {
-		t.Fatalf("stale dirs = %v, want [stale-branch stale-thread]", names)
-	}
-}
-
-func TestFindStaleDirsNeverReturnsBareRepoGitDirectories(t *testing.T) {
-	tmp := t.TempDir()
-	repo := filepath.Join(tmp, "repo.git")
-	for _, dir := range []string{
-		filepath.Join(repo, "hooks"),
-		filepath.Join(repo, "info"),
-		filepath.Join(repo, "logs"),
-		filepath.Join(repo, "objects"),
-		filepath.Join(repo, "refs"),
-		filepath.Join(repo, "rr-cache"),
-		filepath.Join(repo, "worktrees"),
-		filepath.Join(repo, "modules"),
-		filepath.Join(repo, "main-worktree"),
-		filepath.Join(repo, "feature-worktree"),
-		filepath.Join(repo, "abandoned-worktree"),
-	} {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	got := findStaleDirs(repo, []worktree{
-		{path: filepath.Join(repo, "main-worktree")},
-		{path: filepath.Join(repo, "feature-worktree")},
-	})
-	if len(got) != 1 || got[0].branch != "abandoned-worktree" {
-		t.Fatalf("stale dirs = %#v, want only abandoned-worktree", got)
 	}
 }
 
@@ -368,7 +339,7 @@ func TestClassifyWorktreesInGitRepo(t *testing.T) {
 	cases := map[string]category{
 		filepath.Join(tmp, "safe"):     catSafe,
 		filepath.Join(tmp, "unpushed"): catUnpushed,
-		filepath.Join(tmp, "dirty"):    catSafe,
+		filepath.Join(tmp, "dirty"):    catAttention,
 		filepath.Join(tmp, "behind"):   catBehind,
 		repo:                           catKeep,
 	}
@@ -383,6 +354,29 @@ func TestClassifyWorktreesInGitRepo(t *testing.T) {
 	dirty := a.classify(ctx, repo, worktree{path: filepath.Join(tmp, "dirty")})
 	if dirty.category != catAttention || dirty.reason != "local_changes" {
 		t.Fatalf("automation dirty category = %#v, want attention/local_changes", dirty)
+	}
+
+	protected := a
+	protected.protectedPaths = map[string]bool{filepath.Join(tmp, "safe"): true}
+	active := protected.classify(ctx, repo, worktree{path: filepath.Join(tmp, "safe")})
+	if active.category != catKeep || active.reason != "active_workspace" {
+		t.Fatalf("active worktree category = %#v, want keep/active_workspace", active)
+	}
+
+	planned := a.classify(ctx, repo, worktree{path: filepath.Join(tmp, "safe")})
+	if planned.category != catSafe {
+		t.Fatalf("planned worktree = %#v, want safe", planned)
+	}
+	mustWrite(t, filepath.Join(tmp, "safe", "appeared-after-scan.txt"), "do not delete\n")
+	result, err := a.removeSafeWorktree(ctx, repo, planned)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(result, "Skipped") {
+		t.Fatalf("race result = %q, want skipped", result)
+	}
+	if !isDir(filepath.Join(tmp, "safe")) {
+		t.Fatal("worktree was removed after becoming dirty")
 	}
 }
 

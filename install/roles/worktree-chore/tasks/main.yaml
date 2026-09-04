@@ -4,7 +4,14 @@
     path: "{{ ansible_facts.env.HOME }}/.dotfiles/dev/worktree_chore_go/go.mod"
   register: worktree_chore_go_mod
 
-- name: Worktree Chore | Ensure bin directory exists
+- name: Worktree Chore | Ensure local bin directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/.local/bin"
+    state: directory
+    mode: "0755"
+  when: worktree_chore_go_mod.stat.exists
+
+- name: Worktree Chore | Ensure canonical bin directory exists
   ansible.builtin.file:
     path: "{{ ansible_facts.env.HOME }}/.dotfiles/bin"
     state: directory
@@ -41,6 +48,14 @@
     mode: "0755"
   when: worktree_chore_go_mod.stat.exists
 
+- name: Worktree Chore | Route local command to canonical binary
+  ansible.builtin.file:
+    src: "{{ ansible_facts.env.HOME }}/.dotfiles/bin/worktree-chore"
+    dest: "{{ ansible_facts.env.HOME }}/.local/bin/worktree-chore"
+    state: link
+    force: true
+  when: worktree_chore_go_mod.stat.exists
+
 - name: Worktree Chore | Ensure LaunchAgent log directory exists
   ansible.builtin.file:
     path: "{{ ansible_facts.env.HOME }}/Library/Logs"
@@ -50,7 +65,7 @@
     - ansible_system == 'Darwin'
     - worktree_chore_go_mod.stat.exists
 
-- name: Worktree Chore | Install weekly BabaCoiffure cleanup LaunchAgent
+- name: Worktree Chore | Install six-hour cleanup LaunchAgent for all work repositories
   ansible.builtin.template:
     src: com.kylian.worktree-chore-babacoiffure.plist.j2
     dest: "{{ ansible_facts.env.HOME }}/Library/LaunchAgents/com.kylian.worktree-chore-babacoiffure.plist"
@@ -60,8 +75,9 @@
     - ansible_system == 'Darwin'
     - worktree_chore_go_mod.stat.exists
 
-- name: Worktree Chore | Reload changed BabaCoiffure cleanup LaunchAgent
+- name: Worktree Chore | Reload changed cleanup LaunchAgent
   ansible.builtin.shell: |
+    launchctl bootout "gui/$(id -u)/com.kylian.worktree-chore-babacoiffure" >/dev/null 2>&1 || true
     launchctl bootout "gui/$(id -u)" "{{ ansible_facts.env.HOME }}/Library/LaunchAgents/com.kylian.worktree-chore-babacoiffure.plist" >/dev/null 2>&1 || true
     launchctl bootstrap "gui/$(id -u)" "{{ ansible_facts.env.HOME }}/Library/LaunchAgents/com.kylian.worktree-chore-babacoiffure.plist"
   args:
@@ -70,8 +86,8 @@
     - ansible_system == 'Darwin'
     - worktree_chore_launch_agent.changed
 
-- name: Worktree Chore | Check BabaCoiffure cleanup LaunchAgent
-  ansible.builtin.command: launchctl print gui/{{ ansible_user_uid }}/com.kylian.worktree-chore-babacoiffure
+- name: Worktree Chore | Check cleanup LaunchAgent
+  ansible.builtin.command: launchctl print gui/{{ ansible_user_uid }}/com.kylian.worktree-chore
   register: worktree_chore_launch_agent_status
   changed_when: false
   failed_when: false
@@ -79,7 +95,7 @@
     - ansible_system == 'Darwin'
     - worktree_chore_go_mod.stat.exists
 
-- name: Worktree Chore | Load missing BabaCoiffure cleanup LaunchAgent
+- name: Worktree Chore | Load missing cleanup LaunchAgent
   ansible.builtin.command:
     argv:
       - launchctl

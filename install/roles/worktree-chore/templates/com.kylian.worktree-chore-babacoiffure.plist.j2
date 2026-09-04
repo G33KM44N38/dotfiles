@@ -3,22 +3,24 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.kylian.worktree-chore-babacoiffure</string>
+  <string>com.kylian.worktree-chore</string>
   <key>ProgramArguments</key>
   <array>
     <string>{{ ansible_facts.env.HOME }}/.dotfiles/bin/worktree-chore</string>
     <string>--automation</string>
     <string>--fetch</string>
+    <string>--root</string>
+    <string>{{ ansible_facts.env.HOME }}/coding/work</string>
   </array>
   <key>WorkingDirectory</key>
-  <string>{{ ansible_facts.env.HOME }}/coding/work/babacoiffure_monorepo.git</string>
+  <string>{{ ansible_facts.env.HOME }}/coding/work</string>
   <key>StartInterval</key>
   <integer>21600</integer>
   <key>ProcessType</key>
-  <string>Background</string>
+  <string>Standard</string>
   <key>StandardOutPath</key>
-  <string>{{ ansible_facts.env.HOME }}/Library/Logs/worktree-chore-babacoiffure.log</string>
+  <string>{{ ansible_facts.env.HOME }}/Library/Logs/worktree-chore.log</string>
   <key>StandardErrorPath</key>
-  <string>{{ ansible_facts.env.HOME }}/Library/Logs/worktree-chore-babacoiffure.log</string>
+  <string>{{ ansible_facts.env.HOME }}/Library/Logs/worktree-chore.log</string>
 </dict>
 </plist>
