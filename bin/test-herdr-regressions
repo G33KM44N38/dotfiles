@@ -104,7 +104,8 @@ EXPECTED_COMMANDS = [
         )
         for index in range(1, 10)
     ],
-    ("ctrl+shift+n", "popup", "$HOME/.dotfiles/bin/herdr-start-codex"),
+    ("ctrl+shift+n", "shell", "$HOME/.dotfiles/bin/herdr-start-codex current"),
+    ("ctrl+alt+n", "shell", "$HOME/.dotfiles/bin/herdr-start-codex current"),
     ("alt+g", "pane", "$HOME/.dotfiles/bin/herdr-git.sh open-web"),
     ("prefix+a", "shell", "$HOME/.dotfiles/bin/herdr-focus-agent-status blocked"),
     ("prefix+i", "shell", "$HOME/.dotfiles/bin/herdr-focus-agent-status idle"),

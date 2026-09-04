@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly remote_target="${HERDR_UBUNTU_TARGET:-kylian@kylian-ps42-8rb}"
+remote_target="${HERDR_UBUNTU_TARGET:-kylian@kylian-ps42-8rb}"
 readonly remote_runner="/home/kylian/.dotfiles/bin/herdr-run-remote-codex-agent"
 readonly herdr_bin="${HERDR_BIN_PATH:-$(type -P herdr)}"
 readonly dotfiles_root="${DOTFILES_ROOT:-$HOME/.dotfiles}"
@@ -13,7 +13,7 @@ herdr() {
 }
 
 usage() {
-  printf 'Usage: %s [local|mac|ubuntu|ubuntu-attach] [--prompt <text>] [--thread-title <text>] [--git-space <current|default|worktree>] [--source <local|origin>] [--default-branch <name>] [--new-worktree <branch>] [--project-path <path>] [--resume <session>]\n' "${0##*/}" >&2
+  printf 'Usage: %s [current|local|mac|ubuntu|ubuntu-attach] [--prompt <text>] [--thread-title <text>] [--git-space <current|default|worktree>] [--source <local|origin>] [--default-branch <name>] [--new-worktree <branch>] [--project-path <path>] [--resume <session>]\n' "${0##*/}" >&2
 }
 
 workspace_for_path() {
@@ -169,7 +169,7 @@ while (( $# )); do
       usage
       exit 0
       ;;
-    local|mac|ubuntu|ubuntu-attach)
+    current|local|mac|ubuntu|ubuntu-attach)
       [[ -z "$target" ]] || { usage; exit 2; }
       target=$1
       shift
@@ -196,7 +196,7 @@ fi
 case "$target" in
   "") target="$(choose_target)" || exit 0 ;;
   local) target=mac ;;
-  mac|ubuntu|ubuntu-attach) ;;
+  current|mac|ubuntu|ubuntu-attach) ;;
   *) usage; exit 2 ;;
 esac
 
@@ -248,6 +248,31 @@ import json, sys
 pane = json.load(sys.stdin)["result"]["pane"]
 print(pane["workspace_id"], pane.get("foreground_cwd") or pane["cwd"], sep="\t")
 ')
+fi
+
+remote_project_path=
+remote_session=default
+if [[ "$target" == current ]]; then
+  # A remote workspace stores its machine and checkout beside its local proxy.
+  context_path="${XDG_STATE_HOME:-$HOME/.local/state}/herdr/remote-workspaces/$workspace_id.json"
+  if [[ -f "$context_path" ]]; then
+    context="$(python3 - "$context_path" <<'PYCONTEXT'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as stream:
+    context = json.load(stream)
+values = [context["target"], context["path"], context.get("remote_session", "default")]
+if any(not isinstance(value, str) or not value or any(c in value for c in "\t\r\n") for value in values):
+    raise SystemExit("Invalid remote workspace context")
+print(*values, sep="\t")
+PYCONTEXT
+)"
+    IFS=$'\t' read -r remote_target remote_project_path remote_session <<<"$context"
+    target=ubuntu
+  else
+    target=mac
+  fi
 fi
 
 project_repo_url="$(git -C "$project_path" remote get-url origin 2>/dev/null || true)"
@@ -312,7 +337,6 @@ print(workspace.get("workspace_id", ""), worktree.get("path", ""), sep="\t")
   fi
 fi
 
-remote_project_path=
 if [[ "$target" == ubuntu* ]]; then
   if ! ubuntu_is_online; then
     printf '\nUbuntu is offline or SSH is unavailable.\n' >&2
@@ -321,26 +345,29 @@ if [[ "$target" == ubuntu* ]]; then
 fi
 
 if [[ "$target" == "ubuntu" ]]; then
-  if [[ "$git_space" == default ]]; then
-    printf -v remote_resolve_command '%q ' \
-      "$remote_runner" \
-      --remote-default \
-      --repo-url "$project_repo_url" \
-      --branch "$default_branch" \
-      --source "$source_mode" \
-      --project-name "$project_name"
-  else
-    printf -v remote_resolve_command '%q ' \
-      "$remote_runner" \
-      --remote-worktree \
-      --repo-url "$project_repo_url" \
-      --branch "${new_worktree_branch:-$project_branch}" \
-      --base "$default_branch" \
-      --source "$source_mode" \
-      --project-name "$project_name"
-  fi
-  if ! remote_project_path="$(ssh -o BatchMode=yes "$remote_target" "$remote_resolve_command")"; then
-    exit 1
+  if [[ -z "$remote_project_path" ]]; then
+    if [[ "$git_space" == default ]]; then
+      printf -v remote_resolve_command '%q ' \
+        "$remote_runner" \
+        --remote-default \
+        --repo-url "$project_repo_url" \
+        --branch "$default_branch" \
+        --source "$source_mode" \
+        --project-name "$project_name"
+    else
+      printf -v remote_resolve_command '%q ' \
+        "$remote_runner" \
+        --remote-worktree \
+        --repo-url "$project_repo_url" \
+        --branch "${new_worktree_branch:-$project_branch}" \
+        --base "$default_branch" \
+        --source "$source_mode" \
+        --project-name "$project_name"
+    fi
+    if ! remote_project_path="$(ssh -o BatchMode=yes "$remote_target" "$remote_resolve_command")"; then
+      exit 1
+    fi
+
   fi
 
   # Represent the remote thread in the local repository group. The process and
@@ -363,12 +390,12 @@ print(workspace.get("workspace_id", ""))
   fi
   remote_context_dir="${XDG_STATE_HOME:-$HOME/.local/state}/herdr/remote-workspaces"
   mkdir -p "$remote_context_dir"
-  python3 - "$remote_context_dir/$workspace_id.json" "$remote_target" "$remote_project_path" <<'PY'
+  python3 - "$remote_context_dir/$workspace_id.json" "$remote_target" "$remote_project_path" "$remote_session" <<'PY'
 import json
 import os
 import sys
 
-path, target, remote_path = sys.argv[1:]
+path, target, remote_path, session = sys.argv[1:]
 temporary = path + ".tmp"
 with open(temporary, "w", encoding="utf-8") as stream:
     workspace_id = os.path.basename(path).removesuffix(".json")
@@ -376,7 +403,7 @@ with open(temporary, "w", encoding="utf-8") as stream:
         "target": target,
         "path": remote_path,
         "thread_key": workspace_id,
-        "remote_session": "default",
+        "remote_session": session,
     }, stream)
     stream.write("\n")
 os.chmod(temporary, 0o600)
@@ -575,7 +602,7 @@ else
     --target "$remote_target" \
     --remote-path "$remote_project_path" \
     --thread-key "$workspace_id" \
-    --session default \
+    --session "$remote_session" \
     --close-tab-on-exit
   if [[ -n "$initial_prompt" ]]; then
     printf -v launch_command '%s--prompt %q ' "$launch_command" "$initial_prompt"

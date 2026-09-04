@@ -78,12 +78,13 @@ printf '%s\n' "$*" >"$HERDR_TITLE_LOG"
             "HERDR_AGENT_STARTED": str(root / "agent-started"),
             "HERDR_TITLE_GENERATOR": str(bin_dir / "title-generator"),
             "HERDR_TITLE_LOG": str(title_log),
+            "XDG_STATE_HOME": str(root / "state"),
             "DOTFILES_ROOT": str(DOTFILES),
         }
         result = subprocess.run(
             [
                 str(DOTFILES / "bin/herdr-start-codex"),
-                "mac",
+                "current",
                 "--prompt",
                 "Explain the failure",
                 "--new-worktree",
@@ -134,6 +135,63 @@ printf '%s\n' "$*" >"$HERDR_TITLE_LOG"
         assert "--prompt Explain the failure" in title_call
         assert "--workspace proof-thread" in title_call
         assert "--machine Mac" in title_call
+
+
+
+def test_current_machine_keeps_remote_checkout() -> None:
+    with tempfile.TemporaryDirectory(prefix="herdr-current-remote-") as directory:
+        root = Path(directory)
+        context_dir = root / "state/herdr/remote-workspaces"
+        context_dir.mkdir(parents=True)
+        original = {"target": "saved-host", "path": "/remote/saved checkout", "remote_session": "saved-session"}
+        (context_dir / "proof-current.json").write_text(json.dumps(original))
+        log = root / "calls"
+        write_executable(root / "ssh", "#!/bin/sh\nexit 0\n")
+        write_executable(root / "fzf", "#!/bin/sh\nexit 99\n")
+        write_executable(root / "herdr", """#!/usr/bin/env python3
+import json, os, sys
+from pathlib import Path
+args = sys.argv[1:]
+with open(os.environ["HERDR_TEST_LOG"], "a") as stream:
+    stream.write(json.dumps(args) + "\\n")
+result = {}
+if args[:2] == ["workspace", "create"]:
+    result = {"workspace_id": "proof-new-remote"}
+elif args[:2] == ["agent", "list"]:
+    result = {"agents": [{"name": "codex", "agent": "codex", "pane_id": "proof-new-remote:p2"}]}
+elif args[:2] == ["tab", "list"]:
+    result = {"tabs": [{"tab_id": "proof-new-remote:t1", "label": "agent"}]}
+elif args[:2] == ["pane", "list"]:
+    result = {"panes": [{"pane_id": "proof-new-remote:p1", "tab_id": "proof-new-remote:t1"}]}
+elif args[:2] == ["pane", "split"]:
+    result = {"pane_id": "proof-new-remote:p2"}
+elif args[:2] == ["pane", "process-info"]:
+    result = {"process_info": {"foreground_processes": [{"name": "zsh"}]}}
+print(json.dumps({"result": result}))
+""")
+        env = {
+            **os.environ,
+            "PATH": f"{root}:" + os.environ["PATH"],
+            "HERDR_BIN_PATH": str(root / "herdr"),
+            "HERDR_TEST_LOG": str(log),
+            "HERDR_ACTIVE_WORKSPACE_ID": "proof-current",
+            "HERDR_ACTIVE_PANE_CWD": str(DOTFILES),
+            "XDG_STATE_HOME": str(root / "state"),
+            "DOTFILES_ROOT": str(DOTFILES),
+        }
+        result = subprocess.run([str(DOTFILES / "bin/herdr-start-codex"), "current"],
+                                env=env, capture_output=True, text=True, timeout=20)
+        assert result.returncode == 0, result.stderr
+        calls = [json.loads(line) for line in log.read_text().splitlines()]
+        command = next(call[3] for call in calls if call[:2] == ["pane", "run"])
+        import shlex
+        arguments = shlex.split(command)
+        assert arguments[arguments.index("--target") + 1] == "saved-host"
+        assert arguments[arguments.index("--remote-path") + 1] == "/remote/saved checkout"
+        assert arguments[arguments.index("--session") + 1] == "saved-session"
+        assert arguments[arguments.index("--thread-key") + 1] == "proof-new-remote"
+        assert json.loads((context_dir / "proof-current.json").read_text()) == original
+        assert json.loads((context_dir / "proof-new-remote.json").read_text())["path"] == original["path"]
 
 
 def test_remote_wrapper_attaches_persistent_herdr_agent() -> None:
@@ -1093,6 +1151,7 @@ def test_focus_tab_defers_remote_pane_lookup_until_after_focus() -> None:
 
 def main() -> int:
     test_machine_launcher_starts_mac_codex()
+    test_current_machine_keeps_remote_checkout()
     test_remote_wrapper_attaches_persistent_herdr_agent()
     test_remote_tool_wrapper_targets_same_worktree()
     test_remote_codex_monitor_reads_visible_status()

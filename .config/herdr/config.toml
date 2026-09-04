@@ -195,11 +195,15 @@ command = "$HOME/.dotfiles/bin/herdr-focus-agent-pane 9"
 
 [[keys.command]]
 key = "ctrl+shift+n"
-type = "popup"
-command = "$HOME/.dotfiles/bin/herdr-start-codex"
-description = "start Codex on Mac or Ubuntu"
-width = 56
-height = 12
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-start-codex current"
+description = "start Codex on the current machine"
+
+[[keys.command]]
+key = "ctrl+alt+n"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-start-codex current"
+description = "start Codex on the current machine"
 
 [[keys.command]]
 key = "alt+g"
