@@ -376,6 +376,97 @@ esac
         assert "agent focus saved:p2" in calls
 
 
+def test_saved_thread_from_bare_repo_uses_default_checkout() -> None:
+    with tempfile.TemporaryDirectory(prefix="herdr-resume-bare-") as directory:
+        root = Path(directory)
+        seed = root / "seed"
+        repository = root / "project.git"
+        checkout = repository / "main"
+        bin_dir = root / "bin"
+        bin_dir.mkdir()
+        log = root / "herdr.log"
+        started = root / "agent-started"
+
+        subprocess.run(["git", "init", "-q", "-b", "main", seed], check=True)
+        subprocess.run(["git", "-C", seed, "config", "user.name", "Test"], check=True)
+        subprocess.run(["git", "-C", seed, "config", "user.email", "test@example.com"], check=True)
+        (seed / "README.md").write_text("test\n")
+        subprocess.run(["git", "-C", seed, "add", "README.md"], check=True)
+        subprocess.run(["git", "-C", seed, "commit", "-q", "-m", "initial"], check=True)
+        subprocess.run(["git", "clone", "-q", "--bare", seed, repository], check=True)
+        subprocess.run(["git", "--git-dir", repository, "worktree", "add", "-q", checkout, "main"], check=True)
+
+        write_executable(
+            bin_dir / "herdr",
+            f"""#!/bin/sh
+printf '%s\n' "$*" >>"$HERDR_TEST_LOG"
+case "$*" in
+  'workspace list')
+    printf '%s\n' '{{"result":{{"workspaces":[{{"workspace_id":"saved","repository":{{"checkout_path":"{checkout}"}}}}]}}}}'
+    ;;
+  'agent list')
+    if [ -e "$HERDR_AGENT_STARTED" ]; then
+      printf '%s\n' '{{"result":{{"agents":[{{"name":"codex","agent":"codex","pane_id":"saved:p2","tab_id":"saved:t1"}}]}}}}'
+    else
+      printf '%s\n' '{{"result":{{"agents":[]}}}}'
+    fi
+    ;;
+  'tab list --workspace saved')
+    printf '%s\n' '{{"result":{{"tabs":[{{"tab_id":"saved:t1","label":"agent"}}]}}}}'
+    ;;
+  'pane list --workspace saved')
+    printf '%s\n' '{{"result":{{"panes":[{{"pane_id":"saved:p1","tab_id":"saved:t1"}}]}}}}'
+    ;;
+  'pane split saved:p1 --direction right --cwd '*' --no-focus')
+    printf '%s\n' '{{"result":{{"pane":{{"pane_id":"saved:p2"}}}}}}'
+    ;;
+  'pane process-info --pane saved:p2')
+    printf '%s\n' '{{"result":{{"process_info":{{"foreground_processes":[{{"name":"zsh"}}]}}}}}}'
+    ;;
+  'pane run saved:p2 '*'-C '*'project.git/main resume --all session-123'*)
+    : >"$HERDR_AGENT_STARTED"
+    ;;
+  'agent read saved:p2 --source visible --lines 30 --format text')
+    printf '%s\n' 'Earlier messages are available' '› Ask Codex to do anything'
+    ;;
+esac
+""",
+        )
+        env = {
+            **os.environ,
+            "PATH": f"{bin_dir}:/usr/bin:/bin",
+            "HERDR_BIN_PATH": str(bin_dir / "herdr"),
+            "HERDR_TEST_LOG": str(log),
+            "HERDR_AGENT_STARTED": str(started),
+        }
+
+        result = subprocess.run(
+            [
+                str(DOTFILES / "bin/herdr-start-codex"),
+                "mac",
+                "--project-path",
+                str(repository),
+                "--resume",
+                "session-123",
+            ],
+            text=True,
+            env=env,
+            capture_output=True,
+        )
+
+        calls = log.read_text().splitlines()
+        assert result.returncode == 0, {
+            "calls": calls,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+        }
+        run_call = next(call for call in calls if call.startswith("pane run saved:p2 "))
+        assert f"-C {checkout.resolve()} resume --all session-123" in run_call
+        assert f"-C {repository.resolve()} resume" not in run_call
+        assert "agent read saved:p2 --source visible --lines 30 --format text" in calls
+        assert "workspace create" not in "\n".join(calls)
+
+
 def test_default_branch_origin_sync_refuses_dirty_checkout() -> None:
     with tempfile.TemporaryDirectory(prefix="herdr-default-sync-") as directory:
         root = Path(directory)
@@ -1007,6 +1098,7 @@ def main() -> int:
     test_remote_codex_monitor_reads_visible_status()
     test_ai_thread_title_is_cleaned_for_herdr()
     test_saved_thread_resumes_in_its_plain_path()
+    test_saved_thread_from_bare_repo_uses_default_checkout()
     test_default_branch_origin_sync_refuses_dirty_checkout()
     test_default_branch_origin_sync_fast_forwards_clean_checkout()
     test_remote_project_resolution_requires_matching_branch()

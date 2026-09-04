@@ -218,6 +218,20 @@ if [[ -n "$project_path_override" ]]; then
     exit 1
   fi
   project_path="$(cd "$project_path_override" && pwd -P)"
+  if [[ -n "$resume_session" ]] &&
+    [[ "$(git -C "$project_path" rev-parse --is-bare-repository 2>/dev/null || true)" == true ]]; then
+    saved_branch="$(git -C "$project_path" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || true)"
+    saved_branch="${saved_branch#origin/}"
+    if [[ -z "$saved_branch" ]]; then
+      saved_branch="$(git -C "$project_path" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+    fi
+    saved_checkout="$(checkout_for_branch "$project_path" "$saved_branch")"
+    if [[ -z "$saved_checkout" ]]; then
+      printf '\nThe saved thread points at a bare repository with no checkout for %s.\n' "${saved_branch:-the default branch}" >&2
+      exit 1
+    fi
+    project_path="$saved_checkout"
+  fi
   workspace_id="$(ensure_workspace_for_path "$project_path" "$(basename "$project_path")")"
   if [[ -z "$workspace_id" ]]; then
     printf '\nCould not open the saved path in Herdr.\n' >&2
@@ -611,9 +625,10 @@ if [[ "$agent_started" == false ]]; then
 fi
 
 if [[ -n "$resume_session" ]]; then
-  resumed_session=false
-  for _ in {1..200}; do
-    if herdr agent list | python3 -c '
+  resume_ready=false
+  for _ in {1..300}; do
+    agents_json="$(herdr agent list)"
+    if printf '%s\n' "$agents_json" | python3 -c '
 import json, sys
 
 pane_id, expected_session = sys.argv[1:]
@@ -626,12 +641,26 @@ for agent in agents:
         raise SystemExit(0)
 raise SystemExit(1)
 ' "$pane_id" "$resume_session"; then
-      resumed_session=true
+      resume_ready=true
+      break
+    fi
+    if ! printf '%s\n' "$agents_json" | python3 -c '
+import json, sys
+
+pane_id = sys.argv[1]
+agents = json.load(sys.stdin).get("result", {}).get("agents", [])
+raise SystemExit(0 if any(agent.get("pane_id") == pane_id for agent in agents) else 1)
+' "$pane_id"; then
+      break
+    fi
+    resume_screen="$(herdr agent read "$pane_id" --source visible --lines 30 --format text 2>/dev/null || true)"
+    if [[ "$resume_screen" != *"Resuming session"* && "$resume_screen" == *"Ask Codex to do anything"* ]]; then
+      resume_ready=true
       break
     fi
     sleep 0.05
   done
-  if [[ "$resumed_session" == false ]]; then
+  if [[ "$resume_ready" == false ]]; then
     printf '\nCodex did not resume the selected conversation.\n' >&2
     if [[ "$created_tab" == true ]]; then
       herdr tab close "$agent_tab_id" >/dev/null 2>&1 || true
