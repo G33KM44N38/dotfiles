@@ -4,6 +4,9 @@ set -euo pipefail
 readonly report_source="boss:remote-codex-wrapper"
 readonly remote_code_root="${HERDR_REMOTE_CODE_ROOT:-$HOME/code}"
 readonly remote_worktree_root="${HERDR_REMOTE_WORKTREE_ROOT:-$HOME/code/work}"
+readonly remote_binding_root="${XDG_STATE_HOME:-$HOME/.local/state}/herdr/remote-thread-bindings"
+readonly local_context_root="${XDG_STATE_HOME:-$HOME/.local/state}/herdr/remote-workspaces"
+readonly installed_remote_runner="/home/kylian/.dotfiles/bin/herdr-run-remote-codex-agent"
 readonly herdr_bin="${HERDR_BIN_PATH:-$(type -P herdr)}"
 lifecycle_reporter_pid=
 
@@ -12,11 +15,11 @@ herdr() {
 }
 
 usage() {
-    printf 'Usage: %s --target <ssh-target> --remote-path <path> [--prompt <text>] [--title <text>] [--close-tab-on-exit]\n' "${0##*/}" >&2
+    printf 'Usage: %s --target <ssh-target> --remote-path <path> [--remote-pane <id>] [--thread-key <id>] [--session <name>] [--prompt <text>] [--title <text>] [--close-tab-on-exit]\n' "${0##*/}" >&2
     printf '       %s --remote-resolve --repo-url <url> --branch <branch> --project-name <name>\n' "${0##*/}" >&2
     printf '       %s --remote-default --repo-url <url> --branch <branch> --source <local|origin> --project-name <name>\n' "${0##*/}" >&2
     printf '       %s --remote-worktree --repo-url <url> --branch <branch> [--base <ref>] [--source <local|origin>] --project-name <name>\n' "${0##*/}" >&2
-    printf '       %s --remote-start --remote-path <path> [--session <name>] [--prompt <text>]\n' "${0##*/}" >&2
+    printf '       %s --remote-start --remote-path <path> --thread-key <id> [--session <name>] [--prompt <text>] [--title <text>]\n' "${0##*/}" >&2
 }
 
 report_title() {
@@ -202,12 +205,12 @@ can_report() {
 }
 
 report_state() {
-    local state=$1
+    local state=$1 message=${2:-"Remote Codex is $1"}
     herdr pane report-agent "$HERDR_PANE_ID" \
         --source "$report_source" \
         --agent codex \
         --state "$state" \
-        --message "Remote Codex is $state" >/dev/null 2>&1 || true
+        --message "$message" >/dev/null 2>&1 || true
 }
 
 mirror_remote_agent_state() {
@@ -304,65 +307,80 @@ print("pane" if has_sibling_agent else "tab")
 }
 
 remote_start() {
-    local remote_path=$1 session=$2 prompt=$3 workspace_json panes_json workspace_id label
-    local common_dir branch open_json
+    local remote_path=$1 session=$2 prompt=$3 title=$4 thread_key=$5
+    local binding_path= workspace_id= pane_id= resume_session= workspace_json agent_json
+    local -a start_arguments
     export HERDR_SESSION=$session
 
-    workspace_json="$(herdr workspace list)"
-    panes_json="$(herdr pane list)"
-    workspace_id="$(python3 - "$remote_path" "$workspace_json" "$panes_json" <<'PY'
-import json
+    mkdir -p "$remote_binding_root"
+    chmod 0700 "$remote_binding_root"
+    binding_path="$(python3 - "$remote_binding_root" "$thread_key" <<'PY'
+import hashlib
 import os
 import sys
 
-target = os.path.realpath(sys.argv[1])
-workspaces = json.loads(sys.argv[2]).get("result", {}).get("workspaces", [])
-panes = json.loads(sys.argv[3]).get("result", {}).get("panes", [])
-
-for workspace in workspaces:
-    checkout = (workspace.get("repository") or {}).get("checkout_path")
-    if checkout and os.path.realpath(checkout) == target:
-        print(workspace["workspace_id"])
-        raise SystemExit
-
-for pane in panes:
-    cwd = pane.get("foreground_cwd") or pane.get("cwd")
-    if cwd and os.path.realpath(cwd) == target:
-        print(pane["workspace_id"])
-        raise SystemExit
+root, key = sys.argv[1:]
+print(os.path.join(root, hashlib.sha256(key.encode()).hexdigest() + ".json"))
 PY
 )"
 
-    if [[ -z "$workspace_id" ]]; then
-        branch="$(git -C "$remote_path" branch --show-current 2>/dev/null || true)"
-        label="${branch##*/}"
-        common_dir="$(git -C "$remote_path" rev-parse --git-common-dir 2>/dev/null || true)"
-        if [[ -n "$common_dir" && "$common_dir" != /* ]]; then
-            common_dir="$(cd "$remote_path" && cd "$common_dir" && pwd -P)"
-        fi
+    if [[ -f "$binding_path" ]]; then
+        IFS=$'\t' read -r workspace_id pane_id resume_session < <(python3 - "$binding_path" <<'PY'
+import json
+import sys
 
-        open_json=
-        if [[ -n "$common_dir" ]]; then
-            open_json="$(herdr worktree open \
-                --cwd "$common_dir" \
-                --path "$remote_path" \
-                --label "$label" \
-                --focus \
-                --json 2>/dev/null || true)"
-        fi
-        if [[ -z "$open_json" ]]; then
-            open_json="$(herdr workspace create \
-                --cwd "$remote_path" --label "$label" --focus)"
-        fi
-        workspace_id="$(printf '%s\n' "$open_json" | python3 -c '
+try:
+    binding = json.load(open(sys.argv[1], encoding="utf-8"))
+except (OSError, ValueError):
+    binding = {}
+print(
+    binding.get("workspace_id", ""),
+    binding.get("pane_id", ""),
+    binding.get("agent_session", ""),
+    sep="\t",
+)
+PY
+)
+    fi
+
+    if [[ -n "$pane_id" ]] && agent_json="$(herdr agent get "$pane_id" 2>/dev/null)"; then
+        python3 - "$thread_key" "$session" "$agent_json" <<'PY'
+import json
+import sys
+
+agent = json.loads(sys.argv[3]).get("result", {}).get("agent", {})
+print(json.dumps({
+    "thread_key": sys.argv[1],
+    "session": sys.argv[2],
+    "workspace_id": agent.get("workspace_id", ""),
+    "pane_id": agent.get("pane_id", ""),
+    "agent_name": agent.get("name", ""),
+    "agent_session": (agent.get("agent_session") or {}).get("value", ""),
+}))
+PY
+        return
+    fi
+
+    if [[ -n "$workspace_id" ]]; then
+        workspace_id="$(herdr workspace list | python3 -c '
 import json, sys
+wanted = sys.argv[1]
+workspaces = json.load(sys.stdin).get("result", {}).get("workspaces", [])
+print(wanted if any(item.get("workspace_id") == wanted for item in workspaces) else "")
+' "$workspace_id")"
+    fi
 
-data = json.load(sys.stdin).get("result", {})
-workspace = data.get("workspace", data)
-print(workspace.get("workspace_id", ""))
+    if [[ -z "$workspace_id" ]]; then
+        [[ -n "$title" ]] || title="$(git -C "$remote_path" branch --show-current 2>/dev/null || basename "$remote_path")"
+        workspace_json="$(herdr workspace create \
+            --cwd "$remote_path" \
+            --label "${title:-Thread}" \
+            --no-focus)"
+        workspace_id="$(printf '%s\n' "$workspace_json" | python3 -c '
+import json, sys
+result = json.load(sys.stdin).get("result", {})
+print(result.get("workspace", result).get("workspace_id", ""))
 ')"
-    else
-        herdr workspace focus "$workspace_id" >/dev/null
     fi
 
     [[ -n "$workspace_id" ]] || {
@@ -370,15 +388,105 @@ print(workspace.get("workspace_id", ""))
         return 1
     }
 
-    if [[ -n "$prompt" ]]; then
-        HERDR_ACTIVE_WORKSPACE_ID=$workspace_id \
-            HERDR_ACTIVE_PANE_CWD=$remote_path \
-            "$HOME/.dotfiles/bin/herdr-start-codex" mac --prompt "$prompt"
-    else
-        HERDR_ACTIVE_WORKSPACE_ID=$workspace_id \
-            HERDR_ACTIVE_PANE_CWD=$remote_path \
-            "$HOME/.dotfiles/bin/herdr-start-codex" mac
+    start_arguments=(mac)
+    [[ -z "$title" ]] || start_arguments+=(--thread-title "$title")
+    if [[ -n "$resume_session" ]]; then
+        start_arguments+=(--resume "$resume_session")
+    elif [[ -n "$prompt" ]]; then
+        start_arguments+=(--prompt "$prompt")
     fi
+    HERDR_ACTIVE_WORKSPACE_ID=$workspace_id \
+        HERDR_ACTIVE_PANE_CWD=$remote_path \
+        "$HOME/.dotfiles/bin/herdr-start-codex" "${start_arguments[@]}" >/dev/null
+
+    agent_json=
+    for _ in {1..200}; do
+        agent_json="$(herdr agent list | python3 -c '
+import json, sys
+workspace_id = sys.argv[1]
+for agent in json.load(sys.stdin).get("result", {}).get("agents", []):
+    if agent.get("workspace_id") == workspace_id and agent.get("agent") == "codex":
+        print(json.dumps(agent))
+        break
+' "$workspace_id")"
+        [[ -z "$agent_json" ]] || break
+        sleep 0.05
+    done
+    [[ -n "$agent_json" ]] || {
+        printf 'Could not start Codex in the Ubuntu Herdr workspace.\n' >&2
+        return 1
+    }
+
+    python3 - "$binding_path" "$thread_key" "$session" "$agent_json" <<'PY'
+import json
+import os
+import sys
+
+path, thread_key, session, raw_agent = sys.argv[1:]
+agent = json.loads(raw_agent)
+binding = {
+    "thread_key": thread_key,
+    "session": session,
+    "workspace_id": agent.get("workspace_id", ""),
+    "pane_id": agent.get("pane_id", ""),
+    "agent_name": agent.get("name", ""),
+    "agent_session": (agent.get("agent_session") or {}).get("value", ""),
+}
+temporary = path + ".tmp"
+with open(temporary, "w", encoding="utf-8") as stream:
+    json.dump(binding, stream)
+    stream.write("\n")
+os.chmod(temporary, 0o600)
+os.replace(temporary, path)
+print(json.dumps(binding))
+PY
+}
+
+provision_remote_agent() {
+    local target=$1 remote_path=$2 session=$3 thread_key=$4 prompt=$5 title=$6
+    local remote_command
+    printf -v remote_command '%q ' \
+        "$installed_remote_runner" \
+        --remote-start \
+        --remote-path "$remote_path" \
+        --session "$session" \
+        --thread-key "$thread_key"
+    [[ -z "$prompt" ]] || printf -v remote_command '%s--prompt %q ' "$remote_command" "$prompt"
+    [[ -z "$title" ]] || printf -v remote_command '%s--title %q ' "$remote_command" "$title"
+    ssh -o BatchMode=yes -o ConnectTimeout=5 "$target" "$remote_command"
+}
+
+save_local_binding() {
+    local workspace_id=$1 target=$2 remote_path=$3 binding_json=$4
+    [[ -n "$workspace_id" ]] || return
+    mkdir -p "$local_context_root"
+    python3 - "$local_context_root/$workspace_id.json" "$target" "$remote_path" "$binding_json" <<'PY'
+import json
+import os
+import sys
+
+path, target, remote_path, raw_binding = sys.argv[1:]
+try:
+    context = json.load(open(path, encoding="utf-8"))
+except (OSError, ValueError):
+    context = {}
+binding = json.loads(raw_binding)
+context.update({
+    "target": target,
+    "path": remote_path,
+    "remote_session": binding.get("session", "default"),
+    "remote_workspace_id": binding.get("workspace_id", ""),
+    "remote_pane_id": binding.get("pane_id", ""),
+    "remote_agent_name": binding.get("agent_name", ""),
+    "thread_key": binding.get("thread_key", ""),
+})
+temporary = path + ".tmp"
+with open(temporary, "w", encoding="utf-8") as stream:
+    json.dump(context, stream)
+    stream.write("\n")
+os.chmod(temporary, 0o600)
+os.replace(temporary, path)
+PY
 }
 
 main() {
@@ -432,26 +540,31 @@ main() {
 
     if [[ "${1:-}" == "--remote-start" ]]; then
         shift
-        local remote_path= session=default prompt=
+        local remote_path= session=default prompt= title= thread_key=
         while (( $# )); do
             case "$1" in
                 --remote-path) remote_path=${2:-}; shift 2 ;;
                 --session) session=${2:-}; shift 2 ;;
                 --prompt) prompt=${2:-}; shift 2 ;;
+                --title) title=${2:-}; shift 2 ;;
+                --thread-key) thread_key=${2:-}; shift 2 ;;
                 *) usage; return 2 ;;
             esac
         done
-        [[ -n "$remote_path" ]] || { usage; return 2; }
-        remote_start "$remote_path" "$session" "$prompt"
+        [[ -n "$remote_path" && -n "$thread_key" ]] || { usage; return 2; }
+        remote_start "$remote_path" "$session" "$prompt" "$title" "$thread_key"
         return
     fi
 
-    local target= remote_path= prompt= title= close_tab_on_exit=false
+    local target= remote_path= remote_pane= thread_key= session=default
+    local prompt= title= close_tab_on_exit=false
     while (( $# )); do
         case "$1" in
             --target) target=${2:-}; shift 2 ;;
-            --session) shift 2 ;;
+            --session) session=${2:-}; shift 2 ;;
             --remote-path) remote_path=${2:-}; shift 2 ;;
+            --remote-pane) remote_pane=${2:-}; shift 2 ;;
+            --thread-key) thread_key=${2:-}; shift 2 ;;
             --prompt) prompt=${2:-}; shift 2 ;;
             --title) title=${2:-}; shift 2 ;;
             --close-tab-on-exit) close_tab_on_exit=true; shift ;;
@@ -459,6 +572,11 @@ main() {
         esac
     done
     [[ -n "$target" && -n "$remote_path" ]] || { usage; return 2; }
+    thread_key="${thread_key:-${HERDR_WORKSPACE_ID:-}}"
+    [[ -n "$thread_key" ]] || {
+        printf 'A stable local workspace id is required for the remote thread.\n' >&2
+        return 2
+    }
 
     if can_report; then
         report_state working
@@ -469,15 +587,60 @@ main() {
         lifecycle_reporter_pid=$!
     fi
 
-    local codex_exit_code remote_command
-    printf -v remote_command 'cd -- %q && exec /usr/local/bin/codex' "$remote_path"
-    if [[ -n "$prompt" ]]; then
-        printf -v remote_command '%s %q' "$remote_command" "$prompt"
+    local binding_json remote_workspace remote_agent remote_command codex_exit_code=0
+    if [[ -z "$remote_pane" ]]; then
+        if ! binding_json="$(provision_remote_agent \
+            "$target" "$remote_path" "$session" "$thread_key" "$prompt" "$title")"; then
+            stop_lifecycle_reporter
+            report_state unknown "Ubuntu is disconnected"
+            return 1
+        fi
+        IFS=$'\t' read -r remote_workspace remote_pane remote_agent < <(printf '%s\n' "$binding_json" | python3 -c '
+import json, sys
+binding = json.load(sys.stdin)
+print(
+    binding.get("workspace_id", ""),
+    binding.get("pane_id", ""),
+    binding.get("agent_name", ""),
+    sep="\t",
+)
+')
+        [[ -n "$remote_pane" ]] || {
+            stop_lifecycle_reporter
+            printf 'Ubuntu returned no persistent agent pane.\n' >&2
+            return 1
+        }
+        save_local_binding "${HERDR_WORKSPACE_ID:-}" "$target" "$remote_path" "$binding_json"
     fi
-    set +e
-    ssh -tt -o BatchMode=yes "$target" "$remote_command"
-    codex_exit_code=$?
-    set -e
+
+    printf -v remote_command \
+        'export HERDR_SESSION=%q; exec /usr/local/bin/herdr agent attach %q --takeover' \
+        "$session" "$remote_pane"
+    while true; do
+        set +e
+        ssh -tt \
+            -o BatchMode=yes \
+            -o ConnectTimeout=5 \
+            -o ServerAliveInterval=5 \
+            -o ServerAliveCountMax=3 \
+            "$target" "$remote_command"
+        codex_exit_code=$?
+        set -e
+
+        if ! ssh -o BatchMode=yes -o ConnectTimeout=3 "$target" true >/dev/null 2>&1; then
+            report_state unknown "Ubuntu is disconnected"
+            sleep 2
+            continue
+        fi
+        if ssh -o BatchMode=yes "$target" \
+            "HERDR_SESSION=$(printf '%q' "$session") /usr/local/bin/herdr agent get $(printf '%q' "$remote_pane")" \
+            >/dev/null 2>&1; then
+            report_state unknown "Reconnecting to Ubuntu"
+            sleep 1
+            continue
+        fi
+        break
+    done
 
     stop_lifecycle_reporter
     release_agent

@@ -14,7 +14,7 @@ import tempfile
 import time
 
 
-DOTFILES = Path("/Users/boss/.dotfiles")
+DOTFILES = Path(__file__).resolve().parent.parent
 
 
 def write_executable(path: Path, content: str) -> None:
@@ -33,8 +33,8 @@ def test_machine_launcher_starts_mac_codex() -> None:
             """#!/bin/sh
 printf '%s\n' "$*" >>"$HERDR_TEST_LOG"
 case "$*" in
-  'worktree create --cwd /Users/boss/.dotfiles --branch thread/explain-failure --label Explain the failure --focus --json --base main')
-    printf '%s\n' '{"result":{"workspace":{"workspace_id":"proof-thread"},"worktree":{"path":"/Users/boss/.dotfiles"}}}'
+  'worktree create --cwd @DOTFILES@ --branch thread/explain-failure --label Explain the failure --focus --json --base main')
+    printf '%s\n' '{"result":{"workspace":{"workspace_id":"proof-thread"},"worktree":{"path":"@DOTFILES@"}}}'
     ;;
   'agent list')
     if [ -e "$HERDR_AGENT_STARTED" ]; then
@@ -49,17 +49,17 @@ case "$*" in
   'pane list --workspace proof-thread')
     printf '%s\n' '{"result":{"panes":[{"pane_id":"proof-thread:p1","tab_id":"proof-thread:t1"}]}}'
     ;;
-  'pane split proof-thread:p1 --direction right --cwd /Users/boss/.dotfiles --no-focus')
+  'pane split proof-thread:p1 --direction right --cwd @DOTFILES@ --no-focus')
     printf '%s\n' '{"result":{"pane":{"pane_id":"proof-thread:p2"}}}'
     ;;
   'pane process-info --pane proof-thread:p2')
     printf '%s\n' '{"result":{"process_info":{"foreground_processes":[{"name":"zsh"}]}}}'
     ;;
-  'pane run proof-thread:p2 /Users/boss/.dotfiles/bin/herdr-run-codex-agent --interactive --close-tab-on-exit')
+  'pane run proof-thread:p2 @DOTFILES@/bin/herdr-run-codex-agent --interactive --close-tab-on-exit')
     : >"$HERDR_AGENT_STARTED"
     ;;
 esac
-""",
+""".replace("@DOTFILES@", str(DOTFILES)),
         )
         title_log = root / "title.log"
         write_executable(
@@ -78,6 +78,7 @@ printf '%s\n' "$*" >"$HERDR_TITLE_LOG"
             "HERDR_AGENT_STARTED": str(root / "agent-started"),
             "HERDR_TITLE_GENERATOR": str(bin_dir / "title-generator"),
             "HERDR_TITLE_LOG": str(title_log),
+            "DOTFILES_ROOT": str(DOTFILES),
         }
         result = subprocess.run(
             [
@@ -90,13 +91,17 @@ printf '%s\n' "$*" >"$HERDR_TITLE_LOG"
             ],
             text=True,
             env=env,
-            check=True,
             capture_output=True,
         )
         calls = log.read_text().splitlines()
+        assert result.returncode == 0, {
+            "calls": calls,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+        }
         start_call = (
             "pane run proof-thread:p2 "
-            "/Users/boss/.dotfiles/bin/herdr-run-codex-agent "
+            f"{DOTFILES}/bin/herdr-run-codex-agent "
             "--interactive --close-tab-on-exit"
         )
         assert calls.count(start_call) == 1, {
@@ -107,7 +112,7 @@ printf '%s\n' "$*" >"$HERDR_TITLE_LOG"
         assert calls.index("tab focus proof-thread:t1") > calls.index(start_call)
         assert result.stderr == ""
         assert (
-            "worktree create --cwd /Users/boss/.dotfiles "
+            f"worktree create --cwd {DOTFILES} "
             "--branch thread/explain-failure --label Explain the failure "
             "--focus --json --base main"
         ) in calls
@@ -131,7 +136,7 @@ printf '%s\n' "$*" >"$HERDR_TITLE_LOG"
         assert "--machine Mac" in title_call
 
 
-def test_remote_wrapper_starts_codex_without_nested_herdr() -> None:
+def test_remote_wrapper_attaches_persistent_herdr_agent() -> None:
     with tempfile.TemporaryDirectory(prefix="herdr-remote-direct-") as directory:
         root = Path(directory)
         bin_dir = root / "bin"
@@ -148,6 +153,14 @@ printf '%s\n' "$*" >>"$HERDR_TEST_LOG"
             bin_dir / "ssh",
             """#!/bin/sh
 printf '%s\n' "$*" >>"$SSH_TEST_LOG"
+case "$*" in
+  *'--remote-start'*)
+    printf '%s\n' '{"thread_key":"proof-thread","session":"default","workspace_id":"remote:w1","pane_id":"remote:p2","agent_name":"remote-codex","agent_session":"session-1"}'
+    ;;
+  *'agent get remote:p2'*)
+    exit 1
+    ;;
+esac
 """,
         )
         env = {
@@ -155,9 +168,11 @@ printf '%s\n' "$*" >>"$SSH_TEST_LOG"
             "PATH": f"{bin_dir}:/usr/bin:/bin",
             "HERDR_BIN_PATH": str(bin_dir / "herdr"),
             "HERDR_ENV": "1",
+            "HERDR_WORKSPACE_ID": "proof-thread",
             "HERDR_PANE_ID": "proof:p2",
             "HERDR_TEST_LOG": str(herdr_log),
             "SSH_TEST_LOG": str(ssh_log),
+            "XDG_STATE_HOME": str(root / "state"),
         }
 
         subprocess.run(
@@ -178,11 +193,17 @@ printf '%s\n' "$*" >>"$SSH_TEST_LOG"
             capture_output=True,
         )
 
-        ssh_call = ssh_log.read_text().strip()
-        assert ssh_call.startswith("-tt -o BatchMode=yes ubuntu.test ")
-        assert "cd -- /remote/project\\ path" in ssh_call
-        assert "exec /usr/local/bin/codex Fix\\ login\\ now" in ssh_call
-        assert "/usr/local/bin/herdr" not in ssh_call
+        ssh_calls = ssh_log.read_text().splitlines()
+        provision = next(call for call in ssh_calls if "--remote-start" in call)
+        attach = next(call for call in ssh_calls if "agent attach" in call)
+        assert "--thread-key proof-thread" in provision
+        assert "--prompt Fix\\ login\\ now" in provision
+        assert "--title Fix\\ login" in provision
+        assert "/usr/local/bin/herdr agent attach remote:p2 --takeover" in attach
+        assert not any("exec /usr/local/bin/codex" in call for call in ssh_calls)
+        context = json.loads((root / "state/herdr/remote-workspaces/proof-thread.json").read_text())
+        assert context["remote_pane_id"] == "remote:p2"
+        assert context["remote_workspace_id"] == "remote:w1"
         calls = herdr_log.read_text().splitlines()
         assert any("--display-agent Ubuntu · Codex" in call for call in calls)
         assert any("--title Fix login" in call for call in calls)
@@ -341,7 +362,11 @@ esac
             "stdout": result.stdout,
             "stderr": result.stderr,
         }
-        run_call = next(call for call in calls if call.startswith("pane run saved:p2 "))
+        run_call = next(
+            (call for call in calls if call.startswith("pane run saved:p2 ")),
+            None,
+        )
+        assert run_call is not None, calls
         assert "herdr-run-codex-agent --interactive --close-tab-on-exit -C" in run_call
         assert "resume --all session-123" in run_call
         assert "workspace create" not in "\n".join(calls)
@@ -792,7 +817,7 @@ def test_focus_tab_launcher() -> None:
     module.herdr = fake_herdr
     module.pane_for_tab = lambda _tab_id, timeout=0: {
         "pane_id": "proof:p2",
-        "cwd": str(DOTFILES),
+        "cwd": "/Users/boss/.dotfiles",
     }
     module.close_idle_sibling_panes = lambda *_args, **_kwargs: None
     module.pane_has_codex = lambda _pane_id: True
@@ -802,7 +827,7 @@ def test_focus_tab_launcher() -> None:
         "pane",
         "run",
         "proof:p2",
-        "/Users/boss/.dotfiles/bin/herdr-run-codex-agent --interactive "
+        f"{DOTFILES}/bin/herdr-run-codex-agent --interactive "
         "--close-tab-on-exit --dangerously-bypass-approvals-and-sandbox",
     ) in calls
     assert ("agent", "rename", "proof:p2", "dotfiles-codex-2") in calls
@@ -861,6 +886,53 @@ def test_focus_tab_keeps_selected_agent() -> None:
     assert not any(call[:2] == ("pane", "run") for call in calls)
 
 
+def test_focus_tab_reattaches_exact_remote_agent() -> None:
+    sys.dont_write_bytecode = True
+    path = DOTFILES / "bin/herdr-focus-tab"
+    loader = SourceFileLoader("herdr_focus_tab_remote_agent", str(path))
+    spec = importlib.util.spec_from_loader("herdr_focus_tab_remote_agent", loader)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    calls: list[tuple[str, ...]] = []
+    agents: list[dict[str, str]] = []
+
+    def fake_herdr(*arguments: str) -> dict[str, object]:
+        calls.append(arguments)
+        if arguments == ("agent", "list"):
+            return {"result": {"agents": agents}}
+        if arguments[:2] == ("pane", "run"):
+            agents.append({
+                "agent": "codex",
+                "pane_id": "local:p2",
+                "tab_id": "local:t1",
+                "name": "codex",
+            })
+        return {}
+
+    module.herdr = fake_herdr
+    module.pane_for_tab = lambda _tab_id, timeout=0: {
+        "pane_id": "local:p2",
+        "cwd": "/local/project",
+    }
+    module.close_idle_sibling_panes = lambda *_args, **_kwargs: None
+    context = {
+        "target": "ubuntu.test",
+        "path": "/remote/worktree",
+        "thread_key": "proof-thread",
+        "remote_session": "default",
+        "remote_pane_id": "remote:p2",
+    }
+
+    module.ensure_managed_agent("local:t1", context)
+
+    command = next(call[3] for call in calls if call[:2] == ("pane", "run"))
+    assert "--thread-key proof-thread" in command
+    assert "--remote-pane remote:p2" in command
+    assert "--session default" in command
+
+
 def test_focus_tab_routes_remote_tools_to_remote_wrapper() -> None:
     sys.dont_write_bytecode = True
     path = DOTFILES / "bin/herdr-focus-tab"
@@ -873,7 +945,13 @@ def test_focus_tab_routes_remote_tools_to_remote_wrapper() -> None:
     calls: list[tuple[str, ...]] = []
     module.herdr = lambda *arguments: calls.append(arguments) or {}
     module.pane_is_idle = lambda _pane_id: True
-    context = {"target": "ubuntu.test", "path": "/remote/worktree"}
+    context = {
+        "target": "ubuntu.test",
+        "path": "/remote/worktree",
+        "thread_key": "proof-thread",
+        "remote_session": "default",
+        "remote_pane_id": "remote:p2",
+    }
 
     module.launch_default_command("proof:p4", "terminal", context)
 
@@ -898,7 +976,13 @@ def test_focus_tab_defers_remote_pane_lookup_until_after_focus() -> None:
         AssertionError("parent resolved the pane before tab focus")
     )
     module.subprocess.Popen = lambda arguments, **_kwargs: launches.append(arguments)
-    context = {"target": "ubuntu.test", "path": "/remote/worktree"}
+    context = {
+        "target": "ubuntu.test",
+        "path": "/remote/worktree",
+        "thread_key": "proof-thread",
+        "remote_session": "default",
+        "remote_pane_id": "remote:p2",
+    }
 
     module.schedule_default_command({"tab_id": "proof:t5"}, "editor", context)
 
@@ -908,14 +992,14 @@ def test_focus_tab_defers_remote_pane_lookup_until_after_focus() -> None:
         "--launch-tab",
         "proof:t5",
         "editor",
-        "ubuntu.test",
-        "/remote/worktree",
+        "--context",
+        json.dumps(context),
     ]]
 
 
 def main() -> int:
     test_machine_launcher_starts_mac_codex()
-    test_remote_wrapper_starts_codex_without_nested_herdr()
+    test_remote_wrapper_attaches_persistent_herdr_agent()
     test_remote_tool_wrapper_targets_same_worktree()
     test_remote_codex_monitor_reads_visible_status()
     test_ai_thread_title_is_cleaned_for_herdr()
@@ -927,6 +1011,7 @@ def main() -> int:
     test_remote_worktree_origin_uses_latest_default_branch()
     test_focus_tab_launcher()
     test_focus_tab_keeps_selected_agent()
+    test_focus_tab_reattaches_exact_remote_agent()
     test_focus_tab_routes_remote_tools_to_remote_wrapper()
     test_focus_tab_defers_remote_pane_lookup_until_after_focus()
     print("herdr-codex-launcher-regression-ok")

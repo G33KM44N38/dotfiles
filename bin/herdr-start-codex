@@ -4,7 +4,8 @@ set -euo pipefail
 readonly remote_target="${HERDR_UBUNTU_TARGET:-kylian@kylian-ps42-8rb}"
 readonly remote_runner="/home/kylian/.dotfiles/bin/herdr-run-remote-codex-agent"
 readonly herdr_bin="${HERDR_BIN_PATH:-$(type -P herdr)}"
-readonly title_generator="${HERDR_TITLE_GENERATOR:-$HOME/.dotfiles/bin/herdr-generate-thread-title}"
+readonly dotfiles_root="${DOTFILES_ROOT:-$HOME/.dotfiles}"
+readonly title_generator="${HERDR_TITLE_GENERATOR:-$dotfiles_root/bin/herdr-generate-thread-title}"
 readonly local_machine_label="$(if [[ "$(uname -s)" == "Linux" ]]; then printf Ubuntu; else printf Mac; fi)"
 
 herdr() {
@@ -356,7 +357,13 @@ import sys
 path, target, remote_path = sys.argv[1:]
 temporary = path + ".tmp"
 with open(temporary, "w", encoding="utf-8") as stream:
-    json.dump({"target": target, "path": remote_path}, stream)
+    workspace_id = os.path.basename(path).removesuffix(".json")
+    json.dump({
+        "target": target,
+        "path": remote_path,
+        "thread_key": workspace_id,
+        "remote_session": "default",
+    }, stream)
     stream.write("\n")
 os.chmod(temporary, 0o600)
 os.replace(temporary, path)
@@ -523,23 +530,38 @@ fi
 
 if [[ "$target" == "mac" ]]; then
   if [[ -n "$resume_session" ]]; then
-    printf -v launch_command '%q ' \
-      "$HOME/.dotfiles/bin/herdr-run-codex-agent" \
-      --interactive \
-      --close-tab-on-exit \
-      -C \
-      "$project_path" \
-      resume \
-      --all \
+    resume_arguments=(
+      "$dotfiles_root/bin/herdr-run-codex-agent"
+      --interactive
+      --close-tab-on-exit
+    )
+    if [[ "$local_machine_label" == Ubuntu ]]; then
+      resume_arguments+=(
+        --dangerously-bypass-approvals-and-sandbox
+        --dangerously-bypass-hook-trust
+      )
+    fi
+    resume_arguments+=(
+      -C
+      "$project_path"
+      resume
+      --all
       "$resume_session"
+    )
+    printf -v launch_command '%q ' "${resume_arguments[@]}"
   else
-    launch_command="$HOME/.dotfiles/bin/herdr-run-codex-agent --interactive --close-tab-on-exit"
+    launch_command="$dotfiles_root/bin/herdr-run-codex-agent --interactive --close-tab-on-exit"
+    if [[ "$local_machine_label" == Ubuntu ]]; then
+      launch_command="$launch_command --dangerously-bypass-approvals-and-sandbox --dangerously-bypass-hook-trust"
+    fi
   fi
 else
   printf -v launch_command '%q ' \
-    "$HOME/.dotfiles/bin/herdr-run-remote-codex-agent" \
+    "$dotfiles_root/bin/herdr-run-remote-codex-agent" \
     --target "$remote_target" \
     --remote-path "$remote_project_path" \
+    --thread-key "$workspace_id" \
+    --session default \
     --close-tab-on-exit
   if [[ -n "$initial_prompt" ]]; then
     printf -v launch_command '%s--prompt %q ' "$launch_command" "$initial_prompt"
@@ -628,6 +650,24 @@ herdr pane report-metadata "$pane_id" \
   --display-agent "$(if [[ "$target" == "mac" ]]; then printf '%s · Codex' "$local_machine_label"; else printf 'Ubuntu · Codex'; fi)" \
   --seq "$(python3 -c 'import time; print(time.time_ns())')" >/dev/null
 herdr agent focus "$pane_id" >/dev/null
+
+if [[ "$target" == mac && "$local_machine_label" == Ubuntu ]]; then
+  for _ in {1..100}; do
+    trust_screen="$(herdr pane read "$pane_id" --source visible --lines 24 --format text 2>/dev/null || true)"
+    if [[ "$trust_screen" == *"Do you trust the contents of this directory?"* ]]; then
+      herdr pane send-keys "$pane_id" enter >/dev/null
+      break
+    fi
+    if herdr agent get "$pane_id" | python3 -c '
+import json, sys
+agent = json.load(sys.stdin).get("result", {}).get("agent", {})
+raise SystemExit(0 if agent.get("agent_status") == "idle" else 1)
+'; then
+      break
+    fi
+    sleep 0.05
+  done
+fi
 
 if [[ -n "$initial_prompt" && "$target" == "mac" ]]; then
   if ! herdr agent wait "$pane_id" --until idle --timeout 30000 >/dev/null; then

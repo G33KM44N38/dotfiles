@@ -1,0 +1,16 @@
+[Unit]
+Description=Herdr persistent server
+After=network.target
+
+[Service]
+Type=simple
+Environment=HOME=%h
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=HERDR_CONFIG_PATH=%h/.config/herdr/config.toml
+WorkingDirectory=%h
+ExecStart=%h/.local/bin/herdr server
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=default.target

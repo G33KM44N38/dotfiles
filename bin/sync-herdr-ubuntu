@@ -33,6 +33,7 @@ sync_paths=(
   go.mod
   go.sum
   install/roles/codex/files/config.ubuntu.toml
+  install/roles/herdr/files/herdr.service
 )
 
 for path in "${sync_paths[@]}"; do
@@ -54,7 +55,7 @@ git -C "$dotfiles_root" ls-files .config/nvim > "$nvim_file_list"
 git -C "$dotfiles_root" ls-files --cached --others --exclude-standard .codex/skills \
   | sed 's#^\.codex/skills/##' > "$codex_skill_file_list"
 
-ssh "$remote_target" "mkdir -p '$remote_dotfiles' '$remote_home/.codex/skills' '$remote_home/.config/herdr'"
+ssh "$remote_target" "mkdir -p '$remote_dotfiles' '$remote_home/.codex/skills' '$remote_home/.config/herdr' '$remote_home/.config/systemd/user'"
 
 (
   cd "$dotfiles_root"
@@ -77,6 +78,12 @@ ssh "$remote_target" "
     -e 's#Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain#Documents/Second_Brain#g' \
     {} +
   chmod 0755 '$remote_dotfiles'/bin/herdr-*
+  cp '$remote_dotfiles/install/roles/herdr/files/herdr.service' '$remote_home/.config/systemd/user/herdr.service'
+  systemctl --user daemon-reload
+  systemctl --user enable herdr.service >/dev/null
+  if ! /usr/local/bin/herdr status server >/dev/null 2>&1; then
+    systemctl --user start herdr.service
+  fi
   if test ! -L '$remote_home/.codex/config.toml' || test \"\$(readlink '$remote_home/.codex/config.toml')\" != '$remote_dotfiles/install/roles/codex/files/config.ubuntu.toml'; then
     if test -L '$remote_home/.codex/config.toml'; then
       ln -sfn '$remote_dotfiles/install/roles/codex/files/config.ubuntu.toml' '$remote_home/.codex/config.toml'

@@ -111,6 +111,16 @@ def discover_remote_context(workspace_id):
                     }
                 except (ValueError, IndexError):
                     continue
+                optional_fields = {
+                    "--remote-pane": "remote_pane_id",
+                    "--thread-key": "thread_key",
+                    "--session": "remote_session",
+                }
+                for flag, field in optional_fields.items():
+                    try:
+                        context[field] = arguments[arguments.index(flag, index) + 1]
+                    except (ValueError, IndexError):
+                        pass
                 save_remote_context(workspace_id, context)
                 return context
     return None
@@ -303,18 +313,23 @@ def ensure_managed_agent(tab_id, context=None):
 
     agent_name = unique_agent_name(pane, agents)
     if context:
-        command = " ".join(
-            (
-                shlex.quote(str(Path(__file__).with_name("herdr-run-remote-codex-agent"))),
-                "--target",
-                shlex.quote(context["target"]),
-                "--remote-path",
-                shlex.quote(context["path"]),
-                "--close-tab-on-exit",
-                "--title",
-                shlex.quote("Ubuntu Codex"),
-            )
-        )
+        arguments = [
+            str(Path(__file__).with_name("herdr-run-remote-codex-agent")),
+            "--target",
+            context["target"],
+            "--remote-path",
+            context["path"],
+            "--session",
+            context.get("remote_session", "default"),
+            "--thread-key",
+            context.get("thread_key") or os.environ.get("HERDR_WORKSPACE_ID", ""),
+            "--close-tab-on-exit",
+            "--title",
+            "Ubuntu Codex",
+        ]
+        if context.get("remote_pane_id"):
+            arguments.extend(("--remote-pane", context["remote_pane_id"]))
+        command = shlex.join(arguments)
     else:
         command = " ".join(
             (
@@ -351,7 +366,7 @@ def ensure_managed_agent(tab_id, context=None):
 
 def schedule_default_command(tab, label, context=None):
     if label == "agent":
-        remote_arguments = [context["target"], context["path"]] if context else []
+        remote_arguments = ["--context", json.dumps(context)] if context else []
         subprocess.Popen(
             [
                 sys.executable,
@@ -372,7 +387,7 @@ def schedule_default_command(tab, label, context=None):
 
     # Focus creates the first pane asynchronously. Resolve it inside the
     # detached worker after the parent focuses the tab.
-    remote_arguments = [context["target"], context["path"]] if context else []
+    remote_arguments = ["--context", json.dumps(context)] if context else []
     subprocess.Popen(
         [sys.executable, __file__, "--launch-tab", tab["tab_id"], label, *remote_arguments],
         stdin=subprocess.DEVNULL,
@@ -384,18 +399,18 @@ def schedule_default_command(tab, label, context=None):
 
 def main():
     if len(sys.argv) in (3, 5) and sys.argv[1] == "--managed-agent":
-        context = {"target": sys.argv[3], "path": sys.argv[4]} if len(sys.argv) == 5 else None
+        context = json.loads(sys.argv[4]) if len(sys.argv) == 5 and sys.argv[3] == "--context" else None
         launch_managed_agent(sys.argv[2], context)
         return 0
 
     if len(sys.argv) in (4, 6) and sys.argv[1] == "--launch":
-        context = {"target": sys.argv[4], "path": sys.argv[5]} if len(sys.argv) == 6 else None
+        context = json.loads(sys.argv[5]) if len(sys.argv) == 6 and sys.argv[4] == "--context" else None
         time.sleep(0.1)
         launch_default_command(sys.argv[2], sys.argv[3], context)
         return 0
 
     if len(sys.argv) in (4, 6) and sys.argv[1] == "--launch-tab":
-        context = {"target": sys.argv[4], "path": sys.argv[5]} if len(sys.argv) == 6 else None
+        context = json.loads(sys.argv[5]) if len(sys.argv) == 6 and sys.argv[4] == "--context" else None
         launch_tab_command(sys.argv[2], sys.argv[3], context)
         return 0
 

@@ -57,3 +57,53 @@
   register: herdr_codex_integration
   changed_when: >-
     'installed' in herdr_codex_integration.stdout | lower
+
+- name: HERDR | Read linger state
+  ansible.builtin.command: >-
+    loginctl show-user {{ ansible_user_id }} --property=Linger --value
+  register: herdr_linger_state
+  changed_when: false
+
+- name: HERDR | Enable user services after logout
+  ansible.builtin.command: loginctl enable-linger {{ ansible_user_id }}
+  become: true
+  when: herdr_linger_state.stdout | trim != 'yes'
+
+- name: HERDR | Create systemd user directory
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.config/systemd/user"
+    state: directory
+    mode: "0755"
+
+- name: HERDR | Install persistent user service
+  ansible.builtin.copy:
+    src: herdr.service
+    dest: "{{ ansible_env.HOME }}/.config/systemd/user/herdr.service"
+    mode: "0644"
+  register: herdr_user_service
+
+- name: HERDR | Reload systemd user units
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+    scope: user
+  when: herdr_user_service.changed
+
+- name: HERDR | Enable persistent user service
+  ansible.builtin.systemd_service:
+    name: herdr.service
+    enabled: true
+    scope: user
+
+- name: HERDR | Check current server
+  ansible.builtin.command: >-
+    {{ ansible_env.HOME }}/.local/bin/herdr status server
+  register: herdr_server_status
+  changed_when: false
+  failed_when: false
+
+- name: HERDR | Start persistent user service
+  ansible.builtin.systemd_service:
+    name: herdr.service
+    state: started
+    scope: user
+  when: herdr_server_status.rc != 0
