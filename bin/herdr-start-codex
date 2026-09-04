@@ -534,11 +534,11 @@ if [[ "$target" == "mac" ]]; then
       "$dotfiles_root/bin/herdr-run-codex-agent"
       --interactive
       --close-tab-on-exit
+      --dangerously-bypass-hook-trust
     )
     if [[ "$local_machine_label" == Ubuntu ]]; then
       resume_arguments+=(
         --dangerously-bypass-approvals-and-sandbox
-        --dangerously-bypass-hook-trust
       )
     fi
     resume_arguments+=(
@@ -550,9 +550,9 @@ if [[ "$target" == "mac" ]]; then
     )
     printf -v launch_command '%q ' "${resume_arguments[@]}"
   else
-    launch_command="$dotfiles_root/bin/herdr-run-codex-agent --interactive --close-tab-on-exit"
+    launch_command="$dotfiles_root/bin/herdr-run-codex-agent --interactive --close-tab-on-exit --dangerously-bypass-hook-trust"
     if [[ "$local_machine_label" == Ubuntu ]]; then
-      launch_command="$launch_command --dangerously-bypass-approvals-and-sandbox --dangerously-bypass-hook-trust"
+      launch_command="$launch_command --dangerously-bypass-approvals-and-sandbox"
     fi
   fi
 else

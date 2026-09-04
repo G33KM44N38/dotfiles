@@ -55,7 +55,7 @@ case "$*" in
   'pane process-info --pane proof-thread:p2')
     printf '%s\n' '{"result":{"process_info":{"foreground_processes":[{"name":"zsh"}]}}}'
     ;;
-  'pane run proof-thread:p2 @DOTFILES@/bin/herdr-run-codex-agent --interactive --close-tab-on-exit')
+  'pane run proof-thread:p2 @DOTFILES@/bin/herdr-run-codex-agent --interactive --close-tab-on-exit --dangerously-bypass-hook-trust')
     : >"$HERDR_AGENT_STARTED"
     ;;
 esac
@@ -102,7 +102,7 @@ printf '%s\n' "$*" >"$HERDR_TITLE_LOG"
         start_call = (
             "pane run proof-thread:p2 "
             f"{DOTFILES}/bin/herdr-run-codex-agent "
-            "--interactive --close-tab-on-exit"
+            "--interactive --close-tab-on-exit --dangerously-bypass-hook-trust"
         )
         assert calls.count(start_call) == 1, {
             "calls": calls,
@@ -367,7 +367,10 @@ esac
             None,
         )
         assert run_call is not None, calls
-        assert "herdr-run-codex-agent --interactive --close-tab-on-exit -C" in run_call
+        assert (
+            "herdr-run-codex-agent --interactive --close-tab-on-exit "
+            "--dangerously-bypass-hook-trust -C"
+        ) in run_call
         assert "resume --all session-123" in run_call
         assert "workspace create" not in "\n".join(calls)
         assert "agent focus saved:p2" in calls
