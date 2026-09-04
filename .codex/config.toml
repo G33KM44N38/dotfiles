@@ -1,4 +1,4 @@
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 check_for_update_on_startup = false
 model_reasoning_effort = "medium"
 service_tier = "default"
