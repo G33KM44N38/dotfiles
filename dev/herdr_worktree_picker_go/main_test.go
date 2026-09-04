@@ -202,6 +202,40 @@ func TestGlobalThreadSearchOffersCreationAfterNoMatch(t *testing.T) {
 	}
 }
 
+func TestExactWorktreeSearchDoesNotOfferCreation(t *testing.T) {
+	a := &app{localMachine: "Mac", root: "/work/current"}
+	m := model{
+		app: a,
+		allRows: []row{{
+			Kind: "WT", Machine: "Mac", Branch: "ci/baba-1313-targeted-validation-flow",
+		}},
+		query: "ci/baba-1313-targeted-validation-flow",
+	}
+
+	m.applyFilter(true)
+
+	if len(m.rows) != 1 || m.rows[0].Kind != "WT" {
+		t.Fatalf("worktree search offered a non-worktree action: %#v", m.rows)
+	}
+}
+
+func TestMissingWorktreeSearchOffersCreation(t *testing.T) {
+	a := &app{localMachine: "Mac", root: "/work/current"}
+	m := model{
+		app: a,
+		allRows: []row{{
+			Kind: "WT", Machine: "Mac", Branch: "ci/existing-flow",
+		}},
+		query: "ci/new-flow",
+	}
+
+	m.applyFilter(true)
+
+	if len(m.rows) != 1 || m.rows[0].Kind != "NEW" || m.rows[0].Prompt != "ci/new-flow" {
+		t.Fatalf("missing worktree search did not offer creation: %#v", m.rows)
+	}
+}
+
 func TestProjectThreadModeKeepsOnlyCurrentRepo(t *testing.T) {
 	a := &app{newThreadOnly: true, root: "/work/current", localMachine: "Mac"}
 	rows := []row{

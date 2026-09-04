@@ -1851,6 +1851,7 @@ func (m *model) applyFilter(reset bool) {
 	query := strings.ToLower(strings.TrimSpace(m.query))
 	m.rows = nil
 	threadTitleMatch := false
+	gitTargetMatch := false
 	for _, r := range m.allRows {
 		if query == "" {
 			m.rows = append(m.rows, r)
@@ -1861,6 +1862,9 @@ func (m *model) applyFilter(reset bool) {
 		}
 		if (r.Kind == "TH" || r.Kind == "HIST") && r.threadTitleMatch(query) {
 			threadTitleMatch = true
+		}
+		if (r.Kind == "WT" || r.Kind == "BR" || r.Kind == "RB") && r.gitTargetMatch(query) {
+			gitTargetMatch = true
 		}
 		if _, matched := r.matchRank(query); matched {
 			m.rows = append(m.rows, r)
@@ -1873,12 +1877,17 @@ func (m *model) applyFilter(reset bool) {
 			return iRank < jRank
 		})
 	}
-	if query != "" && !threadTitleMatch && m.app != nil && m.app.root != "" {
+	if query != "" && !threadTitleMatch && !gitTargetMatch && m.app != nil && m.app.root != "" {
 		m.rows = append(m.app.newThreadRows(strings.TrimSpace(m.query)), m.rows...)
 	}
 	if reset || m.cursor >= len(m.rows) {
 		m.cursor = 0
 	}
+}
+
+func (r row) gitTargetMatch(query string) bool {
+	return strings.EqualFold(strings.TrimSpace(r.Branch), query) ||
+		strings.EqualFold(strings.TrimSpace(r.Target), query)
 }
 
 func (r row) threadTitleMatch(query string) bool {
