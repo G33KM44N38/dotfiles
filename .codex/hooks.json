@@ -31,17 +31,6 @@
         ]
       }
     ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "command": "'/Users/boss/.dotfiles/bin/codex-ste-hook' stop",
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
-    ],
     "SubagentStart": [
       {
         "hooks": [
@@ -69,11 +58,6 @@
         "hooks": [
           {
             "command": "'/Users/boss/.dotfiles/bin/herdr-codex-lifecycle-hook' working",
-            "timeout": 3,
-            "type": "command"
-          },
-          {
-            "command": "'/Users/boss/.dotfiles/bin/codex-ste-hook' prompt",
             "timeout": 3,
             "type": "command"
           }
