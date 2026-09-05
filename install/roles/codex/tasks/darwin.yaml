@@ -1,4 +1,7 @@
 ---
+  - name: Configure Codex home for macOS apps
+    ansible.builtin.import_tasks: environment.yaml
+
   - name: Install latest Codex globally
     npm:
       name: "@openai/codex"

@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+
+
+CONFIG = Path(__file__).resolve().parents[1] / ".config/zsh/path.zsh"
+
+
+def resolve(home, override=None):
+    environment = {**os.environ, "HOME": str(home)}
+    environment.pop("CODEX_HOME", None)
+    if override is not None:
+        environment["CODEX_HOME"] = str(override)
+    return subprocess.run(
+        ["zsh", "-dfc", 'source "$1"; print -r -- "${CODEX_HOME-}"', "test", str(CONFIG)],
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout.strip()
+
+
+def main():
+    fixture = Path(tempfile.mkdtemp(prefix="codex-home-test-"))
+    home = fixture / "another mac user"
+    home.mkdir()
+    assert resolve(home) == ""
+    physical = home / "dotfiles clone/.codex"
+    physical.mkdir(parents=True)
+    (home / ".codex").symlink_to(physical, target_is_directory=True)
+    assert resolve(home) == str(physical.resolve())
+    custom = home / "custom config"
+    custom.mkdir()
+    alias = home / "custom alias"
+    alias.symlink_to(custom, target_is_directory=True)
+    assert resolve(home, alias) == str(custom.resolve())
+    assert resolve(home, custom) == str(custom.resolve())
+    print(f"4 Codex home checks passed. Fixtures retained at {fixture}")
+
+
+if __name__ == "__main__":
+    main()

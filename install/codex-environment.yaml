@@ -1,0 +1,12 @@
+---
+- name: Configure Codex home without installing other tools
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  gather_subset: [min]
+  tasks:
+    - name: Configure the macOS Codex environment
+      ansible.builtin.include_role:
+        name: codex
+        tasks_from: environment.yaml
+      when: ansible_facts.system == 'Darwin'

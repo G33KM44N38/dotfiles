@@ -1,0 +1,60 @@
+---
+- name: Resolve the physical Codex home
+  ansible.builtin.shell: |
+    set -eu
+    candidate="${CODEX_HOME:-$HOME/.codex}"
+    if [ ! -d "$candidate" ] && [ -z "${CODEX_HOME:-}" ]; then
+      candidate={{ (playbook_dir ~ '/../.codex') | quote }}
+    fi
+    cd "$candidate"
+    pwd -P
+  args:
+    executable: /bin/sh
+  register: codex_physical_home
+  changed_when: false
+
+- name: Ensure the user LaunchAgents directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/Library/LaunchAgents"
+    state: directory
+    mode: "0755"
+
+- name: Install the Codex home LaunchAgent
+  ansible.builtin.template:
+    src: com.dotfiles.codex-home.plist.j2
+    dest: "{{ ansible_facts.env.HOME }}/Library/LaunchAgents/com.dotfiles.codex-home.plist"
+    mode: "0644"
+    validate: /usr/bin/plutil -lint %s
+  register: codex_home_agent
+
+- name: Check whether the Codex home LaunchAgent is loaded
+  ansible.builtin.command:
+    argv: [launchctl, print, "gui/{{ ansible_facts.user_uid }}/com.dotfiles.codex-home"]
+  register: codex_home_agent_status
+  changed_when: false
+  failed_when: false
+
+- name: Unload the changed Codex home LaunchAgent
+  ansible.builtin.command:
+    argv: [launchctl, bootout, "gui/{{ ansible_facts.user_uid }}/com.dotfiles.codex-home"]
+  when: codex_home_agent.changed and codex_home_agent_status.rc == 0
+
+- name: Load the Codex home LaunchAgent
+  ansible.builtin.command:
+    argv:
+      - launchctl
+      - bootstrap
+      - "gui/{{ ansible_facts.user_uid }}"
+      - "{{ ansible_facts.env.HOME }}/Library/LaunchAgents/com.dotfiles.codex-home.plist"
+  when: codex_home_agent.changed or codex_home_agent_status.rc != 0
+
+- name: Read the current GUI Codex home
+  ansible.builtin.command: launchctl getenv CODEX_HOME
+  register: codex_gui_home
+  changed_when: false
+  failed_when: false
+
+- name: Apply Codex home to future GUI apps now
+  ansible.builtin.command:
+    argv: [launchctl, setenv, CODEX_HOME, "{{ codex_physical_home.stdout }}"]
+  when: codex_gui_home.stdout != codex_physical_home.stdout

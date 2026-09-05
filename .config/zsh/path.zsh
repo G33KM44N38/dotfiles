@@ -5,6 +5,10 @@ add_to_path() {
     fi
 }
 
+if [[ -d "${CODEX_HOME:-$HOME/.codex}" ]]; then
+    export CODEX_HOME="$(cd -- "${CODEX_HOME:-$HOME/.codex}" && pwd -P)"
+fi
+
 add_to_path /usr/local/bin
 add_to_path $GOPATH/bin
 add_to_path ~/go/bin
