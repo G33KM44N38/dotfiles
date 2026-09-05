@@ -7,6 +7,12 @@ description: Run a two-pass GitHub pull request review and fix workflow. Use whe
 
 Use this workflow for PRs where review and remediation both matter.
 
+## Connection to babysit
+
+When called from [babysit-pr](../babysit/SKILL.md), complete this review and fix pass, then return to its monitoring loop. Pass back the PR, repository path, reviewed head SHA, latest pushed SHA, findings, fixes, validation results, and remaining blockers. Preserve the user's authorization for fixes, pushes, and GitHub comments or replies.
+
+When the user requests both skills directly, run this workflow first, then continue with babysit-pr. A standalone review request ends here unless the user also asked for monitoring. Do not start a second babysitting loop or repeat a completed review of the same head commit in the current task.
+
 ## Workflow
 
 1. Identify the PR:
