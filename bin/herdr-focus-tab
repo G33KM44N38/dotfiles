@@ -168,6 +168,15 @@ def pane_is_idle(pane_id):
     )
 
 
+def wait_for_idle_shell(pane_id, timeout=5):
+    deadline = time.monotonic() + timeout
+    while not pane_is_idle(pane_id):
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.05)
+    return True
+
+
 def pane_has_codex(pane_id):
     try:
         processes = herdr("pane", "process-info", "--pane", pane_id)["result"][
@@ -232,9 +241,13 @@ def remote_pane_command(label, context):
     )
 
 
-def launch_default_command(pane_id, label, context=None):
+def launch_default_command(pane_id, label, context=None, *, wait_shell=False):
     command = remote_pane_command(label, context) if context else DEFAULT_COMMANDS.get(label)
-    if command is None or not pane_is_idle(pane_id):
+    if command is None:
+        return
+    # A newly created shell may still be running startup commands. Existing
+    # tabs must remain focus-only while another foreground command is active.
+    if not wait_for_idle_shell(pane_id, timeout=5 if wait_shell else 0):
         return
 
     herdr("pane", "run", pane_id, command)
@@ -246,15 +259,15 @@ def launch_default_command(pane_id, label, context=None):
         herdr("pane", "send-keys", pane_id, "s")
 
 
-def launch_tab_command(tab_id, label, context=None):
+def launch_tab_command(tab_id, label, context=None, *, wait_shell=False):
     lock_name = re.sub(r"[^a-zA-Z0-9_-]+", "-", tab_id)
     with open(f"/tmp/herdr-focus-tab-launch-{lock_name}.lock", "a+") as lock_file:
         fcntl.flock(lock_file, fcntl.LOCK_EX)
         pane = pane_for_tab(tab_id, timeout=5)
         if pane is None:
             raise RuntimeError(f"{label} tab {tab_id} did not create a pane")
-        launch_default_command(pane["pane_id"], label, context)
-        if context:
+        launch_default_command(pane["pane_id"], label, context, wait_shell=wait_shell)
+        if context or label in DEFAULT_COMMANDS:
             deadline = time.monotonic() + 2
             while pane_is_idle(pane["pane_id"]) and time.monotonic() < deadline:
                 time.sleep(0.05)
@@ -279,15 +292,15 @@ def close_idle_sibling_panes(tab_id, agent_pane_id, timeout=0):
         time.sleep(0.05)
 
 
-def launch_managed_agent(tab_id, context=None):
+def launch_managed_agent(tab_id, context=None, *, wait_shell=False):
     # Multiple quick keypresses can start multiple detached workers. Serialize
     # provisioning so the tab's existing pane receives the command only once.
     with open("/tmp/herdr-focus-tab-agent.lock", "a+") as lock_file:
         fcntl.flock(lock_file, fcntl.LOCK_EX)
-        ensure_managed_agent(tab_id, context)
+        ensure_managed_agent(tab_id, context, wait_shell=wait_shell)
 
 
-def ensure_managed_agent(tab_id, context=None):
+def ensure_managed_agent(tab_id, context=None, *, wait_shell=False):
     agents = herdr("agent", "list")["result"]["agents"]
     agent = next(
         (
@@ -310,6 +323,9 @@ def ensure_managed_agent(tab_id, context=None):
     pane = pane_for_tab(tab_id, timeout=5)
     if pane is None:
         raise RuntimeError(f"agent tab {tab_id} did not create a pane")
+
+    if wait_shell and not wait_for_idle_shell(pane["pane_id"]):
+        raise RuntimeError(f"agent tab {tab_id} shell did not become idle")
 
     agent_name = unique_agent_name(pane, agents)
     if context:
@@ -364,7 +380,7 @@ def ensure_managed_agent(tab_id, context=None):
     raise RuntimeError(f"Codex did not start in agent tab {tab_id}")
 
 
-def schedule_default_command(tab, label, context=None):
+def schedule_default_command(tab, label, context=None, *, created=False):
     if label == "agent":
         remote_arguments = ["--context", json.dumps(context)] if context else []
         subprocess.Popen(
@@ -374,6 +390,7 @@ def schedule_default_command(tab, label, context=None):
                 "--managed-agent",
                 tab["tab_id"],
                 *remote_arguments,
+                *(["--wait-shell"] if created else []),
             ],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
@@ -389,7 +406,8 @@ def schedule_default_command(tab, label, context=None):
     # detached worker after the parent focuses the tab.
     remote_arguments = ["--context", json.dumps(context)] if context else []
     subprocess.Popen(
-        [sys.executable, __file__, "--launch-tab", tab["tab_id"], label, *remote_arguments],
+        [sys.executable, __file__, "--launch-tab", tab["tab_id"], label,
+         *remote_arguments, *(["--wait-shell"] if created else [])],
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -398,9 +416,12 @@ def schedule_default_command(tab, label, context=None):
 
 
 def main():
+    wait_shell = "--wait-shell" in sys.argv
+    if wait_shell:
+        sys.argv.remove("--wait-shell")
     if len(sys.argv) in (3, 5) and sys.argv[1] == "--managed-agent":
         context = json.loads(sys.argv[4]) if len(sys.argv) == 5 and sys.argv[3] == "--context" else None
-        launch_managed_agent(sys.argv[2], context)
+        launch_managed_agent(sys.argv[2], context, wait_shell=wait_shell)
         return 0
 
     if len(sys.argv) in (4, 6) and sys.argv[1] == "--launch":
@@ -411,7 +432,7 @@ def main():
 
     if len(sys.argv) in (4, 6) and sys.argv[1] == "--launch-tab":
         context = json.loads(sys.argv[5]) if len(sys.argv) == 6 and sys.argv[4] == "--context" else None
-        launch_tab_command(sys.argv[2], sys.argv[3], context)
+        launch_tab_command(sys.argv[2], sys.argv[3], context, wait_shell=wait_shell)
         return 0
 
     if len(sys.argv) != 2:
@@ -428,6 +449,7 @@ def main():
         tab = registered_tab(context, label) if context else None
         if tab is None:
             tab = tab_for_label(workspace_id, label)
+        created = tab is None
         if tab is None:
             tab = herdr(
                 "tab",
@@ -439,7 +461,7 @@ def main():
                 "--no-focus",
             )["result"]["tab"]
         register_tab(workspace_id, context, label, tab)
-        schedule_default_command(tab, label, context)
+        schedule_default_command(tab, label, context, created=created)
         herdr("tab", "focus", tab["tab_id"])
     return 0
 

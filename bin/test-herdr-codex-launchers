@@ -973,7 +973,9 @@ def test_focus_tab_launcher() -> None:
     }
     module.close_idle_sibling_panes = lambda *_args, **_kwargs: None
     module.pane_has_codex = lambda _pane_id: True
-    module.ensure_managed_agent("proof:t1")
+    startup_states = iter([False, False, True])
+    module.pane_is_idle = lambda _pane_id: next(startup_states)
+    module.ensure_managed_agent("proof:t1", wait_shell=True)
 
     assert (
         "pane",
@@ -1149,6 +1151,64 @@ def test_focus_tab_defers_remote_pane_lookup_until_after_focus() -> None:
     ]]
 
 
+def test_editor_waits_for_new_shell_and_keeps_running_editor() -> None:
+    path = DOTFILES / "bin/herdr-focus-tab"
+    loader = SourceFileLoader("herdr_focus_tab_startup", str(path))
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    calls = []
+    module.herdr = lambda *args: calls.append(args) or {}
+    module.time.sleep = lambda _seconds: None
+    # Startup processes occupy the new shell during the first keypress.
+    states = iter([False, False, True])
+    module.pane_is_idle = lambda _pane: next(states)
+    module.launch_default_command("proof:p1", "editor", wait_shell=True)
+    assert calls == [("pane", "run", "proof:p1", "nvim .")]
+    # Subsequent navigation into a running editor must not type into it.
+    module.pane_is_idle = lambda _pane: False
+    module.launch_default_command("proof:p1", "editor")
+    assert len(calls) == 1
+    # Returning to an editor tab after quitting Neovim launches it again.
+    module.pane_is_idle = lambda _pane: True
+    module.launch_default_command("proof:p1", "editor")
+    assert len(calls) == 2
+    launches = []
+    module.subprocess.Popen = lambda args, **kwargs: launches.append(args)
+    module.schedule_default_command({"tab_id": "proof:t1"}, "editor", created=True)
+    assert launches[0][-1] == "--wait-shell"
+
+
+def test_process_and_terminal_shortcuts_launch_only_remote_shells() -> None:
+    path = DOTFILES / "bin/herdr-focus-tab"
+    loader = SourceFileLoader("herdr_focus_tab_shells", str(path))
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    from unittest.mock import patch
+
+    context = {"target": "ubuntu.test", "path": "/remote/worktree"}
+    with patch.object(module.subprocess, "Popen") as spawn:
+        for label in ("process", "terminal"):
+            module.schedule_default_command({"tab_id": "proof:t1"}, label, created=True)
+        spawn.assert_not_called()
+        for label in ("agent", "process", "terminal"):
+            module.schedule_default_command(
+                {"tab_id": "proof:t1"}, label, context, created=True
+            )
+            assert spawn.call_args.args[0][-1] == "--wait-shell"
+
+    for label in ("process", "terminal"):
+        with patch.object(module, "pane_is_idle", side_effect=[False, False, True]), \
+             patch.object(module.time, "sleep"), \
+             patch.object(module, "herdr") as run:
+            module.launch_default_command("proof:p1", label, context, wait_shell=True)
+            run.assert_called_once()
+            command = run.call_args.args
+            assert command[:3] == ("pane", "run", "proof:p1")
+            assert f"--kind {label}" in command[3]
+
+
 def main() -> int:
     test_machine_launcher_starts_mac_codex()
     test_current_machine_keeps_remote_checkout()
@@ -1168,6 +1228,8 @@ def main() -> int:
     test_focus_tab_reattaches_exact_remote_agent()
     test_focus_tab_routes_remote_tools_to_remote_wrapper()
     test_focus_tab_defers_remote_pane_lookup_until_after_focus()
+    test_editor_waits_for_new_shell_and_keeps_running_editor()
+    test_process_and_terminal_shortcuts_launch_only_remote_shells()
     print("herdr-codex-launcher-regression-ok")
     return 0
 
