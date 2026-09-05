@@ -2,7 +2,7 @@
 
 The canonical executable is `~/.dotfiles/bin/worktree-chore`.
 The installer links `~/.local/bin/worktree-chore` to it.
-The `wtc` alias and the six-hour LaunchAgent use the same executable.
+The `wtc` alias and the hourly LaunchAgent use the same executable.
 
 Preview scheduled cleanup:
 
@@ -42,4 +42,4 @@ go vet ./...
 ```
 
 The installer lives in `install/roles/worktree-chore`.
-Its LaunchAgent scans `~/coding/work` every six hours with `--automation --fetch`.
+Its LaunchAgent scans `~/coding/work` every hour with `--automation --fetch`.

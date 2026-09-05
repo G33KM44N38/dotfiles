@@ -65,7 +65,7 @@
     - ansible_system == 'Darwin'
     - worktree_chore_go_mod.stat.exists
 
-- name: Worktree Chore | Install six-hour cleanup LaunchAgent for all work repositories
+- name: Worktree Chore | Install hourly cleanup LaunchAgent for all work repositories
   ansible.builtin.template:
     src: com.kylian.worktree-chore-babacoiffure.plist.j2
     dest: "{{ ansible_facts.env.HOME }}/Library/LaunchAgents/com.kylian.worktree-chore-babacoiffure.plist"
