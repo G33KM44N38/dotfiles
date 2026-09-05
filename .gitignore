@@ -91,3 +91,9 @@ goinfre/
 .config/herdr/**
 !.config/herdr/
 !.config/herdr/config.toml
+
+# Hermes persona and external Herdr integration
+!.hermes/SOUL.md
+!.hermes/skills/
+!.hermes/skills/herdr-gateway/
+!.hermes/skills/herdr-gateway/SKILL.md
