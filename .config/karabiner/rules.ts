@@ -57,7 +57,7 @@ const hyperSubLayers = createHyperSubLayers({
   },
   o: {
     a: app("Arc"),
-    b: app("Beeper Desktop"),
+    b: app("Telegram"),
     c: app("Calendar"),
     d: app("DaVinci Resolve"),
     e: app("Mail"),

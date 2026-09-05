@@ -3628,10 +3628,10 @@
               {
                 "to": [
                   {
-                    "shell_command": "open -a 'Beeper Desktop.app'"
+                    "shell_command": "open -a 'Telegram.app'"
                   }
                 ],
-                "description": "Open -a 'Beeper Desktop.app'",
+                "description": "Open -a 'Telegram.app'",
                 "type": "basic",
                 "from": {
                   "key_code": "b",
