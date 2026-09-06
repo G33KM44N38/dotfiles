@@ -1,0 +1,11 @@
+#!/bin/bash
+set -euo pipefail
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+source_file="$script_dir/../keyboard-layout/macos/screens.swift"
+binary="$HOME/.local/lib/dotfiles/screen-control"
+if [[ ! -x "$binary" || "$source_file" -nt "$binary" ]]; then
+    mkdir -p "$(dirname -- "$binary")"
+    /usr/bin/swiftc -O "$source_file" -o "$binary"
+fi
+[[ "${1:-}" == "--build" ]] && exit 0
+exec "$binary" "$@"

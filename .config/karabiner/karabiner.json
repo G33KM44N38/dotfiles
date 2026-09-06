@@ -8,6 +8,125 @@
       "complex_modifications": {
         "rules": [
           {
+            "description": "Screens left to right: Hyper focus, Option+Shift move",
+            "manipulators": [
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "1",
+                  "modifiers": {
+                    "mandatory": [
+                      "command",
+                      "control",
+                      "option",
+                      "shift"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "shell_command": "\"$HOME/.dotfiles/bin/screen-control\" focus 1",
+                    "repeat": false
+                  }
+                ]
+              },
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "1",
+                  "modifiers": {
+                    "mandatory": [
+                      "option",
+                      "shift"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "shell_command": "\"$HOME/.dotfiles/bin/screen-control\" move 1",
+                    "repeat": false
+                  }
+                ]
+              },
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "2",
+                  "modifiers": {
+                    "mandatory": [
+                      "command",
+                      "control",
+                      "option",
+                      "shift"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "shell_command": "\"$HOME/.dotfiles/bin/screen-control\" focus 2",
+                    "repeat": false
+                  }
+                ]
+              },
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "2",
+                  "modifiers": {
+                    "mandatory": [
+                      "option",
+                      "shift"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "shell_command": "\"$HOME/.dotfiles/bin/screen-control\" move 2",
+                    "repeat": false
+                  }
+                ]
+              },
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "3",
+                  "modifiers": {
+                    "mandatory": [
+                      "command",
+                      "control",
+                      "option",
+                      "shift"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "shell_command": "\"$HOME/.dotfiles/bin/screen-control\" focus 3",
+                    "repeat": false
+                  }
+                ]
+              },
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "3",
+                  "modifiers": {
+                    "mandatory": [
+                      "option",
+                      "shift"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "shell_command": "\"$HOME/.dotfiles/bin/screen-control\" move 3",
+                    "repeat": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
             "description": "Key Layer (left_gui_layer)",
             "manipulators": [
               {

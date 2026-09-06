@@ -2,9 +2,9 @@
   ansible.builtin.command: defaults write com.apple.dock workspaces-auto-swoosh -bool NO
   changed_when: false
 
-# Native desktop shortcuts: Control + Option + Shift + Command + digit.
+# Hyper+digits now select physical screens through Karabiner.
 # Update individual entries to preserve unrelated macOS shortcuts.
-- name: Configure Hyper+1 through Hyper+9 to switch desktops
+- name: Disable legacy Hyper desktop shortcuts
   ansible.builtin.command:
     argv:
       - /usr/bin/defaults
@@ -15,7 +15,7 @@
       - "{{ item.id }}"
       - >-
         <dict>
-          <key>enabled</key><true/>
+          <key>enabled</key><false/>
           <key>value</key><dict>
             <key>parameters</key><array>
               <integer>65535</integer>
@@ -48,4 +48,11 @@
 
 - name: Restart the Dock
   ansible.builtin.command: killall Dock
+  changed_when: false
+
+- name: Build native screen navigation helper
+  ansible.builtin.command:
+    argv:
+      - "{{ playbook_dir }}/../bin/screen-control"
+      - --build
   changed_when: false

@@ -1,4 +1,5 @@
 import fs from "fs";
+import { macosScreenRule } from "../../keyboard-layout/src/macos-screens";
 import { KarabinerRules } from "./types";
 import {
   sharedFunctionLayer,
@@ -143,6 +144,7 @@ const homeRowMods = sharedHomeRowMods.map(({ input, modifier, timing, tap }) =>
 );
 
 const rules: KarabinerRules[] = [
+  macosScreenRule(),
   leftGuiLayer,
   rightGuiLayer,
   left_option_layer,
