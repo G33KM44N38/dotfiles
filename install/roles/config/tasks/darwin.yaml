@@ -2,16 +2,48 @@
   ansible.builtin.command: defaults write com.apple.dock workspaces-auto-swoosh -bool NO
   changed_when: false
 
-- name: Reserve Control+3 for Arc Space navigation
+# Native desktop shortcuts: Control + Option + Shift + Command + digit.
+# Update individual entries to preserve unrelated macOS shortcuts.
+- name: Configure Hyper+1 through Hyper+9 to switch desktops
   ansible.builtin.command:
     argv:
-      - defaults
+      - /usr/bin/defaults
       - write
       - com.apple.symbolichotkeys
       - AppleSymbolicHotKeys
       - -dict-add
-      - "120"
-      - "{ enabled = false; value = { parameters = (65535, 20, 262144); type = standard; }; }"
+      - "{{ item.id }}"
+      - >-
+        <dict>
+          <key>enabled</key><true/>
+          <key>value</key><dict>
+            <key>parameters</key><array>
+              <integer>65535</integer>
+              <integer>{{ item.key_code }}</integer>
+              <integer>1966080</integer>
+            </array>
+            <key>type</key><string>standard</string>
+          </dict>
+        </dict>
+  loop:
+    - { id: 118, key_code: 18 } # 1
+    - { id: 119, key_code: 19 } # 2
+    - { id: 120, key_code: 20 } # 3
+    - { id: 121, key_code: 21 } # 4
+    - { id: 122, key_code: 23 } # 5
+    - { id: 123, key_code: 22 } # 6
+    - { id: 124, key_code: 26 } # 7
+    - { id: 125, key_code: 28 } # 8
+    - { id: 126, key_code: 25 } # 9
+  loop_control:
+    label: "Desktop {{ item.id - 117 }}"
+  changed_when: false
+
+- name: Apply native keyboard shortcuts to the current session
+  ansible.builtin.command:
+    argv:
+      - /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings
+      - -u
   changed_when: false
 
 - name: Restart the Dock
