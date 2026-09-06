@@ -4,6 +4,10 @@ This file is the catalog for global instructions. Detailed rules live in `/Users
 
 Read every matching file before you act. If no row matches, read `/Users/boss/.dotfiles/.codex/instructions/CONTEXT.md`.
 
+When opening images or screenshots for the user on macOS, use Shottr instead
+of Preview. Use `open -a Shottr "<path>"` for PNG, JPEG, and GIF files.
+For PDFs or formats Shottr does not support, use an appropriate viewer.
+
 | When the task involves | Read |
 |---|---|
 | Render or Render credentials | `/Users/boss/.dotfiles/.codex/instructions/render.md` |
