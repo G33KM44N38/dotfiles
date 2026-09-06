@@ -24,11 +24,14 @@
       name: "@loongphy/codex-auth"
       global: yes
       state: latest
+    when: codex_auth_enabled | default(false) | bool
 
   - name: Enable codex-auth auto-switch
     ansible.builtin.command: codex-auth config auto enable
     changed_when: false
+    when: codex_auth_enabled | default(false) | bool
 
   - name: Disable codex-auth API refresh
     ansible.builtin.command: codex-auth config api disable
     changed_when: false
+    when: codex_auth_enabled | default(false) | bool
