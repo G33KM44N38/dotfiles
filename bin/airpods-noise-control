@@ -1,0 +1,29 @@
+#!/bin/bash
+set -euo pipefail
+source_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib"
+helper_dir="$HOME/.local/lib/airpods-noise-control"
+helper="$helper_dir/airpods-noise-control"
+if [[ ! -x "$helper" || "$source_dir/airpods-noise-control.m" -nt "$helper" ]]; then
+    mkdir -p "$helper_dir"
+    build_file="$(mktemp "$helper_dir/build.XXXXXX")"
+    /usr/bin/clang -Wall -Wextra -Werror -fobjc-arc -framework Foundation -framework CoreBluetooth -framework CoreAudio \
+        "$source_dir/airpods-noise-control.m" -o "$build_file"
+    chmod +x "$build_file"
+    mv -f "$build_file" "$helper"
+fi
+mode="${1:-toggle}"
+expected="$("$helper" "$mode" "${@:2}")"
+if [[ "$mode" == status || "$mode" == --help ]]; then
+    printf '%s\n' "$expected"
+    exit 0
+fi
+for attempt in 1 2 3; do
+    actual="$("$helper" status)"
+    if [[ "$actual" == "$expected" ]]; then
+        printf '%s\n' "$actual"
+        exit 0
+    fi
+    sleep 0.2
+done
+echo "Commande envoyée mais changement non confirmé : $actual" >&2
+exit 1
