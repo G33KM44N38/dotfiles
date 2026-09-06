@@ -4,7 +4,3 @@
     name: qmk/qmk/qmk
     state: present
     update_homebrew: yes
-
-- name: setup yabai
-  ignore_errors: yes
-  command: yabai --start-service
