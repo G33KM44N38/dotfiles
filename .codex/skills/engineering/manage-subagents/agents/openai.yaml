@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manage Subagents"
+  short_description: "Direct workers and verify their results"
+  default_prompt: "Use $manage-subagents to delegate bounded execution while you own direction, reasoning, and final verification."
