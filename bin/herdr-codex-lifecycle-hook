@@ -499,8 +499,30 @@ def launch_title_generation(pane_id: str, session_id: str, user_prompt: str) -> 
                 pass
 
 
+def title_agent_name(pane_id: str, title: str) -> str:
+    """Give the task a CLI-safe name, unique for panes sharing a discussion."""
+    subject = title.rsplit(" · codex-", 1)[0]
+    ascii_subject = unicodedata.normalize("NFKD", subject).encode("ascii", "ignore").decode()
+    slug = re.sub(r"[^a-z0-9]+", "-", ascii_subject.lower()).strip("-")
+    if not slug or not slug[0].isalpha():
+        slug = "codex-" + slug
+    suffix = hashlib.sha256(pane_id.encode()).hexdigest()[:6]
+    return f"{slug[:25].rstrip('-')}-{suffix}"
+
+
 def report_title(pane_id: str, title: str) -> None:
-    """Publish a human-readable title without changing stable agent identity."""
+    """Keep the display title and task name aligned; target by stable pane ID."""
+    try:
+        subprocess.run(
+            ["herdr", "agent", "rename", pane_id, title_agent_name(pane_id, title)],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=2,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        pass
     metadata_command = [
         "herdr",
         "pane",
