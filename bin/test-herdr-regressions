@@ -89,7 +89,6 @@ EXPECTED_COMMANDS = [
     ("alt+e", "shell", "$HOME/.dotfiles/bin/herdr-worktree-main"),
     ("alt+r", "shell", "$HOME/.dotfiles/bin/herdr-worktree-release"),
     ("cmd+o", "pane", "$HOME/.dotfiles/bin/herdr-worktree-picker"),
-    ("cmd+p", "pane", "$HOME/.dotfiles/bin/herdr-worktree-picker --threads"),
     ("cmd+alt+p", "pane", "$HOME/.dotfiles/bin/herdr-worktree-picker --new-thread"),
     ("alt+h", "shell", "$HOME/.dotfiles/bin/herdr-focus-tab editor"),
     ("alt+j", "shell", "$HOME/.dotfiles/bin/herdr-focus-tab agent"),
@@ -252,7 +251,6 @@ def check_terminal_command_transport() -> None:
         "macos-option-as-alt = true",
         r"keybind = cmd+k=text:\x1b[107;9u",
         r"keybind = cmd+o=text:\x1b[111;9u",
-        r"keybind = cmd+p=text:\x1b[112;9u",
     }
     missing = sorted(line for line in required if line not in ghostty)
     if missing:
@@ -317,14 +315,7 @@ def run_deep_tests() -> None:
                 else "ok"
             )
             print(f"  {test_name} Cmd-K: {cmd_k_status}")
-            cmd_p_env = {**os.environ, "HERDR_TEST_BINDING": "cmd-p"}
-            cmd_p_result = run(str(DOTFILES / "bin" / test_name), env=cmd_p_env)
-            cmd_p_status = (
-                cmd_p_result.stdout.strip().splitlines()[-1]
-                if cmd_p_result.stdout.strip()
-                else "ok"
-            )
-            print(f"  {test_name} Cmd-P: {cmd_p_status}")
+
 
 
 def main() -> int:

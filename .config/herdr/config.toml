@@ -114,11 +114,6 @@ type = "pane"
 command = "$HOME/.dotfiles/bin/herdr-worktree-picker"
 
 [[keys.command]]
-key = "cmd+p"
-type = "pane"
-command = "$HOME/.dotfiles/bin/herdr-worktree-picker --threads"
-
-[[keys.command]]
 key = "cmd+alt+p"
 type = "pane"
 command = "$HOME/.dotfiles/bin/herdr-worktree-picker --new-thread"

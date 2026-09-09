@@ -30,9 +30,6 @@ if SEQUENCE_NAME == "prefix":
 elif SEQUENCE_NAME == "cmd-k":
     KEY_SEQUENCE = b"\x1b[107;9u"
     BINDING = "cmd+k"
-elif SEQUENCE_NAME == "cmd-p":
-    KEY_SEQUENCE = b"\x1b[112;9u"
-    BINDING = "cmd+p"
 elif SEQUENCE_NAME == "cmd-alt-p":
     KEY_SEQUENCE = b"\x1b[112;11u"
     BINDING = "cmd+alt+p"
@@ -109,7 +106,7 @@ def live_main() -> int:
         os.write(master_fd, KEY_SEQUENCE)
         deadline = time.monotonic() + 5
         output = bytearray()
-        thread_bindings = {"cmd-p", "cmd-alt-p"}
+        thread_bindings = {"cmd-alt-p"}
         expected_prompt = b"herdr thread >" if SEQUENCE_NAME in thread_bindings else b"herdr worktree >"
         while time.monotonic() < deadline and expected_prompt not in output:
             if select.select([master_fd], [], [], 0.1)[0]:
