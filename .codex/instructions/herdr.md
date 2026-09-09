@@ -10,6 +10,8 @@ One job: preserve Herdr navigation and agent state.
 - Keep existing conversations and work in place. Use Ubuntu for new delegated
   coding tasks; use the Mac for steps that need a Mac app or macOS runtime.
 - In the new-thread picker, Ubuntu is selected by default. `Alt-m` selects Mac.
+  `Cmd-p` navigates threads globally across repositories and machines.
+  `Cmd-alt-p` navigates threads in the current repository, on Mac and Ubuntu.
   `Cmd-o` retains the worktree picker.
 - The quick-start shortcuts use Ubuntu for repos with an origin remote. On
   Ubuntu, they run locally. Explicit `herdr-start-codex mac` selects local Mac

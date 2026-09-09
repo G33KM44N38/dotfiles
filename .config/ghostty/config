@@ -6,6 +6,10 @@ macos-option-as-alt = true
 keybind = cmd+k=text:\x1b[107;9u
 # Send Cmd+O to Herdr's worktree picker.
 keybind = cmd+o=text:\x1b[111;9u
+# Send Cmd+P to Herdr's global thread finder.
+keybind = cmd+p=text:\x1b[112;9u
+# Send Cmd+Alt+P to the current repository thread finder.
+keybind = cmd+alt+p=text:\x1b[112;11u
 keybind = cmd+shift+z=toggle_split_zoom
 keybind = alt+u=unbind
 keybind = alt+i=unbind
