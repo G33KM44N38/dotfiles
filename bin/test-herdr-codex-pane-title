@@ -145,8 +145,9 @@ path.write_text("Corriger les titres Herdr\\n", encoding="utf-8")
         assert agent_session_id_from(recovered_commands) == session_one
         env["HERDR_CODEX_LIFECYCLE_STATE_DIR"] = original_state_dir
 
-        # /new and /clear arrive with a fresh id and reset immediately. Slash
-        # commands and empty/control-only inputs are not meaningful subjects.
+        # /new and /clear arrive with a fresh id and reset immediately. The
+        # first real prompt after either command must then retitle the agent.
+        # Slash commands and empty/control-only inputs are not subjects.
         new_commands = invoke("start", session_two, source="clear")
         assert title_from(new_commands) == (
             "Codex session" + two_suffix
@@ -164,6 +165,12 @@ path.write_text("Corriger les titres Herdr\\n", encoding="utf-8")
         )
         assert title_from(new_subject_commands) == "Fix the sidebar" + two_suffix
         assert agent_session_id_from(new_subject_commands) == session_two
+        new_renames = [
+            command
+            for command in new_subject_commands
+            if command[:2] == ["agent", "rename"]
+        ]
+        assert new_renames[-1][3].startswith("fix-the-sidebar-")
 
         # Similar subjects remain distinguishable because their ids differ.
         session_three = "019fc242-dead-7261-8e2c-6db899ca2a9d"
