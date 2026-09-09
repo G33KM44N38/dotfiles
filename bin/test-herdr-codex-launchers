@@ -84,7 +84,7 @@ printf '%s\n' "$*" >"$HERDR_TITLE_LOG"
         result = subprocess.run(
             [
                 str(DOTFILES / "bin/herdr-start-codex"),
-                "current",
+                "mac",
                 "--prompt",
                 "Explain the failure",
                 "--new-worktree",
@@ -737,10 +737,10 @@ def test_remote_project_resolution_requires_matching_branch() -> None:
             ],
             env=env,
             text=True,
-            check=True,
             capture_output=True,
         )
-        assert fork_resolved.stdout.strip() == str(checkout)
+        assert fork_resolved.returncode == 4
+        assert "does not match this repository" in fork_resolved.stderr
 
         default_resolved = subprocess.run(
             [
@@ -1209,7 +1209,53 @@ def test_process_and_terminal_shortcuts_launch_only_remote_shells() -> None:
             assert f"--kind {label}" in command[3]
 
 
+def test_linux_default_routing_and_explicit_mac() -> None:
+    with tempfile.TemporaryDirectory(prefix="herdr-default-route-") as directory:
+        root = Path(directory)
+        write_executable(root / "ssh", "#!/bin/sh\nprintf ssh >>\"$ROUTE_LOG\"\nexit 1\n")
+        write_executable(root / "herdr", "#!/bin/sh\necho local-launch-selected >&2\nexit 1\n")
+        write_executable(root / "uname", "#!/bin/sh\necho \"$TEST_PLATFORM\"\n")
+        env = {**os.environ, "PATH": f"{root}:" + os.environ["PATH"],
+               "HERDR_BIN_PATH": str(root / "herdr"), "ROUTE_LOG": str(root / "ssh.log"),
+               "HERDR_ACTIVE_WORKSPACE_ID": "default-route-test",
+               "HERDR_ACTIVE_PANE_CWD": str(DOTFILES),
+               "XDG_STATE_HOME": str(root / "state"), "TEST_PLATFORM": "Darwin"}
+        launcher = str(DOTFILES / "bin/herdr-start-codex")
+        for arguments in ([], ["current"]):
+            result = subprocess.run([launcher, *arguments], env=env, text=True, capture_output=True)
+            assert result.returncode != 0 and "Ubuntu is offline" in result.stderr, result.stderr
+        before = (root / "ssh.log").read_text()
+        for arguments, platform, cwd in ((["mac"], "Darwin", DOTFILES),
+                                          ([], "Linux", DOTFILES),
+                                          ([], "Darwin", root)):
+            result = subprocess.run([launcher, *arguments], env={**env, "TEST_PLATFORM": platform,
+                                    "HERDR_ACTIVE_PANE_CWD": str(cwd)}, text=True, capture_output=True)
+            assert "local-launch-selected" in result.stderr, result.stderr
+            assert (root / "ssh.log").read_text() == before
+
+
+def test_first_use_clones_repository_without_touching_other_checkouts() -> None:
+    with tempfile.TemporaryDirectory(prefix="herdr-first-repo-") as directory:
+        root = Path(directory)
+        origin = root / "origin"
+        subprocess.run(["git", "init", "-q", "-b", "main", origin], check=True)
+        subprocess.run(["git", "-C", origin, "-c", "user.name=Test", "-c", "user.email=test@example.test",
+                        "commit", "-q", "--allow-empty", "-m", "initial"], check=True)
+        env = {**os.environ, "HERDR_REMOTE_CODE_ROOT": str(root / "code")}
+        command = [str(DOTFILES / "bin/herdr-run-remote-codex-agent"), "--remote-resolve",
+                   "--repo-url", str(origin), "--branch", "main", "--project-name", "first-repo"]
+        result = subprocess.run(command, env=env, text=True, capture_output=True, check=True)
+        checkout = root / "code/first-repo"
+        assert result.stdout.strip() == str(checkout)
+        (checkout / "keep.txt").write_text("local work")
+        again = subprocess.run(command, env=env, text=True, capture_output=True, check=True)
+        assert again.stdout == result.stdout
+        assert (checkout / "keep.txt").read_text() == "local work"
+
+
 def main() -> int:
+    test_linux_default_routing_and_explicit_mac()
+    test_first_use_clones_repository_without_touching_other_checkouts()
     test_machine_launcher_starts_mac_codex()
     test_current_machine_keeps_remote_checkout()
     test_remote_wrapper_attaches_persistent_herdr_agent()

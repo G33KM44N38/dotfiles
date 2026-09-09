@@ -6,6 +6,30 @@ readonly dotfiles_root="${DOTFILES_ROOT:-$HOME/.dotfiles}"
 readonly remote_home="/home/kylian"
 readonly remote_dotfiles="$remote_home/.dotfiles"
 
+# Deploy just the Herdr launch/navigation runtime without changing Codex or
+# Neovim configuration. Existing sessions and authentication stay on each host.
+if [[ "${1:-}" == --herdr-only ]]; then
+  ssh -o BatchMode=yes "$remote_target" "whoami; hostname; test -d '$remote_dotfiles/bin'"
+  cd "$dotfiles_root"
+  rsync -azR -e ssh \
+    .config/herdr/config.toml \
+    bin/herdr-start-codex bin/herdr-run-remote-codex-agent \
+    dev/herdr_worktree_picker_go go.mod go.sum \
+    "$remote_target:$remote_dotfiles/"
+  ssh -o BatchMode=yes "$remote_target" "
+    set -eu
+    sed -i \
+      -e 's#/Users/boss/coding/work#/home/kylian/code/work#g' \
+      -e 's#/Users/boss#/home/kylian#g' \
+      -e 's#coding/work#code#g' \
+      -e 's#Library/Mobile Documents/iCloud~md~obsidian/Documents/Second_Brain#Documents/Second_Brain#g' \
+      '$remote_dotfiles/.config/herdr/config.toml'
+    bash -n '$remote_dotfiles/bin/herdr-start-codex' '$remote_dotfiles/bin/herdr-run-remote-codex-agent'
+  "
+  printf 'Herdr runtime synced to %s.\n' "$remote_target"
+  exit 0
+fi
+
 sync_paths=(
   .codex/AGENTS.md
   .config/herdr/config.toml

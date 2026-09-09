@@ -83,37 +83,6 @@ ubuntu_is_online() {
     "$remote_target" true >/dev/null 2>&1
 }
 
-choose_target() {
-  local ubuntu_status="offline" selection
-  if [[ "$local_machine_label" == "Ubuntu" ]]; then
-    printf 'mac\n'
-    return
-  fi
-  if ubuntu_is_online; then
-    ubuntu_status="online"
-  fi
-
-  if command -v fzf >/dev/null 2>&1; then
-    selection="$(printf 'mac\t1. Mac · new thread\nubuntu\t2. Ubuntu · new persistent thread · %s\nubuntu-attach\t3. Ubuntu · reconnect · %s\n' \
-      "$ubuntu_status" "$ubuntu_status" |
-      fzf --no-multi --layout=reverse --border=rounded \
-        --prompt='Start Codex on › ' --header='Choose a machine' \
-        --with-nth=2 --delimiter=$'\t' --height=100%)" || return 1
-    printf '%s\n' "${selection%%$'\t'*}"
-    return
-  fi
-
-  printf '1. Mac · new thread\n2. Ubuntu · new persistent thread · %s\n3. Ubuntu · reconnect · %s\n\nChoose: ' \
-    "$ubuntu_status" "$ubuntu_status" >&2
-  IFS= read -r selection
-  case "$selection" in
-    1|1.|mac|Mac) printf 'mac\n' ;;
-    2|2.|ubuntu|Ubuntu) printf 'ubuntu\n' ;;
-    3|3.|ubuntu-attach) printf 'ubuntu-attach\n' ;;
-    *) return 1 ;;
-  esac
-}
-
 target=
 initial_prompt=
 thread_title=
@@ -194,7 +163,7 @@ if [[ -n "$new_worktree_branch" && "$git_space" == current ]]; then
 fi
 
 case "$target" in
-  "") target="$(choose_target)" || exit 0 ;;
+  "") target=current ;;
   local) target=mac ;;
   current|mac|ubuntu|ubuntu-attach) ;;
   *) usage; exit 2 ;;
@@ -270,6 +239,9 @@ PYCONTEXT
 )"
     IFS=$'\t' read -r remote_target remote_project_path remote_session <<<"$context"
     target=ubuntu
+  elif [[ "$local_machine_label" == Mac ]] &&
+       git -C "$project_path" remote get-url origin >/dev/null 2>&1; then
+    target=ubuntu
   else
     target=mac
   fi
@@ -339,14 +311,21 @@ fi
 
 if [[ "$target" == ubuntu* ]]; then
   if ! ubuntu_is_online; then
-    printf '\nUbuntu is offline or SSH is unavailable.\n' >&2
+    printf '\nUbuntu is offline or SSH is unavailable. Use Alt-m in the new-thread picker to choose Mac.\n' >&2
     exit 1
   fi
 fi
 
 if [[ "$target" == "ubuntu" ]]; then
   if [[ -z "$remote_project_path" ]]; then
-    if [[ "$git_space" == default ]]; then
+    if [[ "$git_space" == current ]]; then
+      printf -v remote_resolve_command '%q ' \
+        "$remote_runner" \
+        --remote-resolve \
+        --repo-url "$project_repo_url" \
+        --branch "$project_branch" \
+        --project-name "$project_name"
+    elif [[ "$git_space" == default ]]; then
       printf -v remote_resolve_command '%q ' \
         "$remote_runner" \
         --remote-default \

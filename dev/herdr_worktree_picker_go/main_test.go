@@ -769,3 +769,22 @@ func TestRemoteRefreshKeepsWorktreesAndHidesThreads(t *testing.T) {
 		t.Fatalf("unexpected refreshed rows: %#v", m.allRows)
 	}
 }
+
+func TestNewCodingThreadDefaultsToUbuntuWithoutWaitingForSSH(t *testing.T) {
+	for _, online := range []bool{false, true} {
+		a := &app{localMachine: "Mac", remoteMachine: "Ubuntu", remoteOnline: online}
+		r := a.newThreadRows("Fix login")[0]
+		if r.Target != "ubuntu" || r.Machine != "Ubuntu" || !r.Remote {
+			t.Fatalf("new coding thread is not remote: %#v", r)
+		}
+		m := model{app: a, draft: &threadDraft{row: r}}
+		m.toggleThreadDraftField(0)
+		if m.draft.row.Target != "mac" || m.draft.row.Remote {
+			t.Fatal("Mac-only work must remain selectable even while Ubuntu is offline")
+		}
+	}
+	a := &app{localMachine: "Ubuntu", remoteMachine: "Ubuntu"}
+	if r := a.newThreadRows("")[0]; r.Remote || r.Machine != "Ubuntu" {
+		t.Fatalf("Linux should run locally, without nested SSH: %#v", r)
+	}
+}

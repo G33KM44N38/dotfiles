@@ -788,9 +788,13 @@ func (a *app) newThreadRows(prompt string) []row {
 	if prompt != "" {
 		detail = prompt
 	}
+	machine, target, remote := a.localMachine, "mac", false
+	if a.localMachine == "Mac" {
+		machine, target, remote = "Ubuntu", "ubuntu", true
+	}
 	return []row{{
-		Kind: "NEW", Machine: a.localMachine, State: "new", Branch: "New thread",
-		Target: "mac", Prompt: prompt, Detail: detail,
+		Kind: "NEW", Machine: machine, State: "new", Branch: "New thread",
+		Target: target, Remote: remote, Prompt: prompt, Detail: detail,
 	}}
 }
 
@@ -1474,7 +1478,7 @@ func (m *model) toggleThreadDraftField(field int) {
 	}
 	switch field {
 	case 0:
-		if m.app.localMachine == m.app.remoteMachine || !m.app.remoteOnline {
+		if m.app.localMachine == m.app.remoteMachine {
 			return
 		}
 		if m.draft.row.Remote {
@@ -1658,6 +1662,9 @@ func (m model) threadDraftView() string {
 	machineDetail := "local"
 	if draft.row.Remote {
 		machineDetail = "remote"
+		if !m.app.remoteOnline {
+			machineDetail = "Ubuntu unavailable · Alt-m for Mac"
+		}
 	} else if m.app.localMachine != m.app.remoteMachine && !m.app.remoteOnline {
 		machineDetail = "local · Ubuntu offline"
 	}

@@ -100,12 +100,12 @@ resolve_remote_project() {
         return 3
     fi
 
-    if [[ -n "$name_branch_match" ]]; then
+    if [[ -z "$wanted_repo" && -n "$name_branch_match" ]]; then
         printf '%s\n' "$name_branch_match"
         return 0
     fi
 
-    if [[ -n "$first_name_match" ]]; then
+    if [[ -z "$wanted_repo" && -n "$first_name_match" ]]; then
         candidate_branch="$(git -C "$first_name_match" branch --show-current 2>/dev/null || true)"
         printf 'Ubuntu has %s on branch %s, not %s.\n' \
             "$first_name_match" "${candidate_branch:-detached}" "${requested_branch:-detached}" >&2
@@ -114,6 +114,23 @@ resolve_remote_project() {
 
     if [[ -z "$wanted_repo" && -d "$remote_code_root/$project_name" ]]; then
         printf '%s\n' "$remote_code_root/$project_name"
+        return 0
+    fi
+
+    # First use of a repository needs only a normal clone. Never replace a
+    # directory or reuse a different owner's repository with the same name.
+    if [[ -n "$repo_url" && "$project_name" =~ ^[A-Za-z0-9._-]+$ &&
+          "$project_name" != . && "$project_name" != .. ]]; then
+        local checkout="$remote_code_root/$project_name"
+        if [[ -e "$checkout" || -L "$checkout" ]]; then
+            printf 'Ubuntu path already exists and does not match this repository: %s\n' "$checkout" >&2
+            return 4
+        fi
+        local -a clone_args=(clone)
+        [[ -z "$requested_branch" ]] || clone_args+=(--branch "$requested_branch")
+        mkdir -p "$remote_code_root"
+        git "${clone_args[@]}" -- "$repo_url" "$checkout" >&2 || return
+        printf '%s\n' "$checkout"
         return 0
     fi
 
