@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -20,6 +21,7 @@ CHILD_SEARCH_ROOTS = (
 )
 
 EXACT_PATHS = (".dotfiles", "backup", "code", "coding")
+RECENCY_LIMIT = 100
 
 
 def fail(message: str, code: int = 1) -> None:
@@ -48,6 +50,53 @@ def normalize(path: str) -> Path:
     if not resolved.is_absolute():
         resolved = Path.cwd() / resolved
     return resolved.resolve()
+
+
+def recency_file() -> Path:
+    state_home = os.environ.get("XDG_STATE_HOME")
+    if state_home:
+        return Path(state_home).expanduser() / "herdr" / "navigate-recent.json"
+    return Path.home() / ".local" / "state" / "herdr" / "navigate-recent.json"
+
+
+def load_recent_paths() -> list[str]:
+    try:
+        data = json.loads(recency_file().read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    if not isinstance(data, list):
+        return []
+    return [value for value in data if isinstance(value, str)]
+
+
+def remember_path(path: Path) -> None:
+    target = str(path)
+    recent = [target, *(value for value in load_recent_paths() if value != target)]
+    destination = recency_file()
+    try:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=destination.parent,
+            prefix=f".{destination.name}.",
+            delete=False,
+        ) as temporary:
+            json.dump(recent[:RECENCY_LIMIT], temporary)
+            temporary.write("\n")
+            temporary_path = Path(temporary.name)
+        temporary_path.replace(destination)
+    except OSError:
+        return
+
+
+def rank_by_recency(directories: list[Path], recent_paths: list[str]) -> list[Path]:
+    recent_rank = {path: rank for rank, path in enumerate(recent_paths)}
+    unseen_rank = len(recent_rank)
+    return sorted(
+        directories,
+        key=lambda path: (recent_rank.get(str(path), unseen_rank), str(path).casefold()),
+    )
 
 
 def workspace_git_paths(workspace: dict) -> tuple[set[str], set[str], bool]:
@@ -119,7 +168,7 @@ def select_path() -> Path | None:
     if not shutil.which("fzf"):
         fail("fzf not found in PATH")
 
-    directories = selectable_directories()
+    directories = rank_by_recency(selectable_directories(), load_recent_paths())
     if not directories:
         fail("no valid search directories found")
 
@@ -137,7 +186,16 @@ def select_path() -> Path | None:
         rows.append(f"{label}\t{path}")
 
     result = subprocess.run(
-        ["fzf", "--ansi", "--delimiter=\\t", "--with-nth=1", "--bind=result:first,enter:wait+accept", "--prompt=workspace > "],
+        [
+            "fzf",
+            "--ansi",
+            "--delimiter=\\t",
+            "--with-nth=1",
+            "--sort",
+            "--tiebreak=index",
+            "--bind=result:first,enter:wait+accept",
+            "--prompt=workspace > ",
+        ],
         input="\n".join(rows) + "\n",
         stdout=subprocess.PIPE,
         text=True,
@@ -162,12 +220,14 @@ def focus_or_create(path: Path, *, dry_run: bool) -> None:
             print(f"focus\t{workspace_id}\t{target}\t{workspace.get('label', '')}")
             return
         run(["herdr", "workspace", "focus", workspace_id])
+        remember_path(path)
         return
 
     if dry_run:
         print(f"create\t\t{target}\t{label_for(path)}")
         return
     run(["herdr", "workspace", "create", "--cwd", target, "--label", label_for(path), "--focus"])
+    remember_path(path)
 
 
 def main() -> None:

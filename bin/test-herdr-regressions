@@ -142,6 +142,7 @@ CLI_CONTRACTS = {
 
 DEEP_TESTS = [
     "test-herdr-keybinding-e2e",
+    "test-herdr-navigate",
     "test-herdr-pr-browser",
     "test-herdr-agent-completion-sound",
     "test-herdr-codex-launchers",

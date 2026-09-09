@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+"""Check recency ranking for the Cmd-K Herdr navigator."""
+
+from __future__ import annotations
+
+import importlib.machinery
+import importlib.util
+import fcntl
+import os
+from pathlib import Path
+import pty
+import select
+import struct
+import tempfile
+import termios
+import time
+from unittest.mock import patch
+
+
+SCRIPT = Path(__file__).with_name("herdr-navigate")
+LOADER = importlib.machinery.SourceFileLoader("herdr_navigate", str(SCRIPT))
+SPEC = importlib.util.spec_from_loader(LOADER.name, LOADER)
+if SPEC is None or SPEC.loader is None:
+    raise RuntimeError(f"cannot load {SCRIPT}")
+navigate = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(navigate)
+
+
+def check_typing(root: Path, keys: bytes, expected: Path) -> None:
+    """Type into the real picker and check which path Enter opens."""
+    pid, terminal = pty.fork()
+    if pid == 0:
+        try:
+            os.environ["TERM"] = "xterm-256color"
+            # Prove the picker also overrides a global no-sort preference.
+            os.environ["FZF_DEFAULT_OPTS"] = "--no-sort --no-clear"
+            os.environ.pop("FZF_DEFAULT_OPTS_FILE", None)
+            with (
+                patch.object(navigate, "selectable_directories", return_value=[root / "alpha-beta", root / "beta"]),
+                patch.object(navigate, "load_recent_paths", return_value=[str(root / "alpha-beta")]),
+                patch.object(navigate, "herdr_json", return_value={"result": {"workspaces": []}}),
+                patch.object(navigate, "pane_workspace_paths", return_value={}),
+            ):
+                chosen = navigate.select_path()
+            print(f"\nSELECTED:{chosen}\n", flush=True)
+            os._exit(0)
+        except BaseException:
+            os._exit(1)
+    output = bytearray()
+    try:
+        fcntl.ioctl(terminal, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 100, 0, 0))
+        deadline = time.monotonic() + 5
+        sent = False
+        while time.monotonic() < deadline:
+            if select.select([terminal], [], [], 0.05)[0]:
+                try:
+                    chunk = os.read(terminal, 65536)
+                except OSError:
+                    break
+                if not chunk:
+                    break
+                output.extend(chunk)
+                if b"\x1b[6n" in chunk:
+                    os.write(terminal, b"\x1b[1;1R")
+                if not sent and b"workspace >" in output:
+                    os.write(terminal, keys)
+                    time.sleep(0.2)
+                    os.write(terminal, b"\r")
+                    sent = True
+                if b"SELECTED:" in output:
+                    break
+        assert f"SELECTED:{expected.resolve()}".encode() in output, repr(bytes(output[-2000:]))
+    finally:
+        os.close(terminal)
+        os.waitpid(pid, 0)
+
+
+def main() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        alpha = root / "alpha"
+        beta = root / "beta"
+        gamma = root / "gamma"
+        for path in (alpha, beta, gamma):
+            path.mkdir()
+
+        old_state_home = os.environ.get("XDG_STATE_HOME")
+        os.environ["XDG_STATE_HOME"] = str(root / "state")
+        try:
+            navigate.remember_path(beta)
+            navigate.remember_path(alpha)
+            assert navigate.load_recent_paths() == [str(alpha), str(beta)]
+            ranked = navigate.rank_by_recency([gamma, beta, alpha], navigate.load_recent_paths())
+            assert ranked == [alpha, beta, gamma]
+
+            navigate.remember_path(beta)
+            ranked = navigate.rank_by_recency([alpha, beta, gamma], navigate.load_recent_paths())
+            assert ranked == [beta, alpha, gamma]
+
+            (root / "alpha-beta").mkdir()
+            check_typing(root, b"", root / "alpha-beta")
+            check_typing(root, b"beta", beta)
+            check_typing(root, b"beta\x15alpha", root / "alpha-beta")
+        finally:
+            if old_state_home is None:
+                os.environ.pop("XDG_STATE_HOME", None)
+            else:
+                os.environ["XDG_STATE_HOME"] = old_state_home
+
+    print("herdr-navigate: recency-ranking-ok")
+
+
+if __name__ == "__main__":
+    main()
