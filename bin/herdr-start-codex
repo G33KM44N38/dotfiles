@@ -221,6 +221,7 @@ fi
 
 remote_project_path=
 remote_session=default
+remote_split=false
 if [[ "$target" == current ]]; then
   # A remote workspace stores its machine and checkout beside its local proxy.
   context_path="${XDG_STATE_HOME:-$HOME/.local/state}/herdr/remote-workspaces/$workspace_id.json"
@@ -239,9 +240,7 @@ PYCONTEXT
 )"
     IFS=$'\t' read -r remote_target remote_project_path remote_session <<<"$context"
     target=ubuntu
-  elif [[ "$local_machine_label" == Mac ]] &&
-       git -C "$project_path" remote get-url origin >/dev/null 2>&1; then
-    target=ubuntu
+    [[ "$git_space" != current ]] || remote_split=true
   else
     target=mac
   fi
@@ -349,6 +348,9 @@ if [[ "$target" == "ubuntu" ]]; then
 
   fi
 
+fi
+
+if [[ "$target" == ubuntu && "$remote_split" == false ]]; then
   # Represent the remote thread in the local repository group. The process and
   # Git worktree stay on Ubuntu, while this workspace provides local navigation.
   proxy_label="${thread_title:-${initial_prompt:-Thread}} · Ubuntu"
@@ -576,11 +578,13 @@ if [[ "$target" == "mac" ]]; then
     fi
   fi
 else
+  thread_key="$workspace_id"
+  [[ "$remote_split" == false ]] || thread_key="split:$pane_id"
   printf -v launch_command '%q ' \
     "$dotfiles_root/bin/herdr-run-remote-codex-agent" \
     --target "$remote_target" \
     --remote-path "$remote_project_path" \
-    --thread-key "$workspace_id" \
+    --thread-key "$thread_key" \
     --session "$remote_session" \
     --close-tab-on-exit
   if [[ -n "$initial_prompt" ]]; then

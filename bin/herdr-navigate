@@ -137,7 +137,7 @@ def select_path() -> Path | None:
         rows.append(f"{label}\t{path}")
 
     result = subprocess.run(
-        ["fzf", "--ansi", "--delimiter=\\t", "--with-nth=1", "--prompt=workspace > "],
+        ["fzf", "--ansi", "--delimiter=\\t", "--with-nth=1", "--bind=result:first,enter:wait+accept", "--prompt=workspace > "],
         input="\n".join(rows) + "\n",
         stdout=subprocess.PIPE,
         text=True,

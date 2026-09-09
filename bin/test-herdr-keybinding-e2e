@@ -24,6 +24,7 @@ SESSION = f"ke-{os.getpid()}"
 SEQUENCE_NAME = os.environ.get("HERDR_TEST_BINDING", "cmd-o")
 KEY_SEQUENCE = b"\x1b[111;9u"
 BINDING = "cmd+o"
+COMMAND_TYPE = "pane"
 if SEQUENCE_NAME == "prefix":
     KEY_SEQUENCE = b"\x02o"
     BINDING = "prefix+o"
@@ -36,6 +37,14 @@ elif SEQUENCE_NAME == "cmd-p":
 elif SEQUENCE_NAME == "cmd-alt-p":
     KEY_SEQUENCE = b"\x1b[112;11u"
     BINDING = "cmd+alt+p"
+elif SEQUENCE_NAME == "ctrl-alt-n":
+    KEY_SEQUENCE = b"\x1b[110;7u"
+    BINDING = "ctrl+alt+n"
+    COMMAND_TYPE = "shell"
+elif SEQUENCE_NAME == "ctrl-shift-n":
+    KEY_SEQUENCE = b"\x1b[110;6u"
+    BINDING = "ctrl+shift+n"
+    COMMAND_TYPE = "shell"
 
 
 def wait_for(predicate, timeout: float) -> bool:
@@ -158,7 +167,7 @@ def main() -> int:
                 "[keys]",
                 "[[keys.command]]",
                 f'key = "{BINDING}"',
-                'type = "pane"',
+                f'type = "{COMMAND_TYPE}"',
                 f"command = {command!r}",
                 "",
             ]

@@ -13,9 +13,11 @@ One job: preserve Herdr navigation and agent state.
   `Cmd-p` navigates threads globally across repositories and machines.
   `Cmd-alt-p` navigates threads in the current repository, on Mac and Ubuntu.
   `Cmd-o` retains the worktree picker.
-- The quick-start shortcuts use Ubuntu for repos with an origin remote. On
-  Ubuntu, they run locally. Explicit `herdr-start-codex mac` selects local Mac
-  execution from the Mac; existing remote workspaces retain their checkout.
+- `Ctrl-alt-n` and `Ctrl-shift-n` add a Codex split using the machine already
+  selected for the current workspace. A Mac workspace stays on Mac, even when
+  Ubuntu is offline; a remote workspace retains its host and checkout.
+  The Ubuntu default applies when choosing the machine for a new thread in
+  the picker. It must never override a machine choice already made.
 - Keep code transfer explicit through Git when a task needs a Mac step. Move
   committed work on the same branch, preserve dirty checkouts, and pass the
   relevant task context. Mac and Ubuntu agent conversations remain separate.

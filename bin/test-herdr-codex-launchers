@@ -156,15 +156,15 @@ with open(os.environ["HERDR_TEST_LOG"], "a") as stream:
     stream.write(json.dumps(args) + "\\n")
 result = {}
 if args[:2] == ["workspace", "create"]:
-    result = {"workspace_id": "proof-new-remote"}
+    result = {"workspace_id": "proof-current"}
 elif args[:2] == ["agent", "list"]:
-    result = {"agents": [{"name": "codex", "agent": "codex", "pane_id": "proof-new-remote:p2"}]}
+    result = {"agents": [{"name": "codex", "agent": "codex", "pane_id": "proof-current:p2"}]}
 elif args[:2] == ["tab", "list"]:
-    result = {"tabs": [{"tab_id": "proof-new-remote:t1", "label": "agent"}]}
+    result = {"tabs": [{"tab_id": "proof-current:t1", "label": "agent"}]}
 elif args[:2] == ["pane", "list"]:
-    result = {"panes": [{"pane_id": "proof-new-remote:p1", "tab_id": "proof-new-remote:t1"}]}
+    result = {"panes": [{"pane_id": "proof-current:p1", "tab_id": "proof-current:t1"}]}
 elif args[:2] == ["pane", "split"]:
-    result = {"pane_id": "proof-new-remote:p2"}
+    result = {"pane_id": "proof-current:p2"}
 elif args[:2] == ["pane", "process-info"]:
     result = {"process_info": {"foreground_processes": [{"name": "zsh"}]}}
 print(json.dumps({"result": result}))
@@ -189,9 +189,11 @@ print(json.dumps({"result": result}))
         assert arguments[arguments.index("--target") + 1] == "saved-host"
         assert arguments[arguments.index("--remote-path") + 1] == "/remote/saved checkout"
         assert arguments[arguments.index("--session") + 1] == "saved-session"
-        assert arguments[arguments.index("--thread-key") + 1] == "proof-new-remote"
+        assert arguments[arguments.index("--thread-key") + 1] == "split:proof-current:p2"
+        assert not any(call[:2] == ["workspace", "create"] for call in calls)
+        assert any(call[:3] == ["pane", "split", "proof-current:p1"] for call in calls)
         assert json.loads((context_dir / "proof-current.json").read_text()) == original
-        assert json.loads((context_dir / "proof-new-remote.json").read_text())["path"] == original["path"]
+        assert json.loads((context_dir / "proof-current.json").read_text())["path"] == original["path"]
 
 
 def test_remote_wrapper_attaches_persistent_herdr_agent() -> None:
@@ -265,6 +267,16 @@ esac
         calls = herdr_log.read_text().splitlines()
         assert any("--display-agent Ubuntu · Codex" in call for call in calls)
         assert any("--title Fix login" in call for call in calls)
+
+        context_path = root / "state/herdr/remote-workspaces/proof-thread.json"
+        original_context = context_path.read_bytes()
+        subprocess.run(
+            [str(DOTFILES / "bin/herdr-run-remote-codex-agent"), "--target", "ubuntu.test",
+             "--remote-path", "/remote/project path", "--thread-key", "split:proof:p3"],
+            env=env, check=True, capture_output=True, text=True,
+        )
+        assert context_path.read_bytes() == original_context
+        assert "--thread-key split:proof:p3" in ssh_log.read_text()
 
 
 def test_remote_tool_wrapper_targets_same_worktree() -> None:
@@ -1209,7 +1221,7 @@ def test_process_and_terminal_shortcuts_launch_only_remote_shells() -> None:
             assert f"--kind {label}" in command[3]
 
 
-def test_linux_default_routing_and_explicit_mac() -> None:
+def test_current_machine_routing_and_explicit_ubuntu() -> None:
     with tempfile.TemporaryDirectory(prefix="herdr-default-route-") as directory:
         root = Path(directory)
         write_executable(root / "ssh", "#!/bin/sh\nprintf ssh >>\"$ROUTE_LOG\"\nexit 1\n")
@@ -1221,17 +1233,64 @@ def test_linux_default_routing_and_explicit_mac() -> None:
                "HERDR_ACTIVE_PANE_CWD": str(DOTFILES),
                "XDG_STATE_HOME": str(root / "state"), "TEST_PLATFORM": "Darwin"}
         launcher = str(DOTFILES / "bin/herdr-start-codex")
-        for arguments in ([], ["current"]):
+        for arguments in (["ubuntu"],):
             result = subprocess.run([launcher, *arguments], env=env, text=True, capture_output=True)
             assert result.returncode != 0 and "Ubuntu is offline" in result.stderr, result.stderr
         before = (root / "ssh.log").read_text()
-        for arguments, platform, cwd in ((["mac"], "Darwin", DOTFILES),
+        for arguments, platform, cwd in ((["current"], "Darwin", DOTFILES),
+                                          ([], "Darwin", DOTFILES),
+                                          (["mac"], "Darwin", DOTFILES),
                                           ([], "Linux", DOTFILES),
                                           ([], "Darwin", root)):
             result = subprocess.run([launcher, *arguments], env={**env, "TEST_PLATFORM": platform,
                                     "HERDR_ACTIVE_PANE_CWD": str(cwd)}, text=True, capture_output=True)
             assert "local-launch-selected" in result.stderr, result.stderr
             assert (root / "ssh.log").read_text() == before
+
+
+def test_current_machine_splits_existing_mac_workspace() -> None:
+    with tempfile.TemporaryDirectory(prefix="herdr-current-split-") as directory:
+        root = Path(directory)
+        log = root / "calls"
+        write_executable(root / "ssh", "#!/bin/sh\necho UNEXPECTED_SSH >&2\nexit 99\n")
+        write_executable(root / "uname", "#!/bin/sh\necho Darwin\n")
+        write_executable(root / "herdr", """#!/usr/bin/env python3
+import json, os, sys
+from pathlib import Path
+args = sys.argv[1:]
+with open(os.environ["HERDR_TEST_LOG"], "a") as stream:
+    stream.write(json.dumps(args) + "\\n")
+result = {}
+if args[:2] == ["agent", "list"]:
+    result = {"agents": [{"name": "existing", "agent": "codex", "pane_id": "split-proof:p1"},
+                         {"name": "new", "agent": "codex", "pane_id": "split-proof:p2"}]}
+elif args[:2] == ["tab", "list"]:
+    result = {"tabs": [{"tab_id": "split-proof:t1", "label": "agent"}]}
+elif args[:2] == ["pane", "list"]:
+    result = {"panes": [{"pane_id": "split-proof:p1", "tab_id": "split-proof:t1"}]}
+elif args[:2] == ["pane", "split"]:
+    result = {"pane_id": "split-proof:p2"}
+elif args[:2] == ["pane", "process-info"]:
+    result = {"process_info": {"foreground_processes": [{"name": "zsh"}]}}
+print(json.dumps({"result": result}))
+""")
+        env = {**os.environ, "PATH": f"{root}:" + os.environ["PATH"],
+               "HERDR_BIN_PATH": str(root / "herdr"), "HERDR_TEST_LOG": str(log),
+               "HERDR_ACTIVE_WORKSPACE_ID": "split-proof",
+               "HERDR_ACTIVE_PANE_CWD": str(DOTFILES),
+               "XDG_STATE_HOME": str(root / "state"), "DOTFILES_ROOT": str(DOTFILES)}
+        result = subprocess.run([str(DOTFILES / "bin/herdr-start-codex"), "current"],
+                                env=env, text=True, capture_output=True, timeout=20)
+        assert result.returncode == 0, result.stderr
+        calls = [json.loads(line) for line in log.read_text().splitlines()]
+        assert ["pane", "split", "split-proof:p1", "--direction", "right",
+                "--cwd", str(DOTFILES), "--no-focus"] in calls
+        command = next(call[3] for call in calls if call[:2] == ["pane", "run"])
+        assert "herdr-run-codex-agent --interactive" in command
+        assert "herdr-run-remote" not in command
+        assert not any(call[:2] in (["workspace", "create"], ["worktree", "create"],
+                                   ["tab", "create"]) for call in calls)
+        assert not any(call[:2] == ["pane", "close"] for call in calls)
 
 
 def test_first_use_clones_repository_without_touching_other_checkouts() -> None:
@@ -1254,7 +1313,8 @@ def test_first_use_clones_repository_without_touching_other_checkouts() -> None:
 
 
 def main() -> int:
-    test_linux_default_routing_and_explicit_mac()
+    test_current_machine_routing_and_explicit_ubuntu()
+    test_current_machine_splits_existing_mac_workspace()
     test_first_use_clones_repository_without_touching_other_checkouts()
     test_machine_launcher_starts_mac_codex()
     test_current_machine_keeps_remote_checkout()

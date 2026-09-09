@@ -199,13 +199,13 @@ command = "$HOME/.dotfiles/bin/herdr-focus-agent-pane 9"
 key = "ctrl+shift+n"
 type = "shell"
 command = "$HOME/.dotfiles/bin/herdr-start-codex current"
-description = "start Codex on Ubuntu for coding repos, or in the current remote checkout"
+description = "split a Codex pane on the already selected machine"
 
 [[keys.command]]
 key = "ctrl+alt+n"
 type = "shell"
 command = "$HOME/.dotfiles/bin/herdr-start-codex current"
-description = "start Codex on Ubuntu for coding repos, or in the current remote checkout"
+description = "split a Codex pane on the already selected machine"
 
 [[keys.command]]
 key = "alt+g"

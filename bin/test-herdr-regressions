@@ -305,30 +305,23 @@ def run_deep_tests() -> None:
     if sys.platform != "darwin":
         print("  macOS Codex lifecycle tests: skipped on this platform")
         return
+    failures = []
     for test_name in DEEP_TESTS:
-        result = run(str(DOTFILES / "bin" / test_name))
-        status = result.stdout.strip().splitlines()[-1] if result.stdout.strip() else "ok"
-        print(f"  {test_name}: {status}")
+        bindings = (None,)
         if test_name == "test-herdr-keybinding-e2e":
-            cmd_k_env = {**os.environ, "HERDR_TEST_BINDING": "cmd-k"}
-            cmd_k_result = run(str(DOTFILES / "bin" / test_name), env=cmd_k_env)
-            cmd_k_status = (
-                cmd_k_result.stdout.strip().splitlines()[-1]
-                if cmd_k_result.stdout.strip()
-                else "ok"
-            )
-            print(f"  {test_name} Cmd-K: {cmd_k_status}")
-            cmd_p_env = {**os.environ, "HERDR_TEST_BINDING": "cmd-p"}
-            cmd_p_result = run(str(DOTFILES / "bin" / test_name), env=cmd_p_env)
-            cmd_p_status = (
-                cmd_p_result.stdout.strip().splitlines()[-1]
-                if cmd_p_result.stdout.strip()
-                else "ok"
-            )
-            print(f"  {test_name} Cmd-P: {cmd_p_status}")
-            local_env = {**os.environ, "HERDR_TEST_BINDING": "cmd-alt-p"}
-            local_result = run(str(DOTFILES / "bin" / test_name), env=local_env)
-            print(f"  {test_name} Cmd-Alt-P: {local_result.stdout.strip()}")
+            bindings = (None, "cmd-k", "cmd-p", "cmd-alt-p", "ctrl-alt-n", "ctrl-shift-n")
+        for binding in bindings:
+            label = f"{test_name} {binding or ''}".strip()
+            env = {**os.environ, "HERDR_TEST_BINDING": binding} if binding else None
+            try:
+                result = run(str(DOTFILES / "bin" / test_name), env=env)
+                status = result.stdout.strip().splitlines()[-1] if result.stdout.strip() else "ok"
+                print(f"  {label}: {status}", flush=True)
+            except AssertionError as error:
+                failures.append(str(error))
+                print(f"  {label}: FAILED", flush=True)
+    if failures:
+        fail("\n\n".join(failures))
 
 
 def main() -> int:

@@ -24,7 +24,7 @@ usage() {
 
 report_title() {
     local title=$1
-    [[ -n "$title" ]] || return
+    [[ -n "$title" ]] || return 0
     herdr pane report-metadata "$HERDR_PANE_ID" \
         --source boss:remote-codex-title \
         --agent codex \
@@ -627,7 +627,11 @@ print(
             printf 'Ubuntu returned no persistent agent pane.\n' >&2
             return 1
         }
-        save_local_binding "${HERDR_WORKSPACE_ID:-}" "$target" "$remote_path" "$binding_json"
+        # A sibling split has its own durable agent binding. Keep the parent
+        # workspace's reconnect target unchanged.
+        if [[ "$thread_key" != split:* ]]; then
+            save_local_binding "${HERDR_WORKSPACE_ID:-}" "$target" "$remote_path" "$binding_json"
+        fi
     fi
 
     printf -v remote_command \
