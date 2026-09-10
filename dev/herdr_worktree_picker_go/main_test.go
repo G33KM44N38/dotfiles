@@ -1,13 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -342,13 +342,21 @@ func TestWorktreeModeContainsOnlyGitTargets(t *testing.T) {
 	}
 }
 
-func TestThreadBranchUsesPromptAndTimestamp(t *testing.T) {
-	when := time.Date(2026, 9, 2, 14, 5, 6, 0, time.UTC)
+func TestThreadBranchRetriesCollisions(t *testing.T) {
+	random := bytes.NewReader([]byte{0, 0, 0, 1, 0xa7, 0xf3, 0xc2, 0x9b})
+	got, err := threadBranch(random, func(id string) (bool, error) { return id == "00000001", nil })
+	if err != nil || got != "a7f3c29b" {
+		t.Fatalf("branch = %q, error = %v", got, err)
+	}
+}
 
-	got := threadBranch("Fix checkout failure", when)
-
-	if got != "thread/fix-checkout-failure-20260902-140506" {
-		t.Fatalf("branch = %q", got)
+func TestThreadBranchFailsClosed(t *testing.T) {
+	if _, err := threadBranch(bytes.NewReader(nil), func(string) (bool, error) { t.Fatal("checked after entropy failure"); return false, nil }); err == nil {
+		t.Fatal("expected entropy failure")
+	}
+	failure := errors.New("repository unavailable")
+	if _, err := threadBranch(bytes.NewReader(make([]byte, 4)), func(string) (bool, error) { return false, failure }); !errors.Is(err, failure) {
+		t.Fatalf("error = %v", err)
 	}
 }
 
@@ -363,17 +371,16 @@ func TestThreadTitleComesFromFirstPrompt(t *testing.T) {
 }
 
 func TestNewThreadLaunchArgsKeepDraftChoices(t *testing.T) {
-	when := time.Date(2026, 9, 4, 12, 30, 0, 0, time.UTC)
 	r := row{
 		Target: "ubuntu", Prompt: "Fix login", GitSpace: "worktree", Source: "origin", Base: "develop",
 	}
 
-	got := newThreadLaunchArgs(r, "/work/repo", "main", when)
+	got := newThreadLaunchArgs(r, "/work/repo", "main", "a7f3c29b")
 	want := []string{
 		"ubuntu", "--project-path", "/work/repo",
 		"--git-space", "worktree", "--source", "origin",
 		"--default-branch", "develop", "--thread-title", "Fix login", "--new-worktree",
-		"thread/fix-login-20260904-123000", "--prompt", "Fix login",
+		"a7f3c29b", "--prompt", "Fix login",
 	}
 	if strings.Join(got, "\x00") != strings.Join(want, "\x00") {
 		t.Fatalf("args = %#v, want %#v", got, want)

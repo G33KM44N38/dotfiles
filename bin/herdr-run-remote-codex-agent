@@ -139,7 +139,7 @@ resolve_remote_project() {
 }
 
 ensure_remote_worktree() {
-    local repo_url=$1 branch=$2 base=$3 project_name=$4 source_mode=$5 source_checkout bare_root
+    local repo_url=$1 branch=$2 base=$3 project_name=$4 source_mode=$5 new_only=${6:-false} source_checkout bare_root
     local existing_path existing_branch slug worktree_path branch_exists=false base_ref
 
     [[ -n "$branch" ]] || {
@@ -170,6 +170,10 @@ ensure_remote_worktree() {
     fi
     if git -C "$bare_root" show-ref --verify --quiet "refs/heads/$branch"; then
         branch_exists=true
+        if [[ "$new_only" == true ]]; then
+            printf 'New worktree branch already exists: %s\n' "$branch" >&2
+            return 6
+        fi
     fi
 
     existing_path="$(git -C "$bare_root" worktree list --porcelain | python3 -c '
@@ -199,7 +203,7 @@ print(slug or "branch")
 PY
 )"
     worktree_path="$bare_root/$slug"
-    if [[ -e "$worktree_path" ]]; then
+    if [[ -e "$worktree_path" || -L "$worktree_path" ]]; then
         existing_branch="$(git -C "$worktree_path" branch --show-current 2>/dev/null || true)"
         printf 'Ubuntu path %s already belongs to branch %s.\n' \
             "$worktree_path" "${existing_branch:-unknown}" >&2
@@ -540,18 +544,19 @@ main() {
 
     if [[ "${1:-}" == "--remote-worktree" ]]; then
         shift
-        local repo_url= branch= base= source_mode=local project_name=
+        local repo_url= branch= base= source_mode=local project_name= new_only=false
         while (( $# )); do
             case "$1" in
                 --repo-url) repo_url=${2:-}; shift 2 ;;
                 --branch) branch=${2:-}; shift 2 ;;
                 --base) base=${2:-}; shift 2 ;;
+                --new) new_only=true; shift ;;
                 --source) source_mode=${2:-}; shift 2 ;;
                 --project-name) project_name=${2:-}; shift 2 ;;
                 *) usage; return 2 ;;
             esac
         done
-        ensure_remote_worktree "$repo_url" "$branch" "$base" "$project_name" "$source_mode"
+        ensure_remote_worktree "$repo_url" "$branch" "$base" "$project_name" "$source_mode" "$new_only"
         return
     fi
 

@@ -853,14 +853,18 @@ def test_remote_worktree_is_created_and_reused() -> None:
             "--repo-url",
             "https://github.com/owner/project.git",
             "--branch",
-            "thread/fix-checkout",
+            "a7f3c29b",
             "--base",
             "main",
             "--project-name",
             "project",
         ]
-        first = subprocess.run(command, env=env, text=True, check=True, capture_output=True)
+        first = subprocess.run([*command, "--new"], env=env, text=True, check=True, capture_output=True)
         second = subprocess.run(command, env=env, text=True, check=True, capture_output=True)
+
+        collision = subprocess.run([*command, "--new"], env=env, text=True, capture_output=True)
+        assert collision.returncode != 0
+        assert "already exists" in collision.stderr
 
         worktree = Path(first.stdout.strip())
         assert second.stdout.strip() == str(worktree), {
@@ -869,7 +873,7 @@ def test_remote_worktree_is_created_and_reused() -> None:
             "second_stderr": second.stderr,
         }
         assert worktree == (
-            root / "code" / "work" / "project.git" / "thread-fix-checkout"
+            root / "code" / "work" / "project.git" / "a7f3c29b"
         ).resolve()
         assert (
             subprocess.run(
@@ -878,7 +882,7 @@ def test_remote_worktree_is_created_and_reused() -> None:
                 check=True,
                 capture_output=True,
             ).stdout.strip()
-            == "thread/fix-checkout"
+            == "a7f3c29b"
         )
 
 

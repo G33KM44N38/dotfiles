@@ -3,10 +3,12 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -1038,7 +1040,29 @@ func (a *app) openNewThread(r row, dryRun bool) error {
 		return err
 	}
 	launcher := filepath.Join(home, ".dotfiles/bin/herdr-start-codex")
-	args := newThreadLaunchArgs(r, a.root, a.defaultBranch(), time.Now())
+	branch := ""
+	if firstNonEmpty(r.GitSpace, "worktree") == "worktree" {
+		branch, err = threadBranch(rand.Reader, func(id string) (bool, error) {
+			cmd := exec.Command(a.gitBin, "-C", a.root, "show-ref", "--verify", "--quiet", "refs/heads/"+id)
+			err := cmd.Run()
+			if err == nil {
+				return true, nil
+			}
+			var exit *exec.ExitError
+			if !errors.As(err, &exit) || exit.ExitCode() != 1 {
+				return false, err
+			}
+			_, err = os.Lstat(filepath.Join(a.root, id))
+			if os.IsNotExist(err) {
+				return false, nil
+			}
+			return err == nil, err
+		})
+		if err != nil {
+			return err
+		}
+	}
+	args := newThreadLaunchArgs(r, a.root, a.defaultBranch(), branch)
 	if dryRun {
 		fmt.Printf("%s %s\n", launcher, strings.Join(args, " "))
 		return nil
@@ -1049,7 +1073,7 @@ func (a *app) openNewThread(r row, dryRun bool) error {
 	return command.Run()
 }
 
-func newThreadLaunchArgs(r row, projectPath, fallbackBase string, now time.Time) []string {
+func newThreadLaunchArgs(r row, projectPath, fallbackBase string, branch string) []string {
 	gitSpace := firstNonEmpty(r.GitSpace, "worktree")
 	source := firstNonEmpty(r.Source, "origin")
 	base := firstNonEmpty(r.Base, fallbackBase)
@@ -1063,7 +1087,7 @@ func newThreadLaunchArgs(r row, projectPath, fallbackBase string, now time.Time)
 	if gitSpace == "worktree" {
 		args = append(args,
 			"--thread-title", generatedThreadTitle(r.Prompt),
-			"--new-worktree", threadBranch(r.Prompt, now),
+			"--new-worktree", branch,
 		)
 	}
 	if r.Prompt != "" {
@@ -1072,16 +1096,22 @@ func newThreadLaunchArgs(r row, projectPath, fallbackBase string, now time.Time)
 	return args
 }
 
-func threadBranch(prompt string, now time.Time) string {
-	label := strings.ToLower(generatedThreadTitle(prompt))
-	label = strings.Trim(sanitizeBranch(label), "-./")
-	if label == "" {
-		label = "new"
+func threadBranch(random io.Reader, exists func(string) (bool, error)) (string, error) {
+	for attempt := 0; attempt < 100; attempt++ {
+		var value [4]byte
+		if _, err := io.ReadFull(random, value[:]); err != nil {
+			return "", fmt.Errorf("generate branch identifier: %w", err)
+		}
+		id := fmt.Sprintf("%x", value)
+		collision, err := exists(id)
+		if err != nil {
+			return "", fmt.Errorf("check branch identifier: %w", err)
+		}
+		if !collision {
+			return id, nil
+		}
 	}
-	if len(label) > 48 {
-		label = strings.TrimRight(label[:48], "-.")
-	}
-	return fmt.Sprintf("thread/%s-%s", label, now.Format("20060102-150405"))
+	return "", errors.New("could not allocate an unused branch identifier")
 }
 
 func generatedThreadTitle(prompt string) string {

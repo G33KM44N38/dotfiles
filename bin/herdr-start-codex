@@ -278,6 +278,10 @@ if [[ "$target" == mac && "$git_space" == default ]]; then
 fi
 
 if [[ "$git_space" == worktree && -n "$new_worktree_branch" && "$target" == "mac" ]]; then
+  if git -C "$project_root" show-ref --verify --quiet "refs/heads/$new_worktree_branch"; then
+    printf '\nNew worktree branch already exists: %s\n' "$new_worktree_branch" >&2
+    exit 1
+  fi
   worktree_label="${thread_title:-${initial_prompt:-${new_worktree_branch##*/}}}"
   worktree_base="$default_branch"
   if [[ "$source_mode" == origin ]]; then
@@ -341,6 +345,9 @@ if [[ "$target" == "ubuntu" ]]; then
         --base "$default_branch" \
         --source "$source_mode" \
         --project-name "$project_name"
+      if [[ -n "$new_worktree_branch" ]]; then
+        remote_resolve_command+=" --new"
+      fi
     fi
     if ! remote_project_path="$(ssh -o BatchMode=yes "$remote_target" "$remote_resolve_command")"; then
       exit 1
