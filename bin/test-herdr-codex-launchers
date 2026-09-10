@@ -55,7 +55,7 @@ case "$*" in
   'pane process-info --pane proof-thread:p2')
     printf '%s\n' '{"result":{"process_info":{"foreground_processes":[{"name":"zsh"}]}}}'
     ;;
-  'pane run proof-thread:p2 @DOTFILES@/bin/herdr-run-codex-agent --interactive --close-tab-on-exit --dangerously-bypass-hook-trust')
+  'pane run proof-thread:p2 @DOTFILES@/bin/herdr-run-codex-agent --interactive --close-tab-on-exit --dangerously-bypass-hook-trust -- Explain\\ the\\ failure')
     : >"$HERDR_AGENT_STARTED"
     ;;
 esac
@@ -103,7 +103,7 @@ printf '%s\n' "$*" >"$HERDR_TITLE_LOG"
         start_call = (
             "pane run proof-thread:p2 "
             f"{DOTFILES}/bin/herdr-run-codex-agent "
-            "--interactive --close-tab-on-exit --dangerously-bypass-hook-trust"
+            "--interactive --close-tab-on-exit --dangerously-bypass-hook-trust -- Explain\\ the\\ failure"
         )
         assert calls.count(start_call) == 1, {
             "calls": calls,
@@ -124,8 +124,7 @@ printf '%s\n' "$*" >"$HERDR_TITLE_LOG"
         )
         assert "agent rename proof-thread:p2 codex-agent" in calls
         assert "agent focus proof-thread:p2" in calls
-        assert "agent wait proof-thread:p2 --until idle --timeout 30000" in calls
-        assert "agent prompt proof-thread:p2 Explain the failure" in calls
+        assert not any(call.startswith("agent wait ") or call.startswith("agent prompt ") for call in calls)
         assert not any(call.startswith("agent start ") for call in calls)
         deadline = time.monotonic() + 2
         while not title_log.exists() and time.monotonic() < deadline:

@@ -4,19 +4,17 @@ One job: preserve Herdr navigation and agent state.
 
 ## Execution host
 
-- Default new coding work for all repositories to Ubuntu at
-  `kylian@kylian-ps42-8rb`, using its persistent Herdr server. Keep the Mac Herdr
-  interface for navigation, reading results, and returning to threads later.
-- Keep existing conversations and work in place. Use Ubuntu for new delegated
-  coding tasks; use the Mac for steps that need a Mac app or macOS runtime.
-- In the new-thread picker, Ubuntu is selected by default. `Alt-m` selects Mac.
-  `Cmd-p` navigates threads globally across repositories and machines.
+- Default new threads to the Mac. Ubuntu remains available as an explicit
+  machine choice through `Alt-m` in the new-thread picker.
+- Keep existing conversations and work in place. Never override the machine
+  already selected for a workspace.
+- `Cmd-p` navigates threads globally across repositories and machines.
   `Cmd-alt-p` navigates threads in the current repository, on Mac and Ubuntu.
   `Cmd-o` retains the worktree picker.
 - `Ctrl-alt-n` and `Ctrl-shift-n` add a Codex split using the machine already
   selected for the current workspace. A Mac workspace stays on Mac, even when
   Ubuntu is offline; a remote workspace retains its host and checkout.
-  The Ubuntu default applies when choosing the machine for a new thread in
+  The Mac default applies when choosing the machine for a new thread in
   the picker. It must never override a machine choice already made.
 - Keep code transfer explicit through Git when a task needs a Mac step. Move
   committed work on the same branch, preserve dirty checkouts, and pass the

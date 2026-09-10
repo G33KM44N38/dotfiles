@@ -784,14 +784,15 @@ func sortRows(rows []row) {
 }
 
 func (a *app) newThreadRows(prompt string) []row {
+	// Navigation labels are not an initial user request.
+	if strings.EqualFold(strings.TrimSpace(prompt), "new") || strings.EqualFold(strings.TrimSpace(prompt), "new thread") {
+		prompt = ""
+	}
 	detail := "start a blank thread"
 	if prompt != "" {
 		detail = prompt
 	}
 	machine, target, remote := a.localMachine, "mac", false
-	if a.localMachine == "Mac" {
-		machine, target, remote = "Ubuntu", "ubuntu", true
-	}
 	return []row{{
 		Kind: "NEW", Machine: machine, State: "new", Branch: "New thread",
 		Target: target, Remote: remote, Prompt: prompt, Detail: detail,
@@ -1205,6 +1206,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 	case tea.KeyMsg:
 		if m.draft != nil {
+			// KeyMsg.String adds display brackets to pasted text. Insert the
+			// actual runes, preserving newlines and literal shortcut names.
+			if m.draft.editingTitle && msg.Type == tea.KeyRunes && !msg.Alt {
+				m.insertPrompt(string(msg.Runes))
+				return m, nil
+			}
 			return m.updateThreadDraft(msg.String())
 		}
 		switch msg.String() {

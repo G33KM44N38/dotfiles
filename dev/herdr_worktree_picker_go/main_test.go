@@ -770,21 +770,44 @@ func TestRemoteRefreshKeepsWorktreesAndHidesThreads(t *testing.T) {
 	}
 }
 
-func TestNewCodingThreadDefaultsToUbuntuWithoutWaitingForSSH(t *testing.T) {
+func TestNewCodingThreadDefaultsToMacWithoutWaitingForSSH(t *testing.T) {
 	for _, online := range []bool{false, true} {
 		a := &app{localMachine: "Mac", remoteMachine: "Ubuntu", remoteOnline: online}
 		r := a.newThreadRows("Fix login")[0]
-		if r.Target != "ubuntu" || r.Machine != "Ubuntu" || !r.Remote {
-			t.Fatalf("new coding thread is not remote: %#v", r)
+		if r.Target != "mac" || r.Machine != "Mac" || r.Remote {
+			t.Fatalf("new coding thread is not local: %#v", r)
 		}
 		m := model{app: a, draft: &threadDraft{row: r}}
 		m.toggleThreadDraftField(0)
-		if m.draft.row.Target != "mac" || m.draft.row.Remote {
-			t.Fatal("Mac-only work must remain selectable even while Ubuntu is offline")
+		if m.draft.row.Target != "ubuntu" || !m.draft.row.Remote {
+			t.Fatal("Ubuntu must remain explicitly selectable")
 		}
 	}
 	a := &app{localMachine: "Ubuntu", remoteMachine: "Ubuntu"}
 	if r := a.newThreadRows("")[0]; r.Remote || r.Machine != "Ubuntu" {
 		t.Fatalf("Linux should run locally, without nested SSH: %#v", r)
+	}
+}
+
+func TestPromptPastePreservesExactText(t *testing.T) {
+	for _, prompt := range []string{"bonjour", "[literal brackets]", "première ligne\ndeuxième ligne", "enter", "ctrl+c"} {
+		m := model{draft: &threadDraft{editingTitle: true}}
+		updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(prompt), Paste: true})
+		got := updated.(model)
+		if got.draft.row.Prompt != prompt || got.quit || cmd != nil {
+			t.Fatalf("paste %q became %q, quit=%v", prompt, got.draft.row.Prompt, got.quit)
+		}
+	}
+}
+
+func TestNewNavigationDoesNotBecomePrompt(t *testing.T) {
+	a := &app{localMachine: "Mac"}
+	for _, query := range []string{"new", "NEW", "new thread"} {
+		if got := a.newThreadRows(query)[0].Prompt; got != "" {
+			t.Fatalf("navigation %q became prompt %q", query, got)
+		}
+	}
+	if got := a.newThreadRows("new feature please")[0].Prompt; got != "new feature please" {
+		t.Fatalf("real prompt was altered: %q", got)
 	}
 }

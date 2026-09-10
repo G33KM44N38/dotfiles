@@ -577,6 +577,10 @@ if [[ "$target" == "mac" ]]; then
       launch_command="$launch_command --dangerously-bypass-approvals-and-sandbox"
     fi
   fi
+  if [[ -n "$initial_prompt" ]]; then
+    # Pass the first request at startup: terminal paste/Enter can race the TUI.
+    printf -v launch_command '%s -- %q' "$launch_command" "$initial_prompt"
+  fi
 else
   thread_key="$workspace_id"
   [[ "$remote_split" == false ]] || thread_key="split:$pane_id"
@@ -706,12 +710,4 @@ raise SystemExit(0 if agent.get("agent_status") == "idle" else 1)
     fi
     sleep 0.05
   done
-fi
-
-if [[ -n "$initial_prompt" && "$target" == "mac" ]]; then
-  if ! herdr agent wait "$pane_id" --until idle --timeout 30000 >/dev/null; then
-    printf '\nCodex did not become ready for the first message.\n' >&2
-    exit 1
-  fi
-  herdr agent prompt "$pane_id" "$initial_prompt" >/dev/null
 fi
