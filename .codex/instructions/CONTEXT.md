@@ -10,7 +10,7 @@ One job: route global tasks to the smallest relevant instruction set.
 - `deletion.md`: Safe deletion and cleanup.
 - `apple-platforms.md`: macOS and iOS application identity.
 - `computer-use.md`: Explicit authorization for computer use.
-- `worktrees.md`: Repository and worktree isolation.
+- `worktrees.md`: Repository isolation, local branch/path identifiers, and remote branch publication.
 - `herdr.md`: Herdr navigation and Codex agent launches.
 - `personal-ops.md`: Status work, planning, ownership, monitoring, and calendars.
 - `keyboard.md`: Shared keyboard intent, device profiles, Corne roles, and flashing.

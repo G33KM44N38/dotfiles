@@ -16,7 +16,7 @@ For PDFs or formats Shottr does not support, use an appropriate viewer.
 | Deleting files or cleaning a workspace | `/Users/boss/.dotfiles/.codex/instructions/deletion.md` |
 | macOS or iOS signing, identities, entitlements, or bundle IDs | `/Users/boss/.dotfiles/.codex/instructions/apple-platforms.md` |
 | Computer use | `/Users/boss/.dotfiles/.codex/instructions/computer-use.md` |
-| Worktrees, branches, or checkout isolation | `/Users/boss/.dotfiles/.codex/instructions/worktrees.md` |
+| Worktrees, branches, naming, checkout isolation, Git pushes, or publishing a PR branch | `/Users/boss/.dotfiles/.codex/instructions/worktrees.md` |
 | Herdr, panes, workspaces, or Codex agent launches | `/Users/boss/.dotfiles/.codex/instructions/herdr.md` |
 | Status, planning, ownership, pending work, monitoring, or calendars | `/Users/boss/.dotfiles/.codex/instructions/personal-ops.md` |
 | Keyboard layouts, Corne keys, device profiles, or keyboard flashing | `/Users/boss/.dotfiles/.codex/instructions/keyboard.md` |
