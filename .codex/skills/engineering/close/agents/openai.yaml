@@ -1,0 +1,4 @@
+interface:
+  display_name: "close"
+  short_description: "Fermer le worktree et nettoyer ses builds locaux"
+  default_prompt: "Utilise $close pour fermer et nettoyer le worktree actuel."
