@@ -15,6 +15,8 @@ import subprocess
 import sys
 import tempfile
 
+from close_neovim import NeovimBlocked, quit_neovim
+
 
 class Blocked(Exception):
     def __init__(self, reason, *, processes=None):
@@ -46,7 +48,103 @@ def records(common):
     return rows
 
 
-def context(start):
+def remote_git(common, *args):
+    """Run a bounded remote operation; report causes without echoing credentials."""
+    try:
+        result = subprocess.run(
+            ["git", "--no-optional-locks", "-C", str(common),
+             "-c", "core.hooksPath=/dev/null", *args],
+            capture_output=True, timeout=30,
+            env={**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_ASKPASS": "/usr/bin/false",
+                 "SSH_ASKPASS": "/usr/bin/false", "GCM_INTERACTIVE": "Never"},
+        )
+    except subprocess.TimeoutExpired:
+        raise Blocked(f"Git {args[0]} timed out after 30 seconds.") from None
+    except OSError as error:
+        raise Blocked(f"Git {args[0]} could not start (errno {error.errno}).") from None
+    if result.returncode:
+        # Fetch's porcelain output identifies rejected refs without remote URLs.
+        rejected = [fields[3] for line in result.stdout.decode(errors="replace").splitlines()
+                    if len(fields := line.split()) == 4 and fields[0] == "!"
+                    and fields[3].startswith("refs/remotes/")]
+        if rejected:
+            raise Blocked(f"Git fetch rejected reference updates: {', '.join(rejected)} (exit {result.returncode}).")
+        error_text = result.stderr.decode(errors="replace").lower()
+        cause = ""
+        if any(text in error_text for text in ("authentication failed", "permission denied", "error: 401", "error: 403")):
+            cause = "; authentication or access denied"
+        elif any(text in error_text for text in ("could not resolve", "couldn't connect", "connection refused", "network is unreachable")):
+            cause = "; network connection failed"
+        elif "cannot lock ref" in error_text or "unable to update local ref" in error_text:
+            cause = "; local reference update failed"
+        raise Blocked(f"Git {args[0]} failed (exit {result.returncode}{cause}).")
+    return result.stdout
+
+
+def publication_candidates(common, remote, branch, head):
+    """Read branch names/tips; fetch only the task's likely publication refs."""
+    advertised = remote_git(common, "ls-remote", "--symref", "--", remote, "HEAD", "refs/heads/*")
+    tips, default = {}, None
+    for line in advertised.decode().splitlines():
+        value, _, ref = line.partition("\t")
+        if ref == "HEAD" and value.startswith("ref: refs/heads/"):
+            default = value.removeprefix("ref: ")
+        elif ref.startswith("refs/heads/"):
+            tips[ref] = value
+
+    def config(key):
+        return run(["git", "--no-optional-locks", "-C", str(common), "config", "--get", key],
+                   allowed=(0, 1)).stdout.decode().strip()
+
+    upstream = config(f"branch.{branch}.merge") if config(f"branch.{branch}.remote") == remote else None
+    exact_tip = next((ref for ref, tip in tips.items() if tip == head), None)
+    if default is None:
+        default = next((ref for ref in ("refs/heads/main", "refs/heads/master") if ref in tips), None)
+    return list(dict.fromkeys(ref for ref in (upstream, f"refs/heads/{branch}", exact_tip, default) if ref in tips))
+
+
+def require_publication(common, head, refresh_remotes, branch):
+    def known_remote_contains_head():
+        return bool(git(common, "for-each-ref", f"--contains={head}",
+                        "--format=%(refname)", "refs/remotes").strip())
+
+    if known_remote_contains_head():
+        return
+    remotes = git(common, "remote").decode().splitlines()
+    if not remotes:
+        raise Blocked("HEAD is not contained in any locally known remote branch. No remotes are configured; publish/save the commits first.")
+    if not refresh_remotes:
+        raise Blocked("HEAD is not contained in any locally known remote branch. --apply will fetch configured remotes and verify again; dry-run does not fetch.")
+    failures = []
+    for remote in sorted(remotes, key=lambda name: (name != "origin", name)):
+        try:
+            candidates = publication_candidates(common, remote, branch, head)
+        except Blocked as error:
+            failures.append(f"{remote}: {error}")
+            continue
+        # Fetch independently: another branch's rejected update cannot veto proof.
+        for ref in candidates:
+            destination = f"refs/remotes/{remote}/{ref.removeprefix('refs/heads/')}"
+            try:
+                symbolic = run(["git", "--no-optional-locks", "-C", str(common),
+                                "symbolic-ref", "-q", destination], allowed=(0, 1))
+                if symbolic.returncode == 0:
+                    raise Blocked(f"Refusing to fetch into symbolic reference {destination}.")
+                # Ignore configured mappings, which could overwrite local branches.
+                remote_git(common, "fetch", "--atomic", "--porcelain", "--no-tags", "--no-prune",
+                           "--no-recurse-submodules", "--no-auto-maintenance",
+                           "--no-write-fetch-head", "--refmap=", "--", remote, f"{ref}:{destination}")
+            except Blocked as error:
+                failures.append(f"{remote}: {error}")
+                continue
+            if known_remote_contains_head():
+                return
+    if failures:
+        raise Blocked("Publication could not be verified. " + " ".join(failures) + " No cleanup performed.")
+    raise Blocked("HEAD is not contained in the checked remote branches after targeted fetching. Publish/save the commits first; no cleanup performed.")
+
+
+def context(start, refresh_remotes=False):
     for name in ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE"):
         if os.environ.get(name):
             raise Blocked(f"Unset {name} before closing a worktree.")
@@ -72,11 +170,10 @@ def context(start):
     if git(root, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=none"):
         raise Blocked("Uncommitted or untracked files exist. Save them before closing.")
     head = git(root, "rev-parse", "HEAD").decode().strip()
-    if not git(common, "for-each-ref", f"--contains={head}", "--format=%(refname)", "refs/remotes").strip():
-        raise Blocked("HEAD is not contained in any locally known remote branch. Publish/save the commits first; close does not fetch or push.")
     tracked = git(root, "ls-files", "--stage", "-z").split(b"\0")
     if any(entry.startswith(b"160000 ") for entry in tracked):
         raise Blocked("Submodules require separate handling; no cleanup performed.")
+    require_publication(common, head, refresh_remotes, branch)
     return root, common, admin, branch, head
 
 
@@ -245,12 +342,25 @@ def close(start, apply=False):
         raise Blocked("This close script currently supports macOS with /usr/bin/trash only.")
     if not shutil.rmtree.avoids_symlink_attacks:
         raise Blocked("Python lacks the safe directory-removal implementation.")
-    root, common, admin, branch, head = context(start)
-    preserved_processes = active_processes(root)
+    root, common, admin, branch, head = context(start, refresh_remotes=apply)
     targets, skipped = artifacts(root)
+    closed_editors = []
+    try:
+        preserved_processes = active_processes(root)
+    except Blocked as error:
+        if not apply or not error.processes:
+            raise
+        try:
+            closed_editors = quit_neovim(root, error.processes)
+        except NeovimBlocked as editor_error:
+            raise Blocked(str(editor_error), processes=error.processes) from None
+        if not closed_editors:
+            raise
+        preserved_processes = active_processes(root)
     report = {"status": "preview", "worktree": str(root), "branch_preserved": None if branch == "detached" else branch,
               "delete_disposable": [str(p.relative_to(root)) for p in targets],
               "preserve_in_trash": skipped, "repository": str(common),
+              "closed_neovim_servers": closed_editors,
               "preserved_session_processes": preserved_processes}
     if not apply:
         return report
