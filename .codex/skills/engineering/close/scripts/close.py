@@ -9,13 +9,17 @@ import fcntl
 import json
 import os
 from pathlib import Path
+import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 
 
 class Blocked(Exception):
-    pass
+    def __init__(self, reason, *, processes=None):
+        super().__init__(reason)
+        self.processes = processes
 
 
 def run(argv, cwd=None, allowed=(0,)):
@@ -76,19 +80,89 @@ def context(start):
     return root, common, admin, branch, head
 
 
+def session_process_role(pid, processes, ancestors, argv, shell_state=""):
+    """Recognize this session's tooling; a generic Node/Codex name is insufficient."""
+    process = processes.get(pid, {})
+    executable = process.get("executable") or ""
+    parent = processes.get(process.get("ppid"), {})
+    # Only a foreground login shell with no jobs, attached to this Herdr host.
+    if (
+        argv in (["-zsh"], ["-bash"], ["-fish"], ["-sh"])
+        and process.get("ppid") in ancestors
+        and parent.get("name") == "herdr"
+        and not any(row.get("ppid") == pid for row in processes.values())
+    ):
+        state = shell_state.split()
+        if len(state) == 4 and state[0].startswith(("S", "I")) and state[1:3] == [str(pid), str(pid)] and state[3] != "??":
+            return "idle terminal shell"
+
+    # Anchor at the nearest Codex ancestor of this invocation, not the whole host.
+    session = next((ancestor for ancestor in ancestors if processes.get(ancestor, {}).get("name") == "codex"), None)
+    lineage = set()
+    current = pid
+    while current and current not in lineage and current != session:
+        lineage.add(current)
+        current = processes.get(current, {}).get("ppid", 0)
+    if session is None or current != session:
+        return None
+    if any(processes.get(ancestor, {}).get("name") == "codex" for ancestor in lineage - {pid}):
+        return None
+    resources = Path("/Applications/ChatGPT.app/Contents/Resources")
+    cua = resources / "cua_node/bin"
+    if executable == str(cua / "node_repl") and argv == [executable]:
+        return "Codex computer-use REPL"
+    host = str(Path(processes[session]["executable"]).with_name("codex-code-mode-host"))
+    if executable == host and argv == [executable]:
+        return "Codex code-mode host"
+    if executable == str(resources / "codex") and len(argv) == 4 and argv[1:3] == ["app-server", "--listen"] and parent.get("executable") == str(cua / "node_repl"):
+        return "Codex computer-use app server"
+    if executable != str(cua / "node") or not argv or argv[0] != executable:
+        return None
+    scripts = [Path(arg) for arg in argv[1:] if arg.startswith("/") and arg.endswith((".js", ".mjs"))]
+    if len(scripts) != 1:
+        return None
+    script = scripts[0]
+    plugin_cache = (Path.home() / ".codex/plugins/cache/openai-bundled/unified-computer-use").resolve()
+    if len(argv) == 2 and script.name == "launch.mjs" and script.resolve().is_relative_to(plugin_cache) and process.get("ppid") == session:
+        return "Codex computer-use launcher"
+    if (
+        (
+            (script.name == "kernel.js" and len(argv) == 7 and argv[1] == "--experimental-vm-modules" and argv[3] == "--session-id" and argv[5] == "--working-dir")
+            or (script.name == "trusted-worker.js" and len(argv) == 3)
+        )
+        and script.parent.name.startswith(".tmp")
+        and script.resolve().is_relative_to(Path(tempfile.gettempdir()).resolve())
+        and parent.get("executable") == str(cua / "node_repl")
+    ):
+        return "Codex computer-use worker"
+    return None
+
+
 def active_processes(root):
-    # Ignore this invocation and its ancestor shells/Codex, never unrelated agents.
-    ps = run(["ps", "-axo", "pid=,ppid="]).stdout.decode()
-    parents = dict(tuple(map(int, line.split())) for line in ps.splitlines() if line.strip())
-    ancestors = set()
+    # Ignore this invocation and its ancestors; inspect each remaining cwd holder.
+    # Exclude arguments and environment variables, which can contain credentials.
+    ps = run(["ps", "-axo", "pid=,ppid=,comm="], cwd=root.parent).stdout.decode(errors="replace")
+    processes = {}
+    for line in ps.splitlines():
+        if not line.strip():
+            continue
+        pid, ppid, *command = line.split(None, 2)
+        executable = command[0] if command else None
+        processes[int(pid)] = {
+            "ppid": int(ppid),
+            "name": Path(executable).name.lstrip("-") if executable else None,
+            "executable": executable,
+        }
+    ancestors = []
     pid = os.getpid()
     while pid and pid not in ancestors:
-        ancestors.add(pid)
-        pid = parents.get(pid, 0)
-    result = run(["lsof", "-n", "-P", "-a", "-d", "cwd", "-Fpn"], allowed=(0, 1))
+        ancestors.append(pid)
+        pid = processes.get(pid, {}).get("ppid", 0)
+    # lsof reports its own cwd; run it outside the target to avoid a false blocker.
+    result = run(["lsof", "-n", "-P", "-a", "-d", "cwd", "-Fpn"], cwd=root.parent, allowed=(0, 1))
     if result.returncode and (result.stderr or not result.stdout):
         raise Blocked("Cannot inspect running processes with lsof.")
-    active = []
+    active = {}
     pid = None
     for line in os.fsdecode(result.stdout).splitlines():
         if line.startswith("p"):
@@ -96,9 +170,35 @@ def active_processes(root):
         elif line.startswith("n") and pid not in ancestors:
             path = Path(line[1:])
             if path.is_absolute() and path.is_relative_to(root):
-                active.append(pid)
-    if active:
-        raise Blocked("Processes still have a working directory in this worktree: " + ", ".join(map(str, sorted(set(active)))))
+                process = processes.get(pid, {"ppid": None, "name": None, "executable": None})
+                active[pid] = {
+                    "pid": pid,
+                    **process,
+                    "parent_name": processes.get(process["ppid"], {}).get("name"),
+                    "cwd": str(path),
+                }
+    blockers, preserved = [], []
+    for pid, process in sorted(active.items()):
+        # Inspect arguments privately to distinguish tools from servers; never report them.
+        command = run(["ps", "-p", str(pid), "-o", "args="], cwd=root.parent, allowed=(0, 1))
+        try:
+            argv = shlex.split(command.stdout.decode(errors="replace"))
+        except ValueError:
+            argv = []
+        shell_state = ""
+        if process["name"] in {"zsh", "bash", "fish", "sh"}:
+            shell_state = run(["ps", "-p", str(pid), "-o", "stat=,pgid=,tpgid=,tty="], cwd=root.parent, allowed=(0, 1)).stdout.decode(errors="replace")
+        role = session_process_role(pid, processes, ancestors, argv, shell_state)
+        if role:
+            preserved.append({**process, "role": role})
+        else:
+            blockers.append(process)
+    if blockers:
+        raise Blocked(
+            "Processes still have a working directory in this worktree: " + ", ".join(str(process["pid"]) for process in blockers),
+            processes=blockers,
+        )
+    return preserved
 
 
 def artifacts(root):
@@ -146,11 +246,12 @@ def close(start, apply=False):
     if not shutil.rmtree.avoids_symlink_attacks:
         raise Blocked("Python lacks the safe directory-removal implementation.")
     root, common, admin, branch, head = context(start)
-    active_processes(root)
+    preserved_processes = active_processes(root)
     targets, skipped = artifacts(root)
     report = {"status": "preview", "worktree": str(root), "branch_preserved": None if branch == "detached" else branch,
               "delete_disposable": [str(p.relative_to(root)) for p in targets],
-              "preserve_in_trash": skipped, "repository": str(common)}
+              "preserve_in_trash": skipped, "repository": str(common),
+              "preserved_session_processes": preserved_processes}
     if not apply:
         return report
     # Serialize close invocations; the Git administrative directory survives until unregister.
@@ -161,13 +262,14 @@ def close(start, apply=False):
             raise Blocked("Another close invocation is running.")
         if context(root) != (root, common, admin, branch, head):
             raise Blocked("Worktree changed during validation.")
-        active_processes(root)
+        report["preserved_session_processes"] = active_processes(root)
         # Only validated, ignored, untracked artifact directories are permanently removed.
         for target in targets:
             if target.is_symlink() or target.resolve() != target or not target.is_relative_to(root):
                 raise Blocked(f"Artifact path changed: {target}.")
             shutil.rmtree(target)
         context(root)  # Recheck user files and HEAD after potentially slow cleanup.
+        report["preserved_session_processes"] = active_processes(root)
         os.chdir(common)
         run(["/usr/bin/trash", "-s", str(root)], cwd=common)
         if root.exists():
@@ -191,7 +293,10 @@ def main():
         print(json.dumps(close(Path.cwd(), args.apply), ensure_ascii=False, indent=2))
         return 0
     except (Blocked, OSError, subprocess.TimeoutExpired) as error:
-        print(json.dumps({"status": "blocked", "reason": str(error)}, ensure_ascii=False))
+        report = {"status": "blocked", "reason": str(error)}
+        if isinstance(error, Blocked) and error.processes is not None:
+            report["processes"] = error.processes
+        print(json.dumps(report, ensure_ascii=False, indent=2))
         return 2
 
 
