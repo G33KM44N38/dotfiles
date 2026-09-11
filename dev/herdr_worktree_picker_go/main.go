@@ -78,6 +78,7 @@ type app struct {
 	historyCount     int
 	root             string
 	rows             []row
+	commandContext   context.Context
 }
 
 type palette struct {
@@ -105,17 +106,21 @@ var c = palette{
 }
 
 type model struct {
-	app      *app
-	allRows  []row
-	rows     []row
-	cursor   int
-	query    string
-	width    int
-	height   int
-	selected *row
-	quit     bool
-	err      error
-	draft    *threadDraft
+	app        *app
+	allRows    []row
+	rows       []row
+	cursor     int
+	query      string
+	width      int
+	height     int
+	selected   *row
+	quit       bool
+	err        error
+	draft      *threadDraft
+	gitContext context.Context
+	gitLoading bool
+	gitLoaded  bool
+	gitErr     error
 }
 
 type remoteSnapshotMsg struct {
@@ -239,8 +244,12 @@ func runMain() error {
 		return a.openRow(selected, *dryRun)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	m := newModel(a, rows)
+	m.gitContext = ctx
 	finalModel, err := tea.NewProgram(m, tea.WithAltScreen(), tea.WithFPS(15)).Run()
+	cancel()
 	if err != nil {
 		return err
 	}
@@ -383,7 +392,10 @@ func (a *app) outputWithTimeout(timeout time.Duration, name string, args ...stri
 	if name == "" {
 		return ""
 	}
-	ctx := context.Background()
+	ctx := a.commandContext
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	var cancel context.CancelFunc
 	if timeout > 0 {
 		ctx, cancel = context.WithTimeout(ctx, timeout)
@@ -1193,13 +1205,18 @@ func newModel(a *app, rows []row) model {
 	if (a.threadsOnly || a.newThreadOnly) && a.historyErr == nil {
 		a.historyLoading = true
 	}
-	m := model{app: a, allRows: rows, width: 100, height: 24}
+	m := model{app: a, allRows: rows, width: 100, height: 24,
+		gitLoading: !a.threadsOnly && !a.newThreadOnly && a.root != "",
+		gitContext: context.Background()}
 	m.applyFilter(true)
 	return m
 }
 
 func (m model) Init() tea.Cmd {
 	var commands []tea.Cmd
+	if m.gitLoading {
+		commands = append(commands, m.app.refreshGitBranchesCmd(m.gitContext))
+	}
 	if m.app.localMachine != m.app.remoteMachine {
 		commands = append(commands, func() tea.Msg {
 			data, err := m.app.fetchRemoteSnapshot()
@@ -1217,6 +1234,8 @@ func (m model) Init() tea.Cmd {
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case gitBranchesRefreshedMsg:
+		m.applyGitBranchRefresh(msg)
 	case remoteSnapshotMsg:
 		m.app.remoteLoading = false
 		if msg.err == nil {
@@ -1557,9 +1576,7 @@ func (m *model) applyRemoteSnapshot(data map[string]any) {
 		}
 	}
 	rows = append(rows, m.app.snapshotRows(data, m.app.remoteMachine, true)...)
-	sortRows(rows)
-	m.allRows = m.app.filterModeRows(rows)
-	m.applyFilter(false)
+	m.replaceRowsPreservingSelection(rows)
 }
 
 func (m *model) applyHistoryRows(history []row) {
@@ -1632,6 +1649,13 @@ func (m model) View() string {
 		}
 	}
 	machineSummary := m.app.localMachine
+	if m.gitLoading {
+		machineSummary += " · Git refreshing"
+	} else if m.gitErr != nil {
+		machineSummary += " · Git refresh incomplete"
+	} else if m.gitLoaded {
+		machineSummary += " · Git updated"
+	}
 	if m.app.localMachine != m.app.remoteMachine {
 		machineSummary += " · " + m.app.remoteMachine + " " + remoteState
 	}
@@ -1671,7 +1695,11 @@ func (m model) View() string {
 		b.WriteString(boxLine("", inner) + "\n")
 	}
 	b.WriteString(sep + "\n")
-	b.WriteString(boxLine(color(c.dim, "type to search")+" | "+color(c.green, "Enter")+" "+enterAction+" | "+color(c.yellow, "Esc")+" quit | "+color(c.yellow, "Ctrl-u")+" clear", inner) + "\n")
+	footer := color(c.dim, "type to search") + " | " + color(c.green, "Enter") + " " + enterAction + " | " + color(c.yellow, "Esc") + " quit | " + color(c.yellow, "Ctrl-u") + " clear"
+	if m.gitErr != nil {
+		footer = color(c.yellow, "Git refresh: ") + oneLine(m.gitErr.Error())
+	}
+	b.WriteString(boxLine(footer, inner) + "\n")
 	b.WriteString("╰" + strings.Repeat("─", inner+2) + "╯")
 	return b.String()
 }
