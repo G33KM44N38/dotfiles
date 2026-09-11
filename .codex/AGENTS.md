@@ -4,6 +4,20 @@ This file is the catalog for global instructions. Detailed rules live in `/Users
 
 Read every matching file before you act. If no row matches, read `/Users/boss/.dotfiles/.codex/instructions/CONTEXT.md`.
 
+Keep each conversation focused on one subject and one concrete expected outcome.
+Identify both from the user's request and state them briefly when starting work.
+If either is unclear, help the user formulate a focused request before expanding
+the work. A cross-cutting subject may span several systems or disciplines as long
+as every part directly serves the same outcome.
+
+Watch for drift in both the user's requests and your own proposed work. As soon
+as a new subject or a separate outcome appears, tell the user what is drifting
+and restate the current subject and outcome. Suggest handling the new item in a
+separate conversation or explicitly replacing the current focus. Do not silently
+add it to the scope. Continue authorized work toward the current outcome unless
+the user explicitly changes direction. Necessary substeps and clarifying questions
+that serve the same outcome are within scope.
+
 When opening images or screenshots for the user on macOS, use Shottr instead
 of Preview. Use `open -a Shottr "<path>"` for PNG, JPEG, and GIF files.
 For PDFs or formats Shottr does not support, use an appropriate viewer.
