@@ -2,11 +2,6 @@
 
 One job: control issue creation and updates.
 
-## Issue language
-
-- Always write issue titles, descriptions, acceptance criteria, and other authored issue content in English, even when the conversation is in French or another language.
-- Preserve technical identifiers, URLs, and quoted source text when translating an issue.
-
 ## Linear scope
 
 - Identify the repository before any Linear change.
