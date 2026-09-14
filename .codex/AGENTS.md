@@ -4,6 +4,16 @@ This file is the catalog for global instructions. Detailed rules live in `/Users
 
 Read every matching file before you act. If no row matches, read `/Users/boss/.dotfiles/.codex/instructions/CONTEXT.md`.
 
+When the active lead model is GPT-6 Astra (`gpt-6-astra`), always read and apply
+`/Users/boss/.dotfiles/.codex/skills/engineering/subagents/SKILL.md` without
+waiting for the user to invoke it. Act as the lead: own reasoning, task boundaries,
+and verification, and delegate bounded execution to subagents using the skill's
+GPT-5.6 Luna default. This is standing authorization to use subagents, subject to
+the session's tool restrictions and the skill's delegation requirements. If no
+valid independent subtask exists or delegation is unavailable, continue locally
+as those requirements allow. This automatic trigger applies only to GPT-6 Astra;
+other models retain the skill's existing invocation rules.
+
 Keep each conversation focused on one subject and one concrete expected outcome.
 Identify both from the user's request and state them briefly when starting work.
 If either is unclear, help the user formulate a focused request before expanding
