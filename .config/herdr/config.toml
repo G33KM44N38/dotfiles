@@ -208,6 +208,12 @@ command = "$HOME/.dotfiles/bin/herdr-start-codex current"
 description = "split a Codex pane on the already selected machine"
 
 [[keys.command]]
+key = "ctrl+alt+shift+n"
+type = "shell"
+command = "$HOME/.dotfiles/bin/herdr-start-pi"
+description = "split a Pi agent pane in the current workspace"
+
+[[keys.command]]
 key = "alt+g"
 type = "pane"
 command = "$HOME/.dotfiles/bin/herdr-git.sh open-web"

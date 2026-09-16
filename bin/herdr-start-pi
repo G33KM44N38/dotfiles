@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+herdr_bin="${HERDR_BIN_PATH:-$(type -P herdr)}"
+
+herdr() {
+  "$herdr_bin" "$@"
+}
+
+if [[ -n "${HERDR_ACTIVE_WORKSPACE_ID:-}" && -n "${HERDR_ACTIVE_PANE_CWD:-}" ]]; then
+  workspace_id="$HERDR_ACTIVE_WORKSPACE_ID"
+  project_path="$HERDR_ACTIVE_PANE_CWD"
+else
+  current_json="$(herdr pane current --current)"
+  IFS=$'\t' read -r workspace_id project_path < <(printf '%s\n' "$current_json" | python3 -c '
+import json, sys
+pane = json.load(sys.stdin)["result"]["pane"]
+print(pane["workspace_id"], pane.get("foreground_cwd") or pane["cwd"], sep="\t")
+')
+fi
+
+agent_tab_id="$(herdr tab list --workspace "$workspace_id" | python3 -c '
+import json, sys
+for tab in json.load(sys.stdin).get("result", {}).get("tabs", []):
+    if (tab.get("label") or "").split(" · ", 1)[0] == "agent":
+        print(tab["tab_id"])
+        break
+')"
+
+created_tab=false
+if [[ -z "$agent_tab_id" ]]; then
+  tab_json="$(herdr tab create --workspace "$workspace_id" --cwd "$project_path" --label agent --no-focus)"
+  agent_tab_id="$(printf '%s\n' "$tab_json" | python3 -c '
+import json, sys
+data = json.load(sys.stdin).get("result", {})
+print(data.get("tab", data).get("tab_id", ""))
+')"
+  created_tab=true
+fi
+
+pane_id=""
+for _ in {1..100}; do
+  pane_id="$(herdr pane list --workspace "$workspace_id" | python3 -c '
+import json, sys
+tab_id = sys.argv[1]
+for pane in json.load(sys.stdin).get("result", {}).get("panes", []):
+    if pane.get("tab_id") == tab_id:
+        print(pane["pane_id"])
+        break
+' "$agent_tab_id")"
+  [[ -z "$pane_id" ]] || break
+  sleep 0.05
+done
+
+if [[ -z "$pane_id" ]]; then
+  printf 'Could not find a shell pane in the agent tab.\n' >&2
+  exit 1
+fi
+
+if [[ "$created_tab" == false ]]; then
+  split_json="$(herdr pane split "$pane_id" --direction right --cwd "$project_path" --no-focus)"
+  pane_id="$(printf '%s\n' "$split_json" | python3 -c '
+import json, sys
+data = json.load(sys.stdin).get("result", {})
+print(data.get("pane", data).get("pane_id", ""))
+')"
+fi
+
+agent_name="$(herdr agent list | python3 -c '
+import json, sys
+names = {agent.get("name") for agent in json.load(sys.stdin).get("result", {}).get("agents", [])}
+name = "pi-agent"
+number = 2
+while name in names:
+    name = f"pi-agent-{number}"
+    number += 1
+print(name)
+')"
+
+herdr agent start "$agent_name" --kind pi --pane "$pane_id"
+herdr pane report-metadata "$pane_id" --source boss:pi-launch-title --agent pi --title "$agent_name"
+herdr agent focus "$pane_id"
