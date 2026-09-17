@@ -28,6 +28,7 @@ return {
 				},
 			},
 			formatters_by_ft = {
+				go = { "goimports", "gofmt" },
 				javascript = javascript_formatter,
 				typescript = javascript_formatter,
 				javascriptreact = javascript_formatter,
