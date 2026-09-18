@@ -228,6 +228,17 @@ return {
 
 		-- Define snippets for Go
 		ls.add_snippets("go", {
+			s("func", {
+				t("func "),
+				i(1, "name"),
+				t("("),
+				i(2, "parameters"),
+				t(") "),
+				i(3, "returnType"),
+				t({ " {", "\t" }),
+				i(0),
+				t({ "", "}" }),
+			}),
 			s("=", {
 				i(1, "previousValue"),
 				t(" = "),
@@ -284,6 +295,15 @@ return {
 				t({ "switch {", "\tcase " }),
 				i(1, "conditionA"),
 				t({ ":", "\t\t" }),
+				i(0),
+				t({ "", "}" }),
+			}),
+			s("switcheld", {
+				t({ "switch {", "\tcase " }),
+				i(1, "conditionA"),
+				t({ ":", "\t\t" }),
+				i(2),
+				t({ "", "\tdefault:", "\t\t" }),
 				i(0),
 				t({ "", "}" }),
 			}),
