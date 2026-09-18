@@ -8,6 +8,35 @@ return {
 		local i = ls.insert_node
 		local t = ls.text_node
 
+		local function map_go_equals_snippet(bufnr)
+			vim.keymap.set("i", "=", function()
+				local line = vim.api.nvim_get_current_line()
+				local column = vim.api.nvim_win_get_cursor(0)[2]
+				local is_indented_empty_line = line:sub(1, column):match("^%s*$") ~= nil
+
+				if is_indented_empty_line then
+					vim.schedule(function()
+						require("blink.cmp").show({ providers = { "snippets" } })
+					end)
+				end
+
+				return "="
+			end, { buffer = bufnr, expr = true, desc = "Show the Go assignment snippet" })
+		end
+
+		local equals_snippet_group = vim.api.nvim_create_augroup("GoEqualsSnippet", { clear = true })
+		vim.api.nvim_create_autocmd("FileType", {
+			group = equals_snippet_group,
+			pattern = "go",
+			callback = function(args)
+				map_go_equals_snippet(args.buf)
+			end,
+		})
+
+		if vim.bo.filetype == "go" then
+			map_go_equals_snippet(0)
+		end
+
 		-- Define snippets for Lua
 		ls.add_snippets("lua", {
 			s("func", {
@@ -199,81 +228,158 @@ return {
 
 		-- Define snippets for Go
 		ls.add_snippets("go", {
+			s("=", {
+				i(1, "previousValue"),
+				t(" = "),
+				i(0, "valueToInsert"),
+			}),
+			s("struct", {
+				t("type "),
+				i(1, "Name"),
+				t({ " struct {", "\t" }),
+				i(0),
+				t({ "", "}" }),
+			}),
+			s("var", {
+				t("var "),
+				i(1, "name"),
+				t(" = "),
+				i(0, "value"),
+			}),
+			s("vart", {
+				t("var "),
+				i(1, "name"),
+				t(" "),
+				i(0, "TYPE"),
+			}),
+			s("const", {
+				t("const "),
+				i(1, "name"),
+				t(" = "),
+				i(0, "value"),
+			}),
+			s("interface", {
+				t("type "),
+				i(1, "Name"),
+				t({ " interface {", "\t" }),
+				i(0),
+				t({ "", "}" }),
+			}),
+			s("case", {
+				t("case "),
+				i(1, "condition"),
+				t({ ":", "\t" }),
+				i(0),
+			}),
+			s("switch", {
+				t("switch "),
+				i(1, "value"),
+				t({ " {", "\tcase " }),
+				i(2, "condition"),
+				t({ ":", "\t\t" }),
+				i(0),
+				t({ "", "}" }),
+			}),
+			s("switchel", {
+				t({ "switch {", "\tcase " }),
+				i(1, "conditionA"),
+				t({ ":", "\t\t" }),
+				i(0),
+				t({ "", "}" }),
+			}),
+			s("switchd", {
+				t("switch "),
+				i(1, "value"),
+				t({ " {", "\tcase " }),
+				i(2, "condition"),
+				t({ ":", "\t\t" }),
+				i(3),
+				t({ "", "\tdefault:", "\t\t" }),
+				i(0),
+				t({ "", "}" }),
+			}),
 			s("genSuite", {
-
 				t("package "),
 				i(1),
-				t(
-					'\n\nimport (\n    "testing"\n    "github.com/stretchr/testify/suite"\n    "github.com/stretchr/testify/assert"\n)\n\n'
-				),
+				t({
+					"",
+					"",
+					"import (",
+					'\t"testing"',
+					'\t"github.com/stretchr/testify/suite"',
+					'\t"github.com/stretchr/testify/assert"',
+					")",
+					"",
+					"",
+				}),
 				t("type "),
 				i(2),
-				t("TestSuite struct {\n    suite.Suite\n}\n\n"),
+				t({ "TestSuite struct {", "\tsuite.Suite", "}", "", "" }),
 				t("func (suite *"),
 				i(2),
 				t("TestSuite) Test"),
 				i(3),
-				t("() {\n    "),
+				t({ "() {", "\t" }),
 				i(0),
-				t("\n}\n\n"),
+				t({ "", "}", "", "" }),
 				t("func Test"),
 				i(2),
-				t("TestSuite(t *testing.T) {\n    suite.Run(t, new("),
+				t({ "TestSuite(t *testing.T) {", "\tsuite.Run(t, new(" }),
 				i(2),
-				t("TestSuite))\n}\n"),
+				t({ "TestSuite))", "}", "" }),
 			}),
 			s("tests", {
 				t("func (suite *"),
 				i(1),
 				t("TestSuite) Test"),
 				i(1),
-				t("() {\n    "),
+				t({ "() {", "\t" }),
 				i(0),
-				t("\n}"),
+				t({ "", "}" }),
 			}),
 			s("ts", {
 				t("func (suite *"),
 				i(1),
 				t(") Test"),
 				i(2),
-				t("() {\n    "),
+				t({ "() {", "\t" }),
 				i(0),
-				t("\n}"),
+				t({ "", "}" }),
 			}),
 			s("ut", {
 				t("func Test"),
 				i(1),
-				t("(t *testing.T) {\n    "),
+				t({ "(t *testing.T) {", "\t" }),
 				i(0),
-				t("\n}"),
+				t({ "", "}" }),
 			}),
 			s("tss", {
 				t("func (suite *"),
 				i(1),
 				t(") setupTest"),
 				i(2),
-				t("() {\n    "),
+				t({ "() {", "\t" }),
 				i(0),
-				t("\n}\n\n"),
+				t({ "", "}", "", "" }),
 				t("func (suite *"),
 				i(1),
 				t(") Test"),
 				i(2),
-				t("() {\n    suite.setupTest"),
+				t({ "() {", "\tsuite.setupTest" }),
 				i(2),
-				t("()\n}"),
+				t({ "()", "}" }),
 			}),
 			s("ifer", {
-				t("if err != nil {\n    "),
+				t({ "if err != nil {", "\t" }),
 				i(0),
-				t("\n}"),
+				t({ "", "}" }),
 			}),
 			s("ifel", {
 				t("if "),
 				i(1),
-				t(" {\n    "),
+				t({ " {", "\t" }),
 				i(0),
-				t("\n} else {\n\n}"),
+				t({ "", "} else {", "", "}" }),
 			}),
 			s("uni", {
 				t('panic("unimplemented")'),
@@ -285,9 +391,9 @@ return {
 				i(2, "Name"),
 				t("("),
 				i(3, "parameter"),
-				t(") {\n    "),
+				t({ ") {", "\t" }),
 				i(0),
-				t("\n}"),
+				t({ "", "}" }),
 			}),
 			s("sfr", {
 				t("func ("),
@@ -298,14 +404,14 @@ return {
 				i(3, "parameter"),
 				t(") ("),
 				i(4, "returnValue"),
-				t(") {\n    "),
+				t({ ") {", "\t" }),
 				i(0),
-				t("\n}"),
+				t({ "", "}" }),
 			}),
 			s("vs", {
-				t("var (\n    "),
+				t({ "var (", "\t" }),
 				i(0),
-				t("\n)"),
+				t({ "", ")" }),
 			}),
 			s("rn", {
 				t("return nil"),
@@ -321,9 +427,9 @@ return {
 				t("require.Nil(t, err)"),
 			}),
 			s("ern", {
-				t("err != nil {\n    "),
+				t({ "err != nil {", "\t" }),
 				i(0),
-				t("\n}\n    require.Nil(t, err)"),
+				t({ "", "}", "\trequire.Nil(t, err)" }),
 			}),
 			s("lp", {
 				t("log.Println("),
@@ -350,9 +456,9 @@ return {
 			s("ko", {
 				t('"'),
 				i(1),
-				t('": {\n'),
+				t({ '": {', "\t" }),
 				i(0),
-				t("\n},"),
+				t({ "", "}," }),
 			}),
 		})
 
@@ -434,13 +540,16 @@ return {
 		-- Define snippets for Ansible
 		ls.add_snippets("yaml", {
 			s("install_arc", {
-				t("---\n"),
-				t("- name: Install arc\n"),
-				t("  community.general.homebrew_cask:\n"),
-				t("    name: arc\n"),
-				t("    state: present\n"),
-				t("    update_homebrew: yes\n"),
-				t("  ignore_errors: true\n"),
+				t({
+					"---",
+					"- name: Install arc",
+					"  community.general.homebrew_cask:",
+					"    name: arc",
+					"    state: present",
+					"    update_homebrew: yes",
+					"  ignore_errors: true",
+					"",
+				}),
 			}),
 		})
 

@@ -29,7 +29,20 @@ return {
 			preset = "none",
 			["<C-j>"] = { "select_next" },
 			["<C-k>"] = { "select_prev" },
-			["<CR>"] = { "select_and_accept", "fallback" },
+			["<CR>"] = {
+				function(cmp)
+					local luasnip = require("luasnip")
+					if luasnip.expandable() then
+						cmp.hide()
+						vim.schedule(function()
+							luasnip.expand()
+						end)
+						return true
+					end
+				end,
+				"select_and_accept",
+				"fallback",
+			},
 			["<Tab>"] = { "select_next", "fallback" },
 			["<S-Tab>"] = { "select_prev", "fallback" },
 			["<C-b>"] = { "scroll_documentation_up" },
@@ -43,12 +56,23 @@ return {
 				snippets = {
 					name = "Snippets",
 					score_offset = 300,
-					min_keyword_length = 1,
+					min_keyword_length = function(ctx)
+						return ctx.trigger.initial_kind == "manual" and 0 or 1
+					end,
 				},
 				lsp = {
 					name = "LSP",
 					score_offset = 150,
 					min_keyword_length = 0,
+					transform_items = function(_, items)
+						if vim.bo.filetype ~= "go" then
+							return items
+						end
+
+						return vim.tbl_filter(function(item)
+							return item.label ~= "switch" and item.label ~= "case"
+						end, items)
+					end,
 				},
 				buffer = {
 					name = "Buffer",
@@ -125,6 +149,12 @@ return {
 			nerd_font_variant = "mono",
 		},
 		completion = {
+			list = {
+				selection = {
+					preselect = true,
+					auto_insert = false,
+				},
+			},
 			documentation = {
 				auto_show = true,
 				auto_show_delay_ms = 100,
