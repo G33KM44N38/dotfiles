@@ -228,6 +228,13 @@ return {
 
 		-- Define snippets for Go
 		ls.add_snippets("go", {
+			s("if", {
+				t("if "),
+				i(1, "condition"),
+				t({ " {", "\t" }),
+				i(0),
+				t({ "", "}" }),
+			}),
 			s("func", {
 				t("func "),
 				i(1, "name"),
