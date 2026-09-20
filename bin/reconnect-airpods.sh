@@ -25,7 +25,11 @@ if [[ ! -x "$helper" || "$source_file" -nt "$helper" ]]; then
 fi
 
 airpods_name="${AIRPODS_NAME:-Kylian’s AirPods Pro}"
-"$helper" "${AIRPODS_ADDRESS:-F8:D3:F0:56:8C:46}"
+if [[ -n "${AIRPODS_ADDRESS:-}" ]]; then
+    "$helper" "$AIRPODS_ADDRESS"
+else
+    "$helper"
+fi
 
 switch_audio="$(command -v SwitchAudioSource || true)"
 if [[ -z "$switch_audio" && -x /opt/homebrew/bin/SwitchAudioSource ]]; then
